@@ -78,6 +78,58 @@ func (self *KubeMasterSource) ListMinions() (map[string]string, error) {
 	return hosts, nil
 }
 
+func (self *KubeMasterSource) masterListPodsUrl() string {
+	return self.master + "/api/v1beta1/pods"
+}
+
+func (self *KubeMasterSource) parsePod(pod *kube_api.Pod) (string, *Pod) {
+	hostname := pod.CurrentState.Host
+	localPod := Pod{
+		Status:     string(pod.CurrentState.Status),
+		PodIP:      pod.CurrentState.PodIP,
+		Labels:     make(map[string]string, 0),
+		Containers: make([]ContainerDesc, 0),
+	}
+	for key, value := range pod.Labels {
+		localPod.Labels[key] = value
+	}
+	for _, container := range pod.CurrentState.Manifest.Containers {
+		localContainer := ContainerDesc{
+			Name: container.Name,
+			ID:   pod.CurrentState.Info[container.Name].ID,
+		}
+		localPod.Containers = append(localPod.Containers, localContainer)
+	}
+	return hostname, &localPod
+}
+
+// Returns a map of minion hostnames to the Pods running in them.
+func (self *KubeMasterSource) ListPods() (map[string][]Pod, error) {
+	var pods kube_api.PodList
+	req, err := http.NewRequest("GET", self.masterListPodsUrl(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.SetBasicAuth(self.authMasterUser, self.authMasterPass)
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+	err = PostRequestAndGetValue(httpClient, req, &pods)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string][]Pod, 0)
+	for _, pod := range pods.Items {
+		hostname, pod := self.parsePod(&pod)
+		out[hostname] = append(out[hostname], *pod)
+	}
+	return out, nil
+}
+
 func NewKubeMasterSource() (*KubeMasterSource, error) {
 	if len(*argMaster) == 0 {
 		return nil, fmt.Errorf("kubernetes_master flag not specified")

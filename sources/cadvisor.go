@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -15,14 +16,14 @@ var (
 )
 
 type CadvisorSource struct {
-	cadvisorPort         string
-	containerHostnameMap ContainerHostnameMap
-	lastQuery            time.Time
+	cadvisorPort          string
+	hostnameContainersMap HostnameContainersMap
+	lastQuery             time.Time
 }
 
-func (self *CadvisorSource) addContainerToMap(container *Container, hostname string) {
+func (self *CadvisorSource) addContainerToMap(container *Container, ID, hostname string) {
 	// TODO(vishh): Add a lock here to enable polling multiple hosts at the same time.
-	self.containerHostnameMap[hostname] = append(self.containerHostnameMap[hostname], *container)
+	self.hostnameContainersMap[hostname][ID] = append(self.hostnameContainersMap[hostname][ID], *container)
 }
 
 func (self *CadvisorSource) getCadvisorStatsUrl(host, container string) string {
@@ -35,12 +36,11 @@ func (self *CadvisorSource) getCadvisorStatsUrl(host, container string) string {
 func (self *CadvisorSource) processStat(hostname string, containerInfo *info.ContainerInfo) error {
 	container := &Container{
 		Timestamp: time.Now(),
-		Name:      containerInfo.Name,
 		Aliases:   containerInfo.Aliases,
 	}
 	container.Stats = containerInfo.Stats
 	container.Spec = containerInfo.Spec
-	self.addContainerToMap(container, hostname)
+	self.addContainerToMap(container, filepath.Base(containerInfo.Name), hostname)
 	return nil
 }
 
@@ -61,20 +61,20 @@ func (self *CadvisorSource) getCadvisorData(hostname, ip, container string) erro
 	return nil
 }
 
-func (self *CadvisorSource) FetchData(hosts map[string]string) (ContainerHostnameMap, error) {
+func (self *CadvisorSource) FetchData(hosts map[string]string) (HostnameContainersMap, error) {
 	for hostname, ip := range hosts {
 		err := self.getCadvisorData(hostname, ip, "/")
 		if err != nil {
 			return nil, err
 		}
 	}
-	return self.containerHostnameMap, nil
+	return self.hostnameContainersMap, nil
 }
 
 func NewCadvisorSource() (*CadvisorSource, error) {
 	return &CadvisorSource{
-		cadvisorPort:         strconv.Itoa(*argCadvisorPort),
-		containerHostnameMap: make(ContainerHostnameMap, 0),
-		lastQuery:            time.Now(),
+		cadvisorPort:          strconv.Itoa(*argCadvisorPort),
+		hostnameContainersMap: make(HostnameContainersMap, 0),
+		lastQuery:             time.Now(),
 	}, nil
 }

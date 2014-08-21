@@ -9,7 +9,7 @@ import (
 	"github.com/vishh/caggregator/sources"
 )
 
-var argPollDuration = flag.Duration("cadvisor_poll_duration", 10*time.Second, "Port of cAdvisor")
+var argPollDuration = flag.Duration("poll_duration", 1*time.Second, "Polling duration")
 
 func main() {
 	flag.Parse()
@@ -31,7 +31,7 @@ func doWork(stop chan bool) error {
 	if err != nil {
 		os.Exit(1)
 	}
-	var containersHistory []sources.ContainerHostnameMap
+	var containersHistory []sources.HostnameContainersMap
 	ticker := time.NewTicker(*argPollDuration)
 	defer ticker.Stop()
 	for {
@@ -44,6 +44,10 @@ func doWork(stop chan bool) error {
 				return err
 			}
 			data, err := cadvisorSource.FetchData(minions)
+			if err != nil {
+				return err
+			}
+			_, err = kubeMasterSource.ListPods()
 			if err != nil {
 				return err
 			}

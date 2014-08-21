@@ -6,12 +6,10 @@ import (
 	"github.com/google/cadvisor/info"
 )
 
-type ContainerHostnameMap map[string][]Container
+type HostnameContainersMap map[string]map[string][]Container
 
 type Container struct {
 	Timestamp time.Time `json:"timestamp"`
-
-	Name string `json:"name,omitempty"`
 
 	Aliases []string `json:"aliases,omitempty"`
 
@@ -20,4 +18,17 @@ type Container struct {
 
 	// The isolation used in the container.
 	Spec *info.ContainerSpec `json:"spec,omitempty"`
+}
+
+type ContainerDesc struct {
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
+}
+
+// PodState is the state of a pod, used as either input (desired state) or output (current state)
+type Pod struct {
+	Containers []ContainerDesc   `json:"containers"`
+	Status     string            `json:"status,omitempty"`
+	PodIP      string            `json:"podIP,omitempty"`
+	Labels     map[string]string `json:"labels,omitempty"`
 }
