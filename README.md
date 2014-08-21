@@ -1,7 +1,7 @@
 cAggregator
 ===========
 
-Simple aggregation engine that can fetch stats from various cadvisors in a kubernetes cluster and store them in a DB
+Simple aggregation engine that can fetch stats from various cadvisors in a kubernetes cluster, organize them into Pods along with the Labels and store them in a configurable DB
 
 Work In Progress!
 
