@@ -31,7 +31,7 @@ func doWork(stop chan bool) error {
 	if err != nil {
 		os.Exit(1)
 	}
-	var containersHistory []sources.HostnameContainersMap
+	var containersHistory [][]sources.Pod
 	ticker := time.NewTicker(*argPollDuration)
 	defer ticker.Stop()
 	for {
@@ -47,11 +47,16 @@ func doWork(stop chan bool) error {
 			if err != nil {
 				return err
 			}
-			_, err = kubeMasterSource.ListPods()
+			pods, err := kubeMasterSource.ListPods()
 			if err != nil {
 				return err
 			}
-			containersHistory = append(containersHistory, data)
+			for idx, pod := range pods {
+				for cIdx, container := range pod.Containers {
+					pods[idx].Containers[cIdx].Info = data[pod.Hostname][container.ID]
+				}
+			}
+			containersHistory = append(containersHistory, pods)
 		}
 	}
 	return nil

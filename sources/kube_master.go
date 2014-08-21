@@ -65,7 +65,8 @@ func (self *KubeMasterSource) ListMinions() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var hosts map[string]string
+
+	hosts := make(map[string]string, 0)
 	for _, value := range minions.Items {
 		addrs, err := net.LookupIP(value.ID)
 		if err == nil {
@@ -82,29 +83,29 @@ func (self *KubeMasterSource) masterListPodsUrl() string {
 	return self.master + "/api/v1beta1/pods"
 }
 
-func (self *KubeMasterSource) parsePod(pod *kube_api.Pod) (string, *Pod) {
-	hostname := pod.CurrentState.Host
+func (self *KubeMasterSource) parsePod(pod *kube_api.Pod) *Pod {
 	localPod := Pod{
+		Hostname:   pod.CurrentState.Host,
 		Status:     string(pod.CurrentState.Status),
 		PodIP:      pod.CurrentState.PodIP,
 		Labels:     make(map[string]string, 0),
-		Containers: make([]ContainerDesc, 0),
+		Containers: make([]Container, 0),
 	}
 	for key, value := range pod.Labels {
 		localPod.Labels[key] = value
 	}
-	for _, container := range pod.CurrentState.Manifest.Containers {
-		localContainer := ContainerDesc{
+	for _, container := range pod.DesiredState.Manifest.Containers {
+		localContainer := Container{
 			Name: container.Name,
 			ID:   pod.CurrentState.Info[container.Name].ID,
 		}
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}
-	return hostname, &localPod
+	return &localPod
 }
 
 // Returns a map of minion hostnames to the Pods running in them.
-func (self *KubeMasterSource) ListPods() (map[string][]Pod, error) {
+func (self *KubeMasterSource) ListPods() ([]Pod, error) {
 	var pods kube_api.PodList
 	req, err := http.NewRequest("GET", self.masterListPodsUrl(), nil)
 	if err != nil {
@@ -122,11 +123,12 @@ func (self *KubeMasterSource) ListPods() (map[string][]Pod, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[string][]Pod, 0)
+	out := make([]Pod, 0)
 	for _, pod := range pods.Items {
-		hostname, pod := self.parsePod(&pod)
-		out[hostname] = append(out[hostname], *pod)
+		pod := self.parsePod(&pod)
+		out = append(out, *pod)
 	}
+
 	return out, nil
 }
 

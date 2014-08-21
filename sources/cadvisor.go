@@ -21,8 +21,11 @@ type CadvisorSource struct {
 	lastQuery             time.Time
 }
 
-func (self *CadvisorSource) addContainerToMap(container *Container, ID, hostname string) {
+func (self *CadvisorSource) addContainerToMap(container *ContainerInfo, ID, hostname string) {
 	// TODO(vishh): Add a lock here to enable polling multiple hosts at the same time.
+	if self.hostnameContainersMap[hostname] == nil {
+		self.hostnameContainersMap[hostname] = make(map[string][]ContainerInfo, 0)
+	}
 	self.hostnameContainersMap[hostname][ID] = append(self.hostnameContainersMap[hostname][ID], *container)
 }
 
@@ -34,7 +37,7 @@ func (self *CadvisorSource) getCadvisorStatsUrl(host, container string) string {
 }
 
 func (self *CadvisorSource) processStat(hostname string, containerInfo *info.ContainerInfo) error {
-	container := &Container{
+	container := &ContainerInfo{
 		Timestamp: time.Now(),
 		Aliases:   containerInfo.Aliases,
 	}
