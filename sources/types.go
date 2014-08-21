@@ -8,10 +8,6 @@ import (
 
 type ContainerHostnameMap map[string][]Container
 
-type Source interface {
-	FetchData() (ContainerHostnameMap, error)
-}
-
 type Container struct {
 	Timestamp time.Time `json:"timestamp"`
 
