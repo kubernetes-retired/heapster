@@ -11,4 +11,3 @@ type DataEntry struct {
 	Time time.Time
 	Data map[string]string
 }
-

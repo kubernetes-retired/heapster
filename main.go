@@ -4,12 +4,12 @@ import (
 	"flag"
 	"os"
 
-	"github.com/vishh/caggregator/sources"
 	"github.com/golang/glog"
+	"github.com/vishh/caggregator/sources"
 )
 
 func main() {
-	glog.Info("cAggregator is running")	
+	glog.Info("cAggregator is running")
 	flag.Parse()
 	cadvisorSource, err := sources.NewCadvisorSource()
 	if err != nil {
