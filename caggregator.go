@@ -13,8 +13,7 @@ var argPollDuration = flag.Duration("poll_duration", 1*time.Second, "Polling dur
 
 func main() {
 	flag.Parse()
-	var stop chan bool
-	err := doWork(stop)
+	err := doWork()
 	if err != nil {
 		glog.Error(err)
 		os.Exit(1)
@@ -22,7 +21,7 @@ func main() {
 	os.Exit(0)
 }
 
-func doWork(stop chan bool) error {
+func doWork() error {
 	kubeMasterSource, err := sources.NewKubeMasterSource()
 	if err != nil {
 		return err
@@ -36,8 +35,6 @@ func doWork(stop chan bool) error {
 	defer ticker.Stop()
 	for {
 		select {
-		case <-stop:
-			return nil
 		case <-ticker.C:
 			minions, err := kubeMasterSource.ListMinions()
 			if err != nil {
