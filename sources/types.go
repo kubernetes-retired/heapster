@@ -1,27 +1,19 @@
 package sources
 
-import (
-	"time"
+import cadvisor "github.com/google/cadvisor/info"
 
-	cadvisor "github.com/google/cadvisor/info"
-)
-
-type HostnameContainersMap map[string]map[string][]ContainerInfo
+type IdToContainerInfoMap map[string][]ContainerInfo
+type HostnameContainersMap map[string]IdToContainerInfoMap
 
 type ContainerInfo struct {
-	Aliases []string `json:"aliases,omitempty"`
-
 	// Historical statistics gathered from the container.
 	Stats []*cadvisor.ContainerStats `json:"stats,omitempty"`
-
-	// The isolation used in the container.
-	Spec *cadvisor.ContainerSpec `json:"spec,omitempty"`
 }
 
 type Container struct {
-	ID   string          `json:"id,omitempty"`
-	Name string          `json:"name,omitempty"`
-	Info []ContainerInfo `json:"info,omitempty"`
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
+	ContainerInfo
 }
 
 // PodState is the state of a pod, used as either input (desired state) or output (current state)

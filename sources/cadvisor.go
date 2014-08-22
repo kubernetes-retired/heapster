@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/cadvisor/info"
+	"github.com/golang/glog"
+	cadvisor "github.com/google/cadvisor/info"
 )
 
 var (
@@ -24,7 +25,7 @@ type CadvisorSource struct {
 func (self *CadvisorSource) addContainerToMap(container *ContainerInfo, ID, hostname string) {
 	// TODO(vishh): Add a lock here to enable polling multiple hosts at the same time.
 	if self.hostnameContainersMap[hostname] == nil {
-		self.hostnameContainersMap[hostname] = make(map[string][]ContainerInfo, 0)
+		self.hostnameContainersMap[hostname] = make(IdToContainerInfoMap, 0)
 	}
 	self.hostnameContainersMap[hostname][ID] = append(self.hostnameContainersMap[hostname][ID], *container)
 }
@@ -36,26 +37,23 @@ func (self *CadvisorSource) getCadvisorStatsUrl(host, container string) string {
 	return "http://" + host + ":" + self.cadvisorPort + "/api/v1.0/containers" + container + "?" + values.Encode()
 }
 
-func (self *CadvisorSource) processStat(hostname string, containerInfo *info.ContainerInfo) error {
-	container := &ContainerInfo{
-		Timestamp: time.Now(),
-		Aliases:   containerInfo.Aliases,
-	}
+func (self *CadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) error {
+	container := &ContainerInfo{}
 	container.Stats = containerInfo.Stats
-	container.Spec = containerInfo.Spec
 	self.addContainerToMap(container, filepath.Base(containerInfo.Name), hostname)
 	return nil
 }
 
 func (self *CadvisorSource) getCadvisorData(hostname, ip, container string) error {
-	var containerInfo info.ContainerInfo
+	var containerInfo cadvisor.ContainerInfo
 	req, err := http.NewRequest("GET", self.getCadvisorStatsUrl(ip, container), nil)
 	if err != nil {
 		return err
 	}
 	err = PostRequestAndGetValue(&http.Client{}, req, &containerInfo)
 	if err != nil {
-		return err
+		glog.Errorf("failed to get stats from cadvisor on host %s with ip %s - %s\n", hostname, ip, err)
+		return nil
 	}
 	self.processStat(hostname, &containerInfo)
 	for _, container := range containerInfo.Subcontainers {

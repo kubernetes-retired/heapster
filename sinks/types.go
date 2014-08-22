@@ -3,7 +3,6 @@ package sinks
 import (
 	"flag"
 	"fmt"
-	"time"
 )
 
 var argSink = flag.String("sink", "memory", "Backend storage. Options are [memory | influxdb]")
@@ -12,7 +11,6 @@ type Data interface{}
 
 type Sink interface {
 	StoreData(data Data) error
-	RetrieveData(from, to time.Time, data Data) error
 }
 
 func NewSink() (Sink, error) {
@@ -20,7 +18,7 @@ func NewSink() (Sink, error) {
 	case "memory":
 		return NewMemorySink(), nil
 	case "influxdb":
-		return nil, nil
+		return NewInfluxdbSink()
 	default:
 		return nil, fmt.Errorf("Invalid sink specified - %s", *argSink)
 	}

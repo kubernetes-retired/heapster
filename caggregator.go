@@ -10,7 +10,7 @@ import (
 	"github.com/vishh/caggregator/sources"
 )
 
-var argPollDuration = flag.Duration("poll_duration", 1*time.Second, "Polling duration")
+var argPollDuration = flag.Duration("poll_duration", 10*time.Second, "Polling duration")
 
 func main() {
 	flag.Parse()
@@ -54,7 +54,10 @@ func doWork() error {
 			}
 			for idx, pod := range pods {
 				for cIdx, container := range pod.Containers {
-					pods[idx].Containers[cIdx].Info = data[pod.Hostname][container.ID]
+					containerInfoArray := data[pod.Hostname][container.ID]
+					for _, containerInfo := range containerInfoArray {
+						pods[idx].Containers[cIdx].Stats = append(pods[idx].Containers[cIdx].Stats, containerInfo.Stats...)
+					}
 				}
 			}
 			if err := sink.StoreData(pods); err != nil {

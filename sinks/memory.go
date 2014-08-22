@@ -3,12 +3,13 @@ package sinks
 import (
 	"container/list"
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/vishh/caggregator/sources"
 )
 
-var argMaxStorageDuration = flag.Duration("sink_memory_ttl", 12*time.Hour, "Time duration for which stats should be cached if the memory sink is used")
+var argMaxStorageDuration = flag.Duration("sink_memory_ttl", 1*time.Hour, "Time duration for which stats should be cached if the memory sink is used")
 
 type MemorySink struct {
 	containersData     *list.List
@@ -22,12 +23,8 @@ type entry struct {
 }
 
 func (self *MemorySink) reapOldData() {
+	fmt.Printf("%+v\n", self.containersData.Front().Value)
 	if self.containersData.Len() == 0 || time.Since(self.oldestData) < self.maxStorageDuration {
-		return
-	}
-	element := self.containersData.Back()
-	for element != nil {
-		// TODO(vishh): Implement reaping of old data.
 		return
 	}
 }
@@ -42,11 +39,6 @@ func (self *MemorySink) StoreData(data Data) error {
 		}
 	}
 	self.reapOldData()
-	return nil
-}
-
-func (self *MemorySink) RetrieveData(from, to time.Time, data Data) error {
-	// TODO(vishh): Implement this.
 	return nil
 }
 
