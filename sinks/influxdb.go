@@ -9,7 +9,7 @@ import (
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info"
 	influxdb "github.com/influxdb/influxdb/client"
-	"github.com/vishh/caggregator/sources"
+	"github.com/vishh/heapster/sources"
 )
 
 var (

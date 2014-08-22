@@ -1,4 +1,4 @@
-cAggregator
+heapster
 ===========
 
 A [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) service that does the following:
@@ -8,20 +8,20 @@ A [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) service that d
 2. Organizes stats into Pods
 3. Stores Pod stats in a configurable backend
 
-Along with each continer stat entry, its pod ID, logical name, pod IP, Hostname and labels are also stored. Labels are stored as key:value pairs.
+Along with each continer stat entry, its Pod ID, Container name, Pod IP, Hostname and Labels are also stored. Labels are stored as key:value pairs.
 
 Supports in-memory backend and InfluxDB backends.
 
 ####In memory:
 ```
-$ ./caggregator --kubernetes_master x.x.x.x -kubernetes_master_auth admin:your_passwd
+$ ./heapster --kubernetes_master x.x.x.x -kubernetes_master_auth admin:your_passwd
 ```
 **Optional configuration flags**
 - ```-poll_duration 5s```
 
 ####With InfluxDB:
 ```
-$ ./caggregator --kubernetes_master x.x.x.x -kubernetes_master_auth admin:your_passwd -sink influxdb -sink_influxdb_host x.x.y.z:8086
+$ ./heapster --kubernetes_master x.x.x.x -kubernetes_master_auth admin:your_passwd -sink influxdb -sink_influxdb_host x.x.y.z:8086
 ```
 **Optional Flags**
 - ```-sink_influxdb_username user```

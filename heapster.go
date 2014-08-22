@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/vishh/caggregator/sinks"
-	"github.com/vishh/caggregator/sources"
+	"github.com/vishh/heapster/sinks"
+	"github.com/vishh/heapster/sources"
 )
 
 var argPollDuration = flag.Duration("poll_duration", 10*time.Second, "Polling duration")

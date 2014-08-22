@@ -3,10 +3,9 @@ package sinks
 import (
 	"container/list"
 	"flag"
-	"fmt"
 	"time"
 
-	"github.com/vishh/caggregator/sources"
+	"github.com/vishh/heapster/sources"
 )
 
 var argMaxStorageDuration = flag.Duration("sink_memory_ttl", 1*time.Hour, "Time duration for which stats should be cached if the memory sink is used")
@@ -23,10 +22,10 @@ type entry struct {
 }
 
 func (self *MemorySink) reapOldData() {
-	fmt.Printf("%+v\n", self.containersData.Front().Value)
 	if self.containersData.Len() == 0 || time.Since(self.oldestData) < self.maxStorageDuration {
 		return
 	}
+	// TODO(vishh): Reap old data.
 }
 
 func (self *MemorySink) StoreData(data Data) error {
