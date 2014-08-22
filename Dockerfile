@@ -1,4 +1,4 @@
-FROM scratch
+FROM ubuntu:14.10
 MAINTAINER vishnuk@google.com
 
 # NOTE: Run build.sh before building this Docker image.
