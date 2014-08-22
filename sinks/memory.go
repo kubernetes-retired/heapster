@@ -35,7 +35,7 @@ func (self *MemorySink) reapOldData() {
 func (self *MemorySink) StoreData(data Data) error {
 	if data, ok := data.([]sources.Pod); ok {
 		for _, value := range data {
-			self.containersData.PushFront(entry{timestamp: time.Now(), data: value})
+			self.containersData.PushFront(entry{time.Now(), value})
 			if self.containersData.Len() == 1 {
 				self.oldestData = time.Now()
 			}

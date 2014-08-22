@@ -12,13 +12,13 @@ type Data interface{}
 
 type Sink interface {
 	StoreData(data Data) error
-	RetrieveData(from, to time.Time) (Data, error)
+	RetrieveData(from, to time.Time, data Data) error
 }
 
 func NewSink() (Sink, error) {
 	switch *argSink {
 	case "memory":
-		return nil, nil
+		return NewMemorySink(), nil
 	case "influxdb":
 		return nil, nil
 	default:

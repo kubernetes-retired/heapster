@@ -3,21 +3,19 @@ package sources
 import (
 	"time"
 
-	"github.com/google/cadvisor/info"
+	cadvisor "github.com/google/cadvisor/info"
 )
 
 type HostnameContainersMap map[string]map[string][]ContainerInfo
 
 type ContainerInfo struct {
-	Timestamp time.Time `json:"timestamp"`
-
 	Aliases []string `json:"aliases,omitempty"`
 
 	// Historical statistics gathered from the container.
-	Stats []*info.ContainerStats `json:"stats,omitempty"`
+	Stats []*cadvisor.ContainerStats `json:"stats,omitempty"`
 
 	// The isolation used in the container.
-	Spec *info.ContainerSpec `json:"spec,omitempty"`
+	Spec *cadvisor.ContainerSpec `json:"spec,omitempty"`
 }
 
 type Container struct {
@@ -28,6 +26,7 @@ type Container struct {
 
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
 type Pod struct {
+	Name       string            `json:"name,omitempty"`
 	Hostname   string            `json:"hostname,omitempty"`
 	Containers []Container       `json:"containers"`
 	Status     string            `json:"status,omitempty"`

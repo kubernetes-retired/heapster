@@ -85,6 +85,7 @@ func (self *KubeMasterSource) masterListPodsUrl() string {
 
 func (self *KubeMasterSource) parsePod(pod *kube_api.Pod) *Pod {
 	localPod := Pod{
+		Name:       pod.CurrentState.Manifest.ID,
 		Hostname:   pod.CurrentState.Host,
 		Status:     string(pod.CurrentState.Status),
 		PodIP:      pod.CurrentState.PodIP,

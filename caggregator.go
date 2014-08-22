@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/vishh/caggregator/sinks"
 	"github.com/vishh/caggregator/sources"
 )
 
@@ -28,9 +29,12 @@ func doWork() error {
 	}
 	cadvisorSource, err := sources.NewCadvisorSource()
 	if err != nil {
-		os.Exit(1)
+		return err
 	}
-	var containersHistory [][]sources.Pod
+	sink, err := sinks.NewSink()
+	if err != nil {
+		return err
+	}
 	ticker := time.NewTicker(*argPollDuration)
 	defer ticker.Stop()
 	for {
@@ -53,7 +57,9 @@ func doWork() error {
 					pods[idx].Containers[cIdx].Info = data[pod.Hostname][container.ID]
 				}
 			}
-			containersHistory = append(containersHistory, pods)
+			if err := sink.StoreData(pods); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
