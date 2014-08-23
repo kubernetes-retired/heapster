@@ -8,12 +8,13 @@
       "id": "heapster",
       "containers": [{
         "name": "heapster",
-        "image": "vish/k8s_heapster",
-        }]
+        "image": "vish/heapster:beta",
+	"env": [{"name": KUBE_MASTER, "value": ""},
+		{"name": KUBE_MASTER_AUTH, "value": ""}],
+	}]
     }
   },
   "labels": {
     "name": "heapster",
-    "type": "monitoring",
   }
 }
