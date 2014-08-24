@@ -12,10 +12,10 @@ if [ ! ${KUBE_MASTER_AUTH:?} ]; then
 fi
 
 # Check if InfluxDB service is running
-if [ ${INFLUX_MASTER_PORT_0_TCP_ADDR:?} ]; then
-# add support for passing in user name and password.    
-    echo "InfluxDB service discovered. Starting heapster with InfluxDb sink running at ${INFLUX_MASTER_PORT_0_TCP_ADDR}:${INFLUX_MASTER_SERVICE_PORT}"
-    /usr/bin/heapster --kubernetes_master ${KUBE_MASTER} --kubernetes_master_auth ${KUBE_MASTER_AUTH} --sink influxdb --sink_influxdb_host "${INFLUX_MASTER_PORT_0_TCP_ADDR}:${INFLUX_MASTER_SERVICE_PORT}"
+if [ ${INFLUX_MASTER_SERVICE_PORT:?} ]; then
+# TODO(vishh): add support for passing in user name and password.    
+    echo "InfluxDB service discovered. Starting heapster with InfluxDb sink running at ${SERVICE_HOST}:${INFLUX_MASTER_SERVICE_PORT}"
+    /usr/bin/heapster --kubernetes_master ${KUBE_MASTER} --kubernetes_master_auth ${KUBE_MASTER_AUTH} --sink influxdb --sink_influxdb_host "${SERVICE_HOST}:${INFLUX_MASTER_SERVICE_PORT}"
 elif [ ${INFLUXDB_HOST:?} ]; then
     echo "InfluxDB host specified in commandline. Starting heapster with InfluxDb sink running at ${INFLUXDB_HOST}"
     /usr/bin/heapster --kubernetes_master ${KUBE_MASTER} --kubernetes_master_auth ${KUBE_MASTER_AUTH} --sink influxdb --sink_influxdb_host ${INFLUXDB_HOST}
