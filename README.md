@@ -2,7 +2,7 @@ Heapster
 ===========
 
 Heapster collects resource usage of Pods running in a [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) cluster.
-Heapster is *demo app* that demonstrates one possible way of monitoring a Kubernetes cluster. It also serves to showcase the power of core Kubernetes concepts like labels and pods and the awesomeness of [cAdvisor](https://https://github.com/google/cadvisor).
+Heapster is *demo app* that demonstrates one possible way of monitoring a Kubernetes cluster. It also serves to showcase the power of core Kubernetes concepts like labels and pods and the awesomeness that is [cAdvisor](https://https://github.com/google/cadvisor).
 
 ####How Heapster works:
 1. Discovers all minions in a Kubernetes cluster
