@@ -1,0 +1,3 @@
+#! /bin/bash
+
+docker build -t vish/k8s_grafana .

@@ -8,7 +8,7 @@
       "id": "heapster",
       "containers": [{
         "name": "heapster",
-        "image": "vish/heapster:beta",
+        "image": "vish/heapster",
 	"env": [{"name": KUBE_MASTER, "value": ""},
 		{"name": KUBE_MASTER_AUTH, "value": ""}],
 	}]

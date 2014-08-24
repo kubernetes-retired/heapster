@@ -1,0 +1,7 @@
+{
+  "id": "influx-master",
+  "kind": "Service",
+  "apiVersion": "v1beta1",
+  "port": 8085,
+  "selector": { "name": "influxdb" }
+}
