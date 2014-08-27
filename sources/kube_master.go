@@ -1,16 +1,14 @@
 package sources
 
 import (
-	"crypto/tls"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"strings"
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
+	kube_labels "github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/golang/glog"
 )
 
@@ -20,52 +18,15 @@ var (
 )
 
 type KubeMasterSource struct {
-	master         string
-	authMasterUser string
-	authMasterPass string
-}
-
-func PostRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
-	response, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(body, value)
-	if err != nil {
-		return fmt.Errorf("Got '%s': %v", string(body), err)
-	}
-	return nil
-}
-
-func (self *KubeMasterSource) masterListMinionsUrl() string {
-	return self.master + "/api/v1beta1/minions"
+	client *kube_client.Client
 }
 
 // Returns a map of minion hostnames to their corresponding IPs.
 func (self *KubeMasterSource) ListMinions() (map[string]string, error) {
-	var minions kube_api.MinionList
-	req, err := http.NewRequest("GET", self.masterListMinionsUrl(), nil)
+	minions, err := self.client.ListMinions()
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(self.authMasterUser, self.authMasterPass)
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-	err = PostRequestAndGetValue(httpClient, req, &minions)
-	if err != nil {
-		return nil, err
-	}
-
 	hosts := make(map[string]string, 0)
 	for _, value := range minions.Items {
 		addrs, err := net.LookupIP(value.ID)
@@ -77,10 +38,6 @@ func (self *KubeMasterSource) ListMinions() (map[string]string, error) {
 	}
 
 	return hosts, nil
-}
-
-func (self *KubeMasterSource) masterListPodsUrl() string {
-	return self.master + "/api/v1beta1/pods"
 }
 
 func (self *KubeMasterSource) parsePod(pod *kube_api.Pod) *Pod {
@@ -107,20 +64,7 @@ func (self *KubeMasterSource) parsePod(pod *kube_api.Pod) *Pod {
 
 // Returns a map of minion hostnames to the Pods running in them.
 func (self *KubeMasterSource) ListPods() ([]Pod, error) {
-	var pods kube_api.PodList
-	req, err := http.NewRequest("GET", self.masterListPodsUrl(), nil)
-	if err != nil {
-		return nil, err
-	}
-	req.SetBasicAuth(self.authMasterUser, self.authMasterPass)
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-	err = PostRequestAndGetValue(httpClient, req, &pods)
+	pods, err := self.client.ListPods(kube_labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -141,9 +85,9 @@ func NewKubeMasterSource() (*KubeMasterSource, error) {
 		return nil, fmt.Errorf("kubernetes_master_auth invalid")
 	}
 	authInfo := strings.Split(*argMasterAuth, ":")
+	kubeAuthInfo := kube_client.AuthInfo{authInfo[0], authInfo[1]}
+	kubeClient := kube_client.New("https://"+*argMaster, &kubeAuthInfo)
 	return &KubeMasterSource{
-		master:         "https://" + *argMaster,
-		authMasterUser: authInfo[0],
-		authMasterPass: authInfo[1],
+		client: kubeClient,
 	}, nil
 }
