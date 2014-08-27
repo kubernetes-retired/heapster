@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources"
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info"
 	influxdb "github.com/influxdb/influxdb/client"
-	"github.com/vishh/heapster/sources"
 )
 
 var (
@@ -69,7 +69,6 @@ func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, container *so
 	columns = append(columns, colPodIP)
 	values = append(values, pod.PodIP)
 
-	// TODO(vishh): Add labels
 	labels := []string{}
 	for key, value := range pod.Labels {
 		labels = append(labels, fmt.Sprintf("%s:%s", key, value))

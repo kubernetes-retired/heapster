@@ -5,7 +5,7 @@ import (
 	"flag"
 	"time"
 
-	"github.com/vishh/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/sources"
 )
 
 var argMaxStorageDuration = flag.Duration("sink_memory_ttl", 1*time.Hour, "Time duration for which stats should be cached if the memory sink is used")
