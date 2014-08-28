@@ -1,19 +1,16 @@
 package sources
 
-import cadvisor "github.com/google/cadvisor/info"
+import (
+	cadvisor "github.com/google/cadvisor/info"
+)
 
-type IdToContainerInfoMap map[string][]ContainerInfo
-type HostnameContainersMap map[string]IdToContainerInfoMap
-
-type ContainerInfo struct {
-	// Historical statistics gathered from the container.
-	Stats []*cadvisor.ContainerStats `json:"stats,omitempty"`
-}
+type IdToContainerMap map[string]*Container
+type HostnameContainersMap map[string]IdToContainerMap
 
 type Container struct {
-	ID   string `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
-	ContainerInfo
+	ID    string                     `json:"id,omitempty"`
+	Name  string                     `json:"name,omitempty"`
+	Stats []*cadvisor.ContainerStats `json:"stats,omitempty"`
 }
 
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
@@ -24,4 +21,9 @@ type Pod struct {
 	Status     string            `json:"status,omitempty"`
 	PodIP      string            `json:"podIP,omitempty"`
 	Labels     map[string]string `json:"labels,omitempty"`
+}
+
+type AnonContainer struct {
+	Hostname string `json:"hostname,omitempty"`
+	*Container
 }

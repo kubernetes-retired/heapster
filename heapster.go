@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sinks"
+	"github.com/GoogleCloudPlatform/heapster/sources"
 	"github.com/golang/glog"
-	"github.com/vishh/heapster/sinks"
-	"github.com/vishh/heapster/sources"
 )
 
 var argPollDuration = flag.Duration("poll_duration", 10*time.Second, "Polling duration")
@@ -44,7 +44,7 @@ func doWork() error {
 			if err != nil {
 				return err
 			}
-			data, err := cadvisorSource.FetchData(minions)
+			cadvisorData, err := cadvisorSource.FetchData(minions)
 			if err != nil {
 				return err
 			}
@@ -54,14 +54,28 @@ func doWork() error {
 			}
 			for idx, pod := range pods {
 				for cIdx, container := range pod.Containers {
-					containerInfoArray := data[pod.Hostname][container.ID]
-					for _, containerInfo := range containerInfoArray {
-						pods[idx].Containers[cIdx].Stats = append(pods[idx].Containers[cIdx].Stats, containerInfo.Stats...)
-					}
+					containerOnHost := cadvisorData[pod.Hostname]
+					pods[idx].Containers[cIdx].Stats = append(pods[idx].Containers[cIdx].Stats, containerOnHost[container.ID].Stats...)
+					delete(containerOnHost, container.ID)
 				}
 			}
 			if err := sink.StoreData(pods); err != nil {
 				return err
+			}
+			// Store all the anonymous containers.
+			for hostname, idToContainerMap := range cadvisorData {
+				for _, container := range idToContainerMap {
+					if container == nil {
+						continue
+					}
+					anonContainer := sources.AnonContainer{
+						Hostname:  hostname,
+						Container: container,
+					}
+					if err := sink.StoreData(anonContainer); err != nil {
+						return err
+					}
+				}
 			}
 		}
 	}

@@ -22,12 +22,12 @@ type CadvisorSource struct {
 	lastQuery             time.Time
 }
 
-func (self *CadvisorSource) addContainerToMap(container *ContainerInfo, ID, hostname string) {
-	// TODO(vishh): Add a lock here to enable polling multiple hosts at the same time.
+func (self *CadvisorSource) addContainerToMap(container *Container, hostname string) {
+	// TODO(vishh): Add a lock here to enable updating multiple hosts at the same time.
 	if self.hostnameContainersMap[hostname] == nil {
-		self.hostnameContainersMap[hostname] = make(IdToContainerInfoMap, 0)
+		self.hostnameContainersMap[hostname] = make(IdToContainerMap, 0)
 	}
-	self.hostnameContainersMap[hostname][ID] = append(self.hostnameContainersMap[hostname][ID], *container)
+	self.hostnameContainersMap[hostname][container.ID] = container
 }
 
 func (self *CadvisorSource) getCadvisorStatsUrl(host, container string) string {
@@ -38,9 +38,15 @@ func (self *CadvisorSource) getCadvisorStatsUrl(host, container string) string {
 }
 
 func (self *CadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) error {
-	container := &ContainerInfo{}
+	container := &Container{
+		Name: containerInfo.Name,
+		ID:   filepath.Base(containerInfo.Name),
+	}
 	container.Stats = containerInfo.Stats
-	self.addContainerToMap(container, filepath.Base(containerInfo.Name), hostname)
+	if len(containerInfo.Aliases) > 0 {
+		container.Name = containerInfo.Aliases[0]
+	}
+	self.addContainerToMap(container, hostname)
 	return nil
 }
 

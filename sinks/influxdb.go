@@ -48,53 +48,59 @@ type InfluxdbSink struct {
 	lastWrite      time.Time
 }
 
-func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, container *sources.Container, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
+func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, containerName string, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
 	// Timestamp
 	columns = append(columns, colTimestamp)
 	values = append(values, stat.Timestamp.Format(time.RFC3339Nano))
 
-	// Pod name
-	columns = append(columns, colPodName)
-	values = append(values, pod.Name)
+	if pod != nil {
+		// Pod name
+		columns = append(columns, colPodName)
+		values = append(values, pod.Name)
 
-	// Hostname
-	columns = append(columns, colHostName)
-	values = append(values, pod.Hostname)
+		// Hostname
+		columns = append(columns, colHostName)
+		values = append(values, pod.Hostname)
 
-	// Pod Status
-	columns = append(columns, colPodStatus)
-	values = append(values, pod.Status)
+		// Pod Status
+		columns = append(columns, colPodStatus)
+		values = append(values, pod.Status)
 
-	// Pod IP
-	columns = append(columns, colPodIP)
-	values = append(values, pod.PodIP)
+		// Pod IP
+		columns = append(columns, colPodIP)
+		values = append(values, pod.PodIP)
 
-	labels := []string{}
-	for key, value := range pod.Labels {
-		labels = append(labels, fmt.Sprintf("%s:%s", key, value))
+		labels := []string{}
+		for key, value := range pod.Labels {
+			labels = append(labels, fmt.Sprintf("%s:%s", key, value))
+		}
+		columns = append(columns, colLabel)
+		values = append(values, strings.Join(labels, ","))
 	}
-	columns = append(columns, colLabel)
-	values = append(values, strings.Join(labels, ","))
 
 	// Container name
 	columns = append(columns, colContainerName)
-	values = append(values, container.Name)
+	values = append(values, containerName)
 
-	// Cumulative Cpu Usage
-	columns = append(columns, colCpuCumulativeUsage)
-	values = append(values, stat.Cpu.Usage.Total)
+	if stat.Cpu != nil {
+		// Cumulative Cpu Usage
+		columns = append(columns, colCpuCumulativeUsage)
+		values = append(values, stat.Cpu.Usage.Total)
+	}
 
-	// Memory Usage
-	columns = append(columns, colMemoryUsage)
-	values = append(values, stat.Memory.Usage)
+	if stat.Memory != nil {
+		// Memory Usage
+		columns = append(columns, colMemoryUsage)
+		values = append(values, stat.Memory.Usage)
 
-	// Memory Page Faults
-	columns = append(columns, colMemoryPgFaults)
-	values = append(values, stat.Memory.ContainerData.Pgfault)
+		// Memory Page Faults
+		columns = append(columns, colMemoryPgFaults)
+		values = append(values, stat.Memory.ContainerData.Pgfault)
 
-	// Working set size
-	columns = append(columns, colMemoryWorkingSet)
-	values = append(values, stat.Memory.WorkingSet)
+		// Working set size
+		columns = append(columns, colMemoryWorkingSet)
+		values = append(values, stat.Memory.WorkingSet)
+	}
 
 	// Optional: Network stats.
 	if stat.Network != nil {
@@ -125,14 +131,21 @@ func (self *InfluxdbSink) newSeries(tableName string, columns []string, points [
 	return out
 }
 
-func (self *InfluxdbSink) handleContainersDataSeries(pods []sources.Pod) {
+func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
 			for _, stat := range container.Stats {
-				col, val := self.containerStatsToValues(&pod, &container, stat)
+				col, val := self.containerStatsToValues(&pod, container.Name, stat)
 				self.series = append(self.series, self.newSeries(statsTable, col, val))
 			}
 		}
+	}
+}
+
+func (self *InfluxdbSink) handleContainers(container sources.AnonContainer) {
+	for _, stat := range container.Stats {
+		col, val := self.containerStatsToValues(nil, container.Name, stat)
+		self.series = append(self.series, self.newSeries(statsTable, col, val))
 	}
 }
 
@@ -140,10 +153,14 @@ func (self *InfluxdbSink) readyToFlush() bool {
 	return time.Since(self.lastWrite) >= self.bufferDuration
 }
 
-func (self *InfluxdbSink) StoreData(data Data) error {
+func (self *InfluxdbSink) StoreData(ip Data) error {
 	var seriesToFlush []*influxdb.Series
-	if data, ok := data.([]sources.Pod); ok {
-		self.handleContainersDataSeries(data)
+	if data, ok := ip.([]sources.Pod); ok {
+		self.handlePods(data)
+	} else if data, ok := ip.(sources.AnonContainer); ok {
+		self.handleContainers(data)
+	} else {
+		return fmt.Errorf("Requesting unrecognized type to be stored in InfluxDB")
 	}
 	if self.readyToFlush() {
 		seriesToFlush = self.series
