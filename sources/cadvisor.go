@@ -1,7 +1,6 @@
 package sources
 
 import (
-	"flag"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -12,17 +11,12 @@ import (
 	cadvisor "github.com/google/cadvisor/info"
 )
 
-var (
-	argCadvisorPort = flag.Int("cadvisor_port", 4194, "Port of cAdvisor")
-)
-
-type CadvisorSource struct {
-	cadvisorPort          string
+type cadvisorSource struct {
 	hostnameContainersMap HostnameContainersMap
 	lastQuery             time.Time
 }
 
-func (self *CadvisorSource) addContainerToMap(container *Container, hostname string) {
+func (self *cadvisorSource) addContainerToMap(container *Container, hostname string) {
 	// TODO(vishh): Add a lock here to enable updating multiple hosts at the same time.
 	if self.hostnameContainersMap[hostname] == nil {
 		self.hostnameContainersMap[hostname] = make(IdToContainerMap, 0)
@@ -30,14 +24,14 @@ func (self *CadvisorSource) addContainerToMap(container *Container, hostname str
 	self.hostnameContainersMap[hostname][container.ID] = container
 }
 
-func (self *CadvisorSource) getCadvisorStatsUrl(host, container string) string {
+func (self *cadvisorSource) getCadvisorStatsUrl(host, port, container string) string {
 	values := url.Values{}
 	values.Add("num_stats", strconv.Itoa(int(time.Since(self.lastQuery)/time.Second)))
 	values.Add("num_samples", strconv.Itoa(0))
-	return "http://" + host + ":" + self.cadvisorPort + "/api/v1.0/containers" + container + "?" + values.Encode()
+	return "http://" + host + ":" + port + "/api/v1.0/containers" + container + "?" + values.Encode()
 }
 
-func (self *CadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) error {
+func (self *cadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) error {
 	container := &Container{
 		Name: containerInfo.Name,
 		ID:   filepath.Base(containerInfo.Name),
@@ -50,9 +44,9 @@ func (self *CadvisorSource) processStat(hostname string, containerInfo *cadvisor
 	return nil
 }
 
-func (self *CadvisorSource) getCadvisorData(hostname, ip, container string) error {
+func (self *cadvisorSource) getCadvisorData(hostname, ip, port, container string) error {
 	var containerInfo cadvisor.ContainerInfo
-	req, err := http.NewRequest("GET", self.getCadvisorStatsUrl(ip, container), nil)
+	req, err := http.NewRequest("GET", self.getCadvisorStatsUrl(ip, port, container), nil)
 	if err != nil {
 		return err
 	}
@@ -63,14 +57,15 @@ func (self *CadvisorSource) getCadvisorData(hostname, ip, container string) erro
 	}
 	self.processStat(hostname, &containerInfo)
 	for _, container := range containerInfo.Subcontainers {
-		self.getCadvisorData(hostname, ip, container.Name)
+		// TODO(vishh): Avoid the recursion here.
+		self.getCadvisorData(hostname, ip, port, container.Name)
 	}
 	return nil
 }
 
-func (self *CadvisorSource) FetchData(hosts map[string]string) (HostnameContainersMap, error) {
-	for hostname, ip := range hosts {
-		err := self.getCadvisorData(hostname, ip, "/")
+func (self *cadvisorSource) fetchData(cadvisorHosts *CadvisorHosts) (HostnameContainersMap, error) {
+	for hostname, ip := range cadvisorHosts.Hosts {
+		err := self.getCadvisorData(hostname, ip, strconv.Itoa(cadvisorHosts.Port), "/")
 		if err != nil {
 			return nil, err
 		}
@@ -78,10 +73,9 @@ func (self *CadvisorSource) FetchData(hosts map[string]string) (HostnameContaine
 	return self.hostnameContainersMap, nil
 }
 
-func NewCadvisorSource() (*CadvisorSource, error) {
-	return &CadvisorSource{
-		cadvisorPort:          strconv.Itoa(*argCadvisorPort),
+func newCadvisorSource() *cadvisorSource {
+	return &cadvisorSource{
 		hostnameContainersMap: make(HostnameContainersMap, 0),
 		lastQuery:             time.Now(),
-	}, nil
+	}
 }

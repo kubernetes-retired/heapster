@@ -1,7 +1,13 @@
 package sources
 
 import (
+	"flag"
 	cadvisor "github.com/google/cadvisor/info"
+)
+
+var (
+	argMaster     = flag.String("kubernetes_master", "", "Kubernetes master IP")
+	argMasterAuth = flag.String("kubernetes_master_auth", "", "username:password to access the master")
 )
 
 type IdToContainerMap map[string]*Container
@@ -26,4 +32,22 @@ type Pod struct {
 type AnonContainer struct {
 	Hostname string `json:"hostname,omitempty"`
 	*Container
+}
+
+type CadvisorHosts struct {
+	Port  int               `json:"port"`
+	Hosts map[string]string `json:"hosts"`
+}
+
+type Source interface {
+	GetPods() ([]Pod, error)
+	GetContainerStats() (HostnameContainersMap, error)
+}
+
+func NewSource() (Source, error) {
+	if len(*argMaster) > 0 {
+		return newKubeSource()
+	} else {
+		return newExternalSource()
+	}
 }

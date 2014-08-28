@@ -1,7 +1,6 @@
 package sources
 
 import (
-	"flag"
 	"fmt"
 	"net"
 	"strings"
@@ -12,35 +11,36 @@ import (
 	"github.com/golang/glog"
 )
 
-var (
-	argMaster     = flag.String("kubernetes_master", "", "Kubernetes master IP")
-	argMasterAuth = flag.String("kubernetes_master_auth", "", "username:password to access the master")
-)
+const cadvisorPort = 4194
 
-type KubeMasterSource struct {
-	client *kube_client.Client
+type KubeSource struct {
+	client   *kube_client.Client
+	cadvisor *cadvisorSource
 }
 
 // Returns a map of minion hostnames to their corresponding IPs.
-func (self *KubeMasterSource) ListMinions() (map[string]string, error) {
+func (self *KubeSource) listMinions() (*CadvisorHosts, error) {
+	cadvisorHosts := &CadvisorHosts{
+		Port:  cadvisorPort,
+		Hosts: make(map[string]string, 0),
+	}
 	minions, err := self.client.ListMinions()
 	if err != nil {
 		return nil, err
 	}
-	hosts := make(map[string]string, 0)
 	for _, value := range minions.Items {
 		addrs, err := net.LookupIP(value.ID)
 		if err == nil {
-			hosts[value.ID] = addrs[0].String()
+			cadvisorHosts.Hosts[value.ID] = addrs[0].String()
 		} else {
 			glog.Errorf("Skipping host %s since looking up its IP failed - %s", value.ID, err)
 		}
 	}
 
-	return hosts, nil
+	return cadvisorHosts, nil
 }
 
-func (self *KubeMasterSource) parsePod(pod *kube_api.Pod) *Pod {
+func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 	localPod := Pod{
 		Name:       pod.DesiredState.Manifest.ID,
 		Hostname:   pod.CurrentState.Host,
@@ -63,7 +63,7 @@ func (self *KubeMasterSource) parsePod(pod *kube_api.Pod) *Pod {
 }
 
 // Returns a map of minion hostnames to the Pods running in them.
-func (self *KubeMasterSource) ListPods() ([]Pod, error) {
+func (self *KubeSource) GetPods() ([]Pod, error) {
 	pods, err := self.client.ListPods(kube_labels.Everything())
 	if err != nil {
 		return nil, err
@@ -77,7 +77,16 @@ func (self *KubeMasterSource) ListPods() ([]Pod, error) {
 	return out, nil
 }
 
-func NewKubeMasterSource() (*KubeMasterSource, error) {
+func (self *KubeSource) GetContainerStats() (HostnameContainersMap, error) {
+	hosts, err := self.listMinions()
+	if err != nil {
+		return nil, err
+	}
+
+	return self.cadvisor.fetchData(hosts)
+}
+
+func newKubeSource() (*KubeSource, error) {
 	if len(*argMaster) == 0 {
 		return nil, fmt.Errorf("kubernetes_master flag not specified")
 	}
@@ -87,7 +96,9 @@ func NewKubeMasterSource() (*KubeMasterSource, error) {
 	authInfo := strings.Split(*argMasterAuth, ":")
 	kubeAuthInfo := kube_client.AuthInfo{authInfo[0], authInfo[1]}
 	kubeClient := kube_client.New("https://"+*argMaster, &kubeAuthInfo)
-	return &KubeMasterSource{
-		client: kubeClient,
+	cadvisorSource := newCadvisorSource()
+	return &KubeSource{
+		client:   kubeClient,
+		cadvisor: cadvisorSource,
 	}, nil
 }

@@ -22,11 +22,11 @@ var (
 
 const (
 	statsTable            string = "stats"
-	colTimestamp          string = "timestamp"
+	colTimestamp          string = "time"
 	colPodName            string = "pod"
 	colPodStatus          string = "pod_status"
 	colPodIP              string = "pod_ip"
-	colLabel              string = "label"
+	colLabels             string = "labels"
 	colHostName           string = "hostname"
 	colContainerName      string = "container_name"
 	colCpuCumulativeUsage string = "cpu_cumulative_usage"
@@ -51,7 +51,7 @@ type InfluxdbSink struct {
 func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, containerName string, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
 	// Timestamp
 	columns = append(columns, colTimestamp)
-	values = append(values, stat.Timestamp.Format(time.RFC3339Nano))
+	values = append(values, stat.Timestamp.Unix())
 
 	if pod != nil {
 		// Pod name
@@ -74,7 +74,7 @@ func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, containerName
 		for key, value := range pod.Labels {
 			labels = append(labels, fmt.Sprintf("%s:%s", key, value))
 		}
-		columns = append(columns, colLabel)
+		columns = append(columns, colLabels)
 		values = append(values, strings.Join(labels, ","))
 	}
 
@@ -171,7 +171,7 @@ func (self *InfluxdbSink) StoreData(ip Data) error {
 	if len(seriesToFlush) > 0 {
 		glog.V(2).Info("flushed data to influxdb sink")
 		// TODO(vishh): Do writes in a separate thread.
-		err := self.client.WriteSeries(seriesToFlush)
+		err := self.client.WriteSeriesWithTimePrecision(seriesToFlush, influxdb.Second)
 		if err != nil {
 			glog.Errorf("failed to write stats to influxDb - %s", err)
 		}

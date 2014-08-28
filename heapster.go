@@ -23,11 +23,7 @@ func main() {
 }
 
 func doWork() error {
-	kubeMasterSource, err := sources.NewKubeMasterSource()
-	if err != nil {
-		return err
-	}
-	cadvisorSource, err := sources.NewCadvisorSource()
+	source, err := sources.NewSource()
 	if err != nil {
 		return err
 	}
@@ -40,15 +36,11 @@ func doWork() error {
 	for {
 		select {
 		case <-ticker.C:
-			minions, err := kubeMasterSource.ListMinions()
+			cadvisorData, err := source.GetContainerStats()
 			if err != nil {
 				return err
 			}
-			cadvisorData, err := cadvisorSource.FetchData(minions)
-			if err != nil {
-				return err
-			}
-			pods, err := kubeMasterSource.ListPods()
+			pods, err := source.GetPods()
 			if err != nil {
 				return err
 			}
