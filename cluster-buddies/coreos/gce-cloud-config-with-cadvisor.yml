@@ -1,0 +1,27 @@
+#cloud-config
+
+coreos: 
+  etcd: 
+    addr: $private_ipv4:4001
+    discovery: "https://discovery.etcd.io/<token_id>
+    peer-addr: $private_ipv4:7001
+  units: 
+    - name: etcd.service
+      command: start
+    - name: fleet.service
+      command: start      
+    - name: cadvisor.service
+      command: start
+      content: |-
+        [Unit]
+        Description=cAdvisor Service
+        After=docker.service
+        Requires=docker.service
+      
+        [Service]
+        Restart=always
+        ExecStartPre=-/usr/bin/docker kill cadvisor
+        ExecStartPre=-/usr/bin/docker rm -f cadvisor
+        ExecStartPre=/usr/bin/docker pull google/cadvisor
+        ExecStart=/usr/bin/docker run --name cadvisor --volume=/var/run:/var/run:rw --volume=/sys:/sys:ro --volume=/var/lib/docker/:/var/lib/docker:ro --publish=4194:4194 google/cadvisor
+        ExecStop=/usr/bin/docker stop -t 2 cadvisor
