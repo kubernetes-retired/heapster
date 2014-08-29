@@ -2,30 +2,27 @@ package sources
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 )
 
-var (
-	argHostsFile = flag.String("hosts_file", "/var/run/heapster/hosts", "")
-)
+// While updating this, also update heapster/deploy/Dockerfile.
+const hostsFile = "/var/run/heapster/hosts"
 
 type ExternalSource struct {
-	hostsFile string
 	cadvisor  *cadvisorSource
 }
 
 func (self *ExternalSource) getCadvisorHosts() (*CadvisorHosts, error) {
-	contents, err := ioutil.ReadFile(self.hostsFile)
+	contents, err := ioutil.ReadFile(hostsFile)
 	if err != nil {
 		return nil, err
 	}
 	var cadvisorHosts CadvisorHosts
 	err = json.Unmarshal(contents, &cadvisorHosts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal contents of file %s. Error: %s", self.hostsFile, err)
+		return nil, fmt.Errorf("failed to unmarshal contents of file %s. Error: %s", hostsFile, err)
 	}
 	return &cadvisorHosts, nil
 }
@@ -43,15 +40,11 @@ func (self *ExternalSource) GetContainerStats() (HostnameContainersMap, error) {
 }
 
 func newExternalSource() (Source, error) {
-	if len(*argHostsFile) == 0 {
-		return nil, fmt.Errorf("hosts_file flag invalid")
-	}
-	if _, err := os.Stat(*argHostsFile); err != nil {
-		return nil, fmt.Errorf("Cannot stat hosts_file %s. Error: %s", *argHostsFile, err)
+	if _, err := os.Stat(hostsFile); err != nil {
+		return nil, fmt.Errorf("Cannot stat hosts_file %s. Error: %s", hostsFile, err)
 	}
 	cadvisorSource := newCadvisorSource()
 	return &ExternalSource{
-		hostsFile: *argHostsFile,
 		cadvisor:  cadvisorSource,
 	}, nil
 }
