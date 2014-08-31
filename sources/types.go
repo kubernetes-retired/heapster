@@ -19,11 +19,15 @@ type Container struct {
 	Stats []*cadvisor.ContainerStats `json:"stats,omitempty"`
 }
 
+func newContainer() *Container {
+	return &Container{Stats: make([]*cadvisor.ContainerStats, 0)}
+}
+
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
 type Pod struct {
 	Name       string            `json:"name,omitempty"`
 	Hostname   string            `json:"hostname,omitempty"`
-	Containers []Container       `json:"containers"`
+	Containers []*Container       `json:"containers"`
 	Status     string            `json:"status,omitempty"`
 	PodIP      string            `json:"podIP,omitempty"`
 	Labels     map[string]string `json:"labels,omitempty"`

@@ -47,16 +47,15 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 		Status:     string(pod.CurrentState.Status),
 		PodIP:      pod.CurrentState.PodIP,
 		Labels:     make(map[string]string, 0),
-		Containers: make([]Container, 0),
+		Containers: make([]*Container, 0),
 	}
 	for key, value := range pod.Labels {
 		localPod.Labels[key] = value
 	}
 	for _, container := range pod.DesiredState.Manifest.Containers {
-		localContainer := Container{
-			Name: container.Name,
-			ID:   pod.CurrentState.Info[container.Name].ID,
-		}
+		localContainer := newContainer()
+		localContainer.Name = container.Name
+		localContainer.ID = pod.CurrentState.Info[container.Name].ID
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}
 	return &localPod
