@@ -1,10 +1,13 @@
 Heapster
 ===========
 
-Heapster collects resource usage of Pods running in a [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) cluster.
-Heapster is *demo app* that demonstrates one possible way of monitoring a Kubernetes cluster. It also serves to showcase the power of core Kubernetes concepts like labels and pods and the awesomeness that is [cAdvisor](https://github.com/google/cadvisor).
+Heapster enables monitoring of Clusters using [cAdvisor](https://github.com/google/cadvisor). It is a *demo app* that demonstrates one possible way of monitoring various types of Clusters using cAdvisor.
 
-#####How heapster works:
+Heapster supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) natively and collects resource usage of all the Pods running in the cluster. It was built to showcase the power of core Kubernetes concepts like labels and pods and the awesomeness that is cAdvisor. 
+Heapster can be used to enable cluster wide monitoring on other Cluster management solutions by running a simple cluster specific buddy container that will help heapster with discovery of hosts. For example, take a look at [this guide](clusters/coreos/README.md) for setting up Cluster monitoring in CoreOS.
+
+
+#####How heapster works on Kubernetes:
 1. Discovers all minions in a Kubernetes cluster
 2. Collects container statistics from the cadvisors running on the minions
 2. Organizes stats into Pods
@@ -72,6 +75,10 @@ $ gcutil listinstances
 #####Hints
 * Grafana's default username and password is 'admin'. You can change that by modifying the grafana container [here](influx-grafana/deploy/grafana-influxdb-pod.json)
 * To enable memory and swap accounting on the minions follow the instructions [here](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting)
+
+#### Community
+
+Contributions, questions, and comments are all welcomed and encouraged! Heapster and cAdvisor developers hang out in [#google-containers](http://webchat.freenode.net/?channels=google-containers) room on freenode.net.  We also have the [google-containers Google Groups mailing list](https://groups.google.com/forum/#!forum/google-containers).
 
 [cloud-console]: https://console.developer.google.com
 [gcutil-docs]: https://developers.google.com/compute/docs/gcutil/reference/firewall#addfirewall
