@@ -11,8 +11,4 @@ RUN chmod +x /run.sh
 RUN mkdir -p /var/run/heapster
 RUN touch /var/run/heapster/hosts
 
-ENV KUBE_MASTER ""
-ENV KUBE_MASTER_AUTH ""
-ENV INFLUXDB_HOST ""
-
 ENTRYPOINT ["/run.sh"]
