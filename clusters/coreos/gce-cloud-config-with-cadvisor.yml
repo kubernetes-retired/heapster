@@ -3,7 +3,7 @@
 coreos: 
   etcd: 
     addr: $private_ipv4:4001
-    discovery: "https://discovery.etcd.io/1967a9a9895d1c4efdcd85537e7f314e"
+    discovery: "https://discovery.etcd.io/<token ID>"
     peer-addr: $private_ipv4:7001
   units: 
     - name: etcd.service
