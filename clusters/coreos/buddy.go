@@ -10,10 +10,10 @@ import (
 	"os"
 	"time"
 
+	heapster "github.com/GoogleCloudPlatform/heapster/sources"
 	fleetClient "github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/registry"
-	heapster "github.com/GoogleCloudPlatform/heapster/sources"
 )
 
 var argCadvisorPort = flag.Int("cadvisor_port", 4194, "cAdvisor port in current CoreOS cluster")
@@ -56,7 +56,7 @@ func getMachines(client fleetClient.API, outMachines map[string]string) error {
 
 func updateHeapsterHostsFile(outMachines map[string]string) error {
 	hosts := &heapster.CadvisorHosts{
-		Port: *argCadvisorPort,
+		Port:  *argCadvisorPort,
 		Hosts: outMachines,
 	}
 	data, err := json.Marshal(hosts)
@@ -86,7 +86,7 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	ticker := time.NewTicker(10*time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
@@ -94,7 +94,7 @@ func main() {
 			err = doWork(client)
 			if err != nil {
 				fmt.Println(err)
-				os.Exit(1)				
+				os.Exit(1)
 			}
 		}
 	}

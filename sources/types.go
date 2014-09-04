@@ -27,7 +27,7 @@ func newContainer() *Container {
 type Pod struct {
 	Name       string            `json:"name,omitempty"`
 	Hostname   string            `json:"hostname,omitempty"`
-	Containers []*Container       `json:"containers"`
+	Containers []*Container      `json:"containers"`
 	Status     string            `json:"status,omitempty"`
 	PodIP      string            `json:"podIP,omitempty"`
 	Labels     map[string]string `json:"labels,omitempty"`

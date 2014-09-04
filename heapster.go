@@ -47,8 +47,10 @@ func doWork() error {
 			for idx, pod := range pods {
 				for cIdx, container := range pod.Containers {
 					containerOnHost := cadvisorData[pod.Hostname]
-					pods[idx].Containers[cIdx].Stats = append(pods[idx].Containers[cIdx].Stats, containerOnHost[container.ID].Stats...)
-					delete(containerOnHost, container.ID)
+					if containerOnHost != nil {
+						pods[idx].Containers[cIdx].Stats = append(pods[idx].Containers[cIdx].Stats, containerOnHost[container.ID].Stats...)
+						delete(containerOnHost, container.ID)
+					}
 				}
 			}
 			if err := sink.StoreData(pods); err != nil {

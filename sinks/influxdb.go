@@ -20,26 +20,6 @@ var (
 	argDbName         = flag.String("sink_influxdb_name", "k8s", "Influxdb database name")
 )
 
-const (
-	statsTable            string = "stats"
-	colTimestamp          string = "time"
-	colPodName            string = "pod"
-	colPodStatus          string = "pod_status"
-	colPodIP              string = "pod_ip"
-	colLabels             string = "labels"
-	colHostName           string = "hostname"
-	colContainerName      string = "container_name"
-	colCpuCumulativeUsage string = "cpu_cumulative_usage"
-	colMemoryUsage        string = "memory_usage"
-	colMemoryWorkingSet   string = "memory_working_set"
-	colMemoryPgFaults     string = "page_faults"
-	colCpuInstantUsage    string = "cpu_instant_usage"
-	colRxBytes            string = "rx_bytes"
-	colRxErrors           string = "rx_errors"
-	colTxBytes            string = "tx_bytes"
-	colTxErrors           string = "tx_errors"
-)
-
 type InfluxdbSink struct {
 	client         *influxdb.Client
 	series         []*influxdb.Series
@@ -48,7 +28,7 @@ type InfluxdbSink struct {
 	lastWrite      time.Time
 }
 
-func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, containerName string, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
+func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, containerName string, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
 	// Timestamp
 	columns = append(columns, colTimestamp)
 	values = append(values, stat.Timestamp.Unix())
@@ -57,10 +37,6 @@ func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, containerName
 		// Pod name
 		columns = append(columns, colPodName)
 		values = append(values, pod.Name)
-
-		// Hostname
-		columns = append(columns, colHostName)
-		values = append(values, pod.Hostname)
 
 		// Pod Status
 		columns = append(columns, colPodStatus)
@@ -77,6 +53,10 @@ func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, containerName
 		columns = append(columns, colLabels)
 		values = append(values, strings.Join(labels, ","))
 	}
+
+	// Hostname
+	columns = append(columns, colHostName)
+	values = append(values, hostname)
 
 	// Container name
 	columns = append(columns, colContainerName)
@@ -135,7 +115,7 @@ func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
 			for _, stat := range container.Stats {
-				col, val := self.containerStatsToValues(&pod, container.Name, stat)
+				col, val := self.containerStatsToValues(&pod, pod.Hostname, container.Name, stat)
 				self.series = append(self.series, self.newSeries(statsTable, col, val))
 			}
 		}
@@ -144,7 +124,7 @@ func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
 
 func (self *InfluxdbSink) handleContainers(container sources.AnonContainer) {
 	for _, stat := range container.Stats {
-		col, val := self.containerStatsToValues(nil, container.Name, stat)
+		col, val := self.containerStatsToValues(nil, container.Hostname, container.Name, stat)
 		self.series = append(self.series, self.newSeries(statsTable, col, val))
 	}
 }

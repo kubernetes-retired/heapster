@@ -11,7 +11,7 @@ import (
 const HostsFile = "/var/run/heapster/hosts"
 
 type ExternalSource struct {
-	cadvisor  *cadvisorSource
+	cadvisor *cadvisorSource
 }
 
 func (self *ExternalSource) getCadvisorHosts() (*CadvisorHosts, error) {
@@ -52,6 +52,6 @@ func newExternalSource() (Source, error) {
 	}
 	cadvisorSource := newCadvisorSource()
 	return &ExternalSource{
-		cadvisor:  cadvisorSource,
+		cadvisor: cadvisorSource,
 	}, nil
 }
