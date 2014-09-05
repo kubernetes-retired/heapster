@@ -46,13 +46,14 @@ func (self *bigquerySink) GetSchema() *bigquery.TableSchema {
 
 	fields = append(fields, &bigquery.TableFieldSchema{
 		Type: typeString,
-		Name: colPodStatus,
+		Name: colPodName,
 	})
 
 	fields = append(fields, &bigquery.TableFieldSchema{
 		Type: typeString,
 		Name: colPodStatus,
 	})
+
 
 	fields = append(fields, &bigquery.TableFieldSchema{
 		Type: typeString,
@@ -73,11 +74,6 @@ func (self *bigquerySink) GetSchema() *bigquery.TableSchema {
 	fields = append(fields, &bigquery.TableFieldSchema{
 		Type: typeInteger,
 		Name: colCpuCumulativeUsage,
-	})
-
-	fields = append(fields, &bigquery.TableFieldSchema{
-		Type: typeInteger,
-		Name: colCpuInstantUsage,
 	})
 
 	fields = append(fields, &bigquery.TableFieldSchema{
@@ -133,7 +129,14 @@ func (self *bigquerySink) containerStatsToValues(
 	row = make(map[string]interface{})
 
 	// Timestamp
-	row[colTimestamp] = stat.Timestamp.Unix()
+	row[colTimestamp] = stat.Timestamp
+
+	// Container name
+	row[colContainerName] = containerName
+
+	// Hostname
+	row[colHostName] = hostname
+
 
 	if pod != nil {
 		// Pod name
@@ -151,12 +154,6 @@ func (self *bigquerySink) containerStatsToValues(
 		}
 		row[colLabels] = strings.Join(labels, ",")
 	}
-
-	// Hostname
-	row[colHostName] = hostname
-
-	// Container name
-	row[colContainerName] = containerName
 
 	if stat.Cpu != nil {
 		// Cumulative Cpu Usage
@@ -180,6 +177,7 @@ func (self *bigquerySink) containerStatsToValues(
 		row[colTxBytes] = stat.Network.TxBytes
 		row[colTxErrors] = stat.Network.TxErrors
 	}
+
 
 	return
 }
