@@ -1,6 +1,8 @@
 Heapster
 ===========
 
+_Warning: Heapster currently only works on Google Compute Engine!_
+
 Heapster enables monitoring of Clusters using [cAdvisor](https://github.com/google/cadvisor). It is a *demo app* that demonstrates one possible way of monitoring various types of Clusters using cAdvisor.
 
 Heapster supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) natively and collects resource usage of all the Pods running in the cluster. It was built to showcase the power of core Kubernetes concepts like labels and pods and the awesomeness that is cAdvisor. 
