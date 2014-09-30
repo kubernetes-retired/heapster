@@ -55,7 +55,7 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 	for _, container := range pod.DesiredState.Manifest.Containers {
 		localContainer := newContainer()
 		localContainer.Name = container.Name
-		localContainer.ID = pod.CurrentState.Info[container.Name].ID
+		localContainer.ID = pod.CurrentState.Info[container.Name].DetailInfo.ID
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}
 	return &localPod
@@ -93,8 +93,14 @@ func newKubeSource() (*KubeSource, error) {
 		return nil, fmt.Errorf("kubernetes_master_auth invalid")
 	}
 	authInfo := strings.Split(*argMasterAuth, ":")
-	kubeAuthInfo := kube_client.AuthInfo{authInfo[0], authInfo[1]}
-	kubeClient := kube_client.New("https://"+*argMaster, &kubeAuthInfo)
+	kubeAuthInfo := kube_client.AuthInfo{
+		User:     authInfo[0],
+		Password: authInfo[1],
+	}
+	kubeClient, err := kube_client.New("https://"+*argMaster, "", &kubeAuthInfo)
+	if err != nil {
+		return nil, err
+	}
 	cadvisorSource := newCadvisorSource()
 	return &KubeSource{
 		client:   kubeClient,
