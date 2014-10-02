@@ -1,7 +1,7 @@
 Heapster
 ===========
 
-_Warning: Heapster for Kubernetes currently only works on Google Compute Engine!_
+_Warning: Heapster for Kubernetes currently only works on Google Compute Engine! GCE Virtual Machines need to have at least 2 cores._
 
 Heapster enables monitoring of Clusters using [cAdvisor](https://github.com/google/cadvisor). It is a *demo app* that demonstrates one possible way of monitoring various types of Clusters using cAdvisor.
 
