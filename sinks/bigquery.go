@@ -54,7 +54,6 @@ func (self *bigquerySink) GetSchema() *bigquery.TableSchema {
 		Name: colPodStatus,
 	})
 
-
 	fields = append(fields, &bigquery.TableFieldSchema{
 		Type: typeString,
 		Name: colPodIP,
@@ -137,7 +136,6 @@ func (self *bigquerySink) containerStatsToValues(
 	// Hostname
 	row[colHostName] = hostname
 
-
 	if pod != nil {
 		// Pod name
 		row[colPodName] = pod.Name
@@ -177,7 +175,6 @@ func (self *bigquerySink) containerStatsToValues(
 		row[colTxBytes] = stat.Network.TxBytes
 		row[colTxErrors] = stat.Network.TxErrors
 	}
-
 
 	return
 }

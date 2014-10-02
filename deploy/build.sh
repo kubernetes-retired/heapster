@@ -4,4 +4,4 @@ set -e
 set -x
 
 # Statically build cAdvisor from source and stage it.
-go build -a --ldflags '-extldflags "-static"' github.com/GoogleCloudPlatform/heapster
+go build -a github.com/GoogleCloudPlatform/heapster

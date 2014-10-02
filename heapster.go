@@ -48,8 +48,10 @@ func doWork() error {
 				for cIdx, container := range pod.Containers {
 					containerOnHost := cadvisorData[pod.Hostname]
 					if containerOnHost != nil {
-						pods[idx].Containers[cIdx].Stats = append(pods[idx].Containers[cIdx].Stats, containerOnHost[container.ID].Stats...)
-						delete(containerOnHost, container.ID)
+						if _, ok := containerOnHost[container.ID]; ok {
+							pods[idx].Containers[cIdx].Stats = append(pods[idx].Containers[cIdx].Stats, containerOnHost[container.ID].Stats...)
+							delete(containerOnHost, container.ID)
+						}
 					}
 				}
 			}

@@ -63,7 +63,7 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 
 // Returns a map of minion hostnames to the Pods running in them.
 func (self *KubeSource) GetPods() ([]Pod, error) {
-	pods, err := self.client.ListPods(kube_labels.Everything())
+	pods, err := self.client.ListPods(kube_api.NewContext(), kube_labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -93,14 +93,13 @@ func newKubeSource() (*KubeSource, error) {
 		return nil, fmt.Errorf("kubernetes_master_auth invalid")
 	}
 	authInfo := strings.Split(*argMasterAuth, ":")
-	kubeAuthInfo := kube_client.AuthInfo{
-		User:     authInfo[0],
+	kubeClient := kube_client.NewOrDie(&kube_client.Config{
+		Host:     "https://" + *argMaster,
+		Version:  "v1beta1",
+		Username: authInfo[0],
 		Password: authInfo[1],
-	}
-	kubeClient, err := kube_client.New("https://"+*argMaster, "", &kubeAuthInfo)
-	if err != nil {
-		return nil, err
-	}
+		Insecure: true,
+	})
 	cadvisorSource := newCadvisorSource()
 	return &KubeSource{
 		client:   kubeClient,
