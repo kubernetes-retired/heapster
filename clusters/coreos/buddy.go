@@ -26,7 +26,7 @@ func getFleetRegistryClient() (fleetClient.API, error) {
 		return nil, err
 	}
 
-	trans := http.Transport{
+	trans := &http.Transport{
 		Dial:            dial,
 		TLSClientConfig: tlsConfig,
 	}
@@ -38,7 +38,7 @@ func getFleetRegistryClient() (fleetClient.API, error) {
 		return nil, err
 	}
 
-	reg := registry.New(eClient, "/_coreos.com/fleet/")
+	reg := registry.NewEtcdRegistry(eClient, "/_coreos.com/fleet/")
 
 	return &fleetClient.RegistryClient{reg}, nil
 }
