@@ -7,8 +7,7 @@ ADD run.sh /run.sh
 RUN chmod +x /run.sh
 
 # cAdvisor discovery via external files.
-RUN mkdir -p /var/run/heapster
-RUN touch /var/run/heapster/hosts
+RUN mkdir -p /var/run/heapster && touch /var/run/heapster/hosts
 
 ADD heapster /usr/bin/heapster
 
