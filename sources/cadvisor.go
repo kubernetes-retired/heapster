@@ -67,7 +67,7 @@ func (self *cadvisorSource) fetchData(cadvisorHosts *CadvisorHosts) (HostnameCon
 	for hostname, ip := range cadvisorHosts.Hosts {
 		err := self.getCadvisorData(hostname, ip, strconv.Itoa(cadvisorHosts.Port), "/")
 		if err != nil {
-			return nil, err
+			glog.Errorf("Failed to get cAdvisor data from host %q: %v", hostname, err)
 		}
 	}
 	return self.hostnameContainersMap, nil
