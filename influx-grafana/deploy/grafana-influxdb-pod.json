@@ -8,7 +8,7 @@
       "id": "influxdb",
       "containers": [{
         "name": "influxdb",
-        "image": "vish/k8s_influxdb",
+        "image": "kubernetes/heapster_influxdb",
         "ports": [{"containerPort": 8083, "hostPort": 8083},
                   {"containerPort": 8086, "hostPort": 8086},
                   {"containerPort": 8090, "hostPort": 8090},

@@ -8,4 +8,4 @@ docker run -d \
   -p 8086:8086 \
     -p 8090:8090 \
     -p  8099:8099 \
-  --name influxdb vish/k8s_influxdb
+  --name influxdb kubernetes/heapster_influxdb
