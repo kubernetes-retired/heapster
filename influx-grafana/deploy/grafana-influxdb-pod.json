@@ -9,12 +9,11 @@
       "containers": [{
         "name": "influxdb",
         "image": "vish/k8s_influxdb",
-        "ports": [
-          {"containerPort": 8086, "hostPort": 8086},
-          {"containerPort": 8083, "hostPort": 8083},
-          {"containerPort": 8090, "hostPort": 8090},
-          {"containerPort": 8099, "hostPort": 8099}]
-        }, {
+        "ports": [{"containerPort": 8083, "hostPort": 8083},
+                  {"containerPort": 8086, "hostPort": 8086},
+                  {"containerPort": 8090, "hostPort": 8090},
+                  {"containerPort": 8099, "hostPort": 8099}]
+      }, {
 	"name": "grafana",
         "image": "kubernetes/heapster_grafana",
         "ports": [{"containerPort": 80, "hostPort": 80}],

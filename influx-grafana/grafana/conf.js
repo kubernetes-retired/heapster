@@ -1,17 +1,18 @@
 define(['settings'],
 function (Settings) {
   return new Settings({
+    //elasticsearch: "http://"+window.location.hostname+":9200",
     datasources: {
       influx: {
         default: true,
         type: 'influxdb',
-        url: "<--PROTO-->://<--ADDR-->:<--PORT-->/db/<--DB_NAME-->",
-        username: "<--USER-->",
-        password: "<--PASS-->"
+        url: "://:/db/",
+        username: "",
+        password: ""
       },
       elasticsearch: {
         type: 'elasticsearch',
-        url: "<--PROTO-->://<--ADDR-->:9200",
+        url: "://:9200",
         index: 'grafana-dash',
         grafanaDB: true
       }
