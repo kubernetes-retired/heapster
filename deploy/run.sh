@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-set -o xtrace
 
 KUBE_ARGS=""
 
