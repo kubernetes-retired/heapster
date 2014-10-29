@@ -1,8 +1,8 @@
 bind-address = "0.0.0.0"
 
 [logging]
-level  = "debug"
-file   = "/opt/influxdb/shared/data/influxdb.log"         # stdout to log to standard out
+level  = "info"
+file   = "/opt/influxdb/shared/log.txt"         # stdout to log to standard out
 
 [admin]
 port   = 8083              # binding is disabled if the port isn't set
@@ -20,10 +20,10 @@ read-timeout = "5s"
 
 [raft]
 port = 8090
-dir  = "/opt/influxdb/shared/data/raft"
+dir  = "/data/raft"
 
 [storage]
-dir = "/opt/influxdb/shared/data/db"
+dir = "/data/db"
 # How many requests to potentially buffer in memory. If the buffer gets filled then writes
 # will still be logged and once the local storage has caught up (or compacted) the writes
 # will be replayed from the WAL
@@ -62,10 +62,9 @@ concurrent-shard-query-limit = 20
   [sharding.long-term]
   duration = "30d"
   split = 1
-  # split-random = "/^Hf.*/"
 
 [wal]
-dir   = "/opt/influxdb/shared/data/wal"
+dir   = "/data/wal"
 flush-after = 1000 # the number of writes after which wal will be flushed, 0 for flushing on every write
 bookmark-after = 1000 # the number of writes after which a bookmark will be created
 index-after = 1000
