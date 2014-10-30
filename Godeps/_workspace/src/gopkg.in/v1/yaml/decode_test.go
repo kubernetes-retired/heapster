@@ -156,13 +156,13 @@ var unmarshalTests = []struct {
 		map[string]interface{}{"seq": []interface{}{"A", "B"}},
 	}, {
 		"seq: [A,B,C,]",
-		map[string][]string{"seq": []string{"A", "B", "C"}},
+		map[string][]string{"seq": {"A", "B", "C"}},
 	}, {
 		"seq: [A,1,C]",
-		map[string][]string{"seq": []string{"A", "1", "C"}},
+		map[string][]string{"seq": {"A", "1", "C"}},
 	}, {
 		"seq: [A,1,C]",
-		map[string][]int{"seq": []int{1}},
+		map[string][]int{"seq": {1}},
 	}, {
 		"seq: [A,1,C]",
 		map[string]interface{}{"seq": []interface{}{"A", 1, "C"}},
@@ -173,13 +173,13 @@ var unmarshalTests = []struct {
 		map[string]interface{}{"seq": []interface{}{"A", "B"}},
 	}, {
 		"seq:\n - A\n - B\n - C",
-		map[string][]string{"seq": []string{"A", "B", "C"}},
+		map[string][]string{"seq": {"A", "B", "C"}},
 	}, {
 		"seq:\n - A\n - 1\n - C",
-		map[string][]string{"seq": []string{"A", "1", "C"}},
+		map[string][]string{"seq": {"A", "1", "C"}},
 	}, {
 		"seq:\n - A\n - 1\n - C",
-		map[string][]int{"seq": []int{1}},
+		map[string][]int{"seq": {1}},
 	}, {
 		"seq:\n - A\n - 1\n - C",
 		map[string]interface{}{"seq": []interface{}{"A", 1, "C"}},
@@ -280,7 +280,7 @@ var unmarshalTests = []struct {
 		map[interface{}]interface{}{"1": "\"2\""},
 	}, {
 		"v:\n- A\n- 'B\n\n  C'\n",
-		map[string][]string{"v": []string{"A", "B\nC"}},
+		map[string][]string{"v": {"A", "B\nC"}},
 	},
 
 	// Explicit tags.

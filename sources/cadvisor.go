@@ -1,81 +1,68 @@
 package sources
 
 import (
-	"net/http"
-	"net/url"
-	"path/filepath"
+	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/golang/glog"
+	cadvisorClient "github.com/google/cadvisor/client"
 	cadvisor "github.com/google/cadvisor/info"
 )
 
 type cadvisorSource struct {
-	hostnameContainersMap HostnameContainersMap
-	lastQuery             time.Time
+	containers []AnonContainer
+	lastQuery  time.Time
 }
 
-func (self *cadvisorSource) addContainerToMap(container *Container, hostname string) {
-	// TODO(vishh): Add a lock here to enable updating multiple hosts at the same time.
-	if self.hostnameContainersMap[hostname] == nil {
-		self.hostnameContainersMap[hostname] = make(IdToContainerMap, 0)
-	}
-	self.hostnameContainersMap[hostname][container.ID] = container
-}
-
-func (self *cadvisorSource) getCadvisorStatsUrl(host, port, container string) string {
-	values := url.Values{}
-	values.Add("num_stats", strconv.Itoa(int(time.Since(self.lastQuery)/time.Second)))
-	values.Add("num_samples", strconv.Itoa(0))
-	return "http://" + host + ":" + port + "/api/v1.0/containers" + container + "?" + values.Encode()
+func (self *cadvisorSource) addContainer(container *Container, hostname string) {
+	self.containers = append(self.containers, AnonContainer{hostname, container})
 }
 
 func (self *cadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) error {
 	container := &Container{
-		Name: containerInfo.Name,
-		ID:   filepath.Base(containerInfo.Name),
+		Name:  containerInfo.Name,
+		Spec:  containerInfo.Spec,
+		Stats: containerInfo.Stats,
 	}
-	container.Stats = containerInfo.Stats
 	if len(containerInfo.Aliases) > 0 {
 		container.Name = containerInfo.Aliases[0]
 	}
-	self.addContainerToMap(container, hostname)
+	self.addContainer(container, hostname)
 	return nil
 }
 
 func (self *cadvisorSource) getCadvisorData(hostname, ip, port, container string) error {
-	var containerInfo cadvisor.ContainerInfo
-	req, err := http.NewRequest("GET", self.getCadvisorStatsUrl(ip, port, container), nil)
+	client, err := cadvisorClient.NewClient("http://" + ip + ":" + port)
 	if err != nil {
 		return err
 	}
-	err = PostRequestAndGetValue(&http.Client{}, req, &containerInfo)
+	allContainers, err := client.SubcontainersInfo("/", &cadvisor.ContainerInfoRequest{int(time.Since(self.lastQuery) / time.Second)})
 	if err != nil {
 		glog.Errorf("failed to get stats from cadvisor on host %s with ip %s - %s\n", hostname, ip, err)
 		return nil
 	}
-	self.processStat(hostname, &containerInfo)
-	for _, container := range containerInfo.Subcontainers {
-		// TODO(vishh): Avoid the recursion here.
-		self.getCadvisorData(hostname, ip, port, container.Name)
+
+	for _, containerInfo := range allContainers {
+		self.processStat(hostname, &containerInfo)
 	}
+
 	return nil
 }
 
-func (self *cadvisorSource) fetchData(cadvisorHosts *CadvisorHosts) (HostnameContainersMap, error) {
+func (self *cadvisorSource) fetchData(cadvisorHosts *CadvisorHosts) ([]AnonContainer, error) {
 	for hostname, ip := range cadvisorHosts.Hosts {
 		err := self.getCadvisorData(hostname, ip, strconv.Itoa(cadvisorHosts.Port), "/")
 		if err != nil {
-			glog.Errorf("Failed to get cAdvisor data from host %q: %v", hostname, err)
+			return nil, fmt.Errorf("Failed to get cAdvisor data from host %q: %v", hostname, err)
 		}
 	}
-	return self.hostnameContainersMap, nil
+	return self.containers, nil
 }
 
 func newCadvisorSource() *cadvisorSource {
 	return &cadvisorSource{
-		hostnameContainersMap: make(HostnameContainersMap, 0),
-		lastQuery:             time.Now(),
+		containers: make([]AnonContainer, 0),
+		lastQuery:  time.Now(),
 	}
 }

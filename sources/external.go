@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/golang/glog"
 )
 
 // While updating this, also update heapster/deploy/Dockerfile.
@@ -38,12 +40,18 @@ func (self *ExternalSource) GetPods() ([]Pod, error) {
 	return []Pod{}, nil
 }
 
-func (self *ExternalSource) GetContainerStats() (HostnameContainersMap, error) {
+func (self *ExternalSource) GetAllStats() (StatsData, error) {
 	hosts, err := self.getCadvisorHosts()
 	if err != nil {
 		return nil, err
 	}
-	return self.cadvisor.fetchData(hosts)
+
+	stats, err := self.cadvisor.fetchData(hosts)
+	if err != nil {
+		glog.Error(err)
+		return nil, nil
+	}
+	return stats, nil
 }
 
 func newExternalSource() (Source, error) {

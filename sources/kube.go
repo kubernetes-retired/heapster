@@ -3,46 +3,61 @@ package sources
 import (
 	"fmt"
 	"net"
+	"net/http"
+	"net/url"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	kube_labels "github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/golang/glog"
+	cadvisor "github.com/google/cadvisor/info"
 )
 
+
+// Kubernetes released supported and tested against.
+var kubeVersions = []string{"v0.4.2"}
+
+// Cadvisor port in kubernetes.
 const cadvisorPort = 4194
 
 type KubeSource struct {
-	client   *kube_client.Client
-	cadvisor *cadvisorSource
+	client      *kube_client.Client
+	lastQuery   time.Time
+	kubeletPort string
 }
 
+type nodeList CadvisorHosts
+
 // Returns a map of minion hostnames to their corresponding IPs.
-func (self *KubeSource) listMinions() (*CadvisorHosts, error) {
-	cadvisorHosts := &CadvisorHosts{
+func (self *KubeSource) listMinions() (*nodeList, error) {
+	nodeList := &nodeList{
 		Port:  cadvisorPort,
 		Hosts: make(map[string]string, 0),
 	}
-	minions, err := self.client.ListMinions()
+	minions, err := self.client.Minions().List()
 	if err != nil {
 		return nil, err
 	}
-	for _, value := range minions.Items {
-		addrs, err := net.LookupIP(value.ID)
+	for _, minion := range minions.Items {
+		addrs, err := net.LookupIP(minion.Name)
 		if err == nil {
-			cadvisorHosts.Hosts[value.ID] = addrs[0].String()
+			nodeList.Hosts[minion.Name] = addrs[0].String()
 		} else {
-			glog.Errorf("Skipping host %s since looking up its IP failed - %s", value.ID, err)
+			glog.Errorf("Skipping host %s since looking up its IP failed - %s", minion.Name, err)
 		}
 	}
 
-	return cadvisorHosts, nil
+	return nodeList, nil
 }
 
 func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 	localPod := Pod{
 		Name:       pod.DesiredState.Manifest.ID,
+		ID:         pod.DesiredState.Manifest.UUID,
 		Hostname:   pod.CurrentState.Host,
 		Status:     string(pod.CurrentState.Status),
 		PodIP:      pod.CurrentState.PodIP,
@@ -55,15 +70,15 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 	for _, container := range pod.DesiredState.Manifest.Containers {
 		localContainer := newContainer()
 		localContainer.Name = container.Name
-		localContainer.ID = pod.CurrentState.Info[container.Name].DetailInfo.ID
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}
+
 	return &localPod
 }
 
 // Returns a map of minion hostnames to the Pods running in them.
-func (self *KubeSource) GetPods() ([]Pod, error) {
-	pods, err := self.client.ListPods(kube_api.NewContext(), kube_labels.Everything())
+func (self *KubeSource) getPods() ([]Pod, error) {
+	pods, err := self.client.Pods(kube_api.NamespaceDefault).List(kube_labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -76,13 +91,48 @@ func (self *KubeSource) GetPods() ([]Pod, error) {
 	return out, nil
 }
 
-func (self *KubeSource) GetContainerStats() (HostnameContainersMap, error) {
-	hosts, err := self.listMinions()
+func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerName string) (*cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
+	var containerInfo cadvisor.ContainerInfo
+	values := url.Values{}
+	values.Add("num_stats", strconv.Itoa(int(time.Since(self.lastQuery)/time.Second)))
+	url := "http://" + hostIP + ":" + self.kubeletPort + filepath.Join("/stats", podName, containerName) + "?" + values.Encode()
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = PostRequestAndGetValue(&http.Client{}, req, &containerInfo)
+	if err != nil {
+		glog.Errorf("failed to get stats from kubelet on host with ip %s - %s\n", hostIP, err)
+		return nil, nil, nil
+	}
+
+	return &containerInfo.Spec, containerInfo.Stats, nil
+}
+
+func (self *KubeSource) GetAllStats() (StatsData, error) {
+	pods, err := self.getPods()
 	if err != nil {
 		return nil, err
 	}
+	for _, pod := range pods {
+		addrs, err := net.LookupIP(pod.Hostname)
+		if err != nil {
+			glog.Errorf("Skipping host %s since looking up its IP failed - %s", pod.Hostname, err)
+			continue
+		}
+		hostIP := addrs[0].String()
+		for _, container := range pod.Containers {
+			spec, stats, err := self.getStatsFromKubelet(hostIP, pod.Name, pod.ID, container.Name)
+			if err != nil {
+				return nil, err
+			}
+			container.Stats = stats
+			container.Spec = *spec
+		}
+	}
+	self.lastQuery = time.Now()
 
-	return self.cadvisor.fetchData(hosts)
+	return pods, nil
 }
 
 func newKubeSource() (*KubeSource, error) {
@@ -100,9 +150,10 @@ func newKubeSource() (*KubeSource, error) {
 		Password: authInfo[1],
 		Insecure: true,
 	})
-	cadvisorSource := newCadvisorSource()
+	glog.Infof("Following Kubernetes versions are supported: %v", kubeVersions)
 	return &KubeSource{
-		client:   kubeClient,
-		cadvisor: cadvisorSource,
+		client:      kubeClient,
+		lastQuery:   time.Now(),
+		kubeletPort: *argKubeletPort,
 	}, nil
 }

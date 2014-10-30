@@ -28,7 +28,7 @@ type InfluxdbSink struct {
 	lastWrite      time.Time
 }
 
-func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, containerName string, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
+func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
 	// Timestamp
 	columns = append(columns, colTimestamp)
 	values = append(values, stat.Timestamp.Unix())
@@ -115,17 +115,19 @@ func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
 			for _, stat := range container.Stats {
-				col, val := self.containerStatsToValues(&pod, pod.Hostname, container.Name, stat)
+				col, val := self.containerStatsToValues(&pod, pod.Hostname, container.Name, container.Spec, stat)
 				self.series = append(self.series, self.newSeries(statsTable, col, val))
 			}
 		}
 	}
 }
 
-func (self *InfluxdbSink) handleContainers(container sources.AnonContainer) {
-	for _, stat := range container.Stats {
-		col, val := self.containerStatsToValues(nil, container.Hostname, container.Name, stat)
-		self.series = append(self.series, self.newSeries(statsTable, col, val))
+func (self *InfluxdbSink) handleContainers(containers []sources.AnonContainer) {
+	for _, container := range containers {
+		for _, stat := range container.Stats {
+			col, val := self.containerStatsToValues(nil, container.Hostname, container.Name, container.Spec, stat)
+			self.series = append(self.series, self.newSeries(statsTable, col, val))
+		}
 	}
 }
 
@@ -137,7 +139,7 @@ func (self *InfluxdbSink) StoreData(ip Data) error {
 	var seriesToFlush []*influxdb.Series
 	if data, ok := ip.([]sources.Pod); ok {
 		self.handlePods(data)
-	} else if data, ok := ip.(sources.AnonContainer); ok {
+	} else if data, ok := ip.([]sources.AnonContainer); ok {
 		self.handleContainers(data)
 	} else {
 		return fmt.Errorf("Requesting unrecognized type to be stored in InfluxDB")

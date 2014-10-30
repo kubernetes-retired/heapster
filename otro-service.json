@@ -1,7 +1,0 @@
-{
-  "id": "otro-serv",
-  "kind": "Service",
-  "apiVersion": "v1beta1",
-  "port": 9095,
-  "selector": { "name": "influxdb" }
-}

@@ -124,6 +124,7 @@ func (self *bigquerySink) containerStatsToValues(
 	pod *sources.Pod,
 	hostname,
 	containerName string,
+	spec cadvisor.ContainerSpec,
 	stat *cadvisor.ContainerStats) (row map[string]interface{}) {
 	row = make(map[string]interface{})
 
@@ -183,7 +184,7 @@ func (self *bigquerySink) handlePods(pods []sources.Pod) {
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
 			for _, stat := range container.Stats {
-				self.rows = append(self.rows, self.containerStatsToValues(&pod, pod.Hostname, container.Name, stat))
+				self.rows = append(self.rows, self.containerStatsToValues(&pod, pod.Hostname, container.Name, container.Spec, stat))
 			}
 		}
 	}
@@ -191,7 +192,7 @@ func (self *bigquerySink) handlePods(pods []sources.Pod) {
 
 func (self *bigquerySink) handleContainers(container sources.AnonContainer) {
 	for _, stat := range container.Stats {
-		self.rows = append(self.rows, self.containerStatsToValues(nil, container.Hostname, container.Name, stat))
+		self.rows = append(self.rows, self.containerStatsToValues(nil, container.Hostname, container.Name, container.Spec, stat))
 	}
 }
 
