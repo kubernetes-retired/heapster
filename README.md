@@ -77,6 +77,7 @@ $ gcutil listinstances
 
 #####Hints
 * Grafana's default username and password is 'admin'. You can change that by modifying the grafana container [here](influx-grafana/deploy/grafana-influxdb-pod.json)
+* Load the 'Example Grafana Dashboard.json' in this repo to get started with Grafana.
 * To enable memory and swap accounting on the minions follow the instructions [here](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting)
 
 #### Community

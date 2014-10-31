@@ -4,7 +4,7 @@
     "filter": {
       "list": [],
       "time": {
-        "from": "now-5m",
+        "from": "now-6h",
         "to": "now"
       }
     }
@@ -18,7 +18,7 @@
       "collapsable": true,
       "panels": [
         {
-          "span": 12,
+          "span": 6,
           "editable": true,
           "type": "graph",
           "x-axis": true,
@@ -67,7 +67,7 @@
           "nullPointMode": "connected",
           "steppedLine": false,
           "tooltip": {
-            "value_type": "individual",
+            "value_type": "cumulative",
             "query_as_alias": true
           },
           "targets": [
@@ -76,7 +76,7 @@
               "function": "derivative",
               "column": "cpu_cumulative_usage",
               "series": "stats",
-              "query": "select container_name, derivative(cpu_cumulative_usage) from \"stats\" where  time > now() - 5m     group by time(2s), container_name order asc",
+              "query": "select container_name, derivative(cpu_cumulative_usage) from \"stats\" where  time > now() - 6h     group by time(2s), container_name order asc",
               "condition_filter": false,
               "condition_key": "",
               "condition_op": "=",
@@ -84,12 +84,91 @@
               "interval": "2s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
-              "alias": "cpu"
+              "alias": ""
             }
           ],
           "aliasColors": {},
           "aliasYAxis": {},
           "title": "All 'containers' CPU usage",
+          "datasource": null,
+          "renderer": "png",
+          "annotate": {
+            "enable": false
+          }
+        },
+        {
+          "span": 6,
+          "editable": true,
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_formats": [
+            "bytes",
+            "bytes"
+          ],
+          "grid": {
+            "max": null,
+            "min": null,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "resolution": 100,
+          "lines": true,
+          "fill": 1,
+          "linewidth": 2,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "options": false,
+          "legend": {
+            "show": true,
+            "values": true,
+            "min": false,
+            "max": true,
+            "current": false,
+            "total": false,
+            "avg": true
+          },
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "individual",
+            "query_as_alias": true
+          },
+          "targets": [
+            {
+              "target": "randomWalk('random walk')",
+              "function": "mean",
+              "column": "memory_usage",
+              "series": "stats",
+              "query": "select container_name, mean(memory_usage) from \"stats\" where  time > now() - 6h     group by time(2s), container_name order asc",
+              "condition_filter": false,
+              "condition_key": "",
+              "condition_op": "=",
+              "condition_value": "",
+              "interval": "2s",
+              "groupby_field_add": true,
+              "groupby_field": "container_name",
+              "alias": ""
+            }
+          ],
+          "aliasColors": {},
+          "aliasYAxis": {},
+          "title": "All 'containers' Memory usage",
           "datasource": null,
           "renderer": "png",
           "annotate": {
@@ -107,7 +186,86 @@
       "collapsable": true,
       "panels": [
         {
-          "span": 12,
+          "span": 6,
+          "editable": true,
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_formats": [
+            "ns",
+            "bytes"
+          ],
+          "grid": {
+            "max": null,
+            "min": null,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "resolution": 100,
+          "lines": true,
+          "fill": 1,
+          "linewidth": 2,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "options": false,
+          "legend": {
+            "show": true,
+            "values": true,
+            "min": false,
+            "max": true,
+            "current": false,
+            "total": false,
+            "avg": true
+          },
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "cumulative",
+            "query_as_alias": true
+          },
+          "targets": [
+            {
+              "target": "randomWalk('random walk')",
+              "function": "derivative",
+              "column": "cpu_cumulative_usage",
+              "series": "stats",
+              "query": "select container_name, derivative(cpu_cumulative_usage) from \"stats\" where  time > now() - 6h and pod = 'heapster' group by time(2s), container_name order asc",
+              "condition_filter": true,
+              "condition_key": "pod",
+              "condition_op": "=",
+              "condition_value": "'heapster'",
+              "interval": "2s",
+              "groupby_field_add": true,
+              "groupby_field": "container_name",
+              "alias": ""
+            }
+          ],
+          "aliasColors": {},
+          "aliasYAxis": {},
+          "title": "Pod 'heapster' CPU usage",
+          "datasource": null,
+          "renderer": "png",
+          "annotate": {
+            "enable": false
+          }
+        },
+        {
+          "span": 6,
           "editable": true,
           "type": "graph",
           "x-axis": true,
@@ -165,7 +323,7 @@
               "function": "mean",
               "column": "memory_usage",
               "series": "stats",
-              "query": "select container_name, mean(memory_usage) from \"stats\" where  time > now() - 5m and pod = 'heapster' group by time(2s), container_name order asc",
+              "query": "select container_name, mean(memory_usage) from \"stats\" where  time > now() - 6h and pod = 'heapster' group by time(2s), container_name order asc",
               "condition_filter": true,
               "condition_key": "pod",
               "condition_op": "=",
@@ -180,7 +338,7 @@
               "function": "mean",
               "column": "memory_working_set",
               "series": "stats",
-              "query": "select container_name, mean(memory_working_set) from \"stats\" where  time > now() - 5m and pod = 'heapster' group by time(2s), container_name order asc",
+              "query": "select container_name, mean(memory_working_set) from \"stats\" where  time > now() - 6h and pod = 'heapster' group by time(2s), container_name order asc",
               "condition_filter": true,
               "condition_key": "pod",
               "condition_op": "=",
@@ -211,7 +369,86 @@
       "collapsable": true,
       "panels": [
         {
-          "span": 12,
+          "span": 6,
+          "editable": true,
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_formats": [
+            "ns",
+            "ns"
+          ],
+          "grid": {
+            "max": null,
+            "min": null,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "resolution": 100,
+          "lines": true,
+          "fill": 1,
+          "linewidth": 2,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "options": false,
+          "legend": {
+            "show": true,
+            "values": true,
+            "min": false,
+            "max": true,
+            "current": false,
+            "total": false,
+            "avg": true
+          },
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "individual",
+            "query_as_alias": true
+          },
+          "targets": [
+            {
+              "target": "randomWalk('random walk')",
+              "function": "derivative",
+              "column": "cpu_cumulative_usage",
+              "series": "stats",
+              "query": "select container_name, derivative(cpu_cumulative_usage) from \"stats\" where  time > now() - 6h and labels = 'name:influxdb' group by time(2s), container_name order asc",
+              "condition_filter": true,
+              "condition_key": "labels",
+              "condition_op": "=",
+              "condition_value": "'name:influxdb'",
+              "interval": "2s",
+              "groupby_field_add": true,
+              "groupby_field": "container_name",
+              "alias": ""
+            }
+          ],
+          "aliasColors": {},
+          "aliasYAxis": {},
+          "title": "Labels 'influxdb' CPU usage",
+          "datasource": null,
+          "renderer": "png",
+          "annotate": {
+            "enable": false
+          }
+        },
+        {
+          "span": 6,
           "editable": true,
           "type": "graph",
           "x-axis": true,
@@ -255,7 +492,7 @@
           "interactive": true,
           "legend_counts": true,
           "timezone": "browser",
-          "percentage": true,
+          "percentage": false,
           "zerofill": true,
           "nullPointMode": "connected",
           "steppedLine": false,
@@ -269,7 +506,7 @@
               "function": "mean",
               "column": "memory_usage",
               "series": "stats",
-              "query": "select container_name, mean(memory_usage) from \"stats\" where  time > now() - 5m and labels = 'name:influxdb' group by time(2s), container_name order asc",
+              "query": "select container_name, mean(memory_usage) from \"stats\" where  time > now() - 6h and labels = 'name:influxdb' group by time(2s), container_name order asc",
               "condition_filter": true,
               "condition_key": "labels",
               "condition_op": "=",
@@ -284,7 +521,7 @@
               "function": "mean",
               "column": "memory_working_set",
               "series": "stats",
-              "query": "select container_name, mean(memory_working_set) from \"stats\" where  time > now() - 5m and labels = 'name:influxdb' group by time(2s), container_name order asc",
+              "query": "select container_name, mean(memory_working_set) from \"stats\" where  time > now() - 6h and labels = 'name:influxdb' group by time(2s), container_name order asc",
               "condition_filter": true,
               "condition_key": "labels",
               "condition_op": "=",
