@@ -122,11 +122,12 @@ func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
 	}
 }
 
-func (self *InfluxdbSink) handleContainers(containers []sources.AnonContainer) {
+func (self *InfluxdbSink) handleContainers(containers []sources.RawContainer, tableName string) {
+	// TODO(vishh): Export spec into a separate table and update it whenever it changes.
 	for _, container := range containers {
 		for _, stat := range container.Stats {
 			col, val := self.containerStatsToValues(nil, container.Hostname, container.Name, container.Spec, stat)
-			self.series = append(self.series, self.newSeries(statsTable, col, val))
+			self.series = append(self.series, self.newSeries(tableName, col, val))
 		}
 	}
 }
@@ -137,10 +138,10 @@ func (self *InfluxdbSink) readyToFlush() bool {
 
 func (self *InfluxdbSink) StoreData(ip Data) error {
 	var seriesToFlush []*influxdb.Series
-	if data, ok := ip.([]sources.Pod); ok {
-		self.handlePods(data)
-	} else if data, ok := ip.([]sources.AnonContainer); ok {
-		self.handleContainers(data)
+	if data, ok := ip.(sources.ContainerData); ok {
+		self.handlePods(data.Pods)
+		self.handleContainers(data.Containers, statsTable)
+		self.handleContainers(data.Machine, machineTable)
 	} else {
 		return fmt.Errorf("Requesting unrecognized type to be stored in InfluxDB")
 	}

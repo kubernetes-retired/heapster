@@ -40,18 +40,22 @@ func (self *ExternalSource) GetPods() ([]Pod, error) {
 	return []Pod{}, nil
 }
 
-func (self *ExternalSource) GetAllStats() (StatsData, error) {
+func (self *ExternalSource) GetInfo() (ContainerData, error) {
 	hosts, err := self.getCadvisorHosts()
 	if err != nil {
-		return nil, err
+		return ContainerData{}, err
 	}
 
-	stats, err := self.cadvisor.fetchData(hosts)
+	containers, nodes, err := self.cadvisor.fetchData(hosts)
 	if err != nil {
 		glog.Error(err)
-		return nil, nil
+		return ContainerData{}, nil
 	}
-	return stats, nil
+
+	return ContainerData{
+		Containers: containers,
+		Machine:    nodes,
+	}, nil
 }
 
 func newExternalSource() (Source, error) {

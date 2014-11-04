@@ -17,9 +17,8 @@ import (
 	cadvisor "github.com/google/cadvisor/info"
 )
 
-
 // Kubernetes released supported and tested against.
-var kubeVersions = []string{"v0.4.2"}
+var kubeVersions = []string{"v0.3"}
 
 // Cadvisor port in kubernetes.
 const cadvisorPort = 4194
@@ -82,6 +81,7 @@ func (self *KubeSource) getPods() ([]Pod, error) {
 	if err != nil {
 		return nil, err
 	}
+	// TODO(vishh): Add API Version check. Fail if Kubernetes returns an invalid API Version.
 	out := make([]Pod, 0)
 	for _, pod := range pods.Items {
 		pod := self.parsePod(&pod)
@@ -91,28 +91,46 @@ func (self *KubeSource) getPods() ([]Pod, error) {
 	return out, nil
 }
 
-func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerName string) (*cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
+func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerName string) (cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
 	var containerInfo cadvisor.ContainerInfo
 	values := url.Values{}
 	values.Add("num_stats", strconv.Itoa(int(time.Since(self.lastQuery)/time.Second)))
 	url := "http://" + hostIP + ":" + self.kubeletPort + filepath.Join("/stats", podName, containerName) + "?" + values.Encode()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, nil, err
+		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, err
 	}
 	err = PostRequestAndGetValue(&http.Client{}, req, &containerInfo)
 	if err != nil {
 		glog.Errorf("failed to get stats from kubelet on host with ip %s - %s\n", hostIP, err)
-		return nil, nil, nil
+		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, nil
 	}
 
-	return &containerInfo.Spec, containerInfo.Stats, nil
+	return containerInfo.Spec, containerInfo.Stats, nil
 }
 
-func (self *KubeSource) GetAllStats() (StatsData, error) {
+func (self *KubeSource) getNodesInfo() ([]RawContainer, error) {
+	kubeNodes, err := self.listMinions()
+	if err != nil {
+		return []RawContainer{}, err
+	}
+	nodesInfo := []RawContainer{}
+	for node, ip := range kubeNodes.Hosts {
+		spec, stats, err := self.getStatsFromKubelet(ip, "", "", "/")
+		if err != nil {
+			return []RawContainer{}, err
+		}
+		container := RawContainer{node, Container{"/", spec, stats}}
+		nodesInfo = append(nodesInfo, container)
+	}
+
+	return nodesInfo, nil
+}
+
+func (self *KubeSource) GetInfo() (ContainerData, error) {
 	pods, err := self.getPods()
 	if err != nil {
-		return nil, err
+		return ContainerData{}, err
 	}
 	for _, pod := range pods {
 		addrs, err := net.LookupIP(pod.Hostname)
@@ -124,15 +142,20 @@ func (self *KubeSource) GetAllStats() (StatsData, error) {
 		for _, container := range pod.Containers {
 			spec, stats, err := self.getStatsFromKubelet(hostIP, pod.Name, pod.ID, container.Name)
 			if err != nil {
-				return nil, err
+				return ContainerData{}, err
 			}
 			container.Stats = stats
-			container.Spec = *spec
+			container.Spec = spec
 		}
 	}
+	nodesInfo, err := self.getNodesInfo()
+	if err != nil {
+		return ContainerData{}, err
+	}
+
 	self.lastQuery = time.Now()
 
-	return pods, nil
+	return ContainerData{Pods: pods, Machine: nodesInfo}, nil
 }
 
 func newKubeSource() (*KubeSource, error) {
@@ -150,7 +173,7 @@ func newKubeSource() (*KubeSource, error) {
 		Password: authInfo[1],
 		Insecure: true,
 	})
-	glog.Infof("Following Kubernetes versions are supported: %v", kubeVersions)
+
 	return &KubeSource{
 		client:      kubeClient,
 		lastQuery:   time.Now(),

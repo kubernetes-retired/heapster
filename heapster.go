@@ -37,11 +37,11 @@ func doWork() error {
 	for {
 		select {
 		case <-ticker.C:
-			stats, err := source.GetAllStats()
+			data, err := source.GetInfo()
 			if err != nil {
 				return err
 			}
-			if err := sink.StoreData(stats); err != nil {
+			if err := sink.StoreData(data); err != nil {
 				return err
 			}
 		}

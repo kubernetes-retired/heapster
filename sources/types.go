@@ -32,9 +32,15 @@ type Pod struct {
 	Labels     map[string]string `json:"labels,omitempty"`
 }
 
-type AnonContainer struct {
+type RawContainer struct {
 	Hostname string `json:"hostname,omitempty"`
-	*Container
+	Container
+}
+
+type ContainerData struct {
+	Pods       []Pod
+	Containers []RawContainer
+	Machine    []RawContainer
 }
 
 type CadvisorHosts struct {
@@ -42,11 +48,13 @@ type CadvisorHosts struct {
 	Hosts map[string]string `json:"hosts"`
 }
 
-type StatsData interface{}
-
 type Source interface {
-	// Returns either a slice of Pod or a slice of AnonContainer.
-	GetAllStats() (StatsData, error)
+	// Fetches containers or pod information from all the nodes in the cluster.
+	// Returns:
+	// 1. podsOrContainers: A slice of Pod or a slice of RawContainer
+	// 2. nodes: A slice of RawContainer, one for each node in the cluster, that contains
+	// root cgroup information.
+	GetInfo() (ContainerData, error)
 }
 
 func NewSource() (Source, error) {

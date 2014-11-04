@@ -11,16 +11,11 @@ import (
 )
 
 type cadvisorSource struct {
-	containers []AnonContainer
-	lastQuery  time.Time
+	lastQuery time.Time
 }
 
-func (self *cadvisorSource) addContainer(container *Container, hostname string) {
-	self.containers = append(self.containers, AnonContainer{hostname, container})
-}
-
-func (self *cadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) error {
-	container := &Container{
+func (self *cadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) RawContainer {
+	container := Container{
 		Name:  containerInfo.Name,
 		Spec:  containerInfo.Spec,
 		Stats: containerInfo.Stats,
@@ -28,41 +23,48 @@ func (self *cadvisorSource) processStat(hostname string, containerInfo *cadvisor
 	if len(containerInfo.Aliases) > 0 {
 		container.Name = containerInfo.Aliases[0]
 	}
-	self.addContainer(container, hostname)
-	return nil
+
+	return RawContainer{hostname, container}
 }
 
-func (self *cadvisorSource) getCadvisorData(hostname, ip, port, container string) error {
+func (self *cadvisorSource) getAllCadvisorData(hostname, ip, port, container string) (containers []RawContainer, nodeInfo RawContainer, err error) {
 	client, err := cadvisorClient.NewClient("http://" + ip + ":" + port)
 	if err != nil {
-		return err
+		return
 	}
 	allContainers, err := client.SubcontainersInfo("/", &cadvisor.ContainerInfoRequest{int(time.Since(self.lastQuery) / time.Second)})
 	if err != nil {
 		glog.Errorf("failed to get stats from cadvisor on host %s with ip %s - %s\n", hostname, ip, err)
-		return nil
+		return
 	}
 
 	for _, containerInfo := range allContainers {
-		self.processStat(hostname, &containerInfo)
-	}
-
-	return nil
-}
-
-func (self *cadvisorSource) fetchData(cadvisorHosts *CadvisorHosts) ([]AnonContainer, error) {
-	for hostname, ip := range cadvisorHosts.Hosts {
-		err := self.getCadvisorData(hostname, ip, strconv.Itoa(cadvisorHosts.Port), "/")
-		if err != nil {
-			return nil, fmt.Errorf("Failed to get cAdvisor data from host %q: %v", hostname, err)
+		rawContainer := self.processStat(hostname, &containerInfo)
+		if containerInfo.Name == "/" {
+			nodeInfo = rawContainer
+		} else {
+			containers = append(containers, rawContainer)
 		}
 	}
-	return self.containers, nil
+
+	return
+}
+
+func (self *cadvisorSource) fetchData(cadvisorHosts *CadvisorHosts) (rawContainers []RawContainer, nodesInfo []RawContainer, err error) {
+	for hostname, ip := range cadvisorHosts.Hosts {
+		containers, nodeInfo, err := self.getAllCadvisorData(hostname, ip, strconv.Itoa(cadvisorHosts.Port), "/")
+		if err != nil {
+			return nil, nil, fmt.Errorf("Failed to get cAdvisor data from host %q: %v", hostname, err)
+		}
+		rawContainers = append(rawContainers, containers...)
+		nodesInfo = append(nodesInfo, nodeInfo)
+	}
+
+	return
 }
 
 func newCadvisorSource() *cadvisorSource {
 	return &cadvisorSource{
-		containers: make([]AnonContainer, 0),
-		lastQuery:  time.Now(),
+		lastQuery: time.Now(),
 	}
 }
