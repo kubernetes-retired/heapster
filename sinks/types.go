@@ -15,6 +15,8 @@ type Sink interface {
 
 const (
 	statsTable            string = "stats"
+	specTable             string = "spec"
+	machineTable          string = "machine"
 	colTimestamp          string = "time"
 	colPodName            string = "pod"
 	colPodStatus          string = "pod_status"

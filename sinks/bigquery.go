@@ -190,17 +190,19 @@ func (self *bigquerySink) handlePods(pods []sources.Pod) {
 	}
 }
 
-func (self *bigquerySink) handleContainers(container sources.AnonContainer) {
-	for _, stat := range container.Stats {
-		self.rows = append(self.rows, self.containerStatsToValues(nil, container.Hostname, container.Name, container.Spec, stat))
+func (self *bigquerySink) handleContainers(containers []sources.RawContainer) {
+	for _, container := range containers {
+		for _, stat := range container.Stats {
+			self.rows = append(self.rows, self.containerStatsToValues(nil, container.Hostname, container.Name, container.Spec, stat))
+		}
 	}
 }
 
 func (self *bigquerySink) StoreData(ip Data) error {
-	if data, ok := ip.([]sources.Pod); ok {
-		self.handlePods(data)
-	} else if data, ok := ip.(sources.AnonContainer); ok {
-		self.handleContainers(data)
+	if data, ok := ip.(sources.ContainerData); ok {
+		self.handlePods(data.Pods)
+		self.handleContainers(data.Containers)
+		self.handleContainers(data.Machine)
 	} else {
 		return fmt.Errorf("Requesting unrecognized type to be stored in InfluxDB")
 	}
