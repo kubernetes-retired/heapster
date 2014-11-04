@@ -24,18 +24,18 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 )
 
-type JSONBase struct {
+type TypeMeta struct {
 	Kind       string `json:"kind,omitempty" yaml:"kind,omitempty"`
 	APIVersion string `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
 }
 
 type InternalSimple struct {
-	JSONBase   `json:",inline" yaml:",inline"`
+	TypeMeta   `json:",inline" yaml:",inline"`
 	TestString string `json:"testString" yaml:"testString"`
 }
 
 type ExternalSimple struct {
-	JSONBase   `json:",inline" yaml:",inline"`
+	TypeMeta   `json:",inline" yaml:",inline"`
 	TestString string `json:"testString" yaml:"testString"`
 }
 
@@ -46,6 +46,9 @@ func TestScheme(t *testing.T) {
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName("", "Simple", &InternalSimple{})
 	scheme.AddKnownTypeWithName("externalVersion", "Simple", &ExternalSimple{})
+
+	// test that scheme is an ObjectTyper
+	var _ runtime.ObjectTyper = scheme
 
 	internalToExternalCalls := 0
 	externalToInternalCalls := 0
@@ -59,7 +62,7 @@ func TestScheme(t *testing.T) {
 			if e, a := "externalVersion", scope.Meta().DestVersion; e != a {
 				t.Errorf("Expected '%v', got '%v'", e, a)
 			}
-			scope.Convert(&in.JSONBase, &out.JSONBase, 0)
+			scope.Convert(&in.TypeMeta, &out.TypeMeta, 0)
 			scope.Convert(&in.TestString, &out.TestString, 0)
 			internalToExternalCalls++
 			return nil
@@ -71,7 +74,7 @@ func TestScheme(t *testing.T) {
 			if e, a := "", scope.Meta().DestVersion; e != a {
 				t.Errorf("Expected '%v', got '%v'", e, a)
 			}
-			scope.Convert(&in.JSONBase, &out.JSONBase, 0)
+			scope.Convert(&in.TypeMeta, &out.TypeMeta, 0)
 			scope.Convert(&in.TestString, &out.TestString, 0)
 			externalToInternalCalls++
 			return nil
@@ -123,6 +126,20 @@ func TestScheme(t *testing.T) {
 	}
 }
 
+func TestInvalidObjectValueKind(t *testing.T) {
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName("", "Simple", &InternalSimple{})
+
+	embedded := &runtime.EmbeddedObject{}
+	switch obj := embedded.Object.(type) {
+	default:
+		_, _, err := scheme.ObjectVersionAndKind(obj)
+		if err == nil {
+			t.Errorf("Expected error on invalid kind")
+		}
+	}
+}
+
 func TestBadJSONRejection(t *testing.T) {
 	scheme := runtime.NewScheme()
 	badJSONMissingKind := []byte(`{ }`)
@@ -150,12 +167,12 @@ type ExtensionB struct {
 }
 
 type ExternalExtensionType struct {
-	JSONBase  `json:",inline" yaml:",inline"`
+	TypeMeta  `json:",inline" yaml:",inline"`
 	Extension runtime.RawExtension `json:"extension" yaml:"extension"`
 }
 
 type InternalExtensionType struct {
-	JSONBase  `json:",inline" yaml:",inline"`
+	TypeMeta  `json:",inline" yaml:",inline"`
 	Extension runtime.EmbeddedObject `json:"extension" yaml:"extension"`
 }
 

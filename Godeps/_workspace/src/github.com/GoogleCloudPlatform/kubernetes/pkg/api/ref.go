@@ -17,11 +17,15 @@ limitations under the License.
 package api
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/meta"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 )
+
+var ErrNilObject = errors.New("Can't reference a nil object")
 
 var versionFromSelfLink = regexp.MustCompile("/api/([^/]*)/")
 
@@ -29,7 +33,10 @@ var versionFromSelfLink = regexp.MustCompile("/api/([^/]*)/")
 // object, or an error if the object doesn't follow the conventions
 // that would allow this.
 func GetReference(obj runtime.Object) (*ObjectReference, error) {
-	jsonBase, err := runtime.FindJSONBase(obj)
+	if obj == nil {
+		return nil, ErrNilObject
+	}
+	meta, err := meta.Accessor(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -37,16 +44,16 @@ func GetReference(obj runtime.Object) (*ObjectReference, error) {
 	if err != nil {
 		return nil, err
 	}
-	version := versionFromSelfLink.FindStringSubmatch(jsonBase.SelfLink())
+	version := versionFromSelfLink.FindStringSubmatch(meta.SelfLink())
 	if len(version) < 2 {
-		return nil, fmt.Errorf("unexpected self link format: %v", jsonBase.SelfLink())
+		return nil, fmt.Errorf("unexpected self link format: %v", meta.SelfLink())
 	}
 	return &ObjectReference{
-		Kind:       kind,
-		APIVersion: version[1],
-		// TODO: correct Name and UID when JSONBase makes a distinction
-		Name:            jsonBase.ID(),
-		UID:             jsonBase.ID(),
-		ResourceVersion: jsonBase.ResourceVersion(),
+		Kind:            kind,
+		APIVersion:      version[1],
+		Name:            meta.Name(),
+		Namespace:       meta.Namespace(),
+		UID:             meta.UID(),
+		ResourceVersion: meta.ResourceVersion(),
 	}, nil
 }

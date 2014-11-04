@@ -21,10 +21,12 @@ import (
 	"flag"
 	"math/rand"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/meta"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta1"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta2"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
@@ -40,16 +42,17 @@ var apiObjectFuzzer = fuzz.New().NilChance(.5).NumElements(1, 1).Funcs(
 	func(j *runtime.PluginBase, c fuzz.Continue) {
 		// Do nothing; this struct has only a Kind field and it must stay blank in memory.
 	},
-	func(j *runtime.JSONBase, c fuzz.Continue) {
-		// We have to customize the randomization of JSONBases because their
+	func(j *runtime.TypeMeta, c fuzz.Continue) {
+		// We have to customize the randomization of TypeMetas because their
 		// APIVersion and Kind must remain blank in memory.
 		j.APIVersion = ""
 		j.Kind = ""
-		j.ID = c.RandString()
+
+		j.Name = c.RandString()
 		// TODO: Fix JSON/YAML packages and/or write custom encoding
 		// for uint64's. Somehow the LS *byte* of this is lost, but
 		// only when all 8 bytes are set.
-		j.ResourceVersion = c.RandUint64() >> 8
+		j.ResourceVersion = strconv.FormatUint(c.RandUint64()>>8, 10)
 		j.SelfLink = c.RandString()
 
 		var sec, nsec int64
@@ -57,22 +60,31 @@ var apiObjectFuzzer = fuzz.New().NilChance(.5).NumElements(1, 1).Funcs(
 		c.Fuzz(&nsec)
 		j.CreationTimestamp = util.Unix(sec, nsec).Rfc3339Copy()
 	},
-	func(j *api.JSONBase, c fuzz.Continue) {
-		// We have to customize the randomization of JSONBases because their
+	func(j *api.TypeMeta, c fuzz.Continue) {
+		// We have to customize the randomization of TypeMetas because their
 		// APIVersion and Kind must remain blank in memory.
 		j.APIVersion = ""
 		j.Kind = ""
-		j.ID = c.RandString()
+	},
+	func(j *api.ObjectMeta, c fuzz.Continue) {
+		j.Name = c.RandString()
 		// TODO: Fix JSON/YAML packages and/or write custom encoding
 		// for uint64's. Somehow the LS *byte* of this is lost, but
 		// only when all 8 bytes are set.
-		j.ResourceVersion = c.RandUint64() >> 8
+		j.ResourceVersion = strconv.FormatUint(c.RandUint64()>>8, 10)
 		j.SelfLink = c.RandString()
 
 		var sec, nsec int64
 		c.Fuzz(&sec)
 		c.Fuzz(&nsec)
 		j.CreationTimestamp = util.Unix(sec, nsec).Rfc3339Copy()
+	},
+	func(j *api.ListMeta, c fuzz.Continue) {
+		// TODO: Fix JSON/YAML packages and/or write custom encoding
+		// for uint64's. Somehow the LS *byte* of this is lost, but
+		// only when all 8 bytes are set.
+		j.ResourceVersion = strconv.FormatUint(c.RandUint64()>>8, 10)
+		j.SelfLink = c.RandString()
 	},
 	func(intstr *util.IntOrString, c fuzz.Continue) {
 		// util.IntOrString will panic if its kind is set wrong.
@@ -110,7 +122,7 @@ var apiObjectFuzzer = fuzz.New().NilChance(.5).NumElements(1, 1).Funcs(
 func runTest(t *testing.T, codec runtime.Codec, source runtime.Object) {
 	name := reflect.TypeOf(source).Elem().Name()
 	apiObjectFuzzer.Fuzz(source)
-	j, err := runtime.FindJSONBase(source)
+	j, err := meta.Accessor(source)
 	if err != nil {
 		t.Fatalf("Unexpected error %v for %#v", err, source)
 	}
@@ -129,7 +141,7 @@ func runTest(t *testing.T, codec runtime.Codec, source runtime.Object) {
 		return
 	} else {
 		if !reflect.DeepEqual(source, obj2) {
-			t.Errorf("1: %v: diff: %v", name, runtime.ObjectDiff(source, obj2))
+			t.Errorf("1: %v: diff: %v\nCodec: %v\nData: %s\nSource: %#v", name, util.ObjectDiff(source, obj2), codec, string(data), source)
 			return
 		}
 	}
@@ -140,10 +152,24 @@ func runTest(t *testing.T, codec runtime.Codec, source runtime.Object) {
 		return
 	} else {
 		if !reflect.DeepEqual(source, obj3) {
-			t.Errorf("3: %v: diff: %v", name, runtime.ObjectDiff(source, obj3))
+			t.Errorf("3: %v: diff: %v\nCodec: %v", name, util.ObjectDiff(source, obj3), codec)
 			return
 		}
 	}
+}
+
+// For debugging problems
+func TestSpecificKind(t *testing.T) {
+	api.Scheme.Log(t)
+	kind := "PodList"
+	item, err := api.Scheme.New("", kind)
+	if err != nil {
+		t.Errorf("Couldn't make a %v? %v", kind, err)
+		return
+	}
+	runTest(t, v1beta1.Codec, item)
+	runTest(t, v1beta2.Codec, item)
+	api.Scheme.Log(nil)
 }
 
 func TestTypes(t *testing.T) {
@@ -155,6 +181,10 @@ func TestTypes(t *testing.T) {
 				t.Errorf("Couldn't make a %v? %v", kind, err)
 				continue
 			}
+			if _, err := meta.Accessor(item); err != nil {
+				t.Logf("%s is not a TypeMeta and cannot be round tripped: %v", kind, err)
+				continue
+			}
 			runTest(t, v1beta1.Codec, item)
 			runTest(t, v1beta2.Codec, item)
 			runTest(t, api.Codec, item)
@@ -164,7 +194,9 @@ func TestTypes(t *testing.T) {
 
 func TestEncode_Ptr(t *testing.T) {
 	pod := &api.Pod{
-		Labels: map[string]string{"name": "foo"},
+		ObjectMeta: api.ObjectMeta{
+			Labels: map[string]string{"name": "foo"},
+		},
 	}
 	obj := runtime.Object(pod)
 	data, err := latest.Codec.Encode(obj)
