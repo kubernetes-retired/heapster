@@ -23,6 +23,7 @@ import (
 	"time"
 
 	apierrs "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/meta"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
@@ -35,7 +36,7 @@ type ListerWatcher interface {
 	// ResourceVersion field will be used to start the watch in the right place.
 	List() (runtime.Object, error)
 	// Watch should begin a watch at the specified version.
-	Watch(resourceVersion uint64) (watch.Interface, error)
+	Watch(resourceVersion string) (watch.Interface, error)
 }
 
 // Reflector watches a specified resource and causes all changes to be reflected in the given store.
@@ -71,19 +72,19 @@ func (r *Reflector) Run() {
 }
 
 func (r *Reflector) listAndWatch() {
-	var resourceVersion uint64
+	var resourceVersion string
 
 	list, err := r.listerWatcher.List()
 	if err != nil {
 		glog.Errorf("Failed to list %v: %v", r.expectedType, err)
 		return
 	}
-	jsonBase, err := runtime.FindJSONBase(list)
+	meta, err := meta.Accessor(list)
 	if err != nil {
 		glog.Errorf("Unable to understand list result %#v", list)
 		return
 	}
-	resourceVersion = jsonBase.ResourceVersion()
+	resourceVersion = meta.ResourceVersion()
 	items, err := runtime.ExtractList(list)
 	if err != nil {
 		glog.Errorf("Unable to understand list result %#v (%v)", list, err)
@@ -112,11 +113,11 @@ func (r *Reflector) listAndWatch() {
 func (r *Reflector) syncWith(items []runtime.Object) error {
 	found := map[string]interface{}{}
 	for _, item := range items {
-		jsonBase, err := runtime.FindJSONBase(item)
+		meta, err := meta.Accessor(item)
 		if err != nil {
 			return fmt.Errorf("unexpected item in list: %v", err)
 		}
-		found[jsonBase.ID()] = item
+		found[meta.Name()] = item
 	}
 
 	r.store.Replace(found)
@@ -124,7 +125,7 @@ func (r *Reflector) syncWith(items []runtime.Object) error {
 }
 
 // watchHandler watches w and keeps *resourceVersion up to date.
-func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *uint64) error {
+func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string) error {
 	start := time.Now()
 	eventCount := 0
 	for {
@@ -139,25 +140,25 @@ func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *uint64) err
 			glog.Errorf("expected type %v, but watch event object had type %v", e, a)
 			continue
 		}
-		jsonBase, err := runtime.FindJSONBase(event.Object)
+		meta, err := meta.Accessor(event.Object)
 		if err != nil {
 			glog.Errorf("unable to understand watch event %#v", event)
 			continue
 		}
 		switch event.Type {
 		case watch.Added:
-			r.store.Add(jsonBase.ID(), event.Object)
+			r.store.Add(meta.Name(), event.Object)
 		case watch.Modified:
-			r.store.Update(jsonBase.ID(), event.Object)
+			r.store.Update(meta.Name(), event.Object)
 		case watch.Deleted:
 			// TODO: Will any consumers need access to the "last known
 			// state", which is passed in event.Object? If so, may need
 			// to change this.
-			r.store.Delete(jsonBase.ID())
+			r.store.Delete(meta.Name())
 		default:
 			glog.Errorf("unable to understand watch event %#v", event)
 		}
-		*resourceVersion = jsonBase.ResourceVersion() + 1
+		*resourceVersion = meta.ResourceVersion()
 		eventCount++
 	}
 

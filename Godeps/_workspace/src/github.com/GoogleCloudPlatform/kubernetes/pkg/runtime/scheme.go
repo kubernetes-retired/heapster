@@ -17,40 +17,11 @@ limitations under the License.
 package runtime
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/conversion"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-	"gopkg.in/v1/yaml"
 )
-
-// codecWrapper implements encoding to an alternative
-// default version for a scheme.
-type codecWrapper struct {
-	*Scheme
-	version string
-}
-
-// Encode implements Codec
-func (c *codecWrapper) Encode(obj Object) ([]byte, error) {
-	return c.Scheme.EncodeToVersion(obj, c.version)
-}
-
-// CodecFor returns a Codec that invokes Encode with the provided version.
-func CodecFor(scheme *Scheme, version string) Codec {
-	return &codecWrapper{scheme, version}
-}
-
-// EncodeOrDie is a version of Encode which will panic instead of returning an error. For tests.
-func EncodeOrDie(codec Codec, obj Object) string {
-	bytes, err := codec.Encode(obj)
-	if err != nil {
-		panic(err)
-	}
-	return string(bytes)
-}
 
 // Scheme defines methods for serializing and deserializing API objects. It
 // is an adaptation of conversion's Scheme for our API objects.
@@ -173,7 +144,7 @@ func (self *Scheme) rawExtensionToEmbeddedObject(in *RawExtension, out *Embedded
 func NewScheme() *Scheme {
 	s := &Scheme{conversion.NewScheme()}
 	s.raw.InternalVersion = ""
-	s.raw.MetaInsertionFactory = metaInsertion{}
+	s.raw.MetaFactory = conversion.SimpleMetaFactory{BaseFields: []string{"TypeMeta"}, VersionField: "APIVersion", KindField: "Kind"}
 	s.raw.AddConversionFuncs(
 		s.embeddedObjectToRawExtension,
 		s.rawExtensionToEmbeddedObject,
@@ -204,6 +175,12 @@ func (s *Scheme) KnownTypes(version string) map[string]reflect.Type {
 	return s.raw.KnownTypes(version)
 }
 
+// DataVersionAndKind will return the APIVersion and Kind of the given wire-format
+// encoding of an API Object, or an error.
+func (s *Scheme) DataVersionAndKind(data []byte) (version, kind string, err error) {
+	return s.raw.DataVersionAndKind(data)
+}
+
 // ObjectVersionAndKind returns the version and kind of the given Object.
 func (s *Scheme) ObjectVersionAndKind(obj Object) (version, kind string, err error) {
 	return s.raw.ObjectVersionAndKind(obj)
@@ -217,6 +194,11 @@ func (s *Scheme) New(versionName, typeName string) (Object, error) {
 		return nil, err
 	}
 	return obj.(Object), nil
+}
+
+// Log sets a logger on the scheme. For test purposes only
+func (s *Scheme) Log(l conversion.DebugLogger) {
+	s.raw.Log(l)
 }
 
 // AddConversionFuncs adds a function to the list of conversion functions. The given
@@ -242,31 +224,25 @@ func (s *Scheme) Convert(in, out interface{}) error {
 	return s.raw.Convert(in, out)
 }
 
-// FindJSONBase takes an arbitary api type, returns pointer to its JSONBase field.
-// obj must be a pointer to an api type.
-func FindJSONBase(obj Object) (JSONBaseInterface, error) {
-	v, err := enforcePtr(obj)
+// ConvertToVersion attempts to convert an input object to its matching Kind in another
+// version within this scheme. Will return an error if the provided version does not
+// contain the inKind (or a mapping by name defined with AddKnownTypeWithName). Will also
+// return an error if the conversion does not result in a valid Object being
+// returned.
+func (s *Scheme) ConvertToVersion(in Object, outVersion string) (Object, error) {
+	unknown, err := s.raw.ConvertToVersion(in, outVersion)
 	if err != nil {
 		return nil, err
 	}
-	t := v.Type()
-	name := t.Name()
-	if v.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("expected struct, but got %v: %v (%#v)", v.Kind(), name, v.Interface())
+	obj, ok := unknown.(Object)
+	if !ok {
+		return nil, fmt.Errorf("the provided object cannot be converted to a runtime.Object: %#v", unknown)
 	}
-	jsonBase := v.FieldByName("JSONBase")
-	if !jsonBase.IsValid() {
-		return nil, fmt.Errorf("struct %v lacks embedded JSON type", name)
-	}
-	g, err := newGenericJSONBase(jsonBase)
-	if err != nil {
-		return nil, err
-	}
-	return g, nil
+	return obj, nil
 }
 
 // EncodeToVersion turns the given api object into an appropriate JSON string.
-// Will return an error if the object doesn't have an embedded JSONBase.
+// Will return an error if the object doesn't have an embedded TypeMeta.
 // Obj may be a pointer to a struct, or a struct. If a struct, a copy
 // must be made. If a pointer, the object may be modified before encoding,
 // but will be put back into its original state before returning.
@@ -295,33 +271,6 @@ func FindJSONBase(obj Object) (JSONBaseInterface, error) {
 // config files.
 func (s *Scheme) EncodeToVersion(obj Object, destVersion string) (data []byte, err error) {
 	return s.raw.EncodeToVersion(obj, destVersion)
-}
-
-// enforcePtr ensures that obj is a pointer of some sort. Returns a reflect.Value of the
-// dereferenced pointer, ensuring that it is settable/addressable.
-// Returns an error if this is not possible.
-func enforcePtr(obj Object) (reflect.Value, error) {
-	v := reflect.ValueOf(obj)
-	if v.Kind() != reflect.Ptr {
-		return reflect.Value{}, fmt.Errorf("expected pointer, but got %v", v.Type().Name())
-	}
-	return v.Elem(), nil
-}
-
-// VersionAndKind will return the APIVersion and Kind of the given wire-format
-// enconding of an APIObject, or an error.
-func VersionAndKind(data []byte) (version, kind string, err error) {
-	findKind := struct {
-		Kind       string `json:"kind,omitempty" yaml:"kind,omitempty"`
-		APIVersion string `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
-	}{}
-	// yaml is a superset of json, so we use it to decode here. That way,
-	// we understand both.
-	err = yaml.Unmarshal(data, &findKind)
-	if err != nil {
-		return "", "", fmt.Errorf("couldn't get version/kind: %v", err)
-	}
-	return findKind.APIVersion, findKind.Kind, nil
 }
 
 // Decode converts a YAML or JSON string back into a pointer to an api object.
@@ -361,49 +310,4 @@ func (s *Scheme) CopyOrDie(obj Object) Object {
 		panic(err)
 	}
 	return newObj
-}
-
-func ObjectDiff(a, b Object) string {
-	ab, err := json.Marshal(a)
-	if err != nil {
-		panic(fmt.Sprintf("a: %v", err))
-	}
-	bb, err := json.Marshal(b)
-	if err != nil {
-		panic(fmt.Sprintf("b: %v", err))
-	}
-	return util.StringDiff(string(ab), string(bb))
-
-	// An alternate diff attempt, in case json isn't showing you
-	// the difference. (reflect.DeepEqual makes a distinction between
-	// nil and empty slices, for example.)
-	return util.StringDiff(
-		fmt.Sprintf("%#v", a),
-		fmt.Sprintf("%#v", b),
-	)
-}
-
-// metaInsertion implements conversion.MetaInsertionFactory, which lets the conversion
-// package figure out how to encode our object's types and versions. These fields are
-// located in our JSONBase.
-type metaInsertion struct {
-	JSONBase struct {
-		APIVersion string `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
-		Kind       string `json:"kind,omitempty" yaml:"kind,omitempty"`
-	} `json:",inline" yaml:",inline"`
-}
-
-// Create returns a new metaInsertion with the version and kind fields set.
-func (metaInsertion) Create(version, kind string) interface{} {
-	m := metaInsertion{}
-	m.JSONBase.APIVersion = version
-	m.JSONBase.Kind = kind
-	return &m
-}
-
-// Interpret returns the version and kind information from in, which must be
-// a metaInsertion pointer object.
-func (metaInsertion) Interpret(in interface{}) (version, kind string) {
-	m := in.(*metaInsertion)
-	return m.JSONBase.APIVersion, m.JSONBase.Kind
 }

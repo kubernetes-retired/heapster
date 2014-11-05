@@ -5,7 +5,6 @@ import (
 	"gopkg.in/yaml.v1"
 	"math"
 	"reflect"
-	"strings"
 	"time"
 )
 
@@ -156,13 +155,13 @@ var unmarshalTests = []struct {
 		map[string]interface{}{"seq": []interface{}{"A", "B"}},
 	}, {
 		"seq: [A,B,C,]",
-		map[string][]string{"seq": {"A", "B", "C"}},
+		map[string][]string{"seq": []string{"A", "B", "C"}},
 	}, {
 		"seq: [A,1,C]",
-		map[string][]string{"seq": {"A", "1", "C"}},
+		map[string][]string{"seq": []string{"A", "1", "C"}},
 	}, {
 		"seq: [A,1,C]",
-		map[string][]int{"seq": {1}},
+		map[string][]int{"seq": []int{1}},
 	}, {
 		"seq: [A,1,C]",
 		map[string]interface{}{"seq": []interface{}{"A", 1, "C"}},
@@ -173,13 +172,13 @@ var unmarshalTests = []struct {
 		map[string]interface{}{"seq": []interface{}{"A", "B"}},
 	}, {
 		"seq:\n - A\n - B\n - C",
-		map[string][]string{"seq": {"A", "B", "C"}},
+		map[string][]string{"seq": []string{"A", "B", "C"}},
 	}, {
 		"seq:\n - A\n - 1\n - C",
-		map[string][]string{"seq": {"A", "1", "C"}},
+		map[string][]string{"seq": []string{"A", "1", "C"}},
 	}, {
 		"seq:\n - A\n - 1\n - C",
-		map[string][]int{"seq": {1}},
+		map[string][]int{"seq": []int{1}},
 	}, {
 		"seq:\n - A\n - 1\n - C",
 		map[string]interface{}{"seq": []interface{}{"A", 1, "C"}},
@@ -280,7 +279,7 @@ var unmarshalTests = []struct {
 		map[interface{}]interface{}{"1": "\"2\""},
 	}, {
 		"v:\n- A\n- 'B\n\n  C'\n",
-		map[string][]string{"v": {"A", "B\nC"}},
+		map[string][]string{"v": []string{"A", "B\nC"}},
 	},
 
 	// Explicit tags.
@@ -317,10 +316,7 @@ var unmarshalTests = []struct {
 		map[string]*string{"foo": new(string)},
 	}, {
 		"foo: null",
-		map[string]string{"foo": ""},
-	}, {
-		"foo: null",
-		map[string]interface{}{"foo": nil},
+		map[string]string{},
 	},
 
 	// Ignored field
@@ -375,30 +371,6 @@ var unmarshalTests = []struct {
 		"a: 3s",
 		map[string]time.Duration{"a": 3 * time.Second},
 	},
-
-	// Issue #24.
-	{
-		"a: <foo>",
-		map[string]string{"a": "<foo>"},
-	},
-
-	// Base 60 floats are obsolete and unsupported.
-	{
-		"a: 1:1\n",
-		map[string]string{"a": "1:1"},
-	},
-
-	// Binary data.
-	{
-		"a: !!binary gIGC\n",
-		map[string]string{"a": "\x80\x81\x82"},
-	}, {
-		"a: !!binary |\n  " + strings.Repeat("kJCQ", 17) + "kJ\n  CQ\n",
-		map[string]string{"a": strings.Repeat("\x90", 54)},
-	}, {
-		"a: !!binary |\n  " + strings.Repeat("A", 70) + "\n  ==\n",
-		map[string]string{"a": strings.Repeat("\x00", 52)},
-	},
 }
 
 type inlineB struct {
@@ -446,15 +418,12 @@ func (s *S) TestUnmarshalNaN(c *C) {
 var unmarshalErrorTests = []struct {
 	data, error string
 }{
-	{"v: !!float 'error'", "YAML error: cannot decode !!str `error` as a !!float"},
+	{"v: !!float 'error'", "YAML error: Can't decode !!str 'error' as a !!float"},
 	{"v: [A,", "YAML error: line 1: did not find expected node content"},
 	{"v:\n- [A,", "YAML error: line 2: did not find expected node content"},
 	{"a: *b\n", "YAML error: Unknown anchor 'b' referenced"},
 	{"a: &a\n  b: *a\n", "YAML error: Anchor 'a' value contains itself"},
 	{"value: -", "YAML error: block sequence entries are not allowed in this context"},
-	{"a: !!binary ==", "YAML error: !!binary value contains invalid base64 data"},
-	{"{[.]}", `YAML error: invalid map key: \[\]interface \{\}\{"\."\}`},
-	{"{{.}}", `YAML error: invalid map key: map\[interface\ \{\}\]interface \{\}\{".":interface \{\}\(nil\)\}`},
 }
 
 func (s *S) TestUnmarshalErrors(c *C) {
@@ -646,30 +615,6 @@ func (s *S) TestMergeStruct(c *C) {
 			continue
 		}
 		c.Assert(test, Equals, want, Commentf("test %q failed", name))
-	}
-}
-
-var unmarshalNullTests = []func() interface{}{
-	func() interface{} { var v interface{}; v = "v"; return &v },
-	func() interface{} { var s = "s"; return &s },
-	func() interface{} { var s = "s"; sptr := &s; return &sptr },
-	func() interface{} { var i = 1; return &i },
-	func() interface{} { var i = 1; iptr := &i; return &iptr },
-	func() interface{} { m := map[string]int{"s": 1}; return &m },
-	func() interface{} { m := map[string]int{"s": 1}; return m },
-}
-
-func (s *S) TestUnmarshalNull(c *C) {
-	for _, test := range unmarshalNullTests {
-		item := test()
-		zero := reflect.Zero(reflect.TypeOf(item).Elem()).Interface()
-		err := yaml.Unmarshal([]byte("null"), item)
-		c.Assert(err, IsNil)
-		if reflect.TypeOf(item).Kind() == reflect.Map {
-			c.Assert(reflect.ValueOf(item).Interface(), DeepEquals, reflect.MakeMap(reflect.TypeOf(item)).Interface())
-		} else {
-			c.Assert(reflect.ValueOf(item).Elem().Interface(), DeepEquals, zero)
-		}
 	}
 }
 

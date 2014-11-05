@@ -35,9 +35,10 @@ func TestGetReference(t *testing.T) {
 	}{
 		"pod": {
 			obj: &Pod{
-				JSONBase: JSONBase{
-					ID:              "foo",
-					ResourceVersion: 42,
+				ObjectMeta: ObjectMeta{
+					Name:            "foo",
+					UID:             "bar",
+					ResourceVersion: "42",
 					SelfLink:        "/api/v1beta1/pods/foo",
 				},
 			},
@@ -45,31 +46,27 @@ func TestGetReference(t *testing.T) {
 				Kind:            "Pod",
 				APIVersion:      "v1beta1",
 				Name:            "foo",
-				UID:             "foo",
-				ResourceVersion: 42,
+				UID:             "bar",
+				ResourceVersion: "42",
 			},
 		},
 		"serviceList": {
 			obj: &ServiceList{
-				JSONBase: JSONBase{
-					ID:              "foo",
-					ResourceVersion: 42,
+				ListMeta: ListMeta{
+					ResourceVersion: "42",
 					SelfLink:        "/api/v1beta2/services",
 				},
 			},
 			ref: &ObjectReference{
 				Kind:            "ServiceList",
 				APIVersion:      "v1beta2",
-				Name:            "foo",
-				UID:             "foo",
-				ResourceVersion: 42,
+				ResourceVersion: "42",
 			},
 		},
 		"badSelfLink": {
 			obj: &ServiceList{
-				JSONBase: JSONBase{
-					ID:              "foo",
-					ResourceVersion: 42,
+				ListMeta: ListMeta{
+					ResourceVersion: "42",
 					SelfLink:        "v1beta2/services",
 				},
 			},
@@ -77,6 +74,11 @@ func TestGetReference(t *testing.T) {
 		},
 		"error": {
 			obj:       &FakeAPIObject{},
+			ref:       nil,
+			shouldErr: true,
+		},
+		"errorNil": {
+			obj:       nil,
 			ref:       nil,
 			shouldErr: true,
 		},

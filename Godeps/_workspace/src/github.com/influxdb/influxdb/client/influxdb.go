@@ -354,7 +354,7 @@ type TimePrecision string
 
 const (
 	Second      TimePrecision = "s"
-	Millisecond TimePrecision = "m"
+	Millisecond TimePrecision = "ms"
 	Microsecond TimePrecision = "u"
 )
 
@@ -480,17 +480,6 @@ func (self *Client) AuthenticateClusterAdmin(username, password string) error {
 	return responseToError(resp, err, true)
 }
 
-func (self *Client) GetContinuousQueries() ([]map[string]interface{}, error) {
-	url := self.getUrlWithUserAndPass(fmt.Sprintf("/db/%s/continuous_queries", self.database), self.username, self.password)
-	return self.listSomething(url)
-}
-
-func (self *Client) DeleteContinuousQueries(id int) error {
-	url := self.getUrlWithUserAndPass(fmt.Sprintf("/db/%s/continuous_queries/%d", self.database, id), self.username, self.password)
-	resp, err := self.del(url)
-	return responseToError(resp, err, true)
-}
-
 type LongTermShortTermShards struct {
 	// Long term shards, (doesn't get populated for version >= 0.8.0)
 	LongTerm []*Shard `json:"longTerm"`
@@ -588,8 +577,8 @@ func (self *Client) DropShardSpace(database, name string) error {
 }
 
 // Added to InfluxDB in 0.8.0
-func (self *Client) CreateShardSpace(space *ShardSpace) error {
-	url := self.getUrl(fmt.Sprintf("/cluster/shard_spaces"))
+func (self *Client) CreateShardSpace(database string, space *ShardSpace) error {
+	url := self.getUrl(fmt.Sprintf("/cluster/shard_spaces/%s", database))
 	data, err := json.Marshal(space)
 	if err != nil {
 		return err
@@ -607,4 +596,15 @@ func (self *Client) DropShard(id uint32, serverIds []uint32) error {
 	}
 	_, err = self.delWithBody(url, bytes.NewBuffer(body))
 	return err
+}
+
+// Added to InfluxDB in 0.8.2
+func (self *Client) UpdateShardSpace(database, name string, space *ShardSpace) error {
+	url := self.getUrl(fmt.Sprintf("/cluster/shard_spaces/%s/%s", database, name))
+	data, err := json.Marshal(space)
+	if err != nil {
+		return err
+	}
+	resp, err := self.httpClient.Post(url, "application/json", bytes.NewBuffer(data))
+	return responseToError(resp, err, true)
 }

@@ -29,13 +29,13 @@ Fork the Kubernetes repository and [turn up a Kubernetes cluster](https://github
 **Step 2: Start a Pod with Influxdb, grafana and elasticsearch**
 
 ```shell
-$ kubecfg.sh -c influx-grafana/deploy/grafana-influxdb-pod.json create pods
+$ kubectl.sh create -f deploy/influx-grafana-pod.json
 ```
 
 **Step 3: Start Influxdb service**
 
 ```shell
-$ kubecfg.sh -c influx-grafana/deploy/grafana-influxdb-service.json create services
+$ kubectl.sh create -f deploy/influx-grafana-service.json
 ```
 
 **Step 4: Update firewall rules**
@@ -54,26 +54,21 @@ Open deploy/heapster-pod.json and update the following environment variables:
 **Step 6: Start Heapster Pod**
 
 ```shell
-$ kubecfg.sh -c deploy/heapster-pod.json create pods
+$ kubectl.sh create -f deploy/heapster-pod.json
 ```
 
 Verify that all the pods and services are up and running:
 
 ```shell
-$ kubecfg.sh list pods
+$ kubectl.sh get pods
 ```
 ```shell
-$ kubecfg.sh list services
+$ kubectl.sh get services
 ```
 
-To start monitoring the cluster using grafana, find out the the external IP of the minion where the 'influx-grafana' Pod is running from the [Google Cloud Console][cloud-console] or the `gcutil` tool, and visit `http://<minion-ip>:80`. 
+To start monitoring the cluster using grafana, find out the the external IP of the minion where the 'influx-grafana' Pod is running from the output of `kubectl.sh get pods`, and visit `http://<minion-ip>:80`. 
 
 To access the Influxdb UI visit  `http://<minion-ip>:8083`.
-
-
-```shell
-$ gcutil listinstances
-```
 
 #####Hints
 * Grafana's default username and password is 'admin'. You can change that by modifying the grafana container [here](influx-grafana/deploy/grafana-influxdb-pod.json)

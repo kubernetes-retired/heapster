@@ -1,8 +1,6 @@
 package yaml
 
 import (
-	"encoding/base64"
-	"fmt"
 	"reflect"
 	"strconv"
 	"time"
@@ -65,7 +63,7 @@ func (p *parser) destroy() {
 func (p *parser) skip() {
 	if p.event.typ != yaml_NO_EVENT {
 		if p.event.typ == yaml_STREAM_END_EVENT {
-			fail("Attempted to go past the end of stream. Corrupted value?")
+			panic("Attempted to go past the end of stream. Corrupted value?")
 		}
 		yaml_event_delete(&p.event)
 	}
@@ -91,7 +89,7 @@ func (p *parser) fail() {
 	} else {
 		msg = "Unknown problem parsing YAML content"
 	}
-	fail(where + msg)
+	panic(where + msg)
 }
 
 func (p *parser) anchor(n *node, anchor []byte) {
@@ -116,9 +114,10 @@ func (p *parser) parse() *node {
 		// Happens when attempting to decode an empty buffer.
 		return nil
 	default:
-		panic("Attempted to parse unknown event: " + strconv.Itoa(int(p.event.typ)))
+		panic("Attempted to parse unknown event: " +
+			strconv.Itoa(int(p.event.typ)))
 	}
-	panic("unreachable")
+	panic("Unreachable")
 }
 
 func (p *parser) node(kind int) *node {
@@ -136,7 +135,8 @@ func (p *parser) document() *node {
 	p.skip()
 	n.children = append(n.children, p.parse())
 	if p.event.typ != yaml_DOCUMENT_END_EVENT {
-		panic("Expected end of document event but got " + strconv.Itoa(int(p.event.typ)))
+		panic("Expected end of document event but got " +
+			strconv.Itoa(int(p.event.typ)))
 	}
 	p.skip()
 	return n
@@ -218,7 +218,7 @@ func (d *decoder) setter(tag string, out *reflect.Value, good *bool) (set func()
 			var arg interface{}
 			*out = reflect.ValueOf(&arg).Elem()
 			return func() {
-				*good = setter.SetYAML(shortTag(tag), arg)
+				*good = setter.SetYAML(tag, arg)
 			}
 		}
 	}
@@ -226,7 +226,7 @@ func (d *decoder) setter(tag string, out *reflect.Value, good *bool) (set func()
 	for again {
 		again = false
 		setter, _ := (*out).Interface().(Setter)
-		if tag != yaml_NULL_TAG || setter != nil {
+		if tag != "!!null" || setter != nil {
 			if pv := (*out); pv.Kind() == reflect.Ptr {
 				if pv.IsNil() {
 					*out = reflect.New(pv.Type().Elem()).Elem()
@@ -242,7 +242,7 @@ func (d *decoder) setter(tag string, out *reflect.Value, good *bool) (set func()
 			var arg interface{}
 			*out = reflect.ValueOf(&arg).Elem()
 			return func() {
-				*good = setter.SetYAML(shortTag(tag), arg)
+				*good = setter.SetYAML(tag, arg)
 			}
 		}
 	}
@@ -279,23 +279,15 @@ func (d *decoder) document(n *node, out reflect.Value) (good bool) {
 func (d *decoder) alias(n *node, out reflect.Value) (good bool) {
 	an, ok := d.doc.anchors[n.value]
 	if !ok {
-		fail("Unknown anchor '" + n.value + "' referenced")
+		panic("Unknown anchor '" + n.value + "' referenced")
 	}
 	if d.aliases[n.value] {
-		fail("Anchor '" + n.value + "' value contains itself")
+		panic("Anchor '" + n.value + "' value contains itself")
 	}
 	d.aliases[n.value] = true
 	good = d.unmarshal(an, out)
 	delete(d.aliases, n.value)
 	return good
-}
-
-var zeroValue reflect.Value
-
-func resetMap(out reflect.Value) {
-	for _, k := range out.MapKeys() {
-		out.SetMapIndex(k, zeroValue)
-	}
 }
 
 var durationType = reflect.TypeOf(time.Duration(0))
@@ -304,36 +296,17 @@ func (d *decoder) scalar(n *node, out reflect.Value) (good bool) {
 	var tag string
 	var resolved interface{}
 	if n.tag == "" && !n.implicit {
-		tag = yaml_STR_TAG
+		tag = "!!str"
 		resolved = n.value
 	} else {
 		tag, resolved = resolve(n.tag, n.value)
-		if tag == yaml_BINARY_TAG {
-			data, err := base64.StdEncoding.DecodeString(resolved.(string))
-			if err != nil {
-				fail("!!binary value contains invalid base64 data")
-			}
-			resolved = string(data)
-		}
 	}
 	if set := d.setter(tag, &out, &good); set != nil {
 		defer set()
 	}
-	if resolved == nil {
-		if out.Kind() == reflect.Map && !out.CanAddr() {
-			resetMap(out)
-		} else {
-			out.Set(reflect.Zero(out.Type()))
-		}
-		good = true
-		return
-	}
 	switch out.Kind() {
 	case reflect.String:
-		if tag == yaml_BINARY_TAG {
-			out.SetString(resolved.(string))
-			good = true
-		} else if resolved != nil {
+		if resolved != nil {
 			out.SetString(n.value)
 			good = true
 		}
@@ -407,11 +380,17 @@ func (d *decoder) scalar(n *node, out reflect.Value) (good bool) {
 			good = true
 		}
 	case reflect.Ptr:
-		if out.Type().Elem() == reflect.TypeOf(resolved) {
-			elem := reflect.New(out.Type().Elem())
-			elem.Elem().Set(reflect.ValueOf(resolved))
-			out.Set(elem)
+		switch resolved.(type) {
+		case nil:
+			out.Set(reflect.Zero(out.Type()))
 			good = true
+		default:
+			if out.Type().Elem() == reflect.TypeOf(resolved) {
+				elem := reflect.New(out.Type().Elem())
+				elem.Elem().Set(reflect.ValueOf(resolved))
+				out.Set(elem)
+				good = true
+			}
 		}
 	}
 	return good
@@ -425,7 +404,7 @@ func settableValueOf(i interface{}) reflect.Value {
 }
 
 func (d *decoder) sequence(n *node, out reflect.Value) (good bool) {
-	if set := d.setter(yaml_SEQ_TAG, &out, &good); set != nil {
+	if set := d.setter("!!seq", &out, &good); set != nil {
 		defer set()
 	}
 	var iface reflect.Value
@@ -454,7 +433,7 @@ func (d *decoder) sequence(n *node, out reflect.Value) (good bool) {
 }
 
 func (d *decoder) mapping(n *node, out reflect.Value) (good bool) {
-	if set := d.setter(yaml_MAP_TAG, &out, &good); set != nil {
+	if set := d.setter("!!map", &out, &good); set != nil {
 		defer set()
 	}
 	if out.Kind() == reflect.Struct {
@@ -486,13 +465,6 @@ func (d *decoder) mapping(n *node, out reflect.Value) (good bool) {
 		}
 		k := reflect.New(kt).Elem()
 		if d.unmarshal(n.children[i], k) {
-			kkind := k.Kind()
-			if kkind == reflect.Interface {
-				kkind = k.Elem().Kind()
-			}
-			if kkind == reflect.Map || kkind == reflect.Slice {
-				fail(fmt.Sprintf("invalid map key: %#v", k.Interface()))
-			}
 			e := reflect.New(et).Elem()
 			if d.unmarshal(n.children[i+1], e) {
 				out.SetMapIndex(k, e)
@@ -539,28 +511,28 @@ func (d *decoder) merge(n *node, out reflect.Value) {
 	case aliasNode:
 		an, ok := d.doc.anchors[n.value]
 		if ok && an.kind != mappingNode {
-			fail(wantMap)
+			panic(wantMap)
 		}
 		d.unmarshal(n, out)
 	case sequenceNode:
 		// Step backwards as earlier nodes take precedence.
-		for i := len(n.children) - 1; i >= 0; i-- {
+		for i := len(n.children)-1; i >= 0; i-- {
 			ni := n.children[i]
 			if ni.kind == aliasNode {
 				an, ok := d.doc.anchors[ni.value]
 				if ok && an.kind != mappingNode {
-					fail(wantMap)
+					panic(wantMap)
 				}
 			} else if ni.kind != mappingNode {
-				fail(wantMap)
+				panic(wantMap)
 			}
 			d.unmarshal(ni, out)
 		}
 	default:
-		fail(wantMap)
+		panic(wantMap)
 	}
 }
 
 func isMerge(n *node) bool {
-	return n.kind == scalarNode && n.value == "<<" && (n.implicit == true || n.tag == yaml_MERGE_TAG)
+	return n.kind == scalarNode && n.value == "<<" && (n.implicit == true || n.tag == "!!merge" || n.tag == "tag:yaml.org,2002:merge")
 }
