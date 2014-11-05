@@ -20,7 +20,7 @@ function (Settings) {
       max_results: 100
     },
     window_title_prefix: 'Kubernetes - ',
-    default_route: '/dashboard/file/default.json',
+    default_route: "<--DASHBOARD-->",
     timezoneOffset: null,
     unsaved_changes_warning: true,
   });

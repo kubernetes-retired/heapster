@@ -38,5 +38,9 @@ if [ ! -f /.elasticsearch_configured ]; then
     /set_elasticsearch.sh
 fi
 
+if [ ! -f /.dashboard_configured ]; then
+    /set_dashboard.sh
+fi
+
 echo "=> Starting and running Nginx..."
 /usr/sbin/nginx

@@ -1,12 +1,7 @@
 {
 	"ImportPath": "github.com/GoogleCloudPlatform/heapster",
-	"GoVersion": "go1.2.2",
+	"GoVersion": "go1.3.3",
 	"Deps": [
-		{
-			"ImportPath": "code.google.com/p/go-uuid/uuid",
-			"Comment": "null-12",
-			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
-		},
 		{
 			"ImportPath": "code.google.com/p/go.net/context",
 			"Comment": "null-150",
@@ -43,11 +38,6 @@
 			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
 		},
 		{
-			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/health",
-			"Comment": "v0.4-508-g652a0ce",
-			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
-		},
-		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/labels",
 			"Comment": "v0.4-508-g652a0ce",
 			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
@@ -71,6 +61,11 @@
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/watch",
 			"Comment": "v0.4-508-g652a0ce",
 			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
+		},
+		{
+			"ImportPath": "github.com/fsouza/go-dockerclient",
+			"Comment": "0.2.1-251-g2e21eae",
+			"Rev": "2e21eaef5e7d46f002e259eb7cde39ed3680a7b4"
 		},
 		{
 			"ImportPath": "github.com/golang/glog",

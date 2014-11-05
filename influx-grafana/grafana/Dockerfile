@@ -29,10 +29,11 @@ ADD run.sh /run.sh
 ADD set_influx_db.sh /set_influx_db.sh
 ADD set_basic_auth.sh /set_basic_auth.sh
 ADD set_elasticsearch.sh /set_elasticsearch.sh
+ADD set_dashboard.sh /set_dashboard.sh
 
 ADD config.js /app/config.js
 ADD default /etc/nginx/sites-enabled/default
-ADD default-dashboard.json /app/app/dashboards/default.json
-RUN chmod +x /*.sh && chmod 0644 /app/config.js && chmod 0644 /app/app/dashboards/default.json
+ADD kubernetes-dashboard.json /app/app/dashboards/kubernetes.json
+RUN chmod +x /*.sh && chmod 0644 /app/config.js && chmod 0644 /app/app/dashboards/*.json
 
 CMD ["/run.sh"]
