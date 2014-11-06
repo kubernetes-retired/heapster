@@ -3,7 +3,7 @@ Heapster
 
 _Warning: Heapster for Kubernetes currently only works on Google Compute Engine! GCE Virtual Machines need to have at least 2 cores._
 
-Heapster enables monitoring of Clusters using [cAdvisor](https://github.com/google/cadvisor). It is a *demo app* that demonstrates one possible way of monitoring various types of Clusters using cAdvisor.
+Heapster enables monitoring of Clusters using [cAdvisor](https://github.com/google/cadvisor).
 
 Heapster supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) natively and collects resource usage of all the Pods running in the cluster. It was built to showcase the power of core Kubernetes concepts like labels and pods and the awesomeness that is cAdvisor. 
 
@@ -71,6 +71,3 @@ To access the Influxdb UI visit  `http://<minion-ip>:8083`.
 #### Community
 
 Contributions, questions, and comments are all welcomed and encouraged! Heapster and cAdvisor developers hang out in [#google-containers](http://webchat.freenode.net/?channels=google-containers) room on freenode.net.  We also have the [google-containers Google Groups mailing list](https://groups.google.com/forum/#!forum/google-containers).
-
-[cloud-console]: https://console.developer.google.com
-[gcutil-docs]: https://developers.google.com/compute/docs/gcutil/reference/firewall#addfirewall
