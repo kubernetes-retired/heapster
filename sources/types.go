@@ -7,7 +7,6 @@ import (
 
 var (
 	argMaster      = flag.String("kubernetes_master", "", "Kubernetes master IP")
-	argMasterAuth  = flag.String("kubernetes_master_auth", "", "username:password to access the master")
 	argKubeletPort = flag.String("kubelet_port", "10250", "Kubelet port")
 )
 

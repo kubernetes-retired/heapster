@@ -9,8 +9,6 @@
       "containers": [{
         "name": "heapster",
         "image": "kubernetes/heapster",
-	"env": [{"name": KUBE_MASTER, "value": ""},
-		{"name": KUBE_MASTER_AUTH, "value": ""}],
 	}]
     }
   },
