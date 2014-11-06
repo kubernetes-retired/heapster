@@ -45,13 +45,7 @@ Open up ports tcp:80,8083,8086,9200.
 $ gcutil addfirewall --allowed=tcp:80,tcp:8083,tcp:8086,tcp:9200 --target_tags=kubernetes-minion heapster
 ```
 
-**Step 5: Configure cluster information for heapster Pod**
-
-Open deploy/heapster-pod.json and update the following environment variables:
-* Set 'KUBE_MASTER' to the internal IP address of the master - `$ gcutil listinstances | grep kubernetes-master | awk '{print $8}'`
-* Set 'KUBE_MASTER_AUTH' to be the the username and password of the master. The format is username:password. - `$ cat ~/.kubernetes_auth`
-
-**Step 6: Start Heapster Pod**
+**Step 5: Start Heapster Pod**
 
 ```shell
 $ kubectl.sh create -f deploy/heapster-pod.json
@@ -72,7 +66,6 @@ To access the Influxdb UI visit  `http://<minion-ip>:8083`.
 
 #####Hints
 * Grafana's default username and password is 'admin'. You can change that by modifying the grafana container [here](influx-grafana/deploy/grafana-influxdb-pod.json)
-* Load the 'Example Grafana Dashboard.json' in this repo to get started with Grafana.
 * To enable memory and swap accounting on the minions follow the instructions [here](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting)
 
 #### Community

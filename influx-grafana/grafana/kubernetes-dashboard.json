@@ -509,30 +509,26 @@
               "function": "mean",
               "column": "memory_usage",
               "series": "stats",
-              "query": "select container_name, mean(memory_usage) from \"stats\" where $timeFilter group by time($interval), container_name order asc",
+              "query": "select container_name, mean(memory_usage) from \"stats\" where $timeFilter and labels = 'name:influxdb' group by time($interval), container_name order asc",
               "condition_filter": true,
-              "condition_key": "labels",
-              "condition_op": "=",
-              "condition_value": "'name:influxdb'",
               "interval": "2s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
-              "alias": "total"
+              "alias": "total",
+              "condition": "labels = 'name:influxdb'"
             },
             {
               "target": "randomWalk('random walk2')",
               "function": "mean",
               "column": "memory_working_set",
               "series": "stats",
-              "query": "select container_name, mean(memory_working_set) from \"stats\" where $timeFilter group by time($interval), container_name order asc",
+              "query": "select container_name, mean(memory_working_set) from \"stats\" where $timeFilter and labels = 'name:influxdb' group by time($interval), container_name order asc",
               "condition_filter": true,
-              "condition_key": "labels",
-              "condition_op": "=",
-              "condition_value": "'name:influxdb'",
               "interval": "2s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
-              "alias": "hot"
+              "alias": "hot",
+              "condition": "labels = 'name:influxdb'"
             }
           ],
           "aliasColors": {},
@@ -543,6 +539,178 @@
             "enable": false
           },
           "id": 6,
+          "seriesOverrides": []
+        }
+      ],
+      "notice": false
+    },
+    {
+      "title": "test",
+      "height": "250px",
+      "editable": true,
+      "collapse": false,
+      "collapsable": true,
+      "panels": [
+        {
+          "span": 6,
+          "editable": true,
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_formats": [
+            "ns",
+            "ns"
+          ],
+          "grid": {
+            "max": null,
+            "min": null,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "resolution": 100,
+          "lines": true,
+          "fill": 1,
+          "linewidth": 2,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "options": false,
+          "legend": {
+            "show": true,
+            "values": true,
+            "min": false,
+            "max": true,
+            "current": true,
+            "total": false,
+            "avg": true,
+            "alignAsTable": true
+          },
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "individual",
+            "query_as_alias": true
+          },
+          "targets": [
+            {
+              "target": "randomWalk('random walk')",
+              "function": "derivative",
+              "column": "cpu_cumulative_usage",
+              "series": "machine",
+              "query": "select hostname, derivative(cpu_cumulative_usage) from \"machine\" where $timeFilter group by time($interval), hostname fill(null) order asc",
+              "condition_filter": true,
+              "interval": "2s",
+              "groupby_field_add": true,
+              "groupby_field": "hostname",
+              "alias": "",
+              "condition": "",
+              "fill": "null"
+            }
+          ],
+          "aliasColors": {},
+          "title": "Cluster CPU usage - stacked",
+          "datasource": null,
+          "renderer": "png",
+          "annotate": {
+            "enable": false
+          },
+          "id": 7,
+          "seriesOverrides": [],
+          "interval": "2s"
+        },
+        {
+          "span": 6,
+          "editable": true,
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_formats": [
+            "bytes",
+            "bytes"
+          ],
+          "grid": {
+            "max": null,
+            "min": null,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "resolution": 100,
+          "lines": true,
+          "fill": 1,
+          "linewidth": 2,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "options": false,
+          "legend": {
+            "show": true,
+            "values": true,
+            "min": false,
+            "max": true,
+            "current": true,
+            "total": false,
+            "avg": false,
+            "alignAsTable": true,
+            "rightSide": false
+          },
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "individual",
+            "query_as_alias": true
+          },
+          "targets": [
+            {
+              "target": "randomWalk('random walk')",
+              "function": "mean",
+              "column": "memory_usage",
+              "series": "machine",
+              "query": "select hostname, mean(memory_usage) from \"machine\" where $timeFilter group by time($interval), hostname fill(null) order asc",
+              "condition_filter": true,
+              "interval": "2s",
+              "groupby_field_add": true,
+              "groupby_field": "hostname",
+              "alias": "",
+              "condition": "",
+              "fill": "null"
+            }
+          ],
+          "aliasColors": {},
+          "title": "Cluster memory usage - stacked",
+          "datasource": null,
+          "renderer": "png",
+          "annotate": {
+            "enable": false
+          },
+          "id": 8,
           "seriesOverrides": []
         }
       ],
@@ -579,7 +747,7 @@
         "2h",
         "1d"
       ],
-      "now": false
+      "now": true
     }
   ],
   "time": {

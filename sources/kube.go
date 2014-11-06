@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
@@ -120,8 +119,10 @@ func (self *KubeSource) getNodesInfo() ([]RawContainer, error) {
 		if err != nil {
 			return []RawContainer{}, err
 		}
-		container := RawContainer{node, Container{"/", spec, stats}}
-		nodesInfo = append(nodesInfo, container)
+		if len(stats) > 0 {
+			container := RawContainer{node, Container{"/", spec, stats}}
+			nodesInfo = append(nodesInfo, container)
+		}
 	}
 
 	return nodesInfo, nil
@@ -162,15 +163,9 @@ func newKubeSource() (*KubeSource, error) {
 	if len(*argMaster) == 0 {
 		return nil, fmt.Errorf("kubernetes_master flag not specified")
 	}
-	if len(*argMasterAuth) == 0 || len(strings.Split(*argMasterAuth, ":")) != 2 {
-		return nil, fmt.Errorf("kubernetes_master_auth invalid")
-	}
-	authInfo := strings.Split(*argMasterAuth, ":")
 	kubeClient := kube_client.NewOrDie(&kube_client.Config{
-		Host:     "https://" + *argMaster,
+		Host:     "http://" + *argMaster,
 		Version:  "v1beta1",
-		Username: authInfo[0],
-		Password: authInfo[1],
 		Insecure: true,
 	})
 
