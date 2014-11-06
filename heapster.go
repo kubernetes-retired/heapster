@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks"
@@ -14,6 +15,7 @@ var argPollDuration = flag.Duration("poll_duration", 10*time.Second, "Polling du
 
 func main() {
 	flag.Parse()
+	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", heapsterVersion)
 	err := doWork()
 	if err != nil {

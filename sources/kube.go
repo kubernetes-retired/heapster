@@ -119,8 +119,10 @@ func (self *KubeSource) getNodesInfo() ([]RawContainer, error) {
 		if err != nil {
 			return []RawContainer{}, err
 		}
-		container := RawContainer{node, Container{"/", spec, stats}}
-		nodesInfo = append(nodesInfo, container)
+		if len(stats) > 0 {
+			container := RawContainer{node, Container{"/", spec, stats}}
+			nodesInfo = append(nodesInfo, container)
+		}
 	}
 
 	return nodesInfo, nil
