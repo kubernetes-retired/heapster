@@ -33,7 +33,7 @@ $ docker run --name heapster-buddy --net host -d -v $PWD/heapster:/var/run/heaps
 Figure out the host where InfluxDB is running and pass that to heapster through 'INFLUXDB_HOST' environment variable.
 
 ```shell
-$ docker run --name heapster -d -e INFLUXDB_HOST=<ip>:8086 -v $PWD/heapster:/var/run/heapster vish/heapster
+$ docker run --name heapster -d -e INFLUXDB_HOST=<ip>:8086 -v $PWD/heapster:/var/run/heapster kubernetes/heapster
 ```
 
 It will help to make InfluxDB and grafana a native CoreOS service, and modify heapster to auto discover the InfluxDB service as it is done in the case of Kubernetes. 
