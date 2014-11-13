@@ -8,7 +8,7 @@ fi
 
 dbIP=${INFLUXDB_HOST}
 if [ "$dbIP" = "localhost" ]; then
-    dbIP=$(curl "http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip" -H "X-Google-Metadata-Request: True")
+  dbIP='"+window.location.hostname+"'
 elif [ "$dbIP" = "**ChangeMe**" ]; then
     echo "=> No address of InfluxDB is specified!"
     echo "=> Program terminated!"

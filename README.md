@@ -1,7 +1,7 @@
 Heapster
 ===========
 
-_Warning: Heapster for Kubernetes currently only works on Google Compute Engine! GCE Virtual Machines need to have at least 2 cores._
+_Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform optimally._
 
 Heapster enables monitoring of Clusters using [cAdvisor](https://github.com/google/cadvisor).
 
