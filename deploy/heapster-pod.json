@@ -9,6 +9,9 @@
       "containers": [{
         "name": "heapster",
         "image": "kubernetes/heapster",
+        "ports": [{
+        "containerPort": 80,
+        "hostPort": 80 
 	}]
     }
   },
