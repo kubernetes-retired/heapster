@@ -60,7 +60,7 @@ $ kubectl.sh get pods
 $ kubectl.sh get services
 ```
 
-To start monitoring the cluster using grafana, find out the the external IP of the minion where the 'influx-grafana' Pod is running from the output of `kubectl.sh get pods`, and visit `http://<minion-ip>:80`. 
+To start monitoring the cluster using grafana, find out the the external IP of the minion where the 'influx-grafana' Pod is running from the output of `kubectl.sh get pods influx-grafana`, and visit `http://<minion-ip>:80`. 
 
 To access the Influxdb UI visit  `http://<minion-ip>:8083`.
 
