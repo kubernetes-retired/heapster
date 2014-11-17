@@ -4,7 +4,7 @@ MAINTAINER Vishnu Kannan <vishnuk@google.com>
 ENV GRAFANA_VERSION 1.8.1
 # Environment variables for HTTP AUTH
 ENV HTTP_USER admin
-ENV HTTP_PASS **Random**
+ENV HTTP_PASS admin
 
 ENV INFLUXDB_PROTO http
 ENV INFLUXDB_HOST localhost
@@ -30,6 +30,6 @@ ADD set_dashboard.sh /set_dashboard.sh
 ADD config.js /app/config.js
 RUN chmod +x /*.sh && chmod 0644 /app/config.js 
 ADD default /etc/nginx/sites-enabled/default
-ADD kubernetes-dashboard.json /app/app/dashboards/kubernetes.json
+ADD kubernetes-dashboard.json /app/dashboards/kubernetes.json
 
 CMD ["/run.sh"]
