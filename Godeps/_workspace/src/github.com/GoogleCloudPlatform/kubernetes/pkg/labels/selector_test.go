@@ -17,6 +17,7 @@ limitations under the License.
 package labels
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
@@ -112,6 +113,15 @@ func TestSelectorMatches(t *testing.T) {
 	expectNoMatch(t, "foo=bar,foobar=bar,baz=blah", labelset)
 }
 
+func TestOneTermEqualSelector(t *testing.T) {
+	if !OneTermEqualSelector("x", "y").Matches(Set{"x": "y"}) {
+		t.Errorf("No match when match expected.")
+	}
+	if OneTermEqualSelector("x", "y").Matches(Set{"x": "z"}) {
+		t.Errorf("Match when none expected.")
+	}
+}
+
 func expectMatchDirect(t *testing.T, selector, ls Set) {
 	if !SelectorFromSet(selector).Matches(ls) {
 		t.Errorf("Wanted %s to match '%s', but it did not.\n", selector, ls)
@@ -191,10 +201,10 @@ func TestRequiresExactMatch(t *testing.T) {
 	for k, v := range testCases {
 		value, found := v.S.RequiresExactMatch(v.Label)
 		if value != v.Value {
-			t.Errorf("%s: expected value %v, got %s", k, v.Value, value)
+			t.Errorf("%s: expected value %s, got %s", k, v.Value, value)
 		}
 		if found != v.Found {
-			t.Errorf("%s: expected found %v, got %s", k, v.Found, found)
+			t.Errorf("%s: expected found %t, got %t", k, v.Found, found)
 		}
 	}
 }
@@ -212,6 +222,8 @@ func TestRequirementConstructor(t *testing.T) {
 		{"x", In, util.NewStringSet("foo"), true},
 		{"x", NotIn, util.NewStringSet("foo"), true},
 		{"x", Exists, nil, true},
+		{"abcdefghijklmnopqrstuvwxy", Exists, nil, false}, //breaks DNS952 rule that len(key) < 25
+		{"1foo", In, util.NewStringSet("bar"), false},     //breaks DNS952 rule that keys start with [a-z]
 	}
 	for _, rc := range requirementConstructorTests {
 		if _, err := NewRequirement(rc.Key, rc.Op, rc.Vals); err == nil && !rc.Success {
@@ -285,6 +297,67 @@ func TestRequirementLabelSelectorMatching(t *testing.T) {
 			t.Errorf("%+v.Matches(%#v) => %v, expected no error", lsm.Sel, lsm.Set, err)
 		} else if match != lsm.Match {
 			t.Errorf("%+v.Matches(%#v) => %v, want %v", lsm.Sel, lsm.Set, match, lsm.Match)
+		}
+	}
+}
+
+func TestSetSelectorParser(t *testing.T) {
+	setSelectorParserTests := []struct {
+		In    string
+		Out   SetBasedSelector
+		Match bool
+		Valid bool
+	}{
+		{"", &LabelSelector{Requirements: nil}, true, true},
+		{"x", &LabelSelector{Requirements: []Requirement{
+			getRequirement("x", Exists, nil, t),
+		}}, true, true},
+		{"foo in (abc)", &LabelSelector{Requirements: []Requirement{
+			getRequirement("foo", In, util.NewStringSet("abc"), t),
+		}}, true, true},
+		{"x not in (abc)", &LabelSelector{Requirements: []Requirement{
+			getRequirement("x", NotIn, util.NewStringSet("abc"), t),
+		}}, true, true},
+		{"x not in (abc,def)", &LabelSelector{Requirements: []Requirement{
+			getRequirement("x", NotIn, util.NewStringSet("abc", "def"), t),
+		}}, true, true},
+		{"x in (abc,def)", &LabelSelector{Requirements: []Requirement{
+			getRequirement("x", In, util.NewStringSet("abc", "def"), t),
+		}}, true, true},
+		{"x in (abc,)", &LabelSelector{Requirements: []Requirement{
+			getRequirement("x", In, util.NewStringSet("abc", ""), t),
+		}}, true, true},
+		{"x in ()", &LabelSelector{Requirements: []Requirement{
+			getRequirement("x", In, util.NewStringSet(""), t),
+		}}, true, true},
+		{"x not in (abc,,def),bar,z in (),w", &LabelSelector{Requirements: []Requirement{
+			getRequirement("x", NotIn, util.NewStringSet("abc", "", "def"), t),
+			getRequirement("bar", Exists, nil, t),
+			getRequirement("z", In, util.NewStringSet(""), t),
+			getRequirement("w", Exists, nil, t),
+		}}, true, true},
+		{"x,y in (a)", &LabelSelector{Requirements: []Requirement{
+			getRequirement("y", In, util.NewStringSet("a"), t),
+			getRequirement("x", Exists, nil, t),
+		}}, false, true},
+		{"x,,y", nil, true, false},
+		{",x,y", nil, true, false},
+		{"x, y", nil, true, false},
+		{"x nott in (y)", nil, true, false},
+		{"x not in ( )", nil, true, false},
+		{"x not in (, a)", nil, true, false},
+		{"a in (xyz),", nil, true, false},
+		{"a in (xyz)b not in ()", nil, true, false},
+		{"a ", nil, true, false},
+		{"a not in(", nil, true, false},
+	}
+	for _, ssp := range setSelectorParserTests {
+		if sel, err := Parse(ssp.In); err != nil && ssp.Valid {
+			t.Errorf("Parse(%s) => %v expected no error", ssp.In, err)
+		} else if err == nil && !ssp.Valid {
+			t.Errorf("Parse(%s) => %+v expected error", ssp.In, sel)
+		} else if ssp.Match && !reflect.DeepEqual(sel, ssp.Out) {
+			t.Errorf("parse output %+v doesn't match %+v, expected match", sel, ssp.Out)
 		}
 	}
 }

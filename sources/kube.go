@@ -54,22 +54,23 @@ func (self *KubeSource) listMinions() (*nodeList, error) {
 
 func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 	localPod := Pod{
-		Name:       pod.DesiredState.Manifest.ID,
-		ID:         pod.DesiredState.Manifest.UUID,
-		Hostname:   pod.CurrentState.Host,
-		Status:     string(pod.CurrentState.Status),
-		PodIP:      pod.CurrentState.PodIP,
+		Name:       pod.Name,
+		ID:         pod.UID,
+		Hostname:   pod.Status.Host,
+		Status:     string(pod.Status.Phase),
+		PodIP:      pod.Status.PodIP,
 		Labels:     make(map[string]string, 0),
 		Containers: make([]*Container, 0),
 	}
 	for key, value := range pod.Labels {
 		localPod.Labels[key] = value
 	}
-	for _, container := range pod.DesiredState.Manifest.Containers {
+	for _, container := range pod.Spec.Containers {
 		localContainer := newContainer()
 		localContainer.Name = container.Name
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}
+	glog.V(2).Infof("found pod: %+v", localPod)
 
 	return &localPod
 }
@@ -80,6 +81,7 @@ func (self *KubeSource) getPods() ([]Pod, error) {
 	if err != nil {
 		return nil, err
 	}
+	glog.V(1).Infof("got pods from api server %+v", pods)
 	// TODO(vishh): Add API Version check. Fail if Kubernetes returns an invalid API Version.
 	out := make([]Pod, 0)
 	for _, pod := range pods.Items {
@@ -101,7 +103,7 @@ func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerNam
 	}
 	err = PostRequestAndGetValue(&http.Client{}, req, &containerInfo)
 	if err != nil {
-		glog.Errorf("failed to get stats from kubelet on host with ip %s - %s\n", hostIP, err)
+		glog.Errorf("failed to get stats from kubelet url: %s - %s\n", url, err)
 		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, nil
 	}
 

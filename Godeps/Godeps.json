@@ -24,43 +24,43 @@
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/api",
-			"Comment": "v0.4-508-g652a0ce",
-			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
+			"Comment": "v0.4-1101-gff1e9f4",
+			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/client",
-			"Comment": "v0.4-508-g652a0ce",
-			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
+			"Comment": "v0.4-1101-gff1e9f4",
+			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/conversion",
-			"Comment": "v0.4-508-g652a0ce",
-			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
+			"Comment": "v0.4-1101-gff1e9f4",
+			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/labels",
-			"Comment": "v0.4-508-g652a0ce",
-			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
+			"Comment": "v0.4-1101-gff1e9f4",
+			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/runtime",
-			"Comment": "v0.4-508-g652a0ce",
-			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
+			"Comment": "v0.4-1101-gff1e9f4",
+			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/util",
-			"Comment": "v0.4-508-g652a0ce",
-			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
+			"Comment": "v0.4-1101-gff1e9f4",
+			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/version",
-			"Comment": "v0.4-508-g652a0ce",
-			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
+			"Comment": "v0.4-1101-gff1e9f4",
+			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/watch",
-			"Comment": "v0.4-508-g652a0ce",
-			"Rev": "652a0ce4db0b77e6075f1f90a1bf0ae82231aa10"
+			"Comment": "v0.4-1101-gff1e9f4",
+			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",

@@ -34,6 +34,14 @@ func init() {
 			out.Spec.RestartPolicy = in.RestartPolicy
 			out.Name = in.ID
 			out.UID = in.UUID
+			// TODO(dchen1107): Move this conversion to pkg/api/v1beta[123]/conversion.go
+			// along with fixing #1502
+			for i := range out.Spec.Containers {
+				ctr := &out.Spec.Containers[i]
+				if len(ctr.TerminationMessagePath) == 0 {
+					ctr.TerminationMessagePath = TerminationMessagePathDefault
+				}
+			}
 			return nil
 		},
 		func(in *BoundPod, out *ContainerManifest, s conversion.Scope) error {
@@ -43,8 +51,16 @@ func init() {
 			out.Version = "v1beta2"
 			out.ID = in.Name
 			out.UUID = in.UID
+			for i := range out.Containers {
+				ctr := &out.Containers[i]
+				if len(ctr.TerminationMessagePath) == 0 {
+					ctr.TerminationMessagePath = TerminationMessagePathDefault
+				}
+			}
 			return nil
 		},
+
+		// ContainerManifestList
 		func(in *ContainerManifestList, out *BoundPods, s conversion.Scope) error {
 			if err := s.Convert(&in.Items, &out.Items, 0); err != nil {
 				return err
@@ -65,7 +81,7 @@ func init() {
 
 		// Convert Pod to BoundPod
 		func(in *Pod, out *BoundPod, s conversion.Scope) error {
-			if err := s.Convert(&in.DesiredState.Manifest, out, 0); err != nil {
+			if err := s.Convert(&in.Spec, &out.Spec, 0); err != nil {
 				return err
 			}
 			// Only copy a subset of fields, and override manifest attributes with the pod
@@ -74,6 +90,33 @@ func init() {
 			out.Name = in.Name
 			out.Namespace = in.Namespace
 			out.CreationTimestamp = in.CreationTimestamp
+			return nil
+		},
+
+		// Conversion between Manifest and PodSpec
+		func(in *PodSpec, out *ContainerManifest, s conversion.Scope) error {
+			if err := s.Convert(&in.Volumes, &out.Volumes, 0); err != nil {
+				return err
+			}
+			if err := s.Convert(&in.Containers, &out.Containers, 0); err != nil {
+				return err
+			}
+			if err := s.Convert(&in.RestartPolicy, &out.RestartPolicy, 0); err != nil {
+				return err
+			}
+			out.Version = "v1beta2"
+			return nil
+		},
+		func(in *ContainerManifest, out *PodSpec, s conversion.Scope) error {
+			if err := s.Convert(&in.Volumes, &out.Volumes, 0); err != nil {
+				return err
+			}
+			if err := s.Convert(&in.Containers, &out.Containers, 0); err != nil {
+				return err
+			}
+			if err := s.Convert(&in.RestartPolicy, &out.RestartPolicy, 0); err != nil {
+				return err
+			}
 			return nil
 		},
 	)
