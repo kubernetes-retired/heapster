@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.3 (11-26-2014)
+- Handle updated Pod API in Kubernetes.
+
 ## 0.2 (10-06-2014)
 - Use kubernetes master readonly service which does not require auth
 
