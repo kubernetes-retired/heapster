@@ -3,11 +3,11 @@ Heapster
 
 _Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform optimally._
 
-Heapster enables monitoring of Clusters using [cAdvisor](https://github.com/google/cadvisor).
+Heapster enables monitoring of [Clusters](https://cloud.google.com/container-engine/) using [cAdvisor](https://github.com/google/cadvisor).
 
 Heapster supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) natively and collects resource usage of all the Pods running in the cluster. It was built to showcase the power of core Kubernetes concepts like labels and pods and the awesomeness that is cAdvisor. 
 
-Heapster can be used to enable cluster wide monitoring on other Cluster management solutions by running a simple cluster specific buddy container that will help heapster with discovery of hosts. For example, take a look at [this guide](clusters/coreos/README.md) for setting up Cluster monitoring in [CoreOS](https://coreos.com).
+Heapster can be used to enable cluster wide monitoring on other [Cluster management solutions](https://cloud.google.com/compute/docs/containers) by running a simple cluster specific buddy container that will help heapster with discovery of hosts. For example, take a look at [this guide](clusters/coreos/README.md) for setting up Cluster monitoring in [CoreOS](https://coreos.com).
 
 
 #####How heapster works on Kubernetes:
