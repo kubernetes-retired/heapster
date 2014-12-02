@@ -62,13 +62,13 @@ func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, con
 	columns = append(columns, colContainerName)
 	values = append(values, containerName)
 
-	if stat.Cpu != nil {
+	if spec.HasCpu {
 		// Cumulative Cpu Usage
 		columns = append(columns, colCpuCumulativeUsage)
 		values = append(values, stat.Cpu.Usage.Total)
 	}
 
-	if stat.Memory != nil {
+	if spec.HasMemory {
 		// Memory Usage
 		columns = append(columns, colMemoryUsage)
 		values = append(values, stat.Memory.Usage)
@@ -83,7 +83,7 @@ func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, con
 	}
 
 	// Optional: Network stats.
-	if stat.Network != nil {
+	if spec.HasNetwork {
 		columns = append(columns, colRxBytes)
 		values = append(values, stat.Network.RxBytes)
 

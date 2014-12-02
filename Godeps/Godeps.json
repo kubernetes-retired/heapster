@@ -3,9 +3,9 @@
 	"GoVersion": "go1.3.3",
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/go.net/context",
-			"Comment": "null-150",
-			"Rev": "90e232e2462dedc03bf3c93358da62d54d55dfb6"
+			"ImportPath": "code.google.com/p/go-uuid/uuid",
+			"Comment": "null-12",
+			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
 		},
 		{
 			"ImportPath": "code.google.com/p/goauth2/oauth",
@@ -14,58 +14,58 @@
 		},
 		{
 			"ImportPath": "code.google.com/p/google-api-go-client/bigquery/v2",
-			"Comment": "release-103",
-			"Rev": "11626ef0c2fd66fd8c9a128f6ae38b77cd101f30"
+			"Comment": "release-101",
+			"Rev": "e1c259484b495133836706f46319f5897f1e9bf6"
 		},
 		{
 			"ImportPath": "code.google.com/p/google-api-go-client/googleapi",
-			"Comment": "release-103",
-			"Rev": "11626ef0c2fd66fd8c9a128f6ae38b77cd101f30"
+			"Comment": "release-101",
+			"Rev": "e1c259484b495133836706f46319f5897f1e9bf6"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/api",
-			"Comment": "v0.4-1101-gff1e9f4",
-			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
+			"Comment": "v0.4-1158-g993ef88",
+			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/client",
-			"Comment": "v0.4-1101-gff1e9f4",
-			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
+			"Comment": "v0.4-1158-g993ef88",
+			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/conversion",
-			"Comment": "v0.4-1101-gff1e9f4",
-			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
+			"Comment": "v0.4-1158-g993ef88",
+			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/health",
+			"Comment": "v0.4-1158-g993ef88",
+			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/labels",
-			"Comment": "v0.4-1101-gff1e9f4",
-			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
+			"Comment": "v0.4-1158-g993ef88",
+			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/runtime",
-			"Comment": "v0.4-1101-gff1e9f4",
-			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
+			"Comment": "v0.4-1158-g993ef88",
+			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/util",
-			"Comment": "v0.4-1101-gff1e9f4",
-			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
+			"Comment": "v0.4-1158-g993ef88",
+			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/version",
-			"Comment": "v0.4-1101-gff1e9f4",
-			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
+			"Comment": "v0.4-1158-g993ef88",
+			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/watch",
-			"Comment": "v0.4-1101-gff1e9f4",
-			"Rev": "ff1e9f4c191342c24974c030e82aceaff8ea9c24"
-		},
-		{
-			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Comment": "0.2.1-251-g2e21eae",
-			"Rev": "2e21eaef5e7d46f002e259eb7cde39ed3680a7b4"
+			"Comment": "v0.4-1158-g993ef88",
+			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
 		},
 		{
 			"ImportPath": "github.com/golang/glog",
@@ -73,27 +73,32 @@
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/client",
-			"Comment": "0.4.1-57-gb6d719a",
-			"Rev": "b6d719ac0c18e1c36ceba7c3c94d32c227269b4f"
+			"Comment": "0.5.0-76-gd74485c",
+			"Rev": "d74485ce77d81101c059efc0841deb44ae177258"
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/info",
-			"Comment": "0.4.1-57-gb6d719a",
-			"Rev": "b6d719ac0c18e1c36ceba7c3c94d32c227269b4f"
+			"Comment": "0.5.0-76-gd74485c",
+			"Rev": "d74485ce77d81101c059efc0841deb44ae177258"
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/storage/bigquery/client",
-			"Comment": "0.4.1-57-gb6d719a",
-			"Rev": "b6d719ac0c18e1c36ceba7c3c94d32c227269b4f"
+			"Comment": "0.5.0-76-gd74485c",
+			"Rev": "d74485ce77d81101c059efc0841deb44ae177258"
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb/client",
-			"Comment": "v0.8.5-22-gd1f4f4b",
-			"Rev": "d1f4f4b8e19685b4d0da418228aa3d89606826ea"
+			"Comment": "v0.8.0-rc.3-9-g3284662",
+			"Rev": "3284662b350688b651359f9124928856071bd3f5"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Comment": "null-223",
+			"Rev": "5dedbdc181629d2f3557caf2667e60eb82c5e6d7"
 		},
 		{
 			"ImportPath": "gopkg.in/v1/yaml",
-			"Rev": "b0c168ac0cf9493da1f9bb76c34b26ffef940b4a"
+			"Rev": "9f9df34309c04878acc86042b16630b0f696e1de"
 		}
 	]
 }
