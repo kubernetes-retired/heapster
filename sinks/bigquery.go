@@ -154,12 +154,12 @@ func (self *bigquerySink) containerStatsToValues(
 		row[colLabels] = strings.Join(labels, ",")
 	}
 
-	if stat.Cpu != nil {
+	if spec.HasCpu {
 		// Cumulative Cpu Usage
 		row[colCpuCumulativeUsage] = stat.Cpu.Usage.Total
 	}
 
-	if stat.Memory != nil {
+	if spec.HasMemory {
 		// Memory Usage
 		row[colMemoryUsage] = stat.Memory.Usage
 
@@ -170,7 +170,7 @@ func (self *bigquerySink) containerStatsToValues(
 	}
 
 	// Optional: Network stats.
-	if stat.Network != nil {
+	if spec.HasNetwork {
 		row[colRxBytes] = stat.Network.RxBytes
 		row[colRxErrors] = stat.Network.RxErrors
 		row[colTxBytes] = stat.Network.TxBytes

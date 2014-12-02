@@ -53,10 +53,16 @@ type ContainerSpec struct {
 
 // Container reference contains enough information to uniquely identify a container
 type ContainerReference struct {
-	// The absolute name of the container.
+	// The absolute name of the container. This is unique on the machine.
 	Name string `json:"name"`
 
+	// Other names by which the container is known within a certain namespace.
+	// This is unique within that namespace.
 	Aliases []string `json:"aliases,omitempty"`
+
+	// Namespace under which the aliases of a container are unique.
+	// An example of a namespace is "docker" for Docker containers.
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // ContainerInfoQuery is used when users check a container info from the REST api.
@@ -191,29 +197,23 @@ type DiskIoStats struct {
 }
 
 type MemoryStats struct {
-	// Memory limit, equivalent to "limit" in MemorySpec.
-	// Units: Bytes.
-	Limit uint64 `json:"limit,omitempty"`
-
-	// Usage statistics.
-
 	// Current memory usage, this includes all memory regardless of when it was
 	// accessed.
 	// Units: Bytes.
-	Usage uint64 `json:"usage,omitempty"`
+	Usage uint64 `json:"usage"`
 
 	// The amount of working set memory, this includes recently accessed memory,
 	// dirty memory, and kernel memory. Working set is <= "usage".
 	// Units: Bytes.
-	WorkingSet uint64 `json:"working_set,omitempty"`
+	WorkingSet uint64 `json:"working_set"`
 
 	ContainerData    MemoryStatsMemoryData `json:"container_data,omitempty"`
 	HierarchicalData MemoryStatsMemoryData `json:"hierarchical_data,omitempty"`
 }
 
 type MemoryStatsMemoryData struct {
-	Pgfault    uint64 `json:"pgfault,omitempty"`
-	Pgmajfault uint64 `json:"pgmajfault,omitempty"`
+	Pgfault    uint64 `json:"pgfault"`
+	Pgmajfault uint64 `json:"pgmajfault"`
 }
 
 type NetworkStats struct {
@@ -302,49 +302,14 @@ type FsStats struct {
 
 type ContainerStats struct {
 	// The time of this stat point.
-	Timestamp time.Time     `json:"timestamp"`
-	Cpu       *CpuStats     `json:"cpu,omitempty"`
-	DiskIo    DiskIoStats   `json:"diskio,omitempty"`
-	Memory    *MemoryStats  `json:"memory,omitempty"`
-	Network   *NetworkStats `json:"network,omitempty"`
+	Timestamp time.Time    `json:"timestamp"`
+	Cpu       CpuStats     `json:"cpu,omitempty"`
+	DiskIo    DiskIoStats  `json:"diskio,omitempty"`
+	Memory    MemoryStats  `json:"memory,omitempty"`
+	Network   NetworkStats `json:"network,omitempty"`
+
 	// Filesystem statistics
 	Filesystem []FsStats `json:"filesystem,omitempty"`
-}
-
-// Makes a deep copy of the ContainerStats and returns a pointer to the new
-// copy. Copy() will allocate a new ContainerStats object if dst is nil.
-func (self *ContainerStats) Copy(dst *ContainerStats) *ContainerStats {
-	if dst == nil {
-		dst = new(ContainerStats)
-	}
-	dst.Timestamp = self.Timestamp
-	if self.Cpu != nil {
-		if dst.Cpu == nil {
-			dst.Cpu = new(CpuStats)
-		}
-		// To make a deep copy of a slice, we need to copy every value
-		// in the slice. To make less memory allocation, we would like
-		// to reuse the slice in dst if possible.
-		percpu := dst.Cpu.Usage.PerCpu
-		if len(percpu) != len(self.Cpu.Usage.PerCpu) {
-			percpu = make([]uint64, len(self.Cpu.Usage.PerCpu))
-		}
-		dst.Cpu.Usage = self.Cpu.Usage
-		dst.Cpu.Load = self.Cpu.Load
-		copy(percpu, self.Cpu.Usage.PerCpu)
-		dst.Cpu.Usage.PerCpu = percpu
-	} else {
-		dst.Cpu = nil
-	}
-	if self.Memory != nil {
-		if dst.Memory == nil {
-			dst.Memory = new(MemoryStats)
-		}
-		*dst.Memory = *self.Memory
-	} else {
-		dst.Memory = nil
-	}
-	return dst
 }
 
 func timeEq(t1, t2 time.Time, tolerance time.Duration) bool {
@@ -386,10 +351,20 @@ func (a *ContainerStats) Eq(b *ContainerStats) bool {
 
 // Checks equality of the stats values.
 func (a *ContainerStats) StatsEq(b *ContainerStats) bool {
+	// TODO(vmarmol): Consider using this through reflection.
 	if !reflect.DeepEqual(a.Cpu, b.Cpu) {
 		return false
 	}
 	if !reflect.DeepEqual(a.Memory, b.Memory) {
+		return false
+	}
+	if !reflect.DeepEqual(a.DiskIo, b.DiskIo) {
+		return false
+	}
+	if !reflect.DeepEqual(a.Network, b.Network) {
+		return false
+	}
+	if !reflect.DeepEqual(a.Filesystem, b.Filesystem) {
 		return false
 	}
 	return true
