@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.4 (12-02-2014)
+- Compatibility with cAdvisor v0.6.2
+
 ## 0.3 (11-26-2014)
 - Handle updated Pod API in Kubernetes.
 
