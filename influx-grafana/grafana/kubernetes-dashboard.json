@@ -433,7 +433,7 @@
               "condition_filter": true,
               "condition_key": "labels",
               "condition_op": "=",
-              "condition_value": "'name:influxdb'",
+              "condition_value": "'name:influxGrafana'",
               "interval": "2s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
@@ -441,7 +441,7 @@
             }
           ],
           "aliasColors": {},
-          "title": "Labels 'influxdb' CPU usage",
+          "title": "Labels 'influx-grafana' CPU usage",
           "datasource": null,
           "renderer": "png",
           "annotate": {
@@ -509,30 +509,30 @@
               "function": "mean",
               "column": "memory_usage",
               "series": "stats",
-              "query": "select container_name, mean(memory_usage) from \"stats\" where $timeFilter and labels = 'name:influxdb' group by time($interval), container_name order asc",
+              "query": "select container_name, mean(memory_usage) from \"stats\" where $timeFilter and labels = 'name:influxGrafana' group by time($interval), container_name order asc",
               "condition_filter": true,
               "interval": "2s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
               "alias": "total",
-              "condition": "labels = 'name:influxdb'"
+              "condition": "labels = 'name:influxGrafana'"
             },
             {
               "target": "randomWalk('random walk2')",
               "function": "mean",
               "column": "memory_working_set",
               "series": "stats",
-              "query": "select container_name, mean(memory_working_set) from \"stats\" where $timeFilter and labels = 'name:influxdb' group by time($interval), container_name order asc",
+              "query": "select container_name, mean(memory_working_set) from \"stats\" where $timeFilter and labels = 'name:influxGrafana' group by time($interval), container_name order asc",
               "condition_filter": true,
               "interval": "2s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
               "alias": "hot",
-              "condition": "labels = 'name:influxdb'"
+              "condition": "labels = 'name:influxGrafana'"
             }
           ],
           "aliasColors": {},
-          "title": "Labels 'influxdb' memory usage",
+          "title": "Labels 'influx-grafana' memory usage",
           "datasource": null,
           "renderer": "png",
           "annotate": {

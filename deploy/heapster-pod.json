@@ -1,18 +1,26 @@
 {
-  "id": "heapster",
-  "kind": "Pod",
+  "id": "heapsterController",
+  "kind": "ReplicationController",
   "apiVersion": "v1beta1",
   "desiredState": {
-    "manifest": {
-      "version": "v1beta1",
-      "id": "heapster",
-      "containers": [{
+    "replicas": 1,
+    "replicaSelector": {"name": "heapster"},
+    "podTemplate": {
+      "desiredState": {
+         "manifest": {
+           "version": "v1beta1",
+           "id": "heapsterController",
+           "containers": [{
+             "name": "heapster",
+             "image": "kubernetes/heapster",
+           }]
+         }
+      },
+      "labels": {
         "name": "heapster",
-        "image": "kubernetes/heapster",
-	}]
+        "uses": "influx-master"
+      }
     }
   },
-  "labels": {
-    "name": "heapster",
-  }
+  "labels": {"name": "heapster"}
 }
