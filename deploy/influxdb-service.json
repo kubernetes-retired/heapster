@@ -1,5 +1,5 @@
 {
-  "id": "influx-master",
+  "id": "monitoring-influxdb",
   "kind": "Service",
   "apiVersion": "v1beta1",
   "port": 8085,

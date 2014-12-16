@@ -19,7 +19,7 @@ function (Settings) {
     search: {
       max_results: 100
     },
-    window_title_prefix: 'Kubernetes - ',
+    window_title_prefix: 'Heapster - ',
     default_route: "<--DASHBOARD-->",
     timezoneOffset: null,
     unsaved_changes_warning: true,

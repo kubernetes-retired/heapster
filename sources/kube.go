@@ -116,9 +116,10 @@ func (self *KubeSource) getNodesInfo() ([]RawContainer, error) {
 		return []RawContainer{}, err
 	}
 	nodesInfo := []RawContainer{}
-	for node, ip := range kubeNodes.Hosts {
+	for node, ip := range kubeNodes.Hosts {		
 		spec, stats, err := self.getStatsFromKubelet(ip, "", "", "/")
 		if err != nil {
+			glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", node)
 			return []RawContainer{}, err
 		}
 		if len(stats) > 0 {
@@ -147,6 +148,7 @@ func (self *KubeSource) GetInfo() (ContainerData, error) {
 			if err != nil {
 				return ContainerData{}, err
 			}
+			glog.V(2).Infof("Fetched stats from kubelet for container %s in pod %s", container.Name, pod.Name)
 			container.Stats = stats
 			container.Spec = spec
 		}
@@ -155,7 +157,7 @@ func (self *KubeSource) GetInfo() (ContainerData, error) {
 	if err != nil {
 		return ContainerData{}, err
 	}
-
+	glog.V(2).Info("Fetched list of nodes from the master")
 	self.lastQuery = time.Now()
 
 	return ContainerData{Pods: pods, Machine: nodesInfo}, nil

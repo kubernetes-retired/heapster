@@ -10,9 +10,9 @@ if [ ! -z $KUBERNETES_RO_SERVICE_HOST ]; then
 fi
 
 # Check if InfluxDB service is running
-if [ ! -z $INFLUX_MASTER_SERVICE_PORT ]; then
+if [ ! -z $MONITORING_INFLUXDB_SERVICE_PORT ]; then
 # TODO(vishh): add support for passing in user name and password.    
-    /usr/bin/heapster $KUBE_ARGS --sink influxdb --sink_influxdb_host "${INFLUX_MASTER_SERVICE_HOST}:${INFLUX_MASTER_SERVICE_PORT}"
+    /usr/bin/heapster $KUBE_ARGS --sink influxdb --sink_influxdb_host "${MONITORING_INFLUXDB_SERVICE_HOST}:${MONITORING_INFLUXDB_SERVICE_PORT}"
 elif [ ! -z $INFLUXDB_HOST ]; then
     /usr/bin/heapster $KUBE_ARGS --sink influxdb --sink_influxdb_host ${INFLUXDB_HOST}
 else

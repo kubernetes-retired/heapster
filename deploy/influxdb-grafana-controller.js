@@ -1,5 +1,5 @@
 {
-  "id": "influxGrafanaController",
+  "id": "monitoring-influxGrafanaController",
   "kind": "ReplicationController",
   "apiVersion": "v1beta1",
   "desiredState": {
@@ -9,7 +9,7 @@
       "desiredState": {
          "manifest": {
            "version": "v1beta1",
-           "id": "influxGrafanaController",
+           "id": "monitoring-influxGrafanaController",
            "containers": [{
 	       "name": "influxdb",
 	       "image": "kubernetes/heapster_influxdb",
@@ -19,10 +19,10 @@
 			 {"containerPort": 8099, "hostPort": 8099}]
 	    }, {
 	       "name": "grafana",
-	       "image": "kubernetes/heapster_grafana",
+	       "image": "kubernetes/heapster_grafana:canary",
 	       "ports": [{"containerPort": 80, "hostPort": 80}],
-	       "env": [{"name": HTTP_USER, "value": admin},
-	       	       {"name": HTTP_PASS, "value": admin}]
+	       "env": [{"name": HTTP_USER, "value": "admin"},
+	       	       {"name": HTTP_PASS, "value": "**None**"}]
 	    }, {
 	    	"name": "elasticsearch",
 		"image": "dockerfile/elasticsearch",

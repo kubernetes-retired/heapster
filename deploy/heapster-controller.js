@@ -1,5 +1,5 @@
 {
-  "id": "heapsterController",
+  "id": "monitoring-heapsterController",
   "kind": "ReplicationController",
   "apiVersion": "v1beta1",
   "desiredState": {
@@ -9,16 +9,16 @@
       "desiredState": {
          "manifest": {
            "version": "v1beta1",
-           "id": "heapsterController",
+           "id": "monitoring-heapsterController",
            "containers": [{
              "name": "heapster",
-             "image": "kubernetes/heapster",
+             "image": "kubernetes/heapster:canary",
            }]
          }
       },
       "labels": {
         "name": "heapster",
-        "uses": "influx-master"
+        "uses": "monitoring-influxdb"
       }
     }
   },
