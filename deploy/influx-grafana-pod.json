@@ -20,7 +20,7 @@
 	    }, {
 	       "name": "grafana",
 	       "image": "kubernetes/heapster_grafana",
-	       "ports": [{"containerPort": 80, "hostPort": 80}],
+	       "ports": [{"containerPort": 80, "hostPort": 8087}],
 	       "env": [{"name": HTTP_USER, "value": admin},
 	       	       {"name": HTTP_PASS, "value": admin}]
 	    }, {
