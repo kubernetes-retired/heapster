@@ -24,7 +24,7 @@ Heapster currently supports in-memory and [InfluxDB](http://influxdb.com) backen
 
 **Step 1: Setup Kube cluster**
 
-Fork the Kubernetes repository and [turn up a Kubernetes cluster](https://github.com/GoogleCloudPlatform/kubernetes-new#contents), if you haven't already. Make sure kubecfg.sh is exported.
+Fork the Kubernetes repository and [turn up a Kubernetes cluster](https://github.com/GoogleCloudPlatform/kubernetes-new#contents), if you haven't already. Make sure kubecfg.sh is exported. By default, [cAdvisor](https://github.com/google/cadvisor) runs as a Pod on all nodes using a [static manifest file](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/cluster/saltbase/salt/cadvisor/cadvisor.manifest#L1) that is distributed via salt. Make sure that it is running on port 4194 on all nodes.
 
 **Step 2: Start a Pod with Influxdb, grafana and elasticsearch**
 
