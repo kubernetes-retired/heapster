@@ -24,48 +24,48 @@
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/api",
-			"Comment": "v0.4-1158-g993ef88",
-			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+			"Comment": "v0.7.0-77-g19f0b8b",
+			"Rev": "19f0b8b807a8d8408acb045e98306d5a8e6b412c"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/client",
-			"Comment": "v0.4-1158-g993ef88",
-			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+			"Comment": "v0.7.0-77-g19f0b8b",
+			"Rev": "19f0b8b807a8d8408acb045e98306d5a8e6b412c"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/conversion",
-			"Comment": "v0.4-1158-g993ef88",
-			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+			"Comment": "v0.7.0-77-g19f0b8b",
+			"Rev": "19f0b8b807a8d8408acb045e98306d5a8e6b412c"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/health",
-			"Comment": "v0.4-1158-g993ef88",
-			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+			"Comment": "v0.7.0-77-g19f0b8b",
+			"Rev": "19f0b8b807a8d8408acb045e98306d5a8e6b412c"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/labels",
-			"Comment": "v0.4-1158-g993ef88",
-			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+			"Comment": "v0.7.0-77-g19f0b8b",
+			"Rev": "19f0b8b807a8d8408acb045e98306d5a8e6b412c"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/runtime",
-			"Comment": "v0.4-1158-g993ef88",
-			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+			"Comment": "v0.7.0-77-g19f0b8b",
+			"Rev": "19f0b8b807a8d8408acb045e98306d5a8e6b412c"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/util",
-			"Comment": "v0.4-1158-g993ef88",
-			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+			"Comment": "v0.7.0-77-g19f0b8b",
+			"Rev": "19f0b8b807a8d8408acb045e98306d5a8e6b412c"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/version",
-			"Comment": "v0.4-1158-g993ef88",
-			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+			"Comment": "v0.7.0-77-g19f0b8b",
+			"Rev": "19f0b8b807a8d8408acb045e98306d5a8e6b412c"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/watch",
-			"Comment": "v0.4-1158-g993ef88",
-			"Rev": "993ef88eec9012b221f79abe8f2932ee97997d28"
+			"Comment": "v0.7.0-77-g19f0b8b",
+			"Rev": "19f0b8b807a8d8408acb045e98306d5a8e6b412c"
 		},
 		{
 			"ImportPath": "github.com/golang/glog",

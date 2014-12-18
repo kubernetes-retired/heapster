@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.5 (18-02-2014)
+- Compatibility with Kubernetes v0.7.0
+
 ## 0.4 (12-02-2014)
 - Compatibility with cAdvisor v0.6.2
 

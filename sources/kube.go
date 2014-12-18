@@ -36,7 +36,7 @@ func (self *KubeSource) listMinions() (*nodeList, error) {
 		Port:  cadvisorPort,
 		Hosts: make(map[string]string, 0),
 	}
-	minions, err := self.client.Minions().List()
+	minions, err := self.client.Nodes().List()
 	if err != nil {
 		return nil, err
 	}
