@@ -12,7 +12,7 @@
            "id": "heapsterController",
            "containers": [{
              "name": "heapster",
-             "image": "cedbossneo/heapster",
+             "image": "kubernetes/heapster"
            }]
          }
       },
