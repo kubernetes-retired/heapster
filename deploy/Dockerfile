@@ -11,4 +11,4 @@ RUN mkdir -p /var/run/heapster && touch /var/run/heapster/hosts
 
 ADD heapster /usr/bin/heapster
 
-ENTRYPOINT ["/run.sh"]
+CMD ["/run.sh"]
