@@ -14,7 +14,7 @@ ADD shardSpace.json /config/shardSpace.json
 ADD run.sh /run.sh
 RUN chmod +x /run.sh
 
-ENV PRE_CREATE_DB k8s
+ENV PRE_CREATE_DB k8s;grafana
 
 EXPOSE 8083 8086 8084 8090 8099
 

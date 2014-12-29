@@ -2,19 +2,19 @@ define(['settings'],
 function (Settings) {
   return new Settings({
     datasources: {
-      influx: {
-        default: true,
-        type: 'influxdb',
-        url: "<--PROTO-->://<--ADDR-->:<--PORT-->/db/<--DB_NAME-->",
-        username: "<--USER-->",
-        password: "<--PASS-->"
-      },
-      elasticsearch: {
-        type: 'elasticsearch',
-        url: "<--PROTO-->://<--ADDR-->:9200",
-        index: 'grafana-dash',
-        grafanaDB: true
-      }
+	'metrics': {
+            type: 'influxdb',
+            url: "<--PROTO-->://<--ADDR-->:<--PORT-->/db/<--DB_NAME-->",
+            username: "<--USER-->",
+            password: "<--PASS-->"
+	},
+	'grafana': {
+            type: 'influxdb',
+            url: "<--PROTO-->://<--ADDR-->:<--PORT-->/db/<--GRAFANA_DB_NAME-->",
+            username: "<--USER-->",
+            password: "<--PASS-->",
+	    grafanaDB: true
+	}
     },
     search: {
       max_results: 100

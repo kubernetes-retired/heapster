@@ -116,7 +116,7 @@ func (self *KubeSource) getNodesInfo() ([]RawContainer, error) {
 		return []RawContainer{}, err
 	}
 	nodesInfo := []RawContainer{}
-	for node, ip := range kubeNodes.Hosts {		
+	for node, ip := range kubeNodes.Hosts {
 		spec, stats, err := self.getStatsFromKubelet(ip, "", "", "/")
 		if err != nil {
 			glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", node)

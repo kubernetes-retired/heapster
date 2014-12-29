@@ -12,7 +12,7 @@
            "id": "monitoring-heapsterController",
            "containers": [{
              "name": "heapster",
-             "image": "kubernetes/heapster:canary",
+             "image": "kubernetes/heapster:v0.5",
            }]
          }
       },
