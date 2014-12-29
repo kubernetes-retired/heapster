@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	"gopkg.in/v1/yaml"
+	"github.com/ghodss/yaml"
 )
 
 // Decode converts a YAML or JSON string back into a pointer to an api object.
@@ -97,9 +97,6 @@ func (s *Scheme) DecodeInto(data []byte, obj interface{}) error {
 		// correct type.
 		dataKind = objKind
 	}
-	if dataKind != objKind {
-		return fmt.Errorf("data of kind '%v', obj of type '%v'", dataKind, objKind)
-	}
 	if dataVersion == "" {
 		// Assume objects with unset Version fields are being unmarshalled into the
 		// correct type.
@@ -115,7 +112,7 @@ func (s *Scheme) DecodeInto(data []byte, obj interface{}) error {
 	} else {
 		external, err := s.NewObject(dataVersion, dataKind)
 		if err != nil {
-			return fmt.Errorf("unable to create new object of type ('%s', '%s')", dataVersion, dataKind)
+			return err
 		}
 		// yaml is a superset of json, so we use it to decode here. That way,
 		// we understand both.

@@ -22,15 +22,115 @@ type FsInfo struct {
 	Capacity uint64 `json:"capacity"`
 }
 
+type Node struct {
+	Id int `json:"node_id"`
+	// Per-node memory
+	Memory uint64  `json:"memory"`
+	Cores  []Core  `json:"cores"`
+	Caches []Cache `json:"caches"`
+}
+
+type Core struct {
+	Id      int     `json:"core_id"`
+	Threads []int   `json:"thread_ids"`
+	Caches  []Cache `json:"caches"`
+}
+
+type Cache struct {
+	// Size of memory cache in bytes.
+	Size uint64 `json:"size"`
+	// Type of memory cache: data, instruction, or unified.
+	Type string `json:"type"`
+	// Level (distance from cpus) in a multi-level cache hierarchy.
+	Level int `json:"level"`
+}
+
+func (self *Node) FindCore(id int) (bool, int) {
+	for i, n := range self.Cores {
+		if n.Id == id {
+			return true, i
+		}
+	}
+	return false, -1
+}
+
+func (self *Node) AddThread(thread int, core int) {
+	var coreIdx int
+	if core == -1 {
+		// Assume one hyperthread per core when topology data is missing.
+		core = thread
+	}
+	ok, coreIdx := self.FindCore(core)
+
+	if !ok {
+		// New core
+		core := Core{Id: core}
+		self.Cores = append(self.Cores, core)
+		coreIdx = len(self.Cores) - 1
+	}
+	self.Cores[coreIdx].Threads = append(self.Cores[coreIdx].Threads, thread)
+}
+
+func (self *Node) AddNodeCache(c Cache) {
+	self.Caches = append(self.Caches, c)
+}
+
+func (self *Node) AddPerCoreCache(c Cache) {
+	for idx, _ := range self.Cores {
+		self.Cores[idx].Caches = append(self.Cores[idx].Caches, c)
+	}
+}
+
+type DiskInfo struct {
+	// device name
+	Name string `json:"name"`
+
+	// Major number
+	Major uint64 `json:"major"`
+
+	// Minor number
+	Minor uint64 `json:"minor"`
+
+	// Size in bytes
+	Size uint64 `json:"size"`
+}
+
+type NetInfo struct {
+	// Device name
+	Name string `json:"name"`
+
+	// Mac Address
+	MacAddress string `json:"mac_address"`
+
+	// Speed in MBits/s
+	Speed uint64 `json:"speed"`
+
+	// Maximum Transmission Unit
+	Mtu uint64 `json:"mtu"`
+}
+
 type MachineInfo struct {
 	// The number of cores in this machine.
 	NumCores int `json:"num_cores"`
+
+	// Maximum clock speed for the cores, in KHz.
+	CpuFrequency uint64 `json:"cpu_frequency_khz"`
 
 	// The amount of memory (in bytes) in this machine
 	MemoryCapacity int64 `json:"memory_capacity"`
 
 	// Filesystems on this machine.
 	Filesystems []FsInfo `json:"filesystems"`
+
+	// Disk map
+	DiskMap map[string]DiskInfo `json:"disk_map"`
+
+	// Network devices
+	NetworkDevices []NetInfo `json:"network_devices"`
+
+	// Machine Topology
+	// Describes cpu layout and hierarchy. TODO(rjnagal): Add Memory hierarchy.
+	Topology []Node `json:"topology"`
 }
 
 type VersionInfo struct {

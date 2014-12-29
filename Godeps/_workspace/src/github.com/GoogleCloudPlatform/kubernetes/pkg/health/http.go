@@ -44,7 +44,7 @@ func NewHTTPHealthChecker(client *http.Client) HealthChecker {
 }
 
 // getURLParts parses the components of the target URL.  For testability.
-func getURLParts(currentState api.PodState, container api.Container) (string, int, string, error) {
+func getURLParts(status api.PodStatus, container api.Container) (string, int, string, error) {
 	params := container.LivenessProbe.HTTPGet
 	if params == nil {
 		return "", -1, "", fmt.Errorf("no HTTP parameters specified: %v", container)
@@ -70,7 +70,7 @@ func getURLParts(currentState api.PodState, container api.Container) (string, in
 	if len(params.Host) > 0 {
 		host = params.Host
 	} else {
-		host = currentState.PodIP
+		host = status.PodIP
 	}
 
 	return host, port, params.Path, nil
@@ -88,13 +88,13 @@ func formatURL(host string, port int, path string) string {
 
 // DoHTTPCheck checks if a GET request to the url succeeds.
 // If the HTTP response code is successful (i.e. 400 > code >= 200), it returns Healthy.
-// If the HTTP response code is unsuccessful, it returns Unhealthy.
-// It returns Unknown and err if the HTTP communication itself fails.
+// If the HTTP response code is unsuccessful or HTTP communication fails, it returns Unhealthy.
 // This is exported because some other packages may want to do direct HTTP checks.
 func DoHTTPCheck(url string, client HTTPGetInterface) (Status, error) {
 	res, err := client.Get(url)
 	if err != nil {
-		return Unknown, err
+		glog.V(1).Infof("HTTP probe error: %v", err)
+		return Unhealthy, nil
 	}
 	defer res.Body.Close()
 	if res.StatusCode >= http.StatusOK && res.StatusCode < http.StatusBadRequest {
@@ -105,8 +105,8 @@ func DoHTTPCheck(url string, client HTTPGetInterface) (Status, error) {
 }
 
 // HealthCheck checks if the container is healthy by trying sending HTTP Get requests to the container.
-func (h *HTTPHealthChecker) HealthCheck(podFullName, podUUID string, currentState api.PodState, container api.Container) (Status, error) {
-	host, port, path, err := getURLParts(currentState, container)
+func (h *HTTPHealthChecker) HealthCheck(podFullName, podUUID string, status api.PodStatus, container api.Container) (Status, error) {
+	host, port, path, err := getURLParts(status, container)
 	if err != nil {
 		return Unknown, err
 	}

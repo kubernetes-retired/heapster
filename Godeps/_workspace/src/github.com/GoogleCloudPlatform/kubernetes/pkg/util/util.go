@@ -19,8 +19,10 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"regexp"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/golang/glog"
@@ -51,7 +53,19 @@ func HandleCrash() {
 
 // Forever loops forever running f every d.  Catches any panics, and keeps going.
 func Forever(f func(), period time.Duration) {
+	Until(f, period, nil)
+}
+
+// Until loops until stop channel is closed, running f every d.
+// Catches any panics, and keeps going. f may not be invoked if
+// stop channel is already closed.
+func Until(f func(), period time.Duration, stopCh <-chan struct{}) {
 	for {
+		select {
+		case <-stopCh:
+			return
+		default:
+		}
 		func() {
 			defer HandleCrash()
 			f()
@@ -88,34 +102,6 @@ func NewIntOrStringFromString(val string) IntOrString {
 	return IntOrString{Kind: IntstrString, StrVal: val}
 }
 
-// SetYAML implements the yaml.Setter interface.
-func (intstr *IntOrString) SetYAML(tag string, value interface{}) bool {
-	switch v := value.(type) {
-	case int:
-		intstr.Kind = IntstrInt
-		intstr.IntVal = v
-		return true
-	case string:
-		intstr.Kind = IntstrString
-		intstr.StrVal = v
-		return true
-	}
-	return false
-}
-
-// GetYAML implements the yaml.Getter interface.
-func (intstr IntOrString) GetYAML() (tag string, value interface{}) {
-	switch intstr.Kind {
-	case IntstrInt:
-		value = intstr.IntVal
-	case IntstrString:
-		value = intstr.StrVal
-	default:
-		panic("impossible IntOrString.Kind")
-	}
-	return
-}
-
 // UnmarshalJSON implements the json.Unmarshaller interface.
 func (intstr *IntOrString) UnmarshalJSON(value []byte) error {
 	if value[0] == '"' {
@@ -149,4 +135,17 @@ func CompileRegexps(regexpStrings []string) ([]*regexp.Regexp, error) {
 		regexps = append(regexps, r)
 	}
 	return regexps, nil
+}
+
+// Writes 'value' to /proc/self/oom_score_adj.
+func ApplyOomScoreAdj(value int) error {
+	if value < -1000 || value > 1000 {
+		return fmt.Errorf("invalid value(%d) specified for oom_score_adj. Values must be within the range [-1000, 1000]")
+	}
+
+	if err := ioutil.WriteFile("/proc/self/oom_score_adj", []byte(strconv.Itoa(value)), 0700); err != nil {
+		fmt.Errorf("failed to set oom_score_adj to %s - %q", value, err)
+	}
+
+	return nil
 }

@@ -36,7 +36,7 @@ func (self *KubeSource) listMinions() (*nodeList, error) {
 		Port:  cadvisorPort,
 		Hosts: make(map[string]string, 0),
 	}
-	minions, err := self.client.Minions().List()
+	minions, err := self.client.Nodes().List()
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 
 // Returns a map of minion hostnames to the Pods running in them.
 func (self *KubeSource) getPods() ([]Pod, error) {
-	pods, err := self.client.Pods(kube_api.NamespaceDefault).List(kube_labels.Everything())
+	pods, err := self.client.Pods(kube_api.NamespaceAll).List(kube_labels.Everything())
 	if err != nil {
 		return nil, err
 	}

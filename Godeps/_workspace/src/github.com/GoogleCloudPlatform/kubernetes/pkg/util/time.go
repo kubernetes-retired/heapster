@@ -28,6 +28,11 @@ type Time struct {
 	time.Time
 }
 
+// NewTime returns a wrapped instance of the provided time
+func NewTime(time time.Time) Time {
+	return Time{time}
+}
+
 // Date returns the Time corresponding to the supplied parameters
 // by wrapping time.Date.
 func Date(year int, month time.Month, day, hour, min, sec, nsec int, loc *time.Location) Time {
@@ -78,36 +83,4 @@ func (t Time) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(t.Format(time.RFC3339))
-}
-
-// SetYAML implements the yaml.Setter interface.
-func (t *Time) SetYAML(tag string, value interface{}) bool {
-	if value == nil {
-		t.Time = time.Time{}
-		return true
-	}
-
-	str, ok := value.(string)
-	if !ok {
-		return false
-	}
-
-	pt, err := time.Parse(time.RFC3339, str)
-	if err != nil {
-		return false
-	}
-
-	t.Time = pt
-	return true
-}
-
-// GetYAML implements the yaml.Getter interface.
-func (t Time) GetYAML() (tag string, value interface{}) {
-	if t.IsZero() {
-		value = "null"
-		return
-	}
-
-	value = t.Format(time.RFC3339)
-	return tag, value
 }
