@@ -13,6 +13,7 @@ import (
 	heapster "github.com/GoogleCloudPlatform/heapster/sources"
 	fleetClient "github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/etcd"
+	fleetPkg "github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 )
 
@@ -21,7 +22,7 @@ var argCadvisorPort = flag.Int("cadvisor_port", 4194, "cAdvisor port in current 
 func getFleetRegistryClient() (fleetClient.API, error) {
 	var dial func(string, string) (net.Conn, error)
 
-	tlsConfig, err := etcd.ReadTLSConfigFiles("", "", "")
+	tlsConfig, err := fleetPkg.ReadTLSConfigFiles("", "", "")
 	if err != nil {
 		return nil, err
 	}
