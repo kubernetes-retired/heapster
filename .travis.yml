@@ -1,0 +1,12 @@
+language: go
+go:
+ - 1.4
+install:
+ - true
+before_script:
+ - go get code.google.com/p/go.tools/cmd/vet
+ - go get github.com/kr/godep
+script:
+ - export PATH=$PATH:$HOME/gopath/bin
+ - godep go build github.com/GoogleCloudPlatform/heapster
+ - go vet github.com/GoogleCloudPlatform/heapster
