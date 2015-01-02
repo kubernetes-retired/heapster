@@ -9,4 +9,4 @@ before_script:
 script:
  - export PATH=$PATH:$HOME/gopath/bin
  - godep go build github.com/GoogleCloudPlatform/heapster
- - go vet github.com/GoogleCloudPlatform/heapster
+ - go vet github.com/GoogleCloudPlatform/heapster/...
