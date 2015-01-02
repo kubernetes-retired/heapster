@@ -48,5 +48,4 @@ func doWork() error {
 			}
 		}
 	}
-	return nil
 }
