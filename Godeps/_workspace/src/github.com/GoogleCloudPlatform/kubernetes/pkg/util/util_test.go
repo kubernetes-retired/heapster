@@ -21,8 +21,28 @@ import (
 	"reflect"
 	"testing"
 
-	"gopkg.in/v1/yaml"
+	"github.com/ghodss/yaml"
 )
+
+func TestUntil(t *testing.T) {
+	ch := make(chan struct{})
+	close(ch)
+	Until(func() {
+		t.Fatal("should not have been invoked")
+	}, 0, ch)
+
+	ch = make(chan struct{})
+	called := make(chan struct{})
+	go func() {
+		Until(func() {
+			called <- struct{}{}
+		}, 0, ch)
+		close(called)
+	}()
+	<-called
+	close(ch)
+	<-called
+}
 
 func TestHandleCrash(t *testing.T) {
 	count := 0
@@ -54,7 +74,7 @@ func TestNewIntOrStringFromString(t *testing.T) {
 }
 
 type IntOrStringHolder struct {
-	IOrS IntOrString `json:"val" yaml:"val"`
+	IOrS IntOrString `json:"val"`
 }
 
 func TestIntOrStringUnmarshalYAML(t *testing.T) {
