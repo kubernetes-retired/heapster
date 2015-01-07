@@ -26,8 +26,6 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/capabilities"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-
-	"github.com/golang/glog"
 )
 
 // ServiceLister is an abstract interface for testing.
@@ -326,7 +324,6 @@ func ValidateManifest(manifest *api.ContainerManifest) errs.ValidationErrorList 
 	allErrs = append(allErrs, vErrs.Prefix("volumes")...)
 	allErrs = append(allErrs, validateContainers(manifest.Containers, allVolumes).Prefix("containers")...)
 	allErrs = append(allErrs, validateRestartPolicy(&manifest.RestartPolicy).Prefix("restartPolicy")...)
-	allErrs = append(allErrs, validateDNSPolicy(&manifest.DNSPolicy).Prefix("dnsPolicy")...)
 	return allErrs
 }
 
@@ -347,20 +344,6 @@ func validateRestartPolicy(restartPolicy *api.RestartPolicy) errs.ValidationErro
 	}
 	if numPolicies > 1 {
 		allErrors = append(allErrors, errs.NewFieldInvalid("", restartPolicy, "only 1 policy is allowed"))
-	}
-	return allErrors
-}
-
-func validateDNSPolicy(dnsPolicy *api.DNSPolicy) errs.ValidationErrorList {
-	allErrors := errs.ValidationErrorList{}
-	switch *dnsPolicy {
-	case "":
-		// TODO: move this out to standard defaulting logic, when that is ready.
-		*dnsPolicy = api.DNSClusterFirst // Default value.
-	case api.DNSClusterFirst, api.DNSDefault:
-		break
-	default:
-		allErrors = append(allErrors, errs.NewFieldNotSupported("", dnsPolicy))
 	}
 	return allErrors
 }
@@ -390,7 +373,6 @@ func ValidatePodSpec(spec *api.PodSpec) errs.ValidationErrorList {
 	allErrs = append(allErrs, vErrs.Prefix("volumes")...)
 	allErrs = append(allErrs, validateContainers(spec.Containers, allVolumes).Prefix("containers")...)
 	allErrs = append(allErrs, validateRestartPolicy(&spec.RestartPolicy).Prefix("restartPolicy")...)
-	allErrs = append(allErrs, validateDNSPolicy(&spec.DNSPolicy).Prefix("dnsPolicy")...)
 	allErrs = append(allErrs, validateLabels(spec.NodeSelector, "nodeSelector")...)
 	return allErrs
 }
@@ -432,8 +414,6 @@ func ValidatePodUpdate(newPod, oldPod *api.Pod) errs.ValidationErrorList {
 	return allErrs
 }
 
-var supportedSessionAffinityType = util.NewStringSet(string(api.AffinityTypeClientIP), string(api.AffinityTypeNone))
-
 // ValidateService tests if required fields in the service are set.
 func ValidateService(service *api.Service, lister ServiceLister, ctx api.Context) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
@@ -474,12 +454,6 @@ func ValidateService(service *api.Service, lister ServiceLister, ctx api.Context
 			}
 		}
 	}
-	if service.Spec.SessionAffinity != nil {
-		if !supportedSessionAffinityType.Has(string(*service.Spec.SessionAffinity)) {
-			allErrs = append(allErrs, errs.NewFieldNotSupported("spec.sessionAffinity", service.Spec.SessionAffinity))
-		}
-	}
-
 	return allErrs
 }
 
@@ -586,20 +560,9 @@ func ValidateMinion(minion *api.Node) errs.ValidationErrorList {
 // ValidateMinionUpdate tests to make sure a minion update can be applied.  Modifies oldMinion.
 func ValidateMinionUpdate(oldMinion *api.Node, minion *api.Node) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
-
-	if !reflect.DeepEqual(minion.Status, api.NodeStatus{}) {
-		allErrs = append(allErrs, errs.NewFieldInvalid("status", minion.Status, "status must be empty"))
-	}
-
-	// Allow users to update labels and capacity
 	oldMinion.Labels = minion.Labels
-	oldMinion.Spec.Capacity = minion.Spec.Capacity
-	// Clear status
-	oldMinion.Status = minion.Status
-
 	if !reflect.DeepEqual(oldMinion, minion) {
-		glog.V(4).Infof("Update failed validation %#v vs %#v", oldMinion, minion)
-		allErrs = append(allErrs, fmt.Errorf("update contains more than labels or capacity changes"))
+		allErrs = append(allErrs, fmt.Errorf("update contains more than labels changes"))
 	}
 	return allErrs
 }

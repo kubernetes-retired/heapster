@@ -70,16 +70,3 @@ func TestFake(t *testing.T) {
 	go sender()
 	consumer(f)
 }
-
-func TestEmpty(t *testing.T) {
-	w := NewEmptyWatch()
-	_, ok := <-w.ResultChan()
-	if ok {
-		t.Errorf("unexpected result channel result")
-	}
-	w.Stop()
-	_, ok = <-w.ResultChan()
-	if ok {
-		t.Errorf("unexpected result channel result")
-	}
-}

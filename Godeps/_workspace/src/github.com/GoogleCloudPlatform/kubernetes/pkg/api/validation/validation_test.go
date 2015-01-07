@@ -851,7 +851,7 @@ func TestValidateService(t *testing.T) {
 		registry.List = tc.existing
 		errs := ValidateService(&tc.svc, registry, api.NewDefaultContext())
 		if len(errs) != tc.numErrs {
-			t.Errorf("Unexpected error list for case %q: %v", tc.name, util.SliceToError(errs))
+			t.Errorf("Unexpected error list for case %q: %v", tc.name, errs.ToError())
 		}
 	}
 
@@ -1176,78 +1176,6 @@ func TestValidateMinionUpdate(t *testing.T) {
 			ObjectMeta: api.ObjectMeta{
 				Name:   "foo",
 				Labels: map[string]string{"foo": "baz"},
-			},
-		}, true},
-		{api.Node{
-			ObjectMeta: api.ObjectMeta{
-				Name: "foo",
-			},
-			Spec: api.NodeSpec{
-				Capacity: api.ResourceList{
-					"cpu":    util.NewIntOrStringFromInt(10000),
-					"memory": util.NewIntOrStringFromInt(100),
-				},
-			},
-		}, api.Node{
-			ObjectMeta: api.ObjectMeta{
-				Name: "foo",
-			},
-			Spec: api.NodeSpec{
-				Capacity: api.ResourceList{
-					"cpu":    util.NewIntOrStringFromInt(100),
-					"memory": util.NewIntOrStringFromInt(10000),
-				},
-			},
-		}, true},
-		{api.Node{
-			ObjectMeta: api.ObjectMeta{
-				Name:   "foo",
-				Labels: map[string]string{"bar": "foo"},
-			},
-			Spec: api.NodeSpec{
-				Capacity: api.ResourceList{
-					"cpu":    util.NewIntOrStringFromInt(10000),
-					"memory": util.NewIntOrStringFromInt(100),
-				},
-			},
-		}, api.Node{
-			ObjectMeta: api.ObjectMeta{
-				Name:   "foo",
-				Labels: map[string]string{"bar": "fooobaz"},
-			},
-			Spec: api.NodeSpec{
-				Capacity: api.ResourceList{
-					"cpu":    util.NewIntOrStringFromInt(100),
-					"memory": util.NewIntOrStringFromInt(10000),
-				},
-			},
-		}, true},
-		{api.Node{
-			ObjectMeta: api.ObjectMeta{
-				Name:   "foo",
-				Labels: map[string]string{"bar": "foo"},
-			},
-		}, api.Node{
-			ObjectMeta: api.ObjectMeta{
-				Name:   "foo",
-				Labels: map[string]string{"bar": "fooobaz"},
-			},
-			Status: api.NodeStatus{
-				HostIP: "1.2.3.4",
-			},
-		}, false},
-		{api.Node{
-			ObjectMeta: api.ObjectMeta{
-				Name:   "foo",
-				Labels: map[string]string{"bar": "foo"},
-			},
-			Status: api.NodeStatus{
-				HostIP: "1.2.3.4",
-			},
-		}, api.Node{
-			ObjectMeta: api.ObjectMeta{
-				Name:   "foo",
-				Labels: map[string]string{"bar": "fooobaz"},
 			},
 		}, true},
 	}

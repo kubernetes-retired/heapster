@@ -95,8 +95,8 @@ func (c *replicationControllers) Delete(name string) error {
 // Watch returns a watch.Interface that watches the requested controllers.
 func (c *replicationControllers) Watch(label, field labels.Selector, resourceVersion string) (watch.Interface, error) {
 	return c.r.Get().
-		Path("watch").
 		Namespace(c.ns).
+		Path("watch").
 		Path("replicationControllers").
 		Param("resourceVersion", resourceVersion).
 		SelectorParam("labels", label).

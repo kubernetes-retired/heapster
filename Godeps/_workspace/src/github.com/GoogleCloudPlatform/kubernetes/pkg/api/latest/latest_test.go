@@ -65,7 +65,7 @@ var apiObjectFuzzer = fuzz.New().NilChance(.5).NumElements(1, 1).Funcs(
 		j.FieldPath = c.RandString()
 	},
 	func(j *internal.PodPhase, c fuzz.Continue) {
-		statuses := []internal.PodPhase{internal.PodPending, internal.PodRunning, internal.PodFailed, internal.PodUnknown}
+		statuses := []internal.PodPhase{internal.PodPending, internal.PodRunning, internal.PodFailed}
 		*j = statuses[c.Rand.Intn(len(statuses))]
 	},
 	func(j *internal.ReplicationControllerSpec, c fuzz.Continue) {
@@ -228,7 +228,7 @@ func TestRESTMapper(t *testing.T) {
 	}
 
 	for _, version := range Versions {
-		mapping, err := RESTMapper.RESTMapping("ReplicationController", version)
+		mapping, err := RESTMapper.RESTMapping(version, "ReplicationController")
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
