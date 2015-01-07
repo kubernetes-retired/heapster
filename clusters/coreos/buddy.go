@@ -41,7 +41,7 @@ func getFleetRegistryClient() (fleetClient.API, error) {
 
 	reg := registry.NewEtcdRegistry(eClient, "/_coreos.com/fleet/")
 
-	return &fleetClient.RegistryClient{reg}, nil
+	return &fleetClient.RegistryClient{Registry: reg}, nil
 }
 
 func getMachines(client fleetClient.API, outMachines map[string]string) error {
