@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	heapster "github.com/GoogleCloudPlatform/heapster/sources"
@@ -18,6 +19,7 @@ import (
 )
 
 var argCadvisorPort = flag.Int("cadvisor_port", 4194, "cAdvisor port in current CoreOS cluster")
+var argEndpoints = flag.String("endpoints", "http://127.0.0.1:4001", "Comma separated list of fleet server endpoints")
 
 func getFleetRegistryClient() (fleetClient.API, error) {
 	var dial func(string, string) (net.Conn, error)
@@ -33,7 +35,8 @@ func getFleetRegistryClient() (fleetClient.API, error) {
 	}
 
 	timeout := 3 * 1000 * time.Millisecond
-	machines := []string{"http://127.0.0.1:4001"}
+
+	machines := strings.Split(*argEndpoints, ",")
 	eClient, err := etcd.NewClient(machines, trans, timeout)
 	if err != nil {
 		return nil, err
