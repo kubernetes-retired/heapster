@@ -129,8 +129,6 @@ const (
 	NamespaceDefault string = "default"
 	// NamespaceAll is the default argument to specify on a context when you want to list or filter resources across all namespaces
 	NamespaceAll string = ""
-	// NamespaceNone is the argument for a context when there is no namespace.
-	NamespaceNone string = ""
 	// TerminationMessagePathDefault means the default path to capture the application termination message running in a container
 	TerminationMessagePathDefault string = "/dev/termination-log"
 )
@@ -365,9 +363,6 @@ const (
 	// PodFailed means that all containers in the pod have terminated, and at least one container has
 	// terminated in a failure (exited with a non-zero exit code or was stopped by the system).
 	PodFailed PodPhase = "Failed"
-	// PodUnknown means that for some reason the state of the pod could not be obtained, typically due
-	// to an error in communicating with the host of the pod.
-	PodUnknown PodPhase = "Unknown"
 )
 
 type ContainerStateWaiting struct {
@@ -448,34 +443,13 @@ type PodList struct {
 	Items []Pod `json:"items"`
 }
 
-// DNSPolicy defines how a pod's DNS will be configured.
-type DNSPolicy string
-
-const (
-	// DNSClusterFirst indicates that the pod should use cluster DNS
-	// first, if it is available, then fall back on the default (as
-	// determined by kubelet) DNS settings.
-	DNSClusterFirst DNSPolicy = "ClusterFirst"
-
-	// DNSDefault indicates that the pod should use the default (as
-	// determined by kubelet) DNS settings.
-	DNSDefault DNSPolicy = "Default"
-)
-
 // PodSpec is a description of a pod
 type PodSpec struct {
 	Volumes       []Volume      `json:"volumes"`
 	Containers    []Container   `json:"containers"`
 	RestartPolicy RestartPolicy `json:"restartPolicy,omitempty"`
-	// Optional: Set DNS policy.  Defaults to "ClusterFirst"
-	DNSPolicy DNSPolicy `json:"dnsPolicy,omitempty"`
 	// NodeSelector is a selector which must be true for the pod to fit on a node
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
-	// Host is a request to schedule this pod onto a specific host.  If it is non-empty,
-	// the the scheduler simply schedules this pod onto that host, assuming that it fits
-	// resource requirements.
-	Host string `json:"host,omitempty"`
 }
 
 // PodStatus represents information about the status of a pod. Status may trail the actual
@@ -598,17 +572,6 @@ type ServiceList struct {
 	Items []Service `json:"items"`
 }
 
-// Session Affinity Type string
-type AffinityType string
-
-const (
-	// AffinityTypeClientIP is the Client IP based.
-	AffinityTypeClientIP AffinityType = "ClientIP"
-
-	// AffinityTypeNone - no session affinity.
-	AffinityTypeNone AffinityType = "None"
-)
-
 // ServiceStatus represents the current status of a service
 type ServiceStatus struct{}
 
@@ -643,9 +606,6 @@ type ServiceSpec struct {
 	// ContainerPort is the name of the port on the container to direct traffic to.
 	// Optional, if unspecified use the first port on the container.
 	ContainerPort util.IntOrString `json:"containerPort,omitempty"`
-
-	// Optional: Supports "ClientIP" and "None".  Used to maintain session affinity.
-	SessionAffinity *AffinityType `json:"sessionAffinity,omitempty"`
 }
 
 // Service is a named abstraction of software service (for example, mysql) consisting of local port
@@ -993,18 +953,18 @@ type Event struct {
 	// Required. The object that this event is about.
 	InvolvedObject ObjectReference `json:"involvedObject,omitempty"`
 
-	// Should be a short, machine understandable string that describes the current condition
+	// Should be a short, machine understandable string that describes the current status
 	// of the referred object. This should not give the reason for being in this state.
-	// Examples: "Running", "CantStart", "CantSchedule", "Deleted".
-	// It's OK for components to make up conditions to report here, but the same string should
-	// always be used for the same conditions.
+	// Examples: "running", "cantStart", "cantSchedule", "deleted".
+	// It's OK for components to make up statuses to report here, but the same string should
+	// always be used for the same status.
 	// TODO: define a way of making sure these are consistent and don't collide.
 	// TODO: provide exact specification for format.
-	Condition string `json:"condition,omitempty"`
+	Status string `json:"status,omitempty"`
 
 	// Optional; this should be a short, machine understandable string that gives the reason
-	// for the transition into the object's current condition. For example, if ObjectCondition is
-	// "CantStart", StatusReason might be "ImageNotFound".
+	// for the transition into the object's current status. For example, if ObjectStatus is
+	// "cantStart", StatusReason might be "imageNotFound".
 	// TODO: provide exact specification for format.
 	Reason string `json:"reason,omitempty"`
 
@@ -1045,8 +1005,6 @@ type ContainerManifest struct {
 	Volumes       []Volume      `json:"volumes"`
 	Containers    []Container   `json:"containers"`
 	RestartPolicy RestartPolicy `json:"restartPolicy,omitempty"`
-	// Optional: Set DNS policy.  Defaults to "ClusterFirst"
-	DNSPolicy DNSPolicy `json:"dnsPolicy"`
 }
 
 // ContainerManifestList is used to communicate container manifests to kubelet.
