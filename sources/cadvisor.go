@@ -32,7 +32,8 @@ func (self *cadvisorSource) getAllCadvisorData(hostname, ip, port, container str
 	if err != nil {
 		return
 	}
-	allContainers, err := client.SubcontainersInfo("/", &cadvisor.ContainerInfoRequest{int(time.Since(self.lastQuery) / time.Second)})
+	allContainers, err := client.SubcontainersInfo("/", 
+		&cadvisor.ContainerInfoRequest{NumStats: int(time.Since(self.lastQuery) / time.Second)})
 	if err != nil {
 		glog.Errorf("failed to get stats from cadvisor on host %s with ip %s - %s\n", hostname, ip, err)
 		return
