@@ -12,8 +12,17 @@ server {
     }
 
     location / {
-        auth_basic "Restricted";
-        auth_basic_user_file /app/.htpasswd;
+	<--AuthInfo-->
+	if ($http_origin ~* (https?://[^/]*\.somedomain\.com(:[0-9]+)?)) {
+		set $cors "true";
+	}
+
+	if ($cors = 'true') {
+	    add_header  Access-Control-Allow-Origin $http_origin;
+	    add_header  "Access-Control-Allow-Credentials" "true";
+	    add_header  "Access-Control-Allow-Methods" "GET, OPTIONS";
+	    add_header  "Access-Control-Allow-Headers" "Authorization, origin, accept";
+	}
         try_files $uri $uri/ =404;
     }
 }

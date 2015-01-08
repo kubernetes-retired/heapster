@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.5 (12-11-2014)
+- Compatiblity with updated InfluxDB service names.
+
 ## 0.4 (12-02-2014)
 - Compatibility with cAdvisor v0.6.2
 

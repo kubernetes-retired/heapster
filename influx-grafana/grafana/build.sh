@@ -1,3 +1,3 @@
 #! /bin/bash
 
-docker build -t kubernetes/heapster_grafana .
+docker build -t kubernetes/heapster_grafana:canary .

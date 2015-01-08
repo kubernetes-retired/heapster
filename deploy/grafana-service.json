@@ -1,0 +1,8 @@
+{
+  "id": "monitoring-grafana",
+  "kind": "Service",
+  "apiVersion": "v1beta1",
+  "port": 8087,
+  "containerPort": 80,
+  "selector": { "name": "influxGrafana" }
+}

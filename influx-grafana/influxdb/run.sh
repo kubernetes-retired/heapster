@@ -5,6 +5,7 @@ set -m
 CONFIG_FILE="/config/config.toml"
 API_URL="http://localhost:8086"
 SHARD_CONFIG="/config/shardSpace.json"
+
 if [ "${PRE_CREATE_DB}" == "**None**" ]; then
     unset PRE_CREATE_DB
 fi
@@ -43,6 +44,7 @@ else
     echo "=> No database need to be pre-created"
 fi
 
-echo "=> Starting InfluxDB ..."
+echo "=>influxDB for heapster version: 0.2!"
+echo "=> Starting InfluxDB..."
 
 exec /usr/bin/influxdb -config=${CONFIG_FILE}
