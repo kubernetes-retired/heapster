@@ -26,6 +26,8 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/capabilities"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+
+	"github.com/golang/glog"
 )
 
 // ServiceLister is an abstract interface for testing.
@@ -324,6 +326,7 @@ func ValidateManifest(manifest *api.ContainerManifest) errs.ValidationErrorList 
 	allErrs = append(allErrs, vErrs.Prefix("volumes")...)
 	allErrs = append(allErrs, validateContainers(manifest.Containers, allVolumes).Prefix("containers")...)
 	allErrs = append(allErrs, validateRestartPolicy(&manifest.RestartPolicy).Prefix("restartPolicy")...)
+	allErrs = append(allErrs, validateDNSPolicy(&manifest.DNSPolicy).Prefix("dnsPolicy")...)
 	return allErrs
 }
 
@@ -348,13 +351,31 @@ func validateRestartPolicy(restartPolicy *api.RestartPolicy) errs.ValidationErro
 	return allErrors
 }
 
+func validateDNSPolicy(dnsPolicy *api.DNSPolicy) errs.ValidationErrorList {
+	allErrors := errs.ValidationErrorList{}
+	switch *dnsPolicy {
+	case "":
+		// TODO: move this out to standard defaulting logic, when that is ready.
+		*dnsPolicy = api.DNSClusterFirst // Default value.
+	case api.DNSClusterFirst, api.DNSDefault:
+		break
+	default:
+		allErrors = append(allErrors, errs.NewFieldNotSupported("", dnsPolicy))
+	}
+	return allErrors
+}
+
 // ValidatePod tests if required fields in the pod are set.
 func ValidatePod(pod *api.Pod) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
 	if len(pod.Name) == 0 {
 		allErrs = append(allErrs, errs.NewFieldRequired("name", pod.Name))
+	} else if !util.IsDNSSubdomain(pod.Name) {
+		allErrs = append(allErrs, errs.NewFieldInvalid("name", pod.Name, ""))
 	}
-	if !util.IsDNSSubdomain(pod.Namespace) {
+	if len(pod.Namespace) == 0 {
+		allErrs = append(allErrs, errs.NewFieldRequired("namespace", pod.Namespace))
+	} else if !util.IsDNSSubdomain(pod.Namespace) {
 		allErrs = append(allErrs, errs.NewFieldInvalid("namespace", pod.Namespace, ""))
 	}
 	allErrs = append(allErrs, ValidatePodSpec(&pod.Spec).Prefix("spec")...)
@@ -373,6 +394,7 @@ func ValidatePodSpec(spec *api.PodSpec) errs.ValidationErrorList {
 	allErrs = append(allErrs, vErrs.Prefix("volumes")...)
 	allErrs = append(allErrs, validateContainers(spec.Containers, allVolumes).Prefix("containers")...)
 	allErrs = append(allErrs, validateRestartPolicy(&spec.RestartPolicy).Prefix("restartPolicy")...)
+	allErrs = append(allErrs, validateDNSPolicy(&spec.DNSPolicy).Prefix("dnsPolicy")...)
 	allErrs = append(allErrs, validateLabels(spec.NodeSelector, "nodeSelector")...)
 	return allErrs
 }
@@ -414,6 +436,8 @@ func ValidatePodUpdate(newPod, oldPod *api.Pod) errs.ValidationErrorList {
 	return allErrs
 }
 
+var supportedSessionAffinityType = util.NewStringSet(string(api.AffinityTypeClientIP), string(api.AffinityTypeNone))
+
 // ValidateService tests if required fields in the service are set.
 func ValidateService(service *api.Service, lister ServiceLister, ctx api.Context) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
@@ -454,6 +478,12 @@ func ValidateService(service *api.Service, lister ServiceLister, ctx api.Context
 			}
 		}
 	}
+	if service.Spec.SessionAffinity == "" {
+		service.Spec.SessionAffinity = api.AffinityTypeNone
+	} else if !supportedSessionAffinityType.Has(string(service.Spec.SessionAffinity)) {
+		allErrs = append(allErrs, errs.NewFieldNotSupported("spec.sessionAffinity", service.Spec.SessionAffinity))
+	}
+
 	return allErrs
 }
 
@@ -523,25 +553,20 @@ func ValidateReadOnlyPersistentDisks(volumes []api.Volume) errs.ValidationErrorL
 }
 
 // ValidateBoundPod tests if required fields on a bound pod are set.
-func ValidateBoundPod(pod *api.BoundPod) (errors []error) {
-	if !util.IsDNSSubdomain(pod.Name) {
-		errors = append(errors, errs.NewFieldInvalid("name", pod.Name, ""))
+func ValidateBoundPod(pod *api.BoundPod) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	if len(pod.Name) == 0 {
+		allErrs = append(allErrs, errs.NewFieldRequired("name", pod.Name))
+	} else if !util.IsDNSSubdomain(pod.Name) {
+		allErrs = append(allErrs, errs.NewFieldInvalid("name", pod.Name, ""))
 	}
-	if !util.IsDNSSubdomain(pod.Namespace) {
-		errors = append(errors, errs.NewFieldInvalid("namespace", pod.Namespace, ""))
+	if len(pod.Name) == 0 {
+		allErrs = append(allErrs, errs.NewFieldRequired("namespace", pod.Namespace))
+	} else if !util.IsDNSSubdomain(pod.Namespace) {
+		allErrs = append(allErrs, errs.NewFieldInvalid("namespace", pod.Namespace, ""))
 	}
-	containerManifest := &api.ContainerManifest{
-		Version:       "v1beta2",
-		ID:            pod.Name,
-		UUID:          pod.UID,
-		Containers:    pod.Spec.Containers,
-		Volumes:       pod.Spec.Volumes,
-		RestartPolicy: pod.Spec.RestartPolicy,
-	}
-	if errs := ValidateManifest(containerManifest); len(errs) != 0 {
-		errors = append(errors, errs...)
-	}
-	return errors
+	allErrs = append(allErrs, ValidatePodSpec(&pod.Spec).Prefix("spec")...)
+	return allErrs
 }
 
 // ValidateMinion tests if required fields in the minion are set.
@@ -560,9 +585,20 @@ func ValidateMinion(minion *api.Node) errs.ValidationErrorList {
 // ValidateMinionUpdate tests to make sure a minion update can be applied.  Modifies oldMinion.
 func ValidateMinionUpdate(oldMinion *api.Node, minion *api.Node) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
+
+	if !reflect.DeepEqual(minion.Status, api.NodeStatus{}) {
+		allErrs = append(allErrs, errs.NewFieldInvalid("status", minion.Status, "status must be empty"))
+	}
+
+	// Allow users to update labels and capacity
 	oldMinion.Labels = minion.Labels
+	oldMinion.Spec.Capacity = minion.Spec.Capacity
+	// Clear status
+	oldMinion.Status = minion.Status
+
 	if !reflect.DeepEqual(oldMinion, minion) {
-		allErrs = append(allErrs, fmt.Errorf("update contains more than labels changes"))
+		glog.V(4).Infof("Update failed validation %#v vs %#v", oldMinion, minion)
+		allErrs = append(allErrs, fmt.Errorf("update contains more than labels or capacity changes"))
 	}
 	return allErrs
 }
