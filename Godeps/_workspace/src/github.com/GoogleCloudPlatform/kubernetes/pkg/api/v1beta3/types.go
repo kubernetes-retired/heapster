@@ -381,6 +381,9 @@ const (
 	// PodFailed means that all containers in the pod have terminated, and at least one container has
 	// terminated in a failure (exited with a non-zero exit code or was stopped by the system).
 	PodFailed PodPhase = "Failed"
+	// PodUnknown means that for some reason the state of the pod could not be obtained, typically due
+	// to an error in communicating with the host of the pod.
+	PodUnknown PodPhase = "Unknown"
 )
 
 type ContainerStateWaiting struct {
@@ -454,13 +457,34 @@ type RestartPolicy struct {
 	Never     *RestartPolicyNever     `json:"never,omitempty"`
 }
 
+// DNSPolicy defines how a pod's DNS will be configured.
+type DNSPolicy string
+
+const (
+	// DNSClusterFirst indicates that the pod should use cluster DNS
+	// first, if it is available, then fall back on the default (as
+	// determined by kubelet) DNS settings.
+	DNSClusterFirst DNSPolicy = "ClusterFirst"
+
+	// DNSDefault indicates that the pod should use the default (as
+	// determined by kubelet) DNS settings.
+	DNSDefault DNSPolicy = "Default"
+)
+
 // PodSpec is a description of a pod
 type PodSpec struct {
 	Volumes       []Volume      `json:"volumes"`
 	Containers    []Container   `json:"containers"`
 	RestartPolicy RestartPolicy `json:"restartPolicy,omitempty"`
+	// Optional: Set DNS policy.  Defaults to "ClusterFirst"
+	DNSPolicy DNSPolicy `json:"dnsPolicy,omitempty"`
 	// NodeSelector is a selector which must be true for the pod to fit on a node
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Host is a request to schedule this pod onto a specific host.  If it is non-empty,
+	// the the scheduler simply schedules this pod onto that host, assuming that it fits
+	// other requirements.
+	Host string `json:"host,omitempty" description:"host requested for this pod"`
 }
 
 // PodStatus represents information about the status of a pod. Status may trail the actual
@@ -604,6 +628,17 @@ type ReplicationControllerList struct {
 	Items []ReplicationController `json:"items"`
 }
 
+// Session Affinity Type string
+type AffinityType string
+
+const (
+	// AffinityTypeClientIP is the Client IP based.
+	AffinityTypeClientIP AffinityType = "ClientIP"
+
+	// AffinityTypeNone - no session affinity.
+	AffinityTypeNone AffinityType = "None"
+)
+
 // ServiceStatus represents the current status of a service
 type ServiceStatus struct{}
 
@@ -635,6 +670,9 @@ type ServiceSpec struct {
 	// ContainerPort is the name of the port on the container to direct traffic to.
 	// Optional, if unspecified use the first port on the container.
 	ContainerPort util.IntOrString `json:"containerPort,omitempty"`
+
+	// Optional: Supports "ClientIP" and "None".  Used to maintain session affinity.
+	SessionAffinity AffinityType `json:"sessionAffinity,omitempty"`
 }
 
 // Service is a named abstraction of software service (for example, mysql) consisting of local port
@@ -955,13 +993,21 @@ type ObjectReference struct {
 	ResourceVersion string `json:"resourceVersion,omitempty"`
 
 	// Optional. If referring to a piece of an object instead of an entire object, this string
-	// should contain a valid field access statement. For example,
-	// if the object reference is to a container within a pod, this would take on a value like:
-	// "spec.containers[2]". Such statements are valid language constructs in
-	// both go and JavaScript. This is syntax is chosen only to have some well-defined way of
+	// should contain information to identify the sub-object. For example, if the object
+	// reference is to a container within a pod, this would take on a value like:
+	// "spec.containers{name}" (where "name" refers to the name of the container that triggered
+	// the event) or if no container name is specified "spec.containers[2]" (container with
+	// index 2 in this pod). This syntax is chosen only to have some well-defined way of
 	// referencing a part of an object.
 	// TODO: this design is not final and this field is subject to change in the future.
 	FieldPath string `json:"fieldPath,omitempty"`
+}
+
+type EventSource struct {
+	// Component from which the event is generated.
+	Component string `json:"component,omitempty"`
+	// Host name on which the event is generated.
+	Host string `json:"host,omitempty"`
 }
 
 // Event is a report of an event somewhere in the cluster.
@@ -973,18 +1019,18 @@ type Event struct {
 	// Required. The object that this event is about.
 	InvolvedObject ObjectReference `json:"involvedObject,omitempty"`
 
-	// Should be a short, machine understandable string that describes the current status
+	// Should be a short, machine understandable string that describes the current condition
 	// of the referred object. This should not give the reason for being in this state.
 	// Examples: "Running", "CantStart", "CantSchedule", "Deleted".
-	// It's OK for components to make up statuses to report here, but the same string should
-	// always be used for the same status.
+	// It's OK for components to make up conditions to report here, but the same string should
+	// always be used for the same conditions.
 	// TODO: define a way of making sure these are consistent and don't collide.
 	// TODO: provide exact specification for format.
 	Condition string `json:"condition,omitempty"`
 
 	// Optional; this should be a short, machine understandable string that gives the reason
-	// for the transition into the object's current status. For example, if ObjectStatus is
-	// "cantStart", StatusReason might be "imageNotFound".
+	// for the transition into the object's current condition. For example, if ObjectCondition is
+	// "CantStart", StatusReason might be "ImageNotFound".
 	// TODO: provide exact specification for format.
 	Reason string `json:"reason,omitempty"`
 
@@ -993,8 +1039,7 @@ type Event struct {
 	Message string `json:"message,omitempty"`
 
 	// Optional. The component reporting this event. Should be a short machine understandable string.
-	// TODO: provide exact specification for format.
-	Source string `json:"source,omitempty"`
+	Source EventSource `json:"source,omitempty"`
 
 	// The time at which the client recorded the event. (Time of server receipt is in TypeMeta.)
 	Timestamp util.Time `json:"timestamp,omitempty"`
