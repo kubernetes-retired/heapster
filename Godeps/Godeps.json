@@ -71,12 +71,9 @@
 			"Rev": "f96be472b427267475f2975a7bbf5120b64ced16"
 		},
 		{
-			"ImportPath": "github.com/davecgh/go-spew/spew",
-			"Rev": "83f84dc933714d51504ceed59f43ead21d096fe7"
-		},
-		{
-			"ImportPath": "github.com/ghodss/yaml",
-			"Rev": "4fb5c728a37b361a1e971a3bb3d785fcc96b6ef5"
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.6.2-15-gd2f9ffa",
+			"Rev": "d2f9ffa1d9cf25b25191b221229effac1b6de526"
 		},
 		{
 			"ImportPath": "github.com/coreos/fleet/client",
@@ -137,9 +134,53 @@
 			"Rev": "83f84dc933714d51504ceed59f43ead21d096fe7"
 		},
 		{
+			"ImportPath": "github.com/docker/docker/pkg/archive",
+			"Comment": "v1.4.1-346-gef2d6dd",
+			"Rev": "ef2d6dda0f25d29e19b7cc6afeee57c2d6971660"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/fileutils",
+			"Comment": "v1.4.1-346-gef2d6dd",
+			"Rev": "ef2d6dda0f25d29e19b7cc6afeee57c2d6971660"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/ioutils",
+			"Comment": "v1.4.1-346-gef2d6dd",
+			"Rev": "ef2d6dda0f25d29e19b7cc6afeee57c2d6971660"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/pools",
+			"Comment": "v1.4.1-346-gef2d6dd",
+			"Rev": "ef2d6dda0f25d29e19b7cc6afeee57c2d6971660"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/promise",
+			"Comment": "v1.4.1-346-gef2d6dd",
+			"Rev": "ef2d6dda0f25d29e19b7cc6afeee57c2d6971660"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/system",
+			"Comment": "v1.4.1-346-gef2d6dd",
+			"Rev": "ef2d6dda0f25d29e19b7cc6afeee57c2d6971660"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/units",
+			"Comment": "v1.4.1-346-gef2d6dd",
+			"Rev": "ef2d6dda0f25d29e19b7cc6afeee57c2d6971660"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar",
+			"Comment": "v1.4.1-346-gef2d6dd",
+			"Rev": "ef2d6dda0f25d29e19b7cc6afeee57c2d6971660"
+		},
+		{
 			"ImportPath": "github.com/docker/libcontainer/netlink",
 			"Comment": "v1.4.0-44-g0f397d4",
 			"Rev": "0f397d4e145fb4053792d42b3424dd2143fb23ad"
+		},
+		{
+			"ImportPath": "github.com/fsouza/go-dockerclient",
+			"Rev": "bc54f3734b9b098e24680d5ad686f602bc152df4"
 		},
 		{
 			"ImportPath": "github.com/ghodss/yaml",
