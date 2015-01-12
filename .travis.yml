@@ -8,5 +8,5 @@ before_script:
  - go get github.com/kr/godep
 script:
  - export PATH=$PATH:$HOME/gopath/bin
- - godep go build github.com/GoogleCloudPlatform/heapster
+ - godep go build -a github.com/GoogleCloudPlatform/heapster/...
  - go vet github.com/GoogleCloudPlatform/heapster/...
