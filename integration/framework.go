@@ -39,6 +39,9 @@ type kubeFramework interface {
 
 	// Run kubectl.sh command
 	RunKubectlCmd(cmd ...string) (string, error)
+
+	// Destroy cluster
+	DestroyCluster()
 }
 
 type realKubeFramework struct {
@@ -109,7 +112,7 @@ func setupNewCluster(kubeBaseDir string) error {
 	return nil
 }
 
-func tearDownCluster(kubeBaseDir string) error {
+func destroyCluster(kubeBaseDir string) error {
 	glog.V(1).Info("Bringing down any existing kube cluster")
 	out, err := runKubeClusterCommand(kubeBaseDir, "kube-down.sh")
 	if err != nil {
@@ -199,10 +202,6 @@ func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
 		t.Skip("Skipping framework test in short mode")
 	}
 
-	if !exists(*authConfig) {
-		return nil, fmt.Errorf("failed to find kube auth file: %s", *authConfig)
-	}
-
 	// Create a temp dir to store the kube release files.
 	tempDir := path.Join(*workDir, version)
 	if !exists(tempDir) {
@@ -231,7 +230,7 @@ func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
 		// TODO(vishh): Do a kube-push if a cluster already exists and bring down monitoring jobs.
 		// Teardown any pre-existing cluster - This can happen due to a failed test or bad release.
 		// Ignore teardown errors since a cluster may not even exist.
-		tearDownCluster(kubeBaseDir)
+		destroyCluster(kubeBaseDir)
 
 		// Setup kube cluster
 		glog.V(1).Infof("Setting up new kubernetes cluster version: %s", version)
@@ -283,4 +282,10 @@ func (self *realKubeFramework) RunKubectlCmd(args ...string) (string, error) {
 	glog.V(2).Infof("about to run cmd: %+v", cmd)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
+}
+
+func (self *realKubeFramework) DestroyCluster() {
+	if !*useExistingCluster {
+		destroyCluster(self.baseDir)
+	}
 }
