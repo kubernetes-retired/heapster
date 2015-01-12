@@ -89,6 +89,7 @@ func deletePods(fm kubeFramework) {
 }
 
 func TestHeapsterInfluxDBWorks(t *testing.T) {
+	var fm kubeFramework
 	kubeVersionsList := strings.Split(*kubeVersions, ",")
 	for _, kubeVersion := range kubeVersionsList {
 		fm, err := newKubeFramework(t, kubeVersion)
@@ -129,4 +130,5 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 		require.NotEmpty(t, data, "'machine' table does not contain any data")
 		glog.V(1).Info("HeapsterInfluxDB test passed")
 	}
+	fm.DestroyCluster()
 }
