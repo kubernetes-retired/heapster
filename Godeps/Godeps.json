@@ -36,6 +36,11 @@
 			"Rev": "f96be472b427267475f2975a7bbf5120b64ced16"
 		},
 		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/clientauth",
+			"Comment": "v0.8.0-2-gf96be47",
+			"Rev": "f96be472b427267475f2975a7bbf5120b64ced16"
+		},
+		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/conversion",
 			"Comment": "v0.8.0-2-gf96be47",
 			"Rev": "f96be472b427267475f2975a7bbf5120b64ced16"
@@ -215,9 +220,16 @@
 			"Rev": "3f831b65b61282ba6bece21b91beea2edc4c887a"
 		},
 		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Rev": "2160c81a963bc827f650a9d420263d05d35bb97e"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/require",
+			"Rev": "2160c81a963bc827f650a9d420263d05d35bb97e"
+		},
+		{
 			"ImportPath": "golang.org/x/net/context",
-			"Comment": "null-223",
-			"Rev": "5dedbdc181629d2f3557caf2667e60eb82c5e6d7"
+			"Rev": "67f25490433376b5f7da086c0b9283fcdeca3a7b"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
