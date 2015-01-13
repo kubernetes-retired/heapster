@@ -40,6 +40,15 @@ type kubeFramework interface {
 	// Run kubectl.sh command
 	RunKubectlCmd(cmd ...string) (string, error)
 
+	// Run kubectl.sh command
+	RunKubecfgCmd(cmd ...string) (string, error)
+
+	// Add firewall rules. Rules will be deleted automatically when the cluster is destroyed.
+	AddFirewallRule(name string, allow []string, targetTags string) error
+
+	// Returns true if a firewall rule exists.
+	FirewallRuleExists(name string) bool
+
 	// Destroy cluster
 	DestroyCluster()
 }
@@ -54,9 +63,14 @@ type realKubeFramework struct {
 	// Master host for this framework
 	master string
 
+	// The base directory of current kubernetes release.
 	baseDir string
+
 	// Testing framework in use
 	t *testing.T
+
+	// Firewall rules that need to be destroyed.
+	firewallRules map[string]struct{}
 }
 
 const imageUrlTemplate = "https://github.com/GoogleCloudPlatform/kubernetes/releases/download/v%s/kubernetes.tar.gz"
@@ -284,8 +298,56 @@ func (self *realKubeFramework) RunKubectlCmd(args ...string) (string, error) {
 	return string(out), err
 }
 
+func (self *realKubeFramework) RunKubecfgCmd(args ...string) (string, error) {
+	cmd := exec.Command(path.Join(self.baseDir, "cluster", "kubecfg.sh"), args...)
+	glog.V(2).Infof("about to run cmd: %+v", cmd)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
 func (self *realKubeFramework) DestroyCluster() {
+	for firewallRule := range self.firewallRules {
+		self.deleteFirewallRule(firewallRule)
+	}
 	if !*useExistingCluster {
 		destroyCluster(self.baseDir)
 	}
+}
+
+func (self *realKubeFramework) AddFirewallRule(name string, allow []string, targetTags string) error {
+	allowed := strings.Join(allow, " ")
+	cmd := exec.Command("gcloud", "compute", "firewall-rules", "create", name, "--allow", allowed, "--target-tags", targetTags)
+	glog.V(2).Infof("about to run cmd: %+v", cmd)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		glog.V(1).Infof("creating firewall rule failed: %q - %v", out, err)
+	} else {
+		self.firewallRules[name] = struct{}{}
+	}
+
+	return err
+}
+
+func (self *realKubeFramework) FirewallRuleExists(name string) bool {
+	cmd := exec.Command("gcloud", "compute", "firewall-rules", "list", name)
+	glog.V(2).Infof("about to run cmd: %+v", cmd)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		glog.V(2).Infof("listing firewall rule failed: %q - %v", out, err)
+		return false
+	}
+	return true
+}
+
+func (self *realKubeFramework) deleteFirewallRule(name string) error {
+	cmd := exec.Command("gcloud", "compute", "firewall-rules", "delete", name)
+	glog.V(2).Infof("about to run cmd: %+v", cmd)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		glog.Errorf("deleting firewall rule failed: %q - %v", out, err)
+	} else {
+		delete(self.firewallRules, name)
+	}
+
+	return err
 }
