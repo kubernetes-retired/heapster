@@ -1,8 +1,0 @@
-{
-  "id": "monitoring-influxdb",
-  "kind": "Service",
-  "apiVersion": "v1beta1",
-  "port": 8085,
-  "containerPort": 8086,
-  "selector": { "name": "influxGrafana" }
-}
