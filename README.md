@@ -40,7 +40,7 @@ $ kubectl.sh create -f deploy/influxdb-service.json
 
 Open up ports tcp:80,8083,8086,9200.
 ```shell
-$ gcutil addfirewall --allowed=tcp:80,tcp:8083,tcp:8086,tcp:9200 --target_tags=kubernetes-minion monitoring-heapster
+$ gcloud compute firewall-rules create monitoring-heapster --allow "tcp:80" "tcp:8083" "tcp:8086" --target-tags=kubernetes-minion
 ```
 
 **Step 5: Start Heapster Pod**
