@@ -31,12 +31,15 @@ import (
 var (
 	influxdbController          = "monitoring-influxGrafanaController"
 	heapsterController          = "monitoring-heapsterController"
+	targetTags                  = "kubernetes-minion"
+	heapsterFirewallRule        = "heapster-e2e"
 	influxdbLabels              = map[string]string{"name": "influxGrafana"}
 	heapsterLabels              = map[string]string{"name": "heapster"}
 	kubeVersions                = flag.String("kube_versions", "0.7.2,0.8.0", "Comma separated list of kube versions to test against")
 	heapsterManifestFile        = flag.String("heapster_controller", "../deploy/heapster-controller.js", "Path to heapster replication controller file.")
 	influxdbGrafanaManifestFile = flag.String("influxdb_grafana_controller", "../deploy/influxdb-grafana-controller.js", "Path to Influxdb-Grafana replication controller file.")
 	influxdbServiceFile         = flag.String("influxdb_service", "../deploy/influxdb-service.json", "Path to Inlufxdb service file.")
+	maxInfluxdbRetries          = 5
 )
 
 func waitUntilPodRunning(fm kubeFramework, podLabels map[string]string, timeout time.Duration) (string, error) {
@@ -76,12 +79,11 @@ func updateReplicas(fm kubeFramework, name string, count int) error {
 }
 
 func deletePods(fm kubeFramework) {
-	// TODO(vishh): Use kubecfg.sh instead. Native APIs aren't working.
-	if err := updateReplicas(fm, influxdbController, 0); err != nil {
-		glog.Errorf("failed to bring down the number of replicas for influxdb")
+	if out, err := fm.RunKubecfgCmd("resize", influxdbController, "0"); err != nil {
+		glog.Errorf("failed to bring down the number of replicas for influxdb: %q - %v", out, err)
 	}
-	if err := updateReplicas(fm, heapsterController, 0); err != nil {
-		glog.Errorf("failed to bring down the number of replicas for heapster")
+	if out, err := fm.RunKubecfgCmd("resize", heapsterController, "0"); err != nil {
+		glog.Errorf("failed to bring down the number of replicas for influxdb: %q - %v", out, err)
 	}
 	_, _ = fm.RunKubectlCmd("delete", "-f", *heapsterManifestFile)
 	_, _ = fm.RunKubectlCmd("delete", "-f", *influxdbGrafanaManifestFile)
@@ -90,10 +92,17 @@ func deletePods(fm kubeFramework) {
 
 func TestHeapsterInfluxDBWorks(t *testing.T) {
 	var fm kubeFramework
+	var err error
 	kubeVersionsList := strings.Split(*kubeVersions, ",")
 	for _, kubeVersion := range kubeVersionsList {
-		fm, err := newKubeFramework(t, kubeVersion)
+		fm, err = newKubeFramework(t, kubeVersion)
 		require.NoError(t, err, "failed to create kube framework")
+
+		// add firewall rules.
+		if !fm.FirewallRuleExists(heapsterFirewallRule) {
+			err := fm.AddFirewallRule(heapsterFirewallRule, []string{"tcp:8086"}, targetTags)
+			require.NoError(t, err, "failed to create firewall rule")
+		}
 
 		deletePods(fm)
 		out, err := fm.RunKubectlCmd("create", "-f", *influxdbGrafanaManifestFile)
@@ -121,13 +130,26 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 		influxdbClient, err := influxdb.NewClient(config)
 		require.NoError(t, err, "failed to create influxdb client")
 
-		data, err := influxdbClient.Query("select * from stats limit 1", influxdb.Second)
+		var series []*influxdb.Series
+		for i := 0; i < maxInfluxdbRetries; i++ {
+			series, err = influxdbClient.Query("select * from stats limit 1", influxdb.Second)
+			if err == nil {
+				break
+			}
+			time.Sleep(30 * time.Second)
+		}
 		require.NoError(t, err, "failed to query data from 'stats' table in Influxdb")
-		require.NotEmpty(t, data, "'stats' table does not contain any data")
+		require.NotEmpty(t, series, "'stats' table does not contain any data")
 
-		data, err = influxdbClient.Query("select * from machine limit 1", influxdb.Second)
+		for i := 0; i < maxInfluxdbRetries; i++ {
+			series, err = influxdbClient.Query("select * from machine limit 1", influxdb.Second)
+			if err == nil {
+				break
+			}
+			time.Sleep(30 * time.Second)
+		}
 		require.NoError(t, err, "failed to query data from 'machine' table in Influxdb")
-		require.NotEmpty(t, data, "'machine' table does not contain any data")
+		require.NotEmpty(t, series, "'machine' table does not contain any data")
 		glog.V(1).Info("HeapsterInfluxDB test passed")
 	}
 	fm.DestroyCluster()
