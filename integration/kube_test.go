@@ -17,12 +17,17 @@ package integration
 import (
 	"flag"
 	"fmt"
+	"os"
+	"io/ioutil"
+	"path"
 	"strings"
 	"testing"
 	"time"
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	kube_api_v1beta1 "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta1"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
+	"github.com/ghodss/yaml"
 	"github.com/golang/glog"
 	influxdb "github.com/influxdb/influxdb/client"
 	"github.com/stretchr/testify/require"
@@ -36,11 +41,39 @@ var (
 	influxdbLabels              = map[string]string{"name": "influxGrafana"}
 	heapsterLabels              = map[string]string{"name": "heapster"}
 	kubeVersions                = flag.String("kube_versions", "0.7.2,0.8.0", "Comma separated list of kube versions to test against")
-	maxInfluxdbRetries          = 5
 	heapsterManifestFile        = flag.String("heapster_controller", "../deploy/heapster-controller.yaml", "Path to heapster replication controller file.")
 	influxdbGrafanaManifestFile = flag.String("influxdb_grafana_controller", "../deploy/influxdb-grafana-controller.yaml", "Path to Influxdb-Grafana replication controller file.")
 	influxdbServiceFile         = flag.String("influxdb_service", "../deploy/influxdb-service.yaml", "Path to Inlufxdb service file.")
+	heapsterImage               = flag.String("heapster_image", "vish/heapster:e2e_test", "heapster docker image that needs to be tested.")
+	influxdbImage               = flag.String("influxdb_image", "vish/heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
+	grafanaImage                = flag.String("grafana_image", "vish/heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
+	maxInfluxdbRetries          = 5
 )
+
+func replaceImages(inputFile, outputBaseDir string, containerNameImageMap map[string]string) (string, error) {
+	input, err := ioutil.ReadFile(inputFile)
+	if err != nil {
+		return "", err
+	}
+
+	rc := kube_api_v1beta1.ReplicationController{}
+	if err := yaml.Unmarshal(input, &rc); err != nil {
+		return "", err
+	}
+	for i, container := range rc.DesiredState.PodTemplate.DesiredState.Manifest.Containers {
+		if newImage, ok := containerNameImageMap[container.Name]; ok {
+			rc.DesiredState.PodTemplate.DesiredState.Manifest.Containers[i].Image = newImage
+		}
+	}
+
+	output, err := yaml.Marshal(rc)
+	if err != nil {
+		return "", err
+	}
+	outFile := path.Join(outputBaseDir, path.Base(inputFile))
+
+	return outFile, ioutil.WriteFile(outFile, output, 0644)
+}
 
 func waitUntilPodRunning(fm kubeFramework, podLabels map[string]string, timeout time.Duration) (string, error) {
 	podsInterface := fm.Client().Pods(kube_api.NamespaceDefault)
@@ -93,6 +126,11 @@ func deletePods(fm kubeFramework) {
 func TestHeapsterInfluxDBWorks(t *testing.T) {
 	var fm kubeFramework
 	var err error
+
+	tempDir, err := ioutil.TempDir("", "deploy")
+	require.NoError(t, err, "failed to create temporary directory")
+	defer os.RemoveAll(tempDir)
+
 	kubeVersionsList := strings.Split(*kubeVersions, ",")
 	for _, kubeVersion := range kubeVersionsList {
 		fm, err = newKubeFramework(t, kubeVersion)
@@ -104,12 +142,21 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 			require.NoError(t, err, "failed to create firewall rule")
 		}
 
+		// Delete any pre-existing heapster pods
 		deletePods(fm)
-		out, err := fm.RunKubectlCmd("create", "-f", *influxdbGrafanaManifestFile)
+
+		// Add test docker image
+		heapsterManifest, err := replaceImages(*heapsterManifestFile, tempDir, map[string]string{"heapster": *heapsterImage})
+		require.NoError(t, err, "failed to add test heapster docker image to manifest")
+		influxdbGrafanaManifest, err := replaceImages(*influxdbGrafanaManifestFile, tempDir, map[string]string{"influxdb": *influxdbImage, "grafana": *grafanaImage})
+		require.NoError(t, err, "failed to add test influxdb and grafana docker images to manifest")
+
+		// Create heapster pods
+		out, err := fm.RunKubectlCmd("create", "-f", influxdbGrafanaManifest)
 		require.NoError(t, err, "failed to create Influxdb-grafana pod ", out)
 		out, err = fm.RunKubectlCmd("create", "-f", *influxdbServiceFile)
 		require.NoError(t, err, "failed to create Influxdb service ", out)
-		out, err = fm.RunKubectlCmd("create", "-f", *heapsterManifestFile)
+		out, err = fm.RunKubectlCmd("create", "-f", heapsterManifest)
 		require.NoError(t, err, "failed to create heapster pod ", out)
 
 		glog.V(1).Info("waiting for pods to be running")
