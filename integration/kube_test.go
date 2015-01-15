@@ -40,7 +40,7 @@ var (
 	heapsterFirewallRule        = "heapster-e2e"
 	influxdbLabels              = map[string]string{"name": "influxGrafana"}
 	heapsterLabels              = map[string]string{"name": "heapster"}
-	kubeVersions                = flag.String("kube_versions", "0.7.2,0.8.0", "Comma separated list of kube versions to test against")
+	kubeVersions                = flag.String("kube_versions", "0.7.2,0.8.1", "Comma separated list of kube versions to test against")
 	heapsterManifestFile        = flag.String("heapster_controller", "../deploy/heapster-controller.yaml", "Path to heapster replication controller file.")
 	influxdbGrafanaManifestFile = flag.String("influxdb_grafana_controller", "../deploy/influxdb-grafana-controller.yaml", "Path to Influxdb-Grafana replication controller file.")
 	influxdbServiceFile         = flag.String("influxdb_service", "../deploy/influxdb-service.yaml", "Path to Inlufxdb service file.")
