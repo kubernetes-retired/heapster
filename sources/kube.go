@@ -187,6 +187,10 @@ func newKubeSource() (*KubeSource, error) {
 		Insecure: true,
 	})
 
+	glog.Infof("Using Kubernetes client %+v\n", kubeClient)
+	glog.Infof("Using kubelet port %q", *argKubeletPort)
+	glog.Infof("Support kubelet versions %v", kubeVersions)
+
 	return &KubeSource{
 		client:      kubeClient,
 		lastQuery:   time.Now(),
