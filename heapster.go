@@ -16,27 +16,50 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks"
 	"github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/validate"
+	"github.com/GoogleCloudPlatform/heapster/version"
 	"github.com/golang/glog"
 )
 
 var argPollDuration = flag.Duration("poll_duration", 10*time.Second, "Polling duration")
+var argPort = flag.Int("port", 8082, "port to listen")
+var argIp = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 
 func main() {
 	flag.Parse()
 	glog.Infof(strings.Join(os.Args, " "))
-	glog.Infof("Heapster version %v", heapsterVersion)
+	glog.Infof("Heapster version %v", version.HeapsterVersion)
 	err := doWork()
 	if err != nil {
 		glog.Error(err)
 		os.Exit(1)
 	}
+	setupHandlers()
+	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
+	glog.Infof("Starting heapster on port %d", *argPort)
+	glog.Fatal(http.ListenAndServe(addr, nil))
 	os.Exit(0)
+}
+
+func setupHandlers() {
+	// Validation/Debug handler.
+	http.HandleFunc(validate.ValidatePage, func(w http.ResponseWriter, r *http.Request) {
+		err := validate.HandleRequest(w)
+		if err != nil {
+			fmt.Fprintf(w, "%s", err)
+		}
+	})
+
+	// TODO(jnagal): Add a main status page.
+	http.Handle("/", http.RedirectHandler(validate.ValidatePage, http.StatusTemporaryRedirect))
 }
 
 func doWork() error {
@@ -48,6 +71,11 @@ func doWork() error {
 	if err != nil {
 		return err
 	}
+	go housekeep(source, sink)
+	return nil
+}
+
+func housekeep(source sources.Source, sink sinks.Sink) {
 	ticker := time.NewTicker(*argPollDuration)
 	defer ticker.Stop()
 	for {
@@ -55,11 +83,13 @@ func doWork() error {
 		case <-ticker.C:
 			data, err := source.GetInfo()
 			if err != nil {
-				return err
+				glog.Fatalf("failed to get information from source")
 			}
 			if err := sink.StoreData(data); err != nil {
-				return err
+				glog.Fatalf("failed to push information to sink")
+
 			}
 		}
 	}
+
 }

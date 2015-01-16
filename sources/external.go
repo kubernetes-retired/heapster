@@ -47,7 +47,7 @@ func (self *ExternalSource) getCadvisorHosts() (*CadvisorHosts, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal contents of file %s. Error: %s", HostsFile, err)
 	}
-	glog.Infof("Using cAdvisor hosts %+v", cadvisorHosts)
+	glog.V(1).Infof("Using cAdvisor hosts %+v", cadvisorHosts)
 	return &cadvisorHosts, nil
 }
 
