@@ -185,6 +185,7 @@ func NewInfluxdbSink() (Sink, error) {
 		Database: *argDbName,
 		IsSecure: false,
 	}
+	glog.Infof("Using influxdb on host %q with database %q", *argDbHost, *argDbName)
 	client, err := influxdb.NewClient(config)
 	if err != nil {
 		return nil, err

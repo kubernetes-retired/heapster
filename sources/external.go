@@ -33,7 +33,7 @@ type ExternalSource struct {
 func (self *ExternalSource) getCadvisorHosts() (*CadvisorHosts, error) {
 	fi, err := os.Stat(HostsFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot stat hosts_file %q: %s", HostsFile, err)
 	}
 	if fi.Size() == 0 {
 		return &CadvisorHosts{}, nil
@@ -47,6 +47,7 @@ func (self *ExternalSource) getCadvisorHosts() (*CadvisorHosts, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal contents of file %s. Error: %s", HostsFile, err)
 	}
+	glog.Infof("Using cAdvisor hosts %+v", cadvisorHosts)
 	return &cadvisorHosts, nil
 }
 
@@ -74,7 +75,7 @@ func (self *ExternalSource) GetInfo() (ContainerData, error) {
 
 func newExternalSource() (Source, error) {
 	if _, err := os.Stat(HostsFile); err != nil {
-		return nil, fmt.Errorf("Cannot stat hosts_file %s. Error: %s", HostsFile, err)
+		return nil, fmt.Errorf("cannot stat hosts_file %s. Error: %s", HostsFile, err)
 	}
 	cadvisorSource := newCadvisorSource()
 	return &ExternalSource{
