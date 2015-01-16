@@ -70,3 +70,5 @@ _Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform
 #### Community
 
 Contributions, questions, and comments are all welcomed and encouraged! Heapster and cAdvisor developers hang out in [#google-containers](http://webchat.freenode.net/?channels=google-containers) room on freenode.net.  We also have the [google-containers Google Groups mailing list](https://groups.google.com/forum/#!forum/google-containers).
+
+Temporary Edit as requested.
