@@ -31,7 +31,7 @@ import (
 )
 
 // Kubernetes released supported and tested against.
-var kubeVersions = []string{"v0.3"}
+var kubeVersions = []string{"v0.7.0"}
 
 // Cadvisor port in kubernetes.
 const cadvisorPort = 4194

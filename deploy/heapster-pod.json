@@ -1,0 +1,26 @@
+{
+  "id": "heapsterController",
+  "kind": "ReplicationController",
+  "apiVersion": "v1beta1",
+  "desiredState": {
+    "replicas": 1,
+    "replicaSelector": {"name": "heapster"},
+    "podTemplate": {
+      "desiredState": {
+         "manifest": {
+           "version": "v1beta1",
+           "id": "heapsterController",
+           "containers": [{
+             "name": "heapster",
+             "image": "kubernetes/heapster"
+           }]
+         }
+      },
+      "labels": {
+        "name": "heapster",
+        "uses": "influx-master"
+      }
+    }
+  },
+  "labels": {"name": "heapster"}
+}
