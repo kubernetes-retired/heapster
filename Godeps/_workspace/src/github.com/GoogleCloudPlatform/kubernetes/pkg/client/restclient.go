@@ -36,6 +36,10 @@ import (
 type RESTClient struct {
 	baseURL *url.URL
 
+	// namespaceInPath controls if URLs should encode the namespace as path param instead of query param
+	// needed for backward compatibility
+	namespaceInPath bool
+
 	// Codec is the encoding and decoding scheme that applies to a particular set of
 	// REST resources.
 	Codec runtime.Codec
@@ -55,8 +59,10 @@ type RESTClient struct {
 
 // NewRESTClient creates a new RESTClient. This client performs generic REST functions
 // such as Get, Put, Post, and Delete on specified paths.  Codec controls encoding and
-// decoding of responses from the server.
-func NewRESTClient(baseURL *url.URL, c runtime.Codec) *RESTClient {
+// decoding of responses from the server. If the namespace should be specified as part
+// of the path (after the resource), set namespaceInPath to true, otherwise it will be
+// passed as "namespace" in the query string.
+func NewRESTClient(baseURL *url.URL, c runtime.Codec, namespaceInPath bool) *RESTClient {
 	base := *baseURL
 	if !strings.HasSuffix(base.Path, "/") {
 		base.Path += "/"
@@ -67,6 +73,8 @@ func NewRESTClient(baseURL *url.URL, c runtime.Codec) *RESTClient {
 	return &RESTClient{
 		baseURL: &base,
 		Codec:   c,
+
+		namespaceInPath: namespaceInPath,
 
 		// Make asynchronous requests by default
 		Sync: false,
@@ -98,7 +106,7 @@ func (c *RESTClient) Verb(verb string) *Request {
 	if poller == nil {
 		poller = c.DefaultPoll
 	}
-	return NewRequest(c.Client, verb, c.baseURL, c.Codec).Poller(poller).Sync(c.Sync).Timeout(c.Timeout)
+	return NewRequest(c.Client, verb, c.baseURL, c.Codec, c.namespaceInPath).Poller(poller).Sync(c.Sync).Timeout(c.Timeout)
 }
 
 // Post begins a POST request. Short for c.Verb("POST").
@@ -123,7 +131,7 @@ func (c *RESTClient) Delete() *Request {
 
 // PollFor makes a request to do a single poll of the completion of the given operation.
 func (c *RESTClient) Operation(name string) *Request {
-	return c.Get().Path("operations").Path(name).Sync(false).NoPoll()
+	return c.Get().Resource("operations").Name(name).Sync(false).NoPoll()
 }
 
 func (c *RESTClient) DefaultPoll(name string) (*Request, bool) {

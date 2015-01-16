@@ -35,6 +35,43 @@ func expectPrefix(t *testing.T, prefix string, errs errors.ValidationErrorList) 
 	}
 }
 
+func TestValidateLabels(t *testing.T) {
+	successCases := []map[string]string{
+		{"simple": "bar"},
+		{"now-with-dashes": "bar"},
+		{"1-starts-with-num": "bar"},
+		{"1234": "bar"},
+		{"simple/simple": "bar"},
+		{"now-with-dashes/simple": "bar"},
+		{"now-with-dashes/now-with-dashes": "bar"},
+		{"now.with.dots/simple": "bar"},
+		{"now-with.dashes-and.dots/simple": "bar"},
+		{"1-num.2-num/3-num": "bar"},
+		{"1234/5678": "bar"},
+		{"1.2.3.4/5678": "bar"},
+	}
+	for i := range successCases {
+		errs := validateLabels(successCases[i], "field")
+		if len(errs) != 0 {
+			t.Errorf("case[%d] expected success, got %#v", i, errs)
+		}
+	}
+
+	errorCases := []map[string]string{
+		{"NoUppercase123": "bar"},
+		{"nospecialchars^=@": "bar"},
+		{"cantendwithadash-": "bar"},
+		{"only/one/slash": "bar"},
+		{strings.Repeat("a", 254): "bar"},
+	}
+	for i := range errorCases {
+		errs := validateLabels(errorCases[i], "field")
+		if len(errs) != 1 {
+			t.Errorf("case[%d] expected failure", i)
+		}
+	}
+}
+
 func TestValidateVolumes(t *testing.T) {
 	successCase := []api.Volume{
 		{Name: "abc"},
@@ -301,7 +338,22 @@ func TestValidateRestartPolicy(t *testing.T) {
 	if noPolicySpecified.Always == nil {
 		t.Errorf("expected Always policy specified")
 	}
+}
 
+func TestValidateDNSPolicy(t *testing.T) {
+	successCases := []api.DNSPolicy{api.DNSClusterFirst, api.DNSDefault, api.DNSPolicy("")}
+	for _, policy := range successCases {
+		if errs := validateDNSPolicy(&policy); len(errs) != 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := []api.DNSPolicy{api.DNSPolicy("invalid")}
+	for _, policy := range errorCases {
+		if errs := validateDNSPolicy(&policy); len(errs) == 0 {
+			t.Errorf("expected failure for %v", policy)
+		}
+	}
 }
 
 func TestValidateManifest(t *testing.T) {
@@ -367,64 +419,109 @@ func TestValidateManifest(t *testing.T) {
 	}
 }
 
-func TestValidatePod(t *testing.T) {
-	errs := ValidatePod(&api.Pod{
-		ObjectMeta: api.ObjectMeta{
-			Name: "foo", Namespace: api.NamespaceDefault,
-			Labels: map[string]string{
-				"foo": "bar",
-			},
+func TestValidatePodSpec(t *testing.T) {
+	successCases := []api.PodSpec{
+		{}, // empty is valid, if not very useful */
+		{ // Populate basic fields, leave defaults for most.
+			Volumes:    []api.Volume{{Name: "vol"}},
+			Containers: []api.Container{{Name: "ctr", Image: "image"}},
 		},
-		Spec: api.PodSpec{
-			RestartPolicy: api.RestartPolicy{
-				Always: &api.RestartPolicyAlways{},
+		{ // Populate all fields.
+			Volumes: []api.Volume{
+				{Name: "vol"},
 			},
+			Containers:    []api.Container{{Name: "ctr", Image: "image"}},
+			RestartPolicy: api.RestartPolicy{Always: &api.RestartPolicyAlways{}},
+			DNSPolicy:     api.DNSClusterFirst,
+			NodeSelector: map[string]string{
+				"key": "value",
+			},
+			Host: "foobar",
 		},
-	})
-	if len(errs) != 0 {
-		t.Errorf("Unexpected non-zero error list: %#v", errs)
 	}
-	errs = ValidatePod(&api.Pod{
-		ObjectMeta: api.ObjectMeta{
-			Name:      "foo",
-			Namespace: api.NamespaceDefault,
-			Labels: map[string]string{
-				"foo": "bar",
-			},
-		},
-		Spec: api.PodSpec{},
-	})
-	if len(errs) != 0 {
-		t.Errorf("Unexpected non-zero error list: %#v", errs)
+	for i := range successCases {
+		if errs := ValidatePodSpec(&successCases[i]); len(errs) != 0 {
+			t.Errorf("expected success: %v", errs)
+		}
 	}
 
-	errs = ValidatePodSpec(&api.PodSpec{
-		RestartPolicy: api.RestartPolicy{
-			Always: &api.RestartPolicyAlways{},
-			Never:  &api.RestartPolicyNever{},
+	failureCases := map[string]api.PodSpec{
+		"bad volume": {
+			Volumes: []api.Volume{{}},
 		},
-	})
-	if len(errs) != 1 {
-		t.Errorf("Unexpected error list: %#v", errs)
+		"bad container": {
+			Containers: []api.Container{{}},
+		},
+		"bad DNS policy": {
+			DNSPolicy: api.DNSPolicy("invalid"),
+		},
 	}
-	errs = ValidatePod(&api.Pod{
-		ObjectMeta: api.ObjectMeta{
-			Name:      "foo",
-			Namespace: api.NamespaceDefault,
-			Labels: map[string]string{
-				"123cantbeginwithnumber":          "bar", //invalid
-				"NoUppercase123":                  "bar", //invalid
-				"nospecialchars^=@":               "bar", //invalid
-				"cantendwithadash-":               "bar", //invalid
-				"rfc952-mustbe24charactersorless": "bar", //invalid
-				"rfc952-dash-nodots-lower":        "bar", //good label
-				"rfc952-24chars-orless":           "bar", //good label
+	for k, v := range failureCases {
+		if errs := ValidatePodSpec(&v); len(errs) == 0 {
+			t.Errorf("expected failure for %q", k)
+		}
+	}
+
+	defaultPod := api.PodSpec{} // all empty fields
+	if errs := ValidatePodSpec(&defaultPod); len(errs) != 0 {
+		t.Errorf("expected success: %v", errs)
+	}
+	if util.AllPtrFieldsNil(defaultPod.RestartPolicy) {
+		t.Errorf("expected a default RestartPolicy")
+	}
+	if defaultPod.DNSPolicy == "" {
+		t.Errorf("expected a default DNSPolicy")
+	}
+}
+
+func TestValidatePod(t *testing.T) {
+	successCases := []api.Pod{
+		{ // Mostly empty.
+			ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "ns"},
+		},
+		{ // Basic fields.
+			ObjectMeta: api.ObjectMeta{Name: "123", Namespace: "ns"},
+			Spec: api.PodSpec{
+				Volumes:    []api.Volume{{Name: "vol"}},
+				Containers: []api.Container{{Name: "ctr", Image: "image"}},
 			},
 		},
-		Spec: api.PodSpec{},
-	})
-	if len(errs) != 5 {
-		t.Errorf("Unexpected non-zero error list: %#v", errs)
+		{ // Just about everything.
+			ObjectMeta: api.ObjectMeta{Name: "abc.123.do-re-mi", Namespace: "ns"},
+			Spec: api.PodSpec{
+				Volumes: []api.Volume{
+					{Name: "vol"},
+				},
+				Containers:    []api.Container{{Name: "ctr", Image: "image"}},
+				RestartPolicy: api.RestartPolicy{Always: &api.RestartPolicyAlways{}},
+				DNSPolicy:     api.DNSClusterFirst,
+				NodeSelector: map[string]string{
+					"key": "value",
+				},
+				Host: "foobar",
+			},
+		},
+	}
+	for _, pod := range successCases {
+		if errs := ValidatePod(&pod); len(errs) != 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := map[string]api.Pod{
+		"bad name":      {ObjectMeta: api.ObjectMeta{Name: "", Namespace: "ns"}},
+		"bad namespace": {ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: ""}},
+		"bad spec": {
+			ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "ns"},
+			Spec: api.PodSpec{
+				Containers: []api.Container{{}},
+			},
+		},
+	}
+	for k, v := range errorCases {
+		if errs := ValidatePod(&v); len(errs) == 0 {
+			t.Errorf("expected failure for %s", k)
+		}
 	}
 }
 
@@ -591,6 +688,57 @@ func TestValidatePodUpdate(t *testing.T) {
 	}
 }
 
+func TestValidateBoundPods(t *testing.T) {
+	successCases := []api.BoundPod{
+		{ // Mostly empty.
+			ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "ns"},
+		},
+		{ // Basic fields.
+			ObjectMeta: api.ObjectMeta{Name: "123", Namespace: "ns"},
+			Spec: api.PodSpec{
+				Volumes:    []api.Volume{{Name: "vol"}},
+				Containers: []api.Container{{Name: "ctr", Image: "image"}},
+			},
+		},
+		{ // Just about everything.
+			ObjectMeta: api.ObjectMeta{Name: "abc.123.do-re-mi", Namespace: "ns"},
+			Spec: api.PodSpec{
+				Volumes: []api.Volume{
+					{Name: "vol"},
+				},
+				Containers:    []api.Container{{Name: "ctr", Image: "image"}},
+				RestartPolicy: api.RestartPolicy{Always: &api.RestartPolicyAlways{}},
+				DNSPolicy:     api.DNSClusterFirst,
+				NodeSelector: map[string]string{
+					"key": "value",
+				},
+				Host: "foobar",
+			},
+		},
+	}
+	for _, pod := range successCases {
+		if errs := ValidateBoundPod(&pod); len(errs) != 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := map[string]api.Pod{
+		"bad name":      {ObjectMeta: api.ObjectMeta{Name: "", Namespace: "ns"}},
+		"bad namespace": {ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: ""}},
+		"bad spec": {
+			ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "ns"},
+			Spec: api.PodSpec{
+				Containers: []api.Container{{}},
+			},
+		},
+	}
+	for k, v := range errorCases {
+		if errs := ValidatePod(&v); len(errs) == 0 {
+			t.Errorf("expected failure for %s", k)
+		}
+	}
+}
+
 func TestValidateService(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -678,8 +826,8 @@ func TestValidateService(t *testing.T) {
 					Port: 8675,
 				},
 			},
-			// Should fail because the selector is missing.
-			numErrs: 1,
+			// Should be ok because the selector is missing.
+			numErrs: 0,
 		},
 		{
 			name: "valid 1",
@@ -793,11 +941,24 @@ func TestValidateService(t *testing.T) {
 					},
 				},
 				Spec: api.ServiceSpec{
+					Port: 8675,
+				},
+			},
+			numErrs: 1,
+		},
+		{
+			name: "invalid selector",
+			svc: api.Service{
+				ObjectMeta: api.ObjectMeta{
+					Name:      "abc123",
+					Namespace: api.NamespaceDefault,
+				},
+				Spec: api.ServiceSpec{
 					Port:     8675,
 					Selector: map[string]string{"foo": "bar", "NoUppercaseOrSpecialCharsLike=Equals": "bar"},
 				},
 			},
-			numErrs: 2,
+			numErrs: 1,
 		},
 	}
 
@@ -806,7 +967,7 @@ func TestValidateService(t *testing.T) {
 		registry.List = tc.existing
 		errs := ValidateService(&tc.svc, registry, api.NewDefaultContext())
 		if len(errs) != tc.numErrs {
-			t.Errorf("Unexpected error list for case %q: %v", tc.name, errs.ToError())
+			t.Errorf("Unexpected error list for case %q: %v", tc.name, util.SliceToError(errs))
 		}
 	}
 
@@ -1003,8 +1164,8 @@ func TestValidateReplicationController(t *testing.T) {
 				field != "spec.template" &&
 				field != "GCEPersistentDisk.ReadOnly" &&
 				field != "spec.replicas" &&
-				field != "spec.template.label" &&
-				field != "label" {
+				field != "spec.template.labels" &&
+				field != "labels" {
 				t.Errorf("%s: missing prefix for: %v", k, errs[i])
 			}
 		}
@@ -1032,7 +1193,7 @@ func TestValidateBoundPodNoName(t *testing.T) {
 func TestValidateMinion(t *testing.T) {
 	validSelector := map[string]string{"a": "b"}
 	invalidSelector := map[string]string{"NoUppercaseOrSpecialCharsLike=Equals": "b"}
-	successCases := []api.Minion{
+	successCases := []api.Node{
 		{
 			ObjectMeta: api.ObjectMeta{
 				Name:   "abc",
@@ -1055,7 +1216,7 @@ func TestValidateMinion(t *testing.T) {
 		}
 	}
 
-	errorCases := map[string]api.Minion{
+	errorCases := map[string]api.Node{
 		"zero-length Name": {
 			ObjectMeta: api.ObjectMeta{
 				Name:   "",
@@ -1080,7 +1241,7 @@ func TestValidateMinion(t *testing.T) {
 		for i := range errs {
 			field := errs[i].(*errors.ValidationError).Field
 			if field != "name" &&
-				field != "label" {
+				field != "labels" {
 				t.Errorf("%s: missing prefix for: %v", k, errs[i])
 			}
 		}
@@ -1089,48 +1250,120 @@ func TestValidateMinion(t *testing.T) {
 
 func TestValidateMinionUpdate(t *testing.T) {
 	tests := []struct {
-		oldMinion api.Minion
-		minion    api.Minion
+		oldMinion api.Node
+		minion    api.Node
 		valid     bool
 	}{
-		{api.Minion{}, api.Minion{}, true},
-		{api.Minion{
+		{api.Node{}, api.Node{}, true},
+		{api.Node{
 			ObjectMeta: api.ObjectMeta{
 				Name: "foo"}},
-			api.Minion{
+			api.Node{
 				ObjectMeta: api.ObjectMeta{
 					Name: "bar"},
 			}, false},
-		{api.Minion{
+		{api.Node{
 			ObjectMeta: api.ObjectMeta{
 				Name:   "foo",
 				Labels: map[string]string{"foo": "bar"},
 			},
-		}, api.Minion{
+		}, api.Node{
 			ObjectMeta: api.ObjectMeta{
 				Name:   "foo",
 				Labels: map[string]string{"foo": "baz"},
 			},
 		}, true},
-		{api.Minion{
+		{api.Node{
 			ObjectMeta: api.ObjectMeta{
 				Name: "foo",
 			},
-		}, api.Minion{
+		}, api.Node{
 			ObjectMeta: api.ObjectMeta{
 				Name:   "foo",
 				Labels: map[string]string{"foo": "baz"},
 			},
 		}, true},
-		{api.Minion{
+		{api.Node{
 			ObjectMeta: api.ObjectMeta{
 				Name:   "foo",
 				Labels: map[string]string{"bar": "foo"},
 			},
-		}, api.Minion{
+		}, api.Node{
 			ObjectMeta: api.ObjectMeta{
 				Name:   "foo",
 				Labels: map[string]string{"foo": "baz"},
+			},
+		}, true},
+		{api.Node{
+			ObjectMeta: api.ObjectMeta{
+				Name: "foo",
+			},
+			Spec: api.NodeSpec{
+				Capacity: api.ResourceList{
+					"cpu":    util.NewIntOrStringFromInt(10000),
+					"memory": util.NewIntOrStringFromInt(100),
+				},
+			},
+		}, api.Node{
+			ObjectMeta: api.ObjectMeta{
+				Name: "foo",
+			},
+			Spec: api.NodeSpec{
+				Capacity: api.ResourceList{
+					"cpu":    util.NewIntOrStringFromInt(100),
+					"memory": util.NewIntOrStringFromInt(10000),
+				},
+			},
+		}, true},
+		{api.Node{
+			ObjectMeta: api.ObjectMeta{
+				Name:   "foo",
+				Labels: map[string]string{"bar": "foo"},
+			},
+			Spec: api.NodeSpec{
+				Capacity: api.ResourceList{
+					"cpu":    util.NewIntOrStringFromInt(10000),
+					"memory": util.NewIntOrStringFromInt(100),
+				},
+			},
+		}, api.Node{
+			ObjectMeta: api.ObjectMeta{
+				Name:   "foo",
+				Labels: map[string]string{"bar": "fooobaz"},
+			},
+			Spec: api.NodeSpec{
+				Capacity: api.ResourceList{
+					"cpu":    util.NewIntOrStringFromInt(100),
+					"memory": util.NewIntOrStringFromInt(10000),
+				},
+			},
+		}, true},
+		{api.Node{
+			ObjectMeta: api.ObjectMeta{
+				Name:   "foo",
+				Labels: map[string]string{"bar": "foo"},
+			},
+		}, api.Node{
+			ObjectMeta: api.ObjectMeta{
+				Name:   "foo",
+				Labels: map[string]string{"bar": "fooobaz"},
+			},
+			Status: api.NodeStatus{
+				HostIP: "1.2.3.4",
+			},
+		}, false},
+		{api.Node{
+			ObjectMeta: api.ObjectMeta{
+				Name:   "foo",
+				Labels: map[string]string{"bar": "foo"},
+			},
+			Status: api.NodeStatus{
+				HostIP: "1.2.3.4",
+			},
+		}, api.Node{
+			ObjectMeta: api.ObjectMeta{
+				Name:   "foo",
+				Labels: map[string]string{"bar": "fooobaz"},
 			},
 		}, true},
 	}

@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
@@ -54,26 +55,30 @@ func newPods(c *Client, namespace string) *pods {
 // ListPods takes a selector, and returns the list of pods that match that selector.
 func (c *pods) List(selector labels.Selector) (result *api.PodList, err error) {
 	result = &api.PodList{}
-	err = c.r.Get().Namespace(c.ns).Path("pods").SelectorParam("labels", selector).Do().Into(result)
+	err = c.r.Get().Namespace(c.ns).Resource("pods").SelectorParam("labels", selector).Do().Into(result)
 	return
 }
 
 // GetPod takes the name of the pod, and returns the corresponding Pod object, and an error if it occurs
 func (c *pods) Get(name string) (result *api.Pod, err error) {
+	if len(name) == 0 {
+		return nil, errors.New("name is required parameter to Get")
+	}
+
 	result = &api.Pod{}
-	err = c.r.Get().Namespace(c.ns).Path("pods").Path(name).Do().Into(result)
+	err = c.r.Get().Namespace(c.ns).Resource("pods").Name(name).Do().Into(result)
 	return
 }
 
 // DeletePod takes the name of the pod, and returns an error if one occurs
 func (c *pods) Delete(name string) error {
-	return c.r.Delete().Namespace(c.ns).Path("pods").Path(name).Do().Error()
+	return c.r.Delete().Namespace(c.ns).Resource("pods").Name(name).Do().Error()
 }
 
 // CreatePod takes the representation of a pod.  Returns the server's representation of the pod, and an error, if it occurs.
 func (c *pods) Create(pod *api.Pod) (result *api.Pod, err error) {
 	result = &api.Pod{}
-	err = c.r.Post().Namespace(c.ns).Path("pods").Body(pod).Do().Into(result)
+	err = c.r.Post().Namespace(c.ns).Resource("pods").Body(pod).Do().Into(result)
 	return
 }
 
@@ -84,6 +89,6 @@ func (c *pods) Update(pod *api.Pod) (result *api.Pod, err error) {
 		err = fmt.Errorf("invalid update object, missing resource version: %v", pod)
 		return
 	}
-	err = c.r.Put().Namespace(c.ns).Path("pods").Path(pod.Name).Body(pod).Do().Into(result)
+	err = c.r.Put().Namespace(c.ns).Resource("pods").Name(pod.Name).Body(pod).Do().Into(result)
 	return
 }

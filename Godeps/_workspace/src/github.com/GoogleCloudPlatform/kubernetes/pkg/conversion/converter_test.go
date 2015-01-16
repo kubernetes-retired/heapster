@@ -19,10 +19,52 @@ package conversion
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/google/gofuzz"
 )
+
+func TestConverter_DefaultConvert(t *testing.T) {
+	type A struct {
+		Foo string
+		Baz int
+	}
+	type B struct {
+		Bar string
+		Baz int
+	}
+	c := NewConverter()
+	c.Debug = t
+	c.NameFunc = func(t reflect.Type) string { return "MyType" }
+
+	// Ensure conversion funcs can call DefaultConvert to get default behavior,
+	// then fixup remaining fields manually
+	err := c.Register(func(in *A, out *B, s Scope) error {
+		if err := s.DefaultConvert(in, out, IgnoreMissingFields); err != nil {
+			return err
+		}
+		out.Bar = in.Foo
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	x := A{"hello, intrepid test reader!", 3}
+	y := B{}
+
+	err = c.Convert(&x, &y, 0, nil)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if e, a := x.Foo, y.Bar; e != a {
+		t.Errorf("expected %v, got %v", e, a)
+	}
+	if e, a := x.Baz, y.Baz; e != a {
+		t.Errorf("expected %v, got %v", e, a)
+	}
+}
 
 func TestConverter_CallsRegisteredFunctions(t *testing.T) {
 	type A struct {
@@ -85,7 +127,6 @@ func TestConverter_CallsRegisteredFunctions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-
 	err = c.Convert(&A{}, &C{}, 0, nil)
 	if err == nil {
 		t.Errorf("unexpected non-error")
@@ -134,6 +175,52 @@ func TestConverter_fuzz(t *testing.T) {
 	}
 }
 
+func TestConverter_MapElemAddr(t *testing.T) {
+	type Foo struct {
+		A map[int]int
+	}
+	type Bar struct {
+		A map[string]string
+	}
+	c := NewConverter()
+	c.Debug = t
+	err := c.Register(
+		func(in *int, out *string, s Scope) error {
+			*out = fmt.Sprintf("%v", *in)
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	err = c.Register(
+		func(in *string, out *int, s Scope) error {
+			if str, err := strconv.Atoi(*in); err != nil {
+				return err
+			} else {
+				*out = str
+				return nil
+			}
+		},
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	f := fuzz.New().NilChance(0).NumElements(3, 3)
+	first := Foo{}
+	second := Bar{}
+	f.Fuzz(&first)
+	err = c.Convert(&first, &second, AllowDifferentFieldTypeNames, nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	third := Foo{}
+	err = c.Convert(&second, &third, AllowDifferentFieldTypeNames, nil)
+	if e, a := first, third; !reflect.DeepEqual(e, a) {
+		t.Errorf("Unexpected diff: %v", objDiff(e, a))
+	}
+}
+
 func TestConverter_tags(t *testing.T) {
 	type Foo struct {
 		A string `test:"foo"`
@@ -157,7 +244,10 @@ func TestConverter_tags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	c.Convert(&Foo{}, &Bar{}, 0, nil)
+	err = c.Convert(&Foo{}, &Bar{}, AllowDifferentFieldTypeNames, nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 }
 
 func TestConverter_meta(t *testing.T) {

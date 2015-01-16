@@ -1,8 +1,6 @@
 Heapster
 ===========
 
-_Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform optimally._
-
 Heapster enables monitoring of Clusters using [cAdvisor](https://github.com/google/cadvisor).
 
 Heapster supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) natively and collects resource usage of all the Pods running in the cluster. It was built to showcase the power of core Kubernetes concepts like labels and pods and the awesomeness that is cAdvisor. 
@@ -29,26 +27,26 @@ Fork the Kubernetes repository and [turn up a Kubernetes cluster](https://github
 **Step 2: Start a Pod with Influxdb, grafana and elasticsearch**
 
 ```shell
-$ kubectl.sh create -f deploy/influx-grafana-pod.json
+$ kubectl.sh create -f deploy/influxdb-grafana-controller.js
 ```
 
 **Step 3: Start Influxdb service**
 
 ```shell
-$ kubectl.sh create -f deploy/influx-grafana-service.json
+$ kubectl.sh create -f deploy/influxdb-service.json
 ```
 
 **Step 4: Update firewall rules**
 
 Open up ports tcp:80,8083,8086,9200.
 ```shell
-$ gcutil addfirewall --allowed=tcp:80,tcp:8083,tcp:8086,tcp:9200 --target_tags=kubernetes-minion heapster
+$ gcloud compute firewall-rules create monitoring-heapster --allow "tcp:80" "tcp:8083" "tcp:8086" --target-tags=kubernetes-minion
 ```
 
 **Step 5: Start Heapster Pod**
 
 ```shell
-$ kubectl.sh create -f deploy/heapster-pod.json
+$ kubectl.sh create -f deploy/heapster-controller.js
 ```
 
 Verify that all the pods and services are up and running:
@@ -60,12 +58,13 @@ $ kubectl.sh get pods
 $ kubectl.sh get services
 ```
 
-To start monitoring the cluster using grafana, find out the the external IP of the minion where the 'influx-grafana' Pod is running from the output of `kubectl.sh get pods influx-grafana`, and visit `http://<minion-ip>:80`. 
+To start monitoring the cluster using grafana, find out the the external IP of the minion where the 'influx-grafana' Pod is running from the output of `kubectl.sh get pods -l "name=influxGrafana"`, and visit `http://<minion-ip>:80`. 
 
 To access the Influxdb UI visit  `http://<minion-ip>:8083`.
 
+_Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform optimally._
+
 #####Hints
-* Grafana's default username and password is 'admin'. You can change that by modifying the grafana container [here](influx-grafana/deploy/grafana-influxdb-pod.json)
 * To enable memory and swap accounting on the minions follow the instructions [here](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting)
 
 #### Community

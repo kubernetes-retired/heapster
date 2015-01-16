@@ -30,12 +30,12 @@ import (
 	fuzz "github.com/google/gofuzz"
 )
 
-func LoadSchemaForTest(file string) (*Schema, error) {
+func LoadSchemaForTest(file string) (Schema, error) {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
-	return NewSchemaFromBytes(data)
+	return NewSwaggerSchemaFromBytes(data)
 }
 
 // TODO: this is cloned from serialization_test.go, refactor to somewhere common like util
@@ -49,18 +49,6 @@ var apiObjectFuzzer = fuzz.New().NilChance(.5).NumElements(1, 1).Funcs(
 		// APIVersion and Kind must remain blank in memory.
 		j.APIVersion = ""
 		j.Kind = ""
-
-		j.Name = c.RandString()
-		// TODO: Fix JSON/YAML packages and/or write custom encoding
-		// for uint64's. Somehow the LS *byte* of this is lost, but
-		// only when all 8 bytes are set.
-		j.ResourceVersion = strconv.FormatUint(c.RandUint64()>>8, 10)
-		j.SelfLink = c.RandString()
-
-		var sec, nsec int64
-		c.Fuzz(&sec)
-		c.Fuzz(&nsec)
-		j.CreationTimestamp = util.Unix(sec, nsec).Rfc3339Copy()
 	},
 	func(j *api.TypeMeta, c fuzz.Continue) {
 		// We have to customize the randomization of TypeMetas because their
@@ -70,10 +58,7 @@ var apiObjectFuzzer = fuzz.New().NilChance(.5).NumElements(1, 1).Funcs(
 	},
 	func(j *api.ObjectMeta, c fuzz.Continue) {
 		j.Name = c.RandString()
-		// TODO: Fix JSON/YAML packages and/or write custom encoding
-		// for uint64's. Somehow the LS *byte* of this is lost, but
-		// only when all 8 bytes are set.
-		j.ResourceVersion = strconv.FormatUint(c.RandUint64()>>8, 10)
+		j.ResourceVersion = strconv.FormatUint(c.RandUint64(), 10)
 		j.SelfLink = c.RandString()
 
 		var sec, nsec int64
@@ -82,14 +67,11 @@ var apiObjectFuzzer = fuzz.New().NilChance(.5).NumElements(1, 1).Funcs(
 		j.CreationTimestamp = util.Unix(sec, nsec).Rfc3339Copy()
 	},
 	func(j *api.ListMeta, c fuzz.Continue) {
-		// TODO: Fix JSON/YAML packages and/or write custom encoding
-		// for uint64's. Somehow the LS *byte* of this is lost, but
-		// only when all 8 bytes are set.
-		j.ResourceVersion = strconv.FormatUint(c.RandUint64()>>8, 10)
+		j.ResourceVersion = strconv.FormatUint(c.RandUint64(), 10)
 		j.SelfLink = c.RandString()
 	},
 	func(j *api.PodPhase, c fuzz.Continue) {
-		statuses := []api.PodPhase{api.PodPending, api.PodRunning, api.PodFailed}
+		statuses := []api.PodPhase{api.PodPending, api.PodRunning, api.PodFailed, api.PodUnknown}
 		*j = statuses[c.Rand.Intn(len(statuses))]
 	},
 	func(j *api.ReplicationControllerSpec, c fuzz.Continue) {
@@ -120,10 +102,6 @@ var apiObjectFuzzer = fuzz.New().NilChance(.5).NumElements(1, 1).Funcs(
 			intstr.IntVal = 0
 			intstr.StrVal = c.RandString()
 		}
-	},
-	func(u64 *uint64, c fuzz.Continue) {
-		// TODO: uint64's are NOT handled right.
-		*u64 = c.RandUint64() >> 8
 	},
 	func(pb map[docker.Port][]docker.PortBinding, c fuzz.Continue) {
 		// This is necessary because keys with nil values get omitted.
@@ -264,12 +242,63 @@ var invalidPod3 = `{
 }
 `
 
+var invalidYaml = `
+id: name
+kind: Pod
+apiVersion: v1beta1
+desiredState:
+  manifest:
+    version: v1beta1
+    id: redis-master
+    containers:
+      - name: "master"
+        image: "dockerfile/redis"
+        command: "this is a bad command"
+labels:
+  name: "redis-master"
+`
+
 func TestInvalid(t *testing.T) {
 	schema, err := LoadSchemaForTest("v1beta1-swagger.json")
 	if err != nil {
 		t.Errorf("Failed to load: %v", err)
 	}
-	tests := []string{invalidPod, invalidPod2}
+	tests := []string{invalidPod, invalidPod2, invalidPod3, invalidYaml}
+	for _, test := range tests {
+		err = schema.ValidateBytes([]byte(test))
+		if err == nil {
+			t.Errorf("unexpected non-error\n%s", test)
+		}
+	}
+}
+
+var validYaml = `
+id: name
+kind: Pod
+apiVersion: v1beta1
+desiredState:
+  manifest:
+    version: v1beta1
+    id: redis-master
+    containers:
+      - name: "master"
+        image: "dockerfile/redis"
+        command:
+        	- this
+        	- is
+        	- an
+        	- ok
+        	- command
+labels:
+  name: "redis-master"
+`
+
+func TestValid(t *testing.T) {
+	schema, err := LoadSchemaForTest("v1beta1-swagger.json")
+	if err != nil {
+		t.Errorf("Failed to load: %v", err)
+	}
+	tests := []string{validYaml}
 	for _, test := range tests {
 		err = schema.ValidateBytes([]byte(test))
 		if err == nil {

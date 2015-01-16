@@ -38,12 +38,12 @@ func NewExecHealthChecker(runner CommandRunner) HealthChecker {
 	return &ExecHealthChecker{runner}
 }
 
-func (e *ExecHealthChecker) HealthCheck(podFullName, podUUID string, currentState api.PodState, container api.Container) (Status, error) {
+func (e *ExecHealthChecker) HealthCheck(podFullName, podUUID string, status api.PodStatus, container api.Container) (Status, error) {
 	if container.LivenessProbe.Exec == nil {
 		return Unknown, fmt.Errorf("missing exec parameters")
 	}
 	data, err := e.runner.RunInContainer(podFullName, podUUID, container.Name, container.LivenessProbe.Exec.Command)
-	glog.V(1).Infof("container %s failed health check: %s", podFullName, string(data))
+	glog.V(1).Infof("container %s health check response: %s", podFullName, string(data))
 	if err != nil {
 		return Unknown, err
 	}

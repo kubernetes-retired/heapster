@@ -21,8 +21,28 @@ import (
 	"reflect"
 	"testing"
 
-	"gopkg.in/v1/yaml"
+	"github.com/ghodss/yaml"
 )
+
+func TestUntil(t *testing.T) {
+	ch := make(chan struct{})
+	close(ch)
+	Until(func() {
+		t.Fatal("should not have been invoked")
+	}, 0, ch)
+
+	ch = make(chan struct{})
+	called := make(chan struct{})
+	go func() {
+		Until(func() {
+			called <- struct{}{}
+		}, 0, ch)
+		close(called)
+	}()
+	<-called
+	close(ch)
+	<-called
+}
 
 func TestHandleCrash(t *testing.T) {
 	count := 0
@@ -54,7 +74,7 @@ func TestNewIntOrStringFromString(t *testing.T) {
 }
 
 type IntOrStringHolder struct {
-	IOrS IntOrString `json:"val" yaml:"val"`
+	IOrS IntOrString `json:"val"`
 }
 
 func TestIntOrStringUnmarshalYAML(t *testing.T) {
@@ -196,5 +216,50 @@ func TestCompileRegex(t *testing.T) {
 	}
 	if regexes[1].MatchString("not startingWithMe should fail") {
 		t.Errorf("Wrong regex returned: '%v': %v", uncompiledRegexes[1], regexes[1])
+	}
+}
+
+func TestAllPtrFieldsNil(t *testing.T) {
+	testCases := []struct {
+		obj      interface{}
+		expected bool
+	}{
+		{struct{}{}, true},
+		{struct{ Foo int }{12345}, true},
+		{&struct{ Foo int }{12345}, true},
+		{struct{ Foo *int }{nil}, true},
+		{&struct{ Foo *int }{nil}, true},
+		{struct {
+			Foo int
+			Bar *int
+		}{12345, nil}, true},
+		{&struct {
+			Foo int
+			Bar *int
+		}{12345, nil}, true},
+		{struct {
+			Foo *int
+			Bar *int
+		}{nil, nil}, true},
+		{&struct {
+			Foo *int
+			Bar *int
+		}{nil, nil}, true},
+		{struct{ Foo *int }{new(int)}, false},
+		{&struct{ Foo *int }{new(int)}, false},
+		{struct {
+			Foo *int
+			Bar *int
+		}{nil, new(int)}, false},
+		{&struct {
+			Foo *int
+			Bar *int
+		}{nil, new(int)}, false},
+		{(*struct{})(nil), true},
+	}
+	for i, tc := range testCases {
+		if AllPtrFieldsNil(tc.obj) != tc.expected {
+			t.Errorf("case[%d]: expected %t, got %t", i, tc.expected, !tc.expected)
+		}
 	}
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
@@ -34,7 +35,7 @@ type EventNamespacer interface {
 type EventInterface interface {
 	Create(event *api.Event) (*api.Event, error)
 	List(label, field labels.Selector) (*api.EventList, error)
-	Get(id string) (*api.Event, error)
+	Get(name string) (*api.Event, error)
 	Watch(label, field labels.Selector, resourceVersion string) (watch.Interface, error)
 	// Search finds events about the specified object
 	Search(objOrRef runtime.Object) (*api.EventList, error)
@@ -64,8 +65,8 @@ func (e *events) Create(event *api.Event) (*api.Event, error) {
 	}
 	result := &api.Event{}
 	err := e.client.Post().
-		Path("events").
 		Namespace(event.Namespace).
+		Resource("events").
 		Body(event).
 		Do().
 		Into(result)
@@ -76,8 +77,8 @@ func (e *events) Create(event *api.Event) (*api.Event, error) {
 func (e *events) List(label, field labels.Selector) (*api.EventList, error) {
 	result := &api.EventList{}
 	err := e.client.Get().
-		Path("events").
 		Namespace(e.namespace).
+		Resource("events").
 		SelectorParam("labels", label).
 		SelectorParam("fields", field).
 		Do().
@@ -86,12 +87,16 @@ func (e *events) List(label, field labels.Selector) (*api.EventList, error) {
 }
 
 // Get returns the given event, or an error.
-func (e *events) Get(id string) (*api.Event, error) {
+func (e *events) Get(name string) (*api.Event, error) {
+	if len(name) == 0 {
+		return nil, errors.New("name is required parameter to Get")
+	}
+
 	result := &api.Event{}
 	err := e.client.Get().
-		Path("events").
-		Path(id).
 		Namespace(e.namespace).
+		Resource("events").
+		Name(name).
 		Do().
 		Into(result)
 	return result, err
@@ -100,10 +105,10 @@ func (e *events) Get(id string) (*api.Event, error) {
 // Watch starts watching for events matching the given selectors.
 func (e *events) Watch(label, field labels.Selector, resourceVersion string) (watch.Interface, error) {
 	return e.client.Get().
-		Path("watch").
-		Path("events").
-		Param("resourceVersion", resourceVersion).
+		Prefix("watch").
 		Namespace(e.namespace).
+		Resource("events").
+		Param("resourceVersion", resourceVersion).
 		SelectorParam("labels", label).
 		SelectorParam("fields", field).
 		Watch()
@@ -117,14 +122,21 @@ func (e *events) Search(objOrRef runtime.Object) (*api.EventList, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO: search by UID if it's set
-	fields := labels.Set{
-		"involvedObject.kind":      ref.Kind,
-		"involvedObject.namespace": ref.Namespace,
-		"involvedObject.name":      ref.Name,
-	}.AsSelector()
 	if e.namespace != "" && ref.Namespace != e.namespace {
 		return nil, fmt.Errorf("won't be able to find any events of namespace '%v' in namespace '%v'", ref.Namespace, e.namespace)
 	}
-	return e.List(labels.Everything(), fields)
+	fields := labels.Set{}
+	if ref.Kind != "" {
+		fields["involvedObject.kind"] = ref.Kind
+	}
+	if ref.Namespace != "" {
+		fields["involvedObject.namespace"] = ref.Namespace
+	}
+	if ref.Name != "" {
+		fields["involvedObject.name"] = ref.Name
+	}
+	if ref.UID != "" {
+		fields["involvedObject.uid"] = ref.UID
+	}
+	return e.List(labels.Everything(), fields.AsSelector())
 }

@@ -36,7 +36,7 @@ func TestHealthChecker(t *testing.T) {
 		health Status
 	}{
 		{http.StatusOK, Healthy},
-		{statusServerEarlyShutdown, Unknown},
+		{statusServerEarlyShutdown, Unhealthy},
 		{http.StatusBadRequest, Unhealthy},
 		{http.StatusBadGateway, Unhealthy},
 		{http.StatusInternalServerError, Unhealthy},
@@ -68,8 +68,8 @@ func TestHealthChecker(t *testing.T) {
 			},
 		}
 		hc := NewHealthChecker()
-		health, err := hc.HealthCheck("test", "", api.PodState{}, container)
-		if err != nil && tt.health != Unknown {
+		health, err := hc.HealthCheck("test", "", api.PodStatus{}, container)
+		if err != nil && tt.health != Unhealthy {
 			t.Errorf("Unexpected error: %v", err)
 		}
 		if health != tt.health {
@@ -131,7 +131,7 @@ func TestMuxHealthChecker(t *testing.T) {
 		}
 		container.LivenessProbe.HTTPGet.Port = util.NewIntOrStringFromString(port)
 		container.LivenessProbe.HTTPGet.Host = host
-		health, err := mc.HealthCheck("test", "", api.PodState{}, container)
+		health, err := mc.HealthCheck("test", "", api.PodStatus{}, container)
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}

@@ -1,3 +1,17 @@
+// Copyright 2014 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sources
 
 import (
@@ -77,7 +91,7 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 
 // Returns a map of minion hostnames to the Pods running in them.
 func (self *KubeSource) getPods() ([]Pod, error) {
-	pods, err := self.client.Pods(kube_api.NamespaceDefault).List(kube_labels.Everything())
+	pods, err := self.client.Pods(kube_api.NamespaceAll).List(kube_labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +133,7 @@ func (self *KubeSource) getNodesInfo() ([]RawContainer, error) {
 	for node, ip := range kubeNodes.Hosts {
 		spec, stats, err := self.getStatsFromKubelet(ip, "", "", "/")
 		if err != nil {
+			glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", node)
 			return []RawContainer{}, err
 		}
 		if len(stats) > 0 {
@@ -147,6 +162,7 @@ func (self *KubeSource) GetInfo() (ContainerData, error) {
 			if err != nil {
 				return ContainerData{}, err
 			}
+			glog.V(2).Infof("Fetched stats from kubelet for container %s in pod %s", container.Name, pod.Name)
 			container.Stats = stats
 			container.Spec = spec
 		}
@@ -155,7 +171,7 @@ func (self *KubeSource) GetInfo() (ContainerData, error) {
 	if err != nil {
 		return ContainerData{}, err
 	}
-
+	glog.V(2).Info("Fetched list of nodes from the master")
 	self.lastQuery = time.Now()
 
 	return ContainerData{Pods: pods, Machine: nodesInfo}, nil
@@ -170,6 +186,10 @@ func newKubeSource() (*KubeSource, error) {
 		Version:  "v1beta1",
 		Insecure: true,
 	})
+
+	glog.Infof("Using Kubernetes client %+v\n", kubeClient)
+	glog.Infof("Using kubelet port %q", *argKubeletPort)
+	glog.Infof("Support kubelet versions %v", kubeVersions)
 
 	return &KubeSource{
 		client:      kubeClient,
