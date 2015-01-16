@@ -12,10 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package validate
 
-// Heapster version. Update this whenever making a new release.
-// The version is of the format Major.Minor.
-// Increment minor number for bug fixes and performance enhancements.
-// Increment major number for new feature additions and behavioral changes.
-const heapsterVersion = "0.5"
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/GoogleCloudPlatform/heapster/version"
+)
+
+const (
+	ValidatePage = "/validate/"
+)
+
+func HandleRequest(w http.ResponseWriter) error {
+	out := fmt.Sprintf("Heapster Version: %v", version.HeapsterVersion)
+	_, err := w.Write([]byte(out))
+	return err
+}
