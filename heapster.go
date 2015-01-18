@@ -37,22 +37,22 @@ func main() {
 	flag.Parse()
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", version.HeapsterVersion)
-	err := doWork()
+	source, sink, err := doWork()
 	if err != nil {
 		glog.Error(err)
 		os.Exit(1)
 	}
-	setupHandlers()
+	setupHandlers(source, sink)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
 	glog.Fatal(http.ListenAndServe(addr, nil))
 	os.Exit(0)
 }
 
-func setupHandlers() {
+func setupHandlers(source sources.Source, sink sinks.Sink) {
 	// Validation/Debug handler.
 	http.HandleFunc(validate.ValidatePage, func(w http.ResponseWriter, r *http.Request) {
-		err := validate.HandleRequest(w)
+		err := validate.HandleRequest(w, source, sink)
 		if err != nil {
 			fmt.Fprintf(w, "%s", err)
 		}
@@ -62,17 +62,17 @@ func setupHandlers() {
 	http.Handle("/", http.RedirectHandler(validate.ValidatePage, http.StatusTemporaryRedirect))
 }
 
-func doWork() error {
+func doWork() (sources.Source, sinks.Sink, error) {
 	source, err := sources.NewSource()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	sink, err := sinks.NewSink()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	go housekeep(source, sink)
-	return nil
+	return source, sink, nil
 }
 
 func housekeep(source sources.Source, sink sinks.Sink) {

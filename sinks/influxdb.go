@@ -177,6 +177,14 @@ func (self *InfluxdbSink) StoreData(ip Data) error {
 	return nil
 }
 
+func (self *InfluxdbSink) GetConfig() string {
+	desc := "Sink type: Influxdb\n"
+	desc += fmt.Sprintf("\tclient: Host %q, Database %q\n", *argDbHost, *argDbName)
+	desc += fmt.Sprintf("\tData buffering duration: %v\n", self.bufferDuration)
+	desc += "\n"
+	return desc
+}
+
 func NewInfluxdbSink() (Sink, error) {
 	config := &influxdb.ClientConfig{
 		Host:     *argDbHost,

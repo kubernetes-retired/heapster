@@ -82,3 +82,15 @@ func newExternalSource() (Source, error) {
 		cadvisor: cadvisorSource,
 	}, nil
 }
+
+func (self *ExternalSource) GetConfig() string {
+	desc := "Source type: External\n"
+	// TODO(rjnagal): Cache config?
+	hosts, err := self.getCadvisorHosts()
+	if err != nil {
+		desc += fmt.Sprintf("\tFailed to read host config: %s", err)
+	}
+	desc += fmt.Sprintf("\tHosts: %+v\n", *hosts)
+	desc += "\n"
+	return desc
+}

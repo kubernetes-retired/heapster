@@ -197,3 +197,12 @@ func newKubeSource() (*KubeSource, error) {
 		kubeletPort: *argKubeletPort,
 	}, nil
 }
+
+func (self *KubeSource) GetConfig() string {
+	desc := "Source type: Kube\n"
+	desc += fmt.Sprintf("\tClient config: %+v\n", self.client)
+	desc += fmt.Sprintf("\tUsing kubelet port %q\n", self.kubeletPort)
+	desc += fmt.Sprintf("\tSupported kubelet versions %v\n", kubeVersions)
+	desc += "\n"
+	return desc
+}

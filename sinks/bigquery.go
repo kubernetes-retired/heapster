@@ -232,10 +232,13 @@ func (self *bigquerySink) StoreData(ip Data) error {
 	return nil
 }
 
+func (self *bigquerySink) GetConfig() string {
+	desc := "Sink type: BigQuery\n"
+	desc += "\tDataset: cadvisor\n\n"
+	return desc
+}
+
 // Create a new bigquery storage driver.
-// machineName: A unique identifier to identify the host that current cAdvisor
-// instance is running on.
-// tableName: BigQuery table used for storing stats.
 func NewBigQuerySink() (Sink, error) {
 	bqClient, err := bigquery_client.NewClient()
 	if err != nil {
