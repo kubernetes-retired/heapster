@@ -197,18 +197,18 @@
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/client",
-			"Comment": "0.5.0-186-g6bc8e41",
-			"Rev": "6bc8e41fe7d124ee4b1f68e2e95ce58786e73db2"
+			"Comment": "0.8.0-16-g1d49af5",
+			"Rev": "1d49af5061040e5217ca1c38275d0574d8342646"
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/info",
-			"Comment": "0.5.0-186-g6bc8e41",
-			"Rev": "6bc8e41fe7d124ee4b1f68e2e95ce58786e73db2"
+			"Comment": "0.8.0-16-g1d49af5",
+			"Rev": "1d49af5061040e5217ca1c38275d0574d8342646"
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/storage/bigquery/client",
-			"Comment": "0.5.0-186-g6bc8e41",
-			"Rev": "6bc8e41fe7d124ee4b1f68e2e95ce58786e73db2"
+			"Comment": "0.8.0-16-g1d49af5",
+			"Rev": "1d49af5061040e5217ca1c38275d0574d8342646"
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb/client",
