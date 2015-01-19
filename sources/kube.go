@@ -69,7 +69,7 @@ func (self *KubeSource) listMinions() (*nodeList, error) {
 func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 	localPod := Pod{
 		Name:       pod.Name,
-		ID:         pod.UID,
+		ID:         string(pod.UID),
 		Hostname:   pod.Status.Host,
 		Status:     string(pod.Status.Phase),
 		PodIP:      pod.Status.PodIP,
