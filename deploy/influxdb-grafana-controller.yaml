@@ -15,7 +15,7 @@ desiredState:
         containers: 
           - 
             name: "influxdb"
-            image: "kubernetes/heapster_influxdb:v0.2"
+            image: "kubernetes/heapster_influxdb:v0.3"
             ports: 
               - 
                 containerPort: 8083
