@@ -17,6 +17,7 @@ package sinks
 import (
 	"container/list"
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources"
@@ -53,6 +54,13 @@ func (self *MemorySink) StoreData(data Data) error {
 	}
 	self.reapOldData()
 	return nil
+}
+
+func (self *MemorySink) GetConfig() string {
+	desc := "Sink type: Memory\n"
+	desc += fmt.Sprintf("\tMaximum storage duration: %v\n", self.maxStorageDuration)
+	desc += "\n"
+	return desc
 }
 
 func NewMemorySink() Sink {

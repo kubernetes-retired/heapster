@@ -25,6 +25,7 @@ type Data interface{}
 
 type Sink interface {
 	StoreData(data Data) error
+	GetConfig() string
 }
 
 const (

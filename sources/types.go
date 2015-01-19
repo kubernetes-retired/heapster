@@ -68,6 +68,8 @@ type Source interface {
 	// 2. nodes: A slice of RawContainer, one for each node in the cluster, that contains
 	// root cgroup information.
 	GetInfo() (ContainerData, error)
+	// Returns a debug config for the source.
+	GetConfig() string
 }
 
 func NewSource() (Source, error) {
