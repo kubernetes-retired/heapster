@@ -42,7 +42,7 @@ type InfluxdbSink struct {
 	lastWrite      time.Time
 }
 
-func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
+func (self *InfluxdbSink) getDefaultSeriesData(pod *sources.Pod, hostname, containerName string, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
 	// Timestamp
 	columns = append(columns, colTimestamp)
 	values = append(values, stat.Timestamp.Unix())
@@ -76,6 +76,39 @@ func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, con
 	columns = append(columns, colContainerName)
 	values = append(values, containerName)
 
+	return
+}
+
+func (self *InfluxdbSink) containerFsStatsToSeries(pod *sources.Pod, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) (series []*influxdb.Series) {
+	if len(stat.Filesystem) == 0 {
+		return
+	}
+	for _, fsStat := range stat.Filesystem {
+		columns, values := self.getDefaultSeriesData(pod, hostname, containerName, stat)
+
+		columns = append(columns, colFsDevice)
+		values = append(values, fsStat.Device)
+
+		columns = append(columns, colFsCapacity)
+		values = append(values, fsStat.Limit)
+
+		columns = append(columns, colFsUsage)
+		values = append(values, fsStat.Usage)
+
+		columns = append(columns, colFsIoTime)
+		values = append(values, fsStat.IoTime)
+
+		columns = append(columns, colFsIoTimeWeighted)
+		values = append(values, fsStat.WeightedIoTime)
+
+		series = append(series, self.newSeries(statsTable, columns, values))
+	}
+	return series
+
+}
+
+func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
+	columns, values = self.getDefaultSeriesData(pod, hostname, containerName, stat)
 	if spec.HasCpu {
 		// Cumulative Cpu Usage
 		columns = append(columns, colCpuCumulativeUsage)
@@ -110,6 +143,25 @@ func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, con
 		columns = append(columns, colTxErrors)
 		values = append(values, stat.Network.TxErrors)
 	}
+
+	// DiskIo stats.
+	// TODO(vishh): Use spec.HasDiskIo once that is exported by cadvisor.
+	columns = append(columns, colDiskIoServiceBytes)
+	values = append(values, stat.DiskIo.IoServiceBytes)
+	columns = append(columns, colDiskIoServiced)
+	values = append(values, stat.DiskIo.IoServiced)
+	columns = append(columns, colDiskIoQueued)
+	values = append(values, stat.DiskIo.IoQueued)
+	columns = append(columns, colDiskIoSectors)
+	values = append(values, stat.DiskIo.Sectors)
+	columns = append(columns, colDiskIoServiceTime)
+	values = append(values, stat.DiskIo.IoServiceTime)
+	columns = append(columns, colDiskIoWaitTime)
+	values = append(values, stat.DiskIo.IoWaitTime)
+	columns = append(columns, colDiskIoMerged)
+	values = append(values, stat.DiskIo.IoMerged)
+	columns = append(columns, colDiskIoTime)
+	values = append(values, stat.DiskIo.IoTime)
 	return
 }
 
@@ -131,6 +183,8 @@ func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
 			for _, stat := range container.Stats {
 				col, val := self.containerStatsToValues(&pod, pod.Hostname, container.Name, container.Spec, stat)
 				self.series = append(self.series, self.newSeries(statsTable, col, val))
+				self.series = append(self.series, self.containerFsStatsToSeries(&pod, pod.Hostname, container.Name, container.Spec, stat)...)
+
 			}
 		}
 	}
