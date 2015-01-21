@@ -17,8 +17,8 @@ package integration
 import (
 	"flag"
 	"fmt"
-	"os"
 	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 	"testing"
