@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources"
@@ -40,6 +41,23 @@ type InfluxdbSink struct {
 	dbName         string
 	bufferDuration time.Duration
 	lastWrite      time.Time
+	stateLock      sync.RWMutex
+	// TODO(rjnagal): switch to atomic if writeFailures is the only protected data.
+	writeFailures int // guarded by stateLock
+}
+
+func (self *InfluxdbSink) recordWriteFailure() {
+	self.stateLock.Lock()
+	defer self.stateLock.Unlock()
+
+	self.writeFailures++
+}
+
+func (self *InfluxdbSink) getState() string {
+	self.stateLock.RLock()
+	defer self.stateLock.RUnlock()
+
+	return fmt.Sprintf("\tNumber of write failures: %d\n", self.writeFailures)
 }
 
 func (self *InfluxdbSink) getDefaultSeriesData(pod *sources.Pod, hostname, containerName string, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
@@ -225,6 +243,7 @@ func (self *InfluxdbSink) StoreData(ip Data) error {
 		err := self.client.WriteSeriesWithTimePrecision(seriesToFlush, influxdb.Second)
 		if err != nil {
 			glog.Errorf("failed to write stats to influxDb - %s", err)
+			self.recordWriteFailure()
 		}
 	}
 
@@ -235,6 +254,7 @@ func (self *InfluxdbSink) GetConfig() string {
 	desc := "Sink type: Influxdb\n"
 	desc += fmt.Sprintf("\tclient: Host %q, Database %q\n", *argDbHost, *argDbName)
 	desc += fmt.Sprintf("\tData buffering duration: %v\n", self.bufferDuration)
+	desc += self.getState()
 	desc += "\n"
 	return desc
 }

@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
@@ -36,13 +37,66 @@ var kubeVersions = []string{"v0.3"}
 // Cadvisor port in kubernetes.
 const cadvisorPort = 4194
 
+type PodInstance struct {
+	Pod    string
+	PodId  string
+	HostIp string
+}
+
 type KubeSource struct {
 	client      *kube_client.Client
 	lastQuery   time.Time
 	kubeletPort string
+	stateLock   sync.RWMutex
+	goodNodes   []string            // guarded by stateLock
+	nodeErrors  map[string]int      // guarded by stateLock
+	podErrors   map[PodInstance]int // guarded by stateLock
 }
 
 type nodeList CadvisorHosts
+
+func (self *KubeSource) recordNodeError(name string) {
+	self.stateLock.Lock()
+	defer self.stateLock.Unlock()
+
+	self.nodeErrors[name]++
+}
+
+func (self *KubeSource) recordPodError(podName, podId, hostIp string) {
+	self.stateLock.Lock()
+	defer self.stateLock.Unlock()
+
+	podInstance := PodInstance{Pod: podName, PodId: podId, HostIp: hostIp}
+	self.podErrors[podInstance]++
+}
+
+func (self *KubeSource) recordGoodNodes(nodes []string) {
+	self.stateLock.Lock()
+	defer self.stateLock.Unlock()
+
+	self.goodNodes = nodes
+}
+
+func (self *KubeSource) getState() string {
+	self.stateLock.RLock()
+	defer self.stateLock.RUnlock()
+
+	state := "\tHealthy Nodes:\n"
+	for _, node := range self.goodNodes {
+		state += fmt.Sprintf("\t\t%s\n", node)
+	}
+	if len(self.nodeErrors) != 0 {
+		state += fmt.Sprintf("\tNode Errors: %+v\n", self.nodeErrors)
+	} else {
+		state += "\tNo node errors\n"
+	}
+	if len(self.podErrors) != 0 {
+		state += fmt.Sprintf("\tPod Errors: %+v\n", self.podErrors)
+	} else {
+		state += "\tNo pod errors\n"
+	}
+	return state
+}
 
 // Returns a map of minion hostnames to their corresponding IPs.
 func (self *KubeSource) listMinions() (*nodeList, error) {
@@ -54,14 +108,18 @@ func (self *KubeSource) listMinions() (*nodeList, error) {
 	if err != nil {
 		return nil, err
 	}
+	goodNodes := []string{}
 	for _, minion := range minions.Items {
 		addrs, err := net.LookupIP(minion.Name)
 		if err == nil {
 			nodeList.Hosts[minion.Name] = addrs[0].String()
+			goodNodes = append(goodNodes, minion.Name)
 		} else {
 			glog.Errorf("Skipping host %s since looking up its IP failed - %s", minion.Name, err)
+			self.recordNodeError(minion.Name)
 		}
 	}
+	self.recordGoodNodes(goodNodes)
 
 	return nodeList, nil
 }
@@ -118,6 +176,7 @@ func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerNam
 	err = PostRequestAndGetValue(&http.Client{}, req, &containerInfo)
 	if err != nil {
 		glog.Errorf("failed to get stats from kubelet url: %s - %s\n", url, err)
+		self.recordPodError(podName, podID, hostIP)
 		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, nil
 	}
 
@@ -154,6 +213,7 @@ func (self *KubeSource) GetInfo() (ContainerData, error) {
 		addrs, err := net.LookupIP(pod.Hostname)
 		if err != nil {
 			glog.Errorf("Skipping host %s since looking up its IP failed - %s", pod.Hostname, err)
+			self.recordNodeError(pod.Hostname)
 			continue
 		}
 		hostIP := addrs[0].String()
@@ -203,6 +263,7 @@ func (self *KubeSource) GetConfig() string {
 	desc += fmt.Sprintf("\tClient config: %+v\n", self.client)
 	desc += fmt.Sprintf("\tUsing kubelet port %q\n", self.kubeletPort)
 	desc += fmt.Sprintf("\tSupported kubelet versions %v\n", kubeVersions)
+	desc += self.getState()
 	desc += "\n"
 	return desc
 }
