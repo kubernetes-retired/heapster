@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.6 (1-21-2014)
+- New /validate REST endpoint to probe heapster.
+- Heapster uses InfluxDB service DNS name while running in kube mode.
+
 ## 0.5 (12-11-2014)
 - Compatiblity with updated InfluxDB service names.
 
