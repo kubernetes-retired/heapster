@@ -259,6 +259,8 @@ func newKubeSource() (*KubeSource, error) {
 		client:      kubeClient,
 		lastQuery:   time.Now(),
 		kubeletPort: *argKubeletPort,
+		nodeErrors:  make(map[string]int),
+		podErrors:   make(map[PodInstance]int),
 	}, nil
 }
 
