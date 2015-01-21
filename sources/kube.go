@@ -52,9 +52,11 @@ type KubeSource struct {
 	lastQuery   time.Time
 	kubeletPort string
 	stateLock   sync.RWMutex
-	goodNodes   []string            // guarded by stateLock
-	nodeErrors  map[string]int      // guarded by stateLock
-	podErrors   map[PodInstance]int // guarded by stateLock
+	// Set of pod instances that have return data at least once.
+	activePods map[PodInstance]bool
+	goodNodes  []string            // guarded by stateLock
+	nodeErrors map[string]int      // guarded by stateLock
+	podErrors  map[PodInstance]int // guarded by stateLock
 }
 
 type nodeList CadvisorHosts
@@ -66,11 +68,39 @@ func (self *KubeSource) recordNodeError(name string) {
 	self.nodeErrors[name]++
 }
 
+func (self *KubeSource) addActivePodInstance(podName, podId, hostIp string) {
+	podInstance := PodInstance{Pod: podName, PodId: podId, HostIp: hostIp}
+	self.activePods[podInstance] = true
+}
+
+func (self *KubeSource) cleanupPods(pods []Pod) {
+	self.stateLock.Lock()
+	defer self.stateLock.Unlock()
+	newActivePods := make(map[PodInstance]bool)
+	newPodErrors := make(map[PodInstance]int)
+	for _, pod := range pods {
+		podInstance := PodInstance{Pod: pod.Name, PodId: pod.ID, HostIp: pod.HostIP}
+		if self.activePods[podInstance] {
+			newActivePods[podInstance] = true
+			if self.podErrors[podInstance] != 0 {
+				newPodErrors[podInstance] = self.podErrors[podInstance]
+			}
+		}
+	}
+	self.activePods = newActivePods
+	self.podErrors = newPodErrors
+}
+
 func (self *KubeSource) recordPodError(podName, podId, hostIp string) {
 	self.stateLock.Lock()
 	defer self.stateLock.Unlock()
-
 	podInstance := PodInstance{Pod: podName, PodId: podId, HostIp: hostIp}
+
+	// Heapster knows about pods before they are up and running on a node.
+	// Ignore errors till we have seen an instance up at least once.
+	if !self.activePods[podInstance] {
+		return
+	}
 	self.podErrors[podInstance]++
 }
 
@@ -162,8 +192,16 @@ func (self *KubeSource) getPods() ([]Pod, error) {
 	out := make([]Pod, 0)
 	for _, pod := range pods.Items {
 		pod := self.parsePod(&pod)
+		addrs, err := net.LookupIP(pod.Hostname)
+		if err != nil {
+			glog.Errorf("Skipping host %s since looking up its IP failed - %s", pod.Hostname, err)
+			self.recordNodeError(pod.Hostname)
+			continue
+		}
+		pod.HostIP = addrs[0].String()
 		out = append(out, *pod)
 	}
+	self.cleanupPods(out)
 
 	return out, nil
 }
@@ -183,6 +221,7 @@ func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerNam
 		self.recordPodError(podName, podID, hostIP)
 		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, nil
 	}
+	self.addActivePodInstance(podName, podID, hostIP)
 
 	return containerInfo.Spec, containerInfo.Stats, nil
 }
@@ -214,15 +253,8 @@ func (self *KubeSource) GetInfo() (ContainerData, error) {
 		return ContainerData{}, err
 	}
 	for _, pod := range pods {
-		addrs, err := net.LookupIP(pod.Hostname)
-		if err != nil {
-			glog.Errorf("Skipping host %s since looking up its IP failed - %s", pod.Hostname, err)
-			self.recordNodeError(pod.Hostname)
-			continue
-		}
-		hostIP := addrs[0].String()
 		for _, container := range pod.Containers {
-			spec, stats, err := self.getStatsFromKubelet(hostIP, pod.Name, pod.ID, container.Name)
+			spec, stats, err := self.getStatsFromKubelet(pod.HostIP, pod.Name, pod.ID, container.Name)
 			if err != nil {
 				return ContainerData{}, err
 			}
@@ -259,6 +291,7 @@ func newKubeSource() (*KubeSource, error) {
 		client:      kubeClient,
 		lastQuery:   time.Now(),
 		kubeletPort: *argKubeletPort,
+		activePods:  make(map[PodInstance]bool),
 		nodeErrors:  make(map[string]int),
 		podErrors:   make(map[PodInstance]int),
 	}, nil

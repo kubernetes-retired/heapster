@@ -43,6 +43,7 @@ type Pod struct {
 	Status     string            `json:"status,omitempty"`
 	PodIP      string            `json:"podIP,omitempty"`
 	Labels     map[string]string `json:"labels,omitempty"`
+	HostIP     string            `json:"hostIP,omitempty"`
 }
 
 type RawContainer struct {
