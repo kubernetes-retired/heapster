@@ -34,8 +34,12 @@ import (
 // Kubernetes released supported and tested against.
 var kubeVersions = []string{"v0.3"}
 
-// Cadvisor port in kubernetes.
-const cadvisorPort = 4194
+const (
+	// Cadvisor port in kubernetes.
+	cadvisorPort = 4194
+
+	kubeClientVersion = "v1beta1"
+)
 
 type PodInstance struct {
 	Pod    string
@@ -243,11 +247,11 @@ func newKubeSource() (*KubeSource, error) {
 	}
 	kubeClient := kube_client.NewOrDie(&kube_client.Config{
 		Host:     "http://" + *argMaster,
-		Version:  "v1beta1",
+		Version:  kubeClientVersion,
 		Insecure: true,
 	})
 
-	glog.Infof("Using Kubernetes client %+v\n", kubeClient)
+	glog.Infof("Using Kubernetes client with master %q and version %s\n", *argMaster, kubeClientVersion)
 	glog.Infof("Using kubelet port %q", *argKubeletPort)
 	glog.Infof("Support kubelet versions %v", kubeVersions)
 
@@ -260,7 +264,7 @@ func newKubeSource() (*KubeSource, error) {
 
 func (self *KubeSource) GetConfig() string {
 	desc := "Source type: Kube\n"
-	desc += fmt.Sprintf("\tClient config: %+v\n", self.client)
+	desc += fmt.Sprintf("\tClient config: master ip %q, version %s\n", *argMaster, kubeClientVersion)
 	desc += fmt.Sprintf("\tUsing kubelet port %q\n", self.kubeletPort)
 	desc += fmt.Sprintf("\tSupported kubelet versions %v\n", kubeVersions)
 	desc += self.getState()
