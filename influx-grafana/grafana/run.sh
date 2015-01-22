@@ -20,6 +20,6 @@ if [ ! -f /.dashboard_configured ]; then
     /set_dashboard.sh
 fi
 
-echo "=> Grafana for heapster version: 0.2!"
+echo "=> Grafana for heapster version: v0.3!"
 echo "=> Starting and running Nginx..."
 /usr/sbin/nginx
