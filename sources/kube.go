@@ -52,11 +52,9 @@ type KubeSource struct {
 	lastQuery   time.Time
 	kubeletPort string
 	stateLock   sync.RWMutex
-	// Set of pod instances that have return data at least once.
-	activePods map[PodInstance]bool
-	goodNodes  []string            // guarded by stateLock
-	nodeErrors map[string]int      // guarded by stateLock
-	podErrors  map[PodInstance]int // guarded by stateLock
+	goodNodes   []string            // guarded by stateLock
+	nodeErrors  map[string]int      // guarded by stateLock
+	podErrors   map[PodInstance]int // guarded by stateLock
 }
 
 type nodeList CadvisorHosts
@@ -68,39 +66,17 @@ func (self *KubeSource) recordNodeError(name string) {
 	self.nodeErrors[name]++
 }
 
-func (self *KubeSource) addActivePodInstance(podName, podId, hostIp string) {
-	podInstance := PodInstance{Pod: podName, PodId: podId, HostIp: hostIp}
-	self.activePods[podInstance] = true
-}
-
-func (self *KubeSource) cleanupPods(pods []Pod) {
-	self.stateLock.Lock()
-	defer self.stateLock.Unlock()
-	newActivePods := make(map[PodInstance]bool)
-	newPodErrors := make(map[PodInstance]int)
-	for _, pod := range pods {
-		podInstance := PodInstance{Pod: pod.Name, PodId: pod.ID, HostIp: pod.HostIP}
-		if self.activePods[podInstance] {
-			newActivePods[podInstance] = true
-			if self.podErrors[podInstance] != 0 {
-				newPodErrors[podInstance] = self.podErrors[podInstance]
-			}
-		}
-	}
-	self.activePods = newActivePods
-	self.podErrors = newPodErrors
-}
-
-func (self *KubeSource) recordPodError(podName, podId, hostIp string) {
-	self.stateLock.Lock()
-	defer self.stateLock.Unlock()
-	podInstance := PodInstance{Pod: podName, PodId: podId, HostIp: hostIp}
-
+func (self *KubeSource) recordPodError(pod Pod) {
 	// Heapster knows about pods before they are up and running on a node.
-	// Ignore errors till we have seen an instance up at least once.
-	if !self.activePods[podInstance] {
+	// Ignore errors for Pods that are not Running.
+	if pod.Status != "Running" {
 		return
 	}
+
+	self.stateLock.Lock()
+	defer self.stateLock.Unlock()
+
+	podInstance := PodInstance{Pod: pod.Name, PodId: pod.ID, HostIp: pod.HostIP}
 	self.podErrors[podInstance]++
 }
 
@@ -161,6 +137,7 @@ func (self *KubeSource) listMinions() (*nodeList, error) {
 func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 	localPod := Pod{
 		Name:       pod.Name,
+		Namespace:  pod.Namespace,
 		ID:         string(pod.UID),
 		Hostname:   pod.Status.Host,
 		Status:     string(pod.Status.Phase),
@@ -191,6 +168,7 @@ func (self *KubeSource) getPods() ([]Pod, error) {
 	// TODO(vishh): Add API Version check. Fail if Kubernetes returns an invalid API Version.
 	out := make([]Pod, 0)
 	for _, pod := range pods.Items {
+		glog.V(2).Infof("Got Kube Pod: %+v", pod)
 		pod := self.parsePod(&pod)
 		addrs, err := net.LookupIP(pod.Hostname)
 		if err != nil {
@@ -201,16 +179,15 @@ func (self *KubeSource) getPods() ([]Pod, error) {
 		pod.HostIP = addrs[0].String()
 		out = append(out, *pod)
 	}
-	self.cleanupPods(out)
 
 	return out, nil
 }
 
-func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerName string) (cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
+func (self *KubeSource) getStatsFromKubelet(pod Pod, containerName string) (cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
 	var containerInfo cadvisor.ContainerInfo
 	values := url.Values{}
 	values.Add("num_stats", strconv.Itoa(int(time.Since(self.lastQuery)/time.Second)))
-	url := "http://" + hostIP + ":" + self.kubeletPort + filepath.Join("/stats", podName, containerName) + "?" + values.Encode()
+	url := "http://" + pod.HostIP + ":" + self.kubeletPort + filepath.Join("/stats", pod.Namespace, pod.Name, pod.ID, containerName) + "?" + values.Encode()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, err
@@ -218,10 +195,9 @@ func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerNam
 	err = PostRequestAndGetValue(&http.Client{}, req, &containerInfo)
 	if err != nil {
 		glog.Errorf("failed to get stats from kubelet url: %s - %s\n", url, err)
-		self.recordPodError(podName, podID, hostIP)
+		self.recordPodError(pod)
 		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, nil
 	}
-	self.addActivePodInstance(podName, podID, hostIP)
 
 	return containerInfo.Spec, containerInfo.Stats, nil
 }
@@ -233,7 +209,7 @@ func (self *KubeSource) getNodesInfo() ([]RawContainer, error) {
 	}
 	nodesInfo := []RawContainer{}
 	for node, ip := range kubeNodes.Hosts {
-		spec, stats, err := self.getStatsFromKubelet(ip, "", "", "/")
+		spec, stats, err := self.getStatsFromKubelet(Pod{HostIP: ip}, "/")
 		if err != nil {
 			glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", node)
 			return []RawContainer{}, err
@@ -254,7 +230,7 @@ func (self *KubeSource) GetInfo() (ContainerData, error) {
 	}
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
-			spec, stats, err := self.getStatsFromKubelet(pod.HostIP, pod.Name, pod.ID, container.Name)
+			spec, stats, err := self.getStatsFromKubelet(pod, container.Name)
 			if err != nil {
 				return ContainerData{}, err
 			}
@@ -291,7 +267,6 @@ func newKubeSource() (*KubeSource, error) {
 		client:      kubeClient,
 		lastQuery:   time.Now(),
 		kubeletPort: *argKubeletPort,
-		activePods:  make(map[PodInstance]bool),
 		nodeErrors:  make(map[string]int),
 		podErrors:   make(map[PodInstance]int),
 	}, nil
