@@ -161,6 +161,7 @@ func (self *KubeSource) listMinions() (*nodeList, error) {
 func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 	localPod := Pod{
 		Name:       pod.Name,
+		Namespace:  pod.Namespace,
 		ID:         string(pod.UID),
 		Hostname:   pod.Status.Host,
 		Status:     string(pod.Status.Phase),
@@ -206,11 +207,11 @@ func (self *KubeSource) getPods() ([]Pod, error) {
 	return out, nil
 }
 
-func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerName string) (cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
+func (self *KubeSource) getStatsFromKubelet(hostIP string, pod Pod, containerName string) (cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
 	var containerInfo cadvisor.ContainerInfo
 	values := url.Values{}
 	values.Add("num_stats", strconv.Itoa(int(time.Since(self.lastQuery)/time.Second)))
-	url := "http://" + hostIP + ":" + self.kubeletPort + filepath.Join("/stats", podName, containerName) + "?" + values.Encode()
+	url := "http://" + hostIP + ":" + self.kubeletPort + filepath.Join("/stats", pod.Namespace, pod.Name, pod.ID, containerName) + "?" + values.Encode()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, err
@@ -218,7 +219,7 @@ func (self *KubeSource) getStatsFromKubelet(hostIP, podName, podID, containerNam
 	err = PostRequestAndGetValue(&http.Client{}, req, &containerInfo)
 	if err != nil {
 		glog.Errorf("failed to get stats from kubelet url: %s - %s\n", url, err)
-		self.recordPodError(podName, podID, hostIP)
+		self.recordPodError(pod.Name, pod.ID, hostIP)
 		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, nil
 	}
 	self.addActivePodInstance(podName, podID, hostIP)
@@ -233,7 +234,7 @@ func (self *KubeSource) getNodesInfo() ([]RawContainer, error) {
 	}
 	nodesInfo := []RawContainer{}
 	for node, ip := range kubeNodes.Hosts {
-		spec, stats, err := self.getStatsFromKubelet(ip, "", "", "/")
+		spec, stats, err := self.getStatsFromKubelet(ip, Pod{}, "/")
 		if err != nil {
 			glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", node)
 			return []RawContainer{}, err
@@ -254,7 +255,7 @@ func (self *KubeSource) GetInfo() (ContainerData, error) {
 	}
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
-			spec, stats, err := self.getStatsFromKubelet(pod.HostIP, pod.Name, pod.ID, container.Name)
+			spec, stats, err := self.getStatsFromKubelet(hostIP, pod, container.Name)
 			if err != nil {
 				return ContainerData{}, err
 			}

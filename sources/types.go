@@ -37,6 +37,7 @@ func newContainer() *Container {
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
 type Pod struct {
 	Name       string            `json:"name,omitempty"`
+	Namespace  string            `json:"namespace,omitempty"`
 	ID         string            `json:"id,omitempty"`
 	Hostname   string            `json:"hostname,omitempty"`
 	Containers []*Container      `json:"containers"`
