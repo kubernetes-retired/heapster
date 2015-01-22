@@ -25,7 +25,7 @@ desiredState:
                 hostPort: 8086
           - 
             name: "grafana"
-            image: "kubernetes/heapster_grafana:v0.2"
+            image: "kubernetes/heapster_grafana:v0.3"
             ports: 
               - 
                 containerPort: 80
