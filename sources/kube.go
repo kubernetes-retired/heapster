@@ -31,9 +31,6 @@ import (
 	cadvisor "github.com/google/cadvisor/info"
 )
 
-// Kubernetes released supported and tested against.
-var kubeVersions = []string{"v0.3"}
-
 const (
 	// Cadvisor port in kubernetes.
 	cadvisorPort = 4194
@@ -261,7 +258,6 @@ func newKubeSource() (*KubeSource, error) {
 
 	glog.Infof("Using Kubernetes client with master %q and version %s\n", *argMaster, kubeClientVersion)
 	glog.Infof("Using kubelet port %q", *argKubeletPort)
-	glog.Infof("Support kubelet versions %v", kubeVersions)
 
 	return &KubeSource{
 		client:      kubeClient,
@@ -276,7 +272,6 @@ func (self *KubeSource) GetConfig() string {
 	desc := "Source type: Kube\n"
 	desc += fmt.Sprintf("\tClient config: master ip %q, version %s\n", *argMaster, kubeClientVersion)
 	desc += fmt.Sprintf("\tUsing kubelet port %q\n", self.kubeletPort)
-	desc += fmt.Sprintf("\tSupported kubelet versions %v\n", kubeVersions)
 	desc += self.getState()
 	desc += "\n"
 	return desc
