@@ -97,10 +97,11 @@ func (self *InfluxdbSink) getDefaultSeriesData(pod *sources.Pod, hostname, conta
 	return
 }
 
-func (self *InfluxdbSink) containerFsStatsToSeries(pod *sources.Pod, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) (series []*influxdb.Series) {
+func (self *InfluxdbSink) containerFsStatsToSeries(tableName, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats, pod *sources.Pod) (series []*influxdb.Series) {
 	if len(stat.Filesystem) == 0 {
 		return
 	}
+
 	for _, fsStat := range stat.Filesystem {
 		columns, values := self.getDefaultSeriesData(pod, hostname, containerName, stat)
 
@@ -119,7 +120,7 @@ func (self *InfluxdbSink) containerFsStatsToSeries(pod *sources.Pod, hostname, c
 		columns = append(columns, colFsIoTimeWeighted)
 		values = append(values, fsStat.WeightedIoTime)
 
-		series = append(series, self.newSeries(statsTable, columns, values))
+		series = append(series, self.newSeries(tableName, columns, values))
 	}
 	return series
 
@@ -201,7 +202,7 @@ func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
 			for _, stat := range container.Stats {
 				col, val := self.containerStatsToValues(&pod, pod.Hostname, container.Name, container.Spec, stat)
 				self.series = append(self.series, self.newSeries(statsTable, col, val))
-				self.series = append(self.series, self.containerFsStatsToSeries(&pod, pod.Hostname, container.Name, container.Spec, stat)...)
+				self.series = append(self.series, self.containerFsStatsToSeries(statsTable, pod.Hostname, container.Name, container.Spec, stat, &pod)...)
 
 			}
 		}
@@ -214,6 +215,7 @@ func (self *InfluxdbSink) handleContainers(containers []sources.RawContainer, ta
 		for _, stat := range container.Stats {
 			col, val := self.containerStatsToValues(nil, container.Hostname, container.Name, container.Spec, stat)
 			self.series = append(self.series, self.newSeries(tableName, col, val))
+			self.series = append(self.series, self.containerFsStatsToSeries(tableName, container.Hostname, container.Name, container.Spec, stat, nil)...)
 		}
 	}
 }
