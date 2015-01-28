@@ -726,6 +726,186 @@
           "id": 8,
           "seriesOverrides": [],
           "links": []
+        },
+        {
+          "span": 6,
+          "editable": true,
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_formats": [
+            "bytes",
+            "bytes"
+          ],
+          "grid": {
+            "max": null,
+            "min": null,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "threshold1": 0,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)",
+            "thresholdLine": false
+          },
+          "resolution": 100,
+          "lines": true,
+          "fill": 1,
+          "linewidth": 1,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "options": false,
+          "legend": {
+            "show": true,
+            "values": true,
+            "min": false,
+            "max": true,
+            "current": false,
+            "total": false,
+            "avg": false,
+            "alignAsTable": false,
+            "hideEmpty": true
+          },
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "cumulative",
+            "query_as_alias": true,
+            "shared": false
+          },
+          "targets": [
+            {
+              "target": "randomWalk('random walk')",
+              "function": "max",
+              "column": "fs_capacity",
+              "series": "machine",
+              "query": "select hostname, max(fs_capacity) from \"machine\" where $timeFilter group by time($interval), hostname fill(null) order asc",
+              "condition_filter": true,
+              "interval": "2s",
+              "groupby_field_add": true,
+              "groupby_field": "hostname",
+              "alias": "",
+              "condition": "",
+              "fill": "null",
+              "rawQuery": false
+            }
+          ],
+          "aliasColors": {},
+          "title": "Cluster Filesystem Capacity - Stacked",
+          "datasource": null,
+          "renderer": "png",
+          "annotate": {
+            "enable": false
+          },
+          "id": 9,
+          "seriesOverrides": [
+            {
+              "alias": "capacity"
+            }
+          ],
+          "interval": "2s",
+          "links": []
+        },
+        {
+          "span": 6,
+          "editable": true,
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_formats": [
+            "bytes",
+            "bytes"
+          ],
+          "grid": {
+            "max": null,
+            "min": null,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "threshold1": 0,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)",
+            "thresholdLine": false
+          },
+          "resolution": 100,
+          "lines": true,
+          "fill": 1,
+          "linewidth": 1,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "options": false,
+          "legend": {
+            "show": true,
+            "values": true,
+            "min": false,
+            "max": true,
+            "current": false,
+            "total": false,
+            "avg": false,
+            "alignAsTable": false,
+            "hideEmpty": true
+          },
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "cumulative",
+            "query_as_alias": true,
+            "shared": false
+          },
+          "targets": [
+            {
+              "target": "randomWalk('random walk')",
+              "function": "max",
+              "column": "fs_usage",
+              "series": "machine",
+              "query": "select hostname, max(fs_usage) from \"machine\" where $timeFilter group by time($interval), hostname fill(null) order asc",
+              "condition_filter": true,
+              "interval": "2s",
+              "groupby_field_add": true,
+              "groupby_field": "hostname",
+              "alias": "",
+              "condition": "",
+              "fill": "null",
+              "rawQuery": false
+            }
+          ],
+          "aliasColors": {},
+          "title": "Cluster Filesystem Usage - Stacked",
+          "datasource": null,
+          "renderer": "png",
+          "annotate": {
+            "enable": false
+          },
+          "id": 10,
+          "seriesOverrides": [
+            {
+              "alias": "capacity"
+            }
+          ],
+          "interval": "2s",
+          "links": []
         }
       ],
       "notice": false
@@ -773,7 +953,7 @@
     "enable": false
   },
   "annotations": {
-    "enable": false,
+    "enable": true,
     "list": []
   },
   "refresh": false,
