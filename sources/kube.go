@@ -161,7 +161,7 @@ func (self *KubeSource) getPods() ([]Pod, error) {
 	if err != nil {
 		return nil, err
 	}
-	glog.V(1).Infof("got pods from api server %+v", pods)
+	glog.V(2).Infof("got pods from api server %+v", pods)
 	// TODO(vishh): Add API Version check. Fail if Kubernetes returns an invalid API Version.
 	out := make([]Pod, 0)
 	for _, pod := range pods.Items {
