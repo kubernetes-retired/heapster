@@ -46,7 +46,6 @@ $ kubectl.sh get services
 
 Grafana will be accessible at `https://<masterIP>/api/v1beta1/proxy/services/monitoring-grafana/`. Use the master auth to access Grafana.
 
-
 _Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform optimally._
 
 #####Hints

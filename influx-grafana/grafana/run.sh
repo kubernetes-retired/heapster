@@ -2,6 +2,7 @@
 
 set -e
 
+RELEASE="v0.4"
 echo "${HTTP_PASS}"
 
 if [ "${HTTP_PASS}" == "**Random**" ]; then
@@ -20,6 +21,6 @@ if [ ! -f /.dashboard_configured ]; then
     /set_dashboard.sh
 fi
 
-echo "=> Grafana for heapster version: v0.3!"
+echo "=> Grafana for heapster - version: $RELEASE!"
 echo "=> Starting and running Nginx..."
 /usr/sbin/nginx

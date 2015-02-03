@@ -18,10 +18,8 @@ desiredState:
             ports: 
               - containerPort: 8083
                 hostPort: 8083
-              - containerPort: 8086
-                hostPort: 8086
           - name: "grafana"
-            image: "kubernetes/heapster_grafana:v0.3"
+            image: "kubernetes/heapster_grafana:v0.4"
             ports: 
               - containerPort: 80
                 hostPort: 80
@@ -30,5 +28,11 @@ desiredState:
                 value: "admin"
               - name: "HTTP_PASS"
                 value: "**None**"
+              - name: "INFLUXDB_PROTO"
+                value: "https"
+              - name: "INFLUXDB_HOST"
+                value: '"+window.location.hostname+"/api/v1beta1/proxy/services/monitoring-influxdb'
+              - name: "INFLUXDB_PORT"
+                value: ""
 labels:
   name: "influxGrafana"
