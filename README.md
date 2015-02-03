@@ -7,17 +7,6 @@ Heapster supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes
 
 Heapster can be used to enable cluster wide monitoring on other Cluster management solutions by running a simple cluster specific buddy container that will help heapster with discovery of hosts. For example, take a look at [this guide](clusters/coreos/README.md) for setting up Cluster monitoring in [CoreOS](https://coreos.com).
 
-
-#####How heapster works on Kubernetes:
-1. Discovers all minions in a Kubernetes cluster
-2. Collects container statistics from the cadvisors running on the minions
-2. Organizes stats into Pods
-3. Stores Pod stats in a configurable backend
-
-Along with each container stat entry, it's Pod ID, Container name, Pod IP, Hostname and Labels are also stored. Labels are stored as key:value pairs.
-
-Heapster currently supports in-memory and [InfluxDB](http://influxdb.com) backends. Patches are welcome for adding more storage backends.
-
 #####Run Heapster in a Kubernetes cluster with an Influxdb backend and [Grafana](http://grafana.org/docs/features/influxdb)
 
 **Step 1: Setup Kube cluster**
@@ -36,9 +25,6 @@ $ kubectl.sh create -f deploy/influxdb-grafana-controller.js
 $ kubectl.sh create -f deploy/influxdb-service.json
 ```
 
-**Step 4: Update firewall rules**
-
-Open up ports tcp:80,8083,8086,9200.
 ```shell
 $ gcloud compute firewall-rules create monitoring-heapster --allow "tcp:80" "tcp:8083" "tcp:8086" --target-tags=kubernetes-minion
 ```
@@ -58,14 +44,23 @@ $ kubectl.sh get pods
 $ kubectl.sh get services
 ```
 
-To start monitoring the cluster using grafana, find out the the external IP of the minion where the 'influx-grafana' Pod is running from the output of `kubectl.sh get pods -l "name=influxGrafana"`, and visit `http://<minion-ip>:80`. 
+Grafana will be accessible at `https://<masterIP>/api/v1beta1/proxy/services/monitoring-grafana/`. Use the master auth to access Grafana.
 
-To access the Influxdb UI visit  `http://<minion-ip>:8083`.
 
 _Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform optimally._
 
 #####Hints
 * To enable memory and swap accounting on the minions follow the instructions [here](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting)
+
+#####How heapster works on Kubernetes:
+1. Discovers all minions in a Kubernetes cluster
+2. Collects container statistics from the kubelets running on the minions
+2. Organizes stats into Pods
+3. Stores Pod stats in a configurable backend
+
+Along with each container stat entry, it's Pod ID, Container name, Pod IP, Hostname and Labels are also stored. Labels are stored as key:value pairs.
+
+Heapster currently supports in-memory and [InfluxDB](http://influxdb.com) backends. Patches are welcome for adding more storage backends.
 
 #### Community
 
