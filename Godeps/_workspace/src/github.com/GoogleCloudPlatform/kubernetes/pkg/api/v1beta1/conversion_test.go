@@ -22,7 +22,9 @@ import (
 	"testing"
 
 	newer "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/resource"
 	current "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta1"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 )
 
 var Convert = newer.Scheme.Convert
@@ -201,7 +203,7 @@ func TestMinionListConversionToNew(t *testing.T) {
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
-		if e, a := item.newML, got; !reflect.DeepEqual(e, a) {
+		if e, a := item.newML, got; !newer.Semantic.DeepEqual(e, a) {
 			t.Errorf("Expected: %#v, got %#v", e, a)
 		}
 	}
@@ -234,7 +236,7 @@ func TestMinionListConversionToOld(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	if e, a := oldML, got; !reflect.DeepEqual(e, a) {
+	if e, a := oldML, got; !newer.Semantic.DeepEqual(e, a) {
 		t.Errorf("Expected: %#v, got %#v", e, a)
 	}
 }
@@ -268,5 +270,115 @@ func TestServiceEmptySelector(t *testing.T) {
 	selector = obj.(*newer.Service).Spec.Selector
 	if selector == nil || len(selector) != 0 {
 		t.Errorf("unexpected selector: %#v", obj)
+	}
+}
+
+func TestPullPolicyConversion(t *testing.T) {
+	table := []struct {
+		versioned current.PullPolicy
+		internal  newer.PullPolicy
+	}{
+		{
+			versioned: current.PullAlways,
+			internal:  newer.PullAlways,
+		}, {
+			versioned: current.PullNever,
+			internal:  newer.PullNever,
+		}, {
+			versioned: current.PullIfNotPresent,
+			internal:  newer.PullIfNotPresent,
+		}, {
+			versioned: "",
+			internal:  "",
+		}, {
+			versioned: "invalid value",
+			internal:  "invalid value",
+		},
+	}
+	for _, item := range table {
+		var got newer.PullPolicy
+		err := Convert(&item.versioned, &got)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			continue
+		}
+		if e, a := item.internal, got; e != a {
+			t.Errorf("Expected: %q, got %q", e, a)
+		}
+	}
+	for _, item := range table {
+		var got current.PullPolicy
+		err := Convert(&item.internal, &got)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			continue
+		}
+		if e, a := item.versioned, got; e != a {
+			t.Errorf("Expected: %q, got %q", e, a)
+		}
+	}
+}
+
+func getResourceRequirements(cpu, memory resource.Quantity) current.ResourceRequirementSpec {
+	res := current.ResourceRequirementSpec{}
+	res.Limits = current.ResourceList{}
+	if cpu.Value() > 0 {
+		res.Limits[current.ResourceCPU] = util.NewIntOrStringFromInt(int(cpu.Value()))
+	}
+	if memory.Value() > 0 {
+		res.Limits[current.ResourceMemory] = util.NewIntOrStringFromInt(int(memory.Value()))
+	}
+
+	return res
+}
+
+func TestContainerConversion(t *testing.T) {
+	cpuLimit := resource.MustParse("10")
+	memoryLimit := resource.MustParse("10M")
+	null := resource.Quantity{}
+	testCases := []current.Container{
+		{
+			Name:      "container",
+			Resources: getResourceRequirements(cpuLimit, memoryLimit),
+		},
+		{
+			Name:      "container",
+			CPU:       int(cpuLimit.MilliValue()),
+			Resources: getResourceRequirements(null, memoryLimit),
+		},
+		{
+			Name:      "container",
+			Memory:    memoryLimit.Value(),
+			Resources: getResourceRequirements(cpuLimit, null),
+		},
+		{
+			Name:   "container",
+			CPU:    int(cpuLimit.MilliValue()),
+			Memory: memoryLimit.Value(),
+		},
+		{
+			Name:      "container",
+			Memory:    memoryLimit.Value(),
+			Resources: getResourceRequirements(cpuLimit, resource.MustParse("100M")),
+		},
+		{
+			Name:      "container",
+			CPU:       int(cpuLimit.MilliValue()),
+			Resources: getResourceRequirements(resource.MustParse("500"), memoryLimit),
+		},
+	}
+
+	for i, tc := range testCases {
+		got := newer.Container{}
+		if err := Convert(&tc, &got); err != nil {
+			t.Errorf("[Case: %d] Unexpected error: %v", i, err)
+			continue
+		}
+		if cpu := got.Resources.Limits.Cpu(); cpu.Value() != cpuLimit.Value() {
+			t.Errorf("[Case: %d] Expected cpu: %v, got: %v", i, cpuLimit, *cpu)
+		}
+		if memory := got.Resources.Limits.Memory(); memory.Value() != memoryLimit.Value() {
+			t.Errorf("[Case: %d] Expected memory: %v, got: %v", i, memoryLimit, *memory)
+		}
 	}
 }

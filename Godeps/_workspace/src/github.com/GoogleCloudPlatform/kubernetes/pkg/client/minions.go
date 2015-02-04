@@ -18,6 +18,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 )
@@ -31,28 +32,29 @@ type NodeInterface interface {
 	Create(minion *api.Node) (*api.Node, error)
 	List() (*api.NodeList, error)
 	Delete(name string) error
+	Update(*api.Node) (*api.Node, error)
 }
 
 // nodes implements NodesInterface
 type nodes struct {
-	r          *Client
-	preV1Beta3 bool
+	r *Client
 }
 
 // newNodes returns a nodes object. Uses "minions" as the
 // URL resource name for v1beta1 and v1beta2.
-func newNodes(c *Client, isPreV1Beta3 bool) *nodes {
-	return &nodes{c, isPreV1Beta3}
+func newNodes(c *Client) *nodes {
+	return &nodes{c}
 }
 
+// resourceName returns node's URL resource name based on resource version.
 func (c *nodes) resourceName() string {
-	if c.preV1Beta3 {
+	if preV1Beta3(c.r.APIVersion()) {
 		return "minions"
 	}
 	return "nodes"
 }
 
-// Create creates a new minion.
+// Create creates a new node.
 func (c *nodes) Create(minion *api.Node) (*api.Node, error) {
 	result := &api.Node{}
 	err := c.r.Post().Resource(c.resourceName()).Body(minion).Do().Into(result)
@@ -66,7 +68,7 @@ func (c *nodes) List() (*api.NodeList, error) {
 	return result, err
 }
 
-// Get gets an existing minion
+// Get gets an existing node.
 func (c *nodes) Get(name string) (*api.Node, error) {
 	if len(name) == 0 {
 		return nil, errors.New("name is required parameter to Get")
@@ -77,7 +79,18 @@ func (c *nodes) Get(name string) (*api.Node, error) {
 	return result, err
 }
 
-// Delete deletes an existing minion.
+// Delete deletes an existing node.
 func (c *nodes) Delete(name string) error {
 	return c.r.Delete().Resource(c.resourceName()).Name(name).Do().Error()
+}
+
+// Update updates an existing node.
+func (c *nodes) Update(minion *api.Node) (*api.Node, error) {
+	result := &api.Node{}
+	if len(minion.ResourceVersion) == 0 {
+		err := fmt.Errorf("invalid update object, missing resource version: %v", minion)
+		return nil, err
+	}
+	err := c.r.Put().Resource(c.resourceName()).Name(minion.Name).Body(minion).Do().Into(result)
+	return result, err
 }

@@ -28,9 +28,9 @@ import (
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/resource"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/testapi"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/resources"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/version"
@@ -96,7 +96,7 @@ func (c *testClient) Setup() *testClient {
 func (c *testClient) Validate(t *testing.T, received runtime.Object, err error) {
 	c.ValidateCommon(t, err)
 
-	if c.Response.Body != nil && !reflect.DeepEqual(c.Response.Body, received) {
+	if c.Response.Body != nil && !api.Semantic.DeepEqual(c.Response.Body, received) {
 		t.Errorf("bad response for request %#v: expected %#v, got %#v", c.Request, c.Response.Body, received)
 	}
 }
@@ -165,7 +165,7 @@ func (c *testClient) ValidateCommon(t *testing.T, err error) {
 // buildResourcePath is a convenience function for knowing if a namespace should be in a path param or not
 func buildResourcePath(namespace, resource string) string {
 	if len(namespace) > 0 {
-		if NamespaceInPathFor(testapi.Version()) {
+		if !(testapi.Version() == "v1beta1" || testapi.Version() == "v1beta2") {
 			return path.Join("ns", namespace, resource)
 		}
 	}
@@ -183,7 +183,7 @@ func buildQueryValues(namespace string, query url.Values) url.Values {
 		}
 	}
 	if len(namespace) > 0 {
-		if !NamespaceInPathFor(testapi.Version()) {
+		if testapi.Version() == "v1beta1" || testapi.Version() == "v1beta2" {
 			v.Set("namespace", namespace)
 		}
 	}
@@ -734,8 +734,8 @@ func TestCreateMinion(t *testing.T) {
 		},
 		Spec: api.NodeSpec{
 			Capacity: api.ResourceList{
-				resources.CPU:    util.NewIntOrStringFromInt(1000),
-				resources.Memory: util.NewIntOrStringFromInt(1024 * 1024),
+				api.ResourceCPU:    resource.MustParse("1000m"),
+				api.ResourceMemory: resource.MustParse("1Mi"),
 			},
 		},
 	}
@@ -759,13 +759,34 @@ func TestDeleteMinion(t *testing.T) {
 	c.Validate(t, nil, err)
 }
 
+func TestUpdateMinion(t *testing.T) {
+	requestMinion := &api.Node{
+		ObjectMeta: api.ObjectMeta{
+			Name:            "foo",
+			ResourceVersion: "1",
+		},
+		Spec: api.NodeSpec{
+			Capacity: api.ResourceList{
+				api.ResourceCPU:    resource.MustParse("1000m"),
+				api.ResourceMemory: resource.MustParse("1Mi"),
+			},
+		},
+	}
+	c := &testClient{
+		Request:  testRequest{Method: "PUT", Path: "/minions/foo"},
+		Response: Response{StatusCode: 200, Body: requestMinion},
+	}
+	response, err := c.Setup().Nodes().Update(requestMinion)
+	c.Validate(t, response, err)
+}
+
 func TestNewMinionPath(t *testing.T) {
 	c := &testClient{
 		Request:  testRequest{Method: "DELETE", Path: "/nodes/foo"},
 		Response: Response{StatusCode: 200},
 	}
 	cl := c.Setup()
-	cl.preV1Beta3 = false
+	cl.apiVersion = "v1beta3"
 	err := cl.Nodes().Delete("foo")
 	c.Validate(t, nil, err)
 }

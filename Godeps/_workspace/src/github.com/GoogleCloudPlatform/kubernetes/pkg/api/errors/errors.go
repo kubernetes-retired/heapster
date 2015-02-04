@@ -22,7 +22,13 @@ import (
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util/errors"
+)
+
+// HTTP Status codes not in the golang http package.
+const (
+	StatusUnprocessableEntity = 422
+	StatusTooManyRequests     = 429
 )
 
 // StatusError is an error intended for consumption by a REST API server; it can also be
@@ -92,6 +98,20 @@ func NewAlreadyExists(kind, name string) error {
 	}}
 }
 
+// NewForbidden returns an error indicating the requested action was forbidden
+func NewForbidden(kind, name string, err error) error {
+	return &StatusError{api.Status{
+		Status: api.StatusFailure,
+		Code:   http.StatusForbidden,
+		Reason: api.StatusReasonForbidden,
+		Details: &api.StatusDetails{
+			Kind: kind,
+			ID:   name,
+		},
+		Message: fmt.Sprintf("%s %q is forbidden: %v", kind, name, err),
+	}}
+}
+
 // NewConflict returns an error indicating the item can't be updated as provided.
 func NewConflict(kind, name string, err error) error {
 	return &StatusError{api.Status{
@@ -120,28 +140,52 @@ func NewInvalid(kind, name string, errs ValidationErrorList) error {
 	}
 	return &StatusError{api.Status{
 		Status: api.StatusFailure,
-		Code:   422, // RFC 4918: StatusUnprocessableEntity
+		Code:   StatusUnprocessableEntity, // RFC 4918: StatusUnprocessableEntity
 		Reason: api.StatusReasonInvalid,
 		Details: &api.StatusDetails{
 			Kind:   kind,
 			ID:     name,
 			Causes: causes,
 		},
-		Message: fmt.Sprintf("%s %q is invalid: %v", kind, name, util.SliceToError(errs)),
+		Message: fmt.Sprintf("%s %q is invalid: %v", kind, name, errors.NewAggregate(errs)),
 	}}
 }
 
 // NewBadRequest creates an error that indicates that the request is invalid and can not be processed.
 func NewBadRequest(reason string) error {
 	return &StatusError{api.Status{
+		Status:  api.StatusFailure,
+		Code:    http.StatusBadRequest,
+		Reason:  api.StatusReasonBadRequest,
+		Message: reason,
+	}}
+}
+
+// NewMethodNotSupported returns an error indicating the requested action is not supported on this kind.
+func NewMethodNotSupported(kind, action string) error {
+	return &StatusError{api.Status{
 		Status: api.StatusFailure,
-		Code:   http.StatusBadRequest,
-		Reason: api.StatusReasonBadRequest,
+		Code:   http.StatusMethodNotAllowed,
+		Reason: api.StatusReasonMethodNotAllowed,
 		Details: &api.StatusDetails{
-			Causes: []api.StatusCause{
-				{Message: reason},
-			},
+			Kind: kind,
 		},
+		Message: fmt.Sprintf("%s is not supported on resources of kind %q", action, kind),
+	}}
+}
+
+// NewTryAgainLater returns an error indicating the requested action could not be completed due to a
+// transient error, and the client should try again.
+func NewTryAgainLater(kind, operation string) error {
+	return &StatusError{api.Status{
+		Status: api.StatusFailure,
+		Code:   http.StatusInternalServerError,
+		Reason: api.StatusReasonTryAgainLater,
+		Details: &api.StatusDetails{
+			Kind: kind,
+			ID:   operation,
+		},
+		Message: fmt.Sprintf("The %s operation against %s could not be completed at this time, please try again.", operation, kind),
 	}}
 }
 
@@ -178,9 +222,27 @@ func IsInvalid(err error) bool {
 	return reasonForError(err) == api.StatusReasonInvalid
 }
 
+// IsMethodNotSupported determines if the err is an error which indicates the provided action could not
+// be performed because it is not supported by the server.
+func IsMethodNotSupported(err error) bool {
+	return reasonForError(err) == api.StatusReasonMethodNotAllowed
+}
+
 // IsBadRequest determines if err is an error which indicates that the request is invalid.
 func IsBadRequest(err error) bool {
 	return reasonForError(err) == api.StatusReasonBadRequest
+}
+
+// IsForbidden determines if err is an error which indicates that the request is forbidden and cannot
+// be completed as requested.
+func IsForbidden(err error) bool {
+	return reasonForError(err) == api.StatusReasonForbidden
+}
+
+// IsTryAgainLater determines if err is an error which indicates that the request needs to be retried
+// by the client.
+func IsTryAgainLater(err error) bool {
+	return reasonForError(err) == api.StatusReasonTryAgainLater
 }
 
 func reasonForError(err error) api.StatusReason {
