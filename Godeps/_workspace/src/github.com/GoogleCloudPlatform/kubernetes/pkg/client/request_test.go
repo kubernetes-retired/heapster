@@ -44,10 +44,6 @@ import (
 	watchjson "github.com/GoogleCloudPlatform/kubernetes/pkg/watch/json"
 )
 
-func skipPolling(name string) (*Request, bool) {
-	return nil, false
-}
-
 func TestRequestWithErrorWontChange(t *testing.T) {
 	original := Request{err: errors.New("test")}
 	r := original
@@ -61,11 +57,8 @@ func TestRequestWithErrorWontChange(t *testing.T) {
 		Namespace("new").
 		Resource("foos").
 		Name("bars").
-		NoPoll().
 		Body("foo").
-		Poller(skipPolling).
-		Timeout(time.Millisecond).
-		Sync(true)
+		Timeout(time.Millisecond)
 	if changed != &r {
 		t.Errorf("returned request should point to the same object")
 	}
@@ -75,21 +68,26 @@ func TestRequestWithErrorWontChange(t *testing.T) {
 }
 
 func TestRequestPreservesBaseTrailingSlash(t *testing.T) {
-	r := &Request{baseURL: &url.URL{}, path: "/path/"}
+	r := &Request{baseURL: &url.URL{}, path: "/path/", namespaceInQuery: true}
 	if s := r.finalURL(); s != "/path/" {
 		t.Errorf("trailing slash should be preserved: %s", s)
 	}
 }
 
 func TestRequestAbsPathPreservesTrailingSlash(t *testing.T) {
-	r := (&Request{baseURL: &url.URL{}}).AbsPath("/foo/")
+	r := (&Request{baseURL: &url.URL{}, namespaceInQuery: true}).AbsPath("/foo/")
+	if s := r.finalURL(); s != "/foo/" {
+		t.Errorf("trailing slash should be preserved: %s", s)
+	}
+
+	r = (&Request{baseURL: &url.URL{}}).AbsPath("/foo/")
 	if s := r.finalURL(); s != "/foo/" {
 		t.Errorf("trailing slash should be preserved: %s", s)
 	}
 }
 
 func TestRequestAbsPathJoins(t *testing.T) {
-	r := (&Request{baseURL: &url.URL{}}).AbsPath("foo/bar", "baz")
+	r := (&Request{baseURL: &url.URL{}, namespaceInQuery: true}).AbsPath("foo/bar", "baz")
 	if s := r.finalURL(); s != "foo/bar/baz" {
 		t.Errorf("trailing slash should be preserved: %s", s)
 	}
@@ -100,6 +98,7 @@ func TestRequestSetsNamespace(t *testing.T) {
 		baseURL: &url.URL{
 			Path: "/",
 		},
+		namespaceInQuery: true,
 	}).Namespace("foo")
 	if r.namespace == "" {
 		t.Errorf("namespace should be set: %#v", r)
@@ -112,7 +111,6 @@ func TestRequestSetsNamespace(t *testing.T) {
 		baseURL: &url.URL{
 			Path: "/",
 		},
-		namespaceInPath: true,
 	}).Namespace("foo")
 	if s := r.finalURL(); s != "ns/foo" {
 		t.Errorf("namespace should be in path: %s", s)
@@ -121,9 +119,8 @@ func TestRequestSetsNamespace(t *testing.T) {
 
 func TestRequestOrdersNamespaceInPath(t *testing.T) {
 	r := (&Request{
-		baseURL:         &url.URL{},
-		path:            "/test/",
-		namespaceInPath: true,
+		baseURL: &url.URL{},
+		path:    "/test/",
 	}).Name("bar").Resource("baz").Namespace("foo")
 	if s := r.finalURL(); s != "/test/ns/foo/baz/bar" {
 		t.Errorf("namespace should be in order in path: %s", s)
@@ -212,7 +209,7 @@ func TestTransformResponse(t *testing.T) {
 		{Response: &http.Response{StatusCode: 200, Body: ioutil.NopCloser(bytes.NewReader(invalid))}, Data: invalid},
 	}
 	for i, test := range testCases {
-		r := NewRequest(nil, "", uri, testapi.Codec(), true)
+		r := NewRequest(nil, "", uri, testapi.Codec(), true, true)
 		if test.Response.Body == nil {
 			test.Response.Body = ioutil.NopCloser(bytes.NewReader([]byte{}))
 		}
@@ -497,7 +494,7 @@ func TestDoRequestNewWay(t *testing.T) {
 	} else if !reflect.DeepEqual(obj, expectedObj) {
 		t.Errorf("Expected: %#v, got %#v", expectedObj, obj)
 	}
-	fakeHandler.ValidateRequest(t, "/api/v1beta2/foo/bar/baz?labels=name%3Dfoo", "POST", &reqBody)
+	fakeHandler.ValidateRequest(t, "/api/v1beta2/foo/bar/baz?labels=name%3Dfoo&timeout=1s", "POST", &reqBody)
 	if fakeHandler.RequestReceived.Header["Authorization"] == nil {
 		t.Errorf("Request is missing authorization header: %#v", *fakeHandler.RequestReceived)
 	}
@@ -520,7 +517,6 @@ func TestDoRequestNewWayReader(t *testing.T) {
 		Name("baz").
 		Prefix("foo").
 		SelectorParam("labels", labels.Set{"name": "foo"}.AsSelector()).
-		Sync(true).
 		Timeout(time.Second).
 		Body(bytes.NewBuffer(reqBodyExpected)).
 		Do().Get()
@@ -534,7 +530,7 @@ func TestDoRequestNewWayReader(t *testing.T) {
 		t.Errorf("Expected: %#v, got %#v", expectedObj, obj)
 	}
 	tmpStr := string(reqBodyExpected)
-	fakeHandler.ValidateRequest(t, "/api/v1beta1/foo/bar/baz?labels=name%3Dfoo&sync=true&timeout=1s", "POST", &tmpStr)
+	fakeHandler.ValidateRequest(t, "/api/v1beta1/foo/bar/baz?labels=name%3Dfoo&timeout=1s", "POST", &tmpStr)
 	if fakeHandler.RequestReceived.Header["Authorization"] == nil {
 		t.Errorf("Request is missing authorization header: %#v", *fakeHandler.RequestReceived)
 	}
@@ -570,7 +566,7 @@ func TestDoRequestNewWayObj(t *testing.T) {
 		t.Errorf("Expected: %#v, got %#v", expectedObj, obj)
 	}
 	tmpStr := string(reqBodyExpected)
-	fakeHandler.ValidateRequest(t, "/api/v1beta2/foo/bar/baz?labels=name%3Dfoo", "POST", &tmpStr)
+	fakeHandler.ValidateRequest(t, "/api/v1beta2/foo/bar/baz?labels=name%3Dfoo&timeout=1s", "POST", &tmpStr)
 	if fakeHandler.RequestReceived.Header["Authorization"] == nil {
 		t.Errorf("Request is missing authorization header: %#v", *fakeHandler.RequestReceived)
 	}
@@ -622,7 +618,7 @@ func TestDoRequestNewWayFile(t *testing.T) {
 		t.Errorf("expected object was not created")
 	}
 	tmpStr := string(reqBodyExpected)
-	fakeHandler.ValidateRequest(t, "/api/v1beta1/foo/bar/baz?labels=name%3Dfoo", "POST", &tmpStr)
+	fakeHandler.ValidateRequest(t, "/api/v1beta1/foo/bar/baz?labels=name%3Dfoo&timeout=1s", "POST", &tmpStr)
 	if fakeHandler.RequestReceived.Header["Authorization"] == nil {
 		t.Errorf("Request is missing authorization header: %#v", *fakeHandler.RequestReceived)
 	}
@@ -665,7 +661,7 @@ func TestWasCreated(t *testing.T) {
 	}
 
 	tmpStr := string(reqBodyExpected)
-	fakeHandler.ValidateRequest(t, "/api/v1beta1/foo/bar/baz?labels=name%3Dfoo", "PUT", &tmpStr)
+	fakeHandler.ValidateRequest(t, "/api/v1beta1/foo/bar/baz?labels=name%3Dfoo&timeout=1s", "PUT", &tmpStr)
 	if fakeHandler.RequestReceived.Header["Authorization"] == nil {
 		t.Errorf("Request is missing authorization header: %#v", *fakeHandler.RequestReceived)
 	}
@@ -696,22 +692,6 @@ func TestAbsPath(t *testing.T) {
 	}
 }
 
-func TestSync(t *testing.T) {
-	c := NewOrDie(&Config{})
-	r := c.Get()
-	if r.sync {
-		t.Errorf("sync has wrong default")
-	}
-	r.Sync(false)
-	if r.sync {
-		t.Errorf("'Sync' doesn't work")
-	}
-	r.Sync(true)
-	if !r.sync {
-		t.Errorf("'Sync' doesn't work")
-	}
-}
-
 func TestUintParam(t *testing.T) {
 	table := []struct {
 		name      string
@@ -738,7 +718,6 @@ func TestUnacceptableParamNames(t *testing.T) {
 		testVal       string
 		expectSuccess bool
 	}{
-		{"sync", "foo", false},
 		{"timeout", "42", false},
 	}
 
@@ -780,90 +759,6 @@ func TestBody(t *testing.T) {
 		if body != data {
 			t.Errorf("%d: r.body = %q; want %q", i, body, data)
 		}
-	}
-}
-
-func TestSetPoller(t *testing.T) {
-	c := NewOrDie(&Config{})
-	r := c.Get()
-	if c.PollPeriod == 0 {
-		t.Errorf("polling should be on by default")
-	}
-	if r.poller == nil {
-		t.Errorf("polling should be on by default")
-	}
-	r.NoPoll()
-	if r.poller != nil {
-		t.Errorf("'NoPoll' doesn't work")
-	}
-}
-
-func TestPolling(t *testing.T) {
-	objects := []runtime.Object{
-		&api.Status{Status: api.StatusWorking, Details: &api.StatusDetails{ID: "1234"}},
-		&api.Status{Status: api.StatusWorking, Details: &api.StatusDetails{ID: "1234"}},
-		&api.Status{Status: api.StatusWorking, Details: &api.StatusDetails{ID: "1234"}},
-		&api.Status{Status: api.StatusWorking, Details: &api.StatusDetails{ID: "1234"}},
-		&api.Status{Status: api.StatusSuccess},
-	}
-
-	callNumber := 0
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if callNumber == 0 {
-			if r.URL.Path != "/api/v1beta1/" {
-				t.Fatalf("unexpected request URL path %s", r.URL.Path)
-			}
-		} else {
-			if r.URL.Path != "/api/v1beta1/operations/1234" {
-				t.Fatalf("unexpected request URL path %s", r.URL.Path)
-			}
-		}
-		t.Logf("About to write %d", callNumber)
-		data, err := v1beta1.Codec.Encode(objects[callNumber])
-		if err != nil {
-			t.Errorf("Unexpected encode error")
-		}
-		callNumber++
-		w.Write(data)
-	}))
-
-	c := NewOrDie(&Config{Host: testServer.URL, Version: "v1beta1", Username: "user", Password: "pass"})
-	c.PollPeriod = 1 * time.Millisecond
-	trials := []func(){
-		func() {
-			// Check that we do indeed poll when asked to.
-			obj, err := c.Get().Do().Get()
-			if err != nil {
-				t.Errorf("Unexpected error: %v %#v", err, err)
-				return
-			}
-			if s, ok := obj.(*api.Status); !ok || s.Status != api.StatusSuccess {
-				t.Errorf("Unexpected return object: %#v", obj)
-				return
-			}
-			if callNumber != len(objects) {
-				t.Errorf("Unexpected number of calls: %v", callNumber)
-			}
-		},
-		func() {
-			// Check that we don't poll when asked not to.
-			obj, err := c.Get().NoPoll().Do().Get()
-			if err == nil {
-				t.Errorf("Unexpected non error: %v", obj)
-				return
-			}
-			if se, ok := err.(APIStatus); !ok || se.Status().Status != api.StatusWorking {
-				t.Errorf("Unexpected kind of error: %#v", err)
-				return
-			}
-			if callNumber != 1 {
-				t.Errorf("Unexpected number of calls: %v", callNumber)
-			}
-		},
-	}
-	for _, f := range trials {
-		callNumber = 0
-		f()
 	}
 }
 

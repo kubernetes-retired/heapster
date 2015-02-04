@@ -18,12 +18,12 @@ package resource
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"math/big"
 	"regexp"
 	"strings"
 
+	flag "github.com/spf13/pflag"
 	"speter.net/go/exp/math/dec/inf"
 )
 
@@ -102,14 +102,14 @@ const (
 	DecimalSI       = Format("DecimalSI")       // e.g., 12M  (12 * 10^6)
 )
 
-// ParseOrDie turns the given string into a quantity or panics; for tests
+// MustParse turns the given string into a quantity or panics; for tests
 // or others cases where you know the string is valid.
-func ParseOrDie(str string) *Quantity {
+func MustParse(str string) Quantity {
 	q, err := ParseQuantity(str)
 	if err != nil {
 		panic(fmt.Errorf("cannot parse '%v': %v", str, err))
 	}
-	return q
+	return *q
 }
 
 const (
@@ -148,7 +148,7 @@ var (
 	// The maximum value we can represent milli-units for.
 	// Compare with the return value of Quantity.Value() to
 	// see if it's safe to use Quantity.MilliValue().
-	MaxMilliValue = ((1 << 63) - 1) / 1000
+	MaxMilliValue = int64(((1 << 63) - 1) / 1000)
 )
 
 // ParseQuantity turns str into a Quantity, or returns an error.
@@ -169,7 +169,7 @@ func ParseQuantity(str string) (*Quantity, error) {
 		return nil, ErrSuffix
 	}
 
-	// So that no bigOne but us has to think about suffixes, remove it.
+	// So that no one but us has to think about suffixes, remove it.
 	if base == 10 {
 		amount.SetScale(amount.Scale() + inf.Scale(-exponent))
 	} else if base == 2 {
@@ -184,12 +184,12 @@ func ParseQuantity(str string) (*Quantity, error) {
 	if sign == -1 {
 		amount.Neg(amount)
 	}
-	// This rounds non-bigZero values up to the minimum representable
+	// This rounds non-zero values up to the minimum representable
 	// value, under the theory that if you want some resources, you
 	// should get some resources, even if you asked for way too small
 	// of an amount.
 	// Arguably, this should be inf.RoundHalfUp (normal rounding), but
-	// that would have the side effect of rounding values < .5m to bigZero.
+	// that would have the side effect of rounding values < .5m to zero.
 	amount.Round(amount, 3, inf.RoundUp)
 
 	// The max is just a simple cap.
@@ -228,7 +228,7 @@ func removeFactors(d, factor *big.Int) (result *big.Int, times int) {
 // Canonicalize returns the canonical form of q and its suffix (see comment on Quantity).
 //
 // Note about BinarySI:
-// * If q.Format is set to BinarySI and q.Amount represents a non-bigZero value between
+// * If q.Format is set to BinarySI and q.Amount represents a non-zero value between
 //   -1 and +1, it will be emitted as if q.Format were DecimalSI.
 // * Otherwise, if q.Format is set to BinarySI, frational parts of q.Amount will be
 //   rounded up. (1.1i becomes 2i.)
@@ -257,7 +257,7 @@ func (q *Quantity) Canonicalize() (string, suffix) {
 	}
 
 	// TODO: If BinarySI formatting is requested but would cause rounding, upgrade to
-	// bigOne of the other formats.
+	// one of the other formats.
 	switch format {
 	case DecimalExponent, DecimalSI:
 		mantissa := q.Amount.UnscaledBig()
@@ -386,6 +386,7 @@ type qFlag struct {
 	dest *Quantity
 }
 
+// Sets the value of the internal Quantity. (used by flag & pflag)
 func (qf qFlag) Set(val string) error {
 	q, err := ParseQuantity(val)
 	if err != nil {
@@ -396,17 +397,26 @@ func (qf qFlag) Set(val string) error {
 	return nil
 }
 
+// Converts the value of the internal Quantity to a string. (used by flag & pflag)
 func (qf qFlag) String() string {
 	return qf.dest.String()
+}
+
+// States the type of flag this is (Quantity). (used by pflag)
+func (qf qFlag) Type() string {
+	return "quantity"
 }
 
 // QuantityFlag is a helper that makes a quantity flag (using standard flag package).
 // Will panic if defaultValue is not a valid quantity.
 func QuantityFlag(flagName, defaultValue, description string) *Quantity {
-	q, err := ParseQuantity(defaultValue)
-	if err != nil {
-		panic(fmt.Errorf("can't use %v as a quantity: %v", defaultValue, err))
-	}
-	flag.Var(qFlag{q}, flagName, description)
-	return q
+	q := MustParse(defaultValue)
+	flag.Var(NewQuantityFlagValue(&q), flagName, description)
+	return &q
+}
+
+// NewQuantityFlagValue returns an object that can be used to back a flag,
+// pointing at the given Quantity variable.
+func NewQuantityFlagValue(q *Quantity) flag.Value {
+	return qFlag{q}
 }
