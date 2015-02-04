@@ -15,6 +15,7 @@
 package sources
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -37,6 +38,12 @@ const (
 	cadvisorPort = 4194
 
 	kubeClientVersion = "v1beta1"
+)
+
+var (
+	argMaster      = flag.String("kubernetes_master", "", "Kubernetes master IP")
+	argMasterInsecure = flag.Bool("kubernetes_insecure", true, "Trust Kubernetes master certificate (if using https)")
+	argKubeletPort = flag.String("kubelet_port", "10250", "Kubelet port")
 )
 
 type PodInstance struct {

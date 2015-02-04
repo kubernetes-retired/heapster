@@ -15,55 +15,29 @@
 package sources
 
 import (
-	"encoding/json"
+	"flag"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	"github.com/golang/glog"
 )
 
-// While updating this, also update heapster/deploy/Dockerfile.
-const HostsFile = "/var/run/heapster/hosts"
+var argCadvisorPort = flag.Int("cadvisor_port", 8080, "The port on which cadvisor binds to on all nodes.")
 
 type externalSource struct {
 	cadvisor     *cadvisorSource
 	pollDuration time.Duration
-}
-
-func (self *externalSource) getCadvisorHosts() (*CadvisorHosts, error) {
-	fi, err := os.Stat(HostsFile)
-	if err != nil {
-		return nil, fmt.Errorf("cannot stat hosts_file %q: %s", HostsFile, err)
-	}
-	if fi.Size() == 0 {
-		return &CadvisorHosts{}, nil
-	}
-	contents, err := ioutil.ReadFile(HostsFile)
-	if err != nil {
-		return nil, err
-	}
-	var cadvisorHosts CadvisorHosts
-	err = json.Unmarshal(contents, &cadvisorHosts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal contents of file %s. Error: %s", HostsFile, err)
-	}
-	glog.V(1).Infof("Using cAdvisor hosts %+v", cadvisorHosts)
-	return &cadvisorHosts, nil
-}
-
-func (self *externalSource) GetPods() ([]Pod, error) {
-	return []Pod{}, nil
+	nodesApi nodes.NodesApi
 }
 
 func (self *externalSource) GetInfo() (ContainerData, error) {
-	hosts, err := self.getCadvisorHosts()
+	nodeList, err := self.nodesApi.List()
 	if err != nil {
 		return ContainerData{}, err
 	}
 
-	containers, nodes, err := self.cadvisor.fetchData(hosts)
+	containers, nodes, err := self.cadvisor.fetchData(nodeList.Items)
 	if err != nil {
 		glog.Error(err)
 		return ContainerData{}, nil
@@ -76,23 +50,28 @@ func (self *externalSource) GetInfo() (ContainerData, error) {
 }
 
 func newExternalSource(pollDuration time.Duration) (Source, error) {
-	if _, err := os.Stat(HostsFile); err != nil {
-		return nil, fmt.Errorf("cannot stat hosts_file %s. Error: %s", HostsFile, err)
+	cadvisorSource, err := newCadvisorSource(pollDuration, *argCadvisorPort)
+	if err != nil {
+		return nil, err
 	}
-	cadvisorSource := newCadvisorSource(pollDuration)
+	nodesApi, err := nodes.NewExternalNodes()
+	if err != nil {
+		return nil, err
+	}
 	return &externalSource{
 		cadvisor: cadvisorSource,
+		nodesApi: nodesApi,
 	}, nil
 }
 
 func (self *externalSource) GetConfig() string {
 	desc := "Source type: External\n"
 	// TODO(rjnagal): Cache config?
-	hosts, err := self.getCadvisorHosts()
+	nodeList, err := self.nodesApi.List()
 	if err != nil {
 		desc += fmt.Sprintf("\tFailed to read host config: %s", err)
 	}
-	desc += fmt.Sprintf("\tHosts: %+v\n", *hosts)
+	desc += fmt.Sprintf("\tNodeList: %+v\n", *nodeList)
 	desc += "\n"
 	return desc
 }

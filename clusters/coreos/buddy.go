@@ -25,15 +25,18 @@ import (
 	"strings"
 	"time"
 
-	heapster "github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	fleetClient "github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/etcd"
 	fleetPkg "github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
+	"github.com/golang/glog"
 )
 
-var argCadvisorPort = flag.Int("cadvisor_port", 4194, "cAdvisor port in current CoreOS cluster")
 var argEndpoints = flag.String("endpoints", "http://127.0.0.1:4001", "Comma separated list of fleet server endpoints")
+
+// While updating this, also update heapster/deploy/Dockerfile.
+var hostsFile = flag.String("external_hosts_file", "/var/run/heapster/hosts", "A file that heapster refers to get a list of nodes to monitor.")
 
 func getFleetRegistryClient() (fleetClient.API, error) {
 	var dial func(string, string) (net.Conn, error)
@@ -72,17 +75,17 @@ func getMachines(client fleetClient.API, outMachines map[string]string) error {
 	return nil
 }
 
-func updateHeapsterHostsFile(outMachines map[string]string) error {
-	hosts := &heapster.CadvisorHosts{
-		Port:  *argCadvisorPort,
-		Hosts: outMachines,
+func updateHeapsterHostsFile(hosts map[string]string) error {
+	nodeList := &nodes.NodeList{}
+	for hostname, ip := range hosts {
+		nodeList.Items = append(nodeList.Items, nodes.Node{Name: hostname, IP: ip})
 	}
-	data, err := json.Marshal(hosts)
+	data, err := json.Marshal(nodeList)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("writing %s to hosts file\n", string(data))
-	if err := ioutil.WriteFile(heapster.HostsFile, data, 0755); err != nil {
+	glog.V(1).Infof("writing %s to hosts file\n", string(data))
+	if err := ioutil.WriteFile(*hostsFile, data, 0755); err != nil {
 		return err
 	}
 	return nil
@@ -98,7 +101,23 @@ func doWork(client fleetClient.API) error {
 
 }
 
+func validateHostsFile() error {
+	if *hostsFile == "" {
+		return fmt.Errorf("external hosts file is invalid")
+	}
+	_, err := os.Stat(*hostsFile)
+	if err != nil {
+		return fmt.Errorf("cannot stat file %q: %s", *hostsFile, err)
+	}
+	return nil
+}
+
 func main() {
+	if err := validateHostsFile(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	client, err := getFleetRegistryClient()
 	if err != nil {
 		fmt.Println(err)
