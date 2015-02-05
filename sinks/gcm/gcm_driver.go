@@ -251,6 +251,11 @@ type metricWriteRequest struct {
 // The largest number of timeseries we can write to per request.
 const maxTimeseriesPerRequest = 200
 
+// Gets the largest number of metrics that can be pushed at a time.
+func (self *gcmDriver) MaxNumPushMetrics() int {
+	return maxTimeseriesPerRequest
+}
+
 // Pushes the specified metric values. The metrics must already exist.
 func (self *gcmDriver) PushMetrics(metrics []Metric) error {
 	// Check we're not being asked to write more timeseries than we can..
