@@ -40,6 +40,9 @@ type MemorySpec struct {
 }
 
 type ContainerSpec struct {
+	// Time at which the container was created.
+	CreationTime time.Time `json:"creation_time,omitempty"`
+
 	HasCpu bool    `json:"has_cpu"`
 	Cpu    CpuSpec `json:"cpu,omitempty"`
 
@@ -49,6 +52,9 @@ type ContainerSpec struct {
 	HasNetwork bool `json:"has_network"`
 
 	HasFilesystem bool `json:"has_filesystem"`
+
+	// HasDiskIo when true, indicates that DiskIo stats will be available.
+	HasDiskIo bool `json:"has_diskio"`
 }
 
 // Container reference contains enough information to uniquely identify a container
@@ -85,6 +91,7 @@ type ContainerInfo struct {
 	Stats []*ContainerStats `json:"stats,omitempty"`
 }
 
+// TODO(vmarmol): Refactor to not need this equality comparison.
 // ContainerInfo may be (un)marshaled by json or other en/decoder. In that
 // case, the Timestamp field in each stats/sample may not be precisely
 // en/decoded.  This will lead to small but acceptable differences between a
@@ -108,7 +115,7 @@ func (self *ContainerInfo) Eq(b *ContainerInfo) bool {
 	if !reflect.DeepEqual(self.Subcontainers, b.Subcontainers) {
 		return false
 	}
-	if !reflect.DeepEqual(self.Spec, b.Spec) {
+	if !self.Spec.Eq(&b.Spec) {
 		return false
 	}
 
@@ -119,6 +126,37 @@ func (self *ContainerInfo) Eq(b *ContainerInfo) bool {
 		}
 	}
 
+	return true
+}
+
+func (self *ContainerSpec) Eq(b *ContainerSpec) bool {
+	// Creation within 1s of each other.
+	diff := self.CreationTime.Sub(b.CreationTime)
+	if (diff > time.Second) || (diff < -time.Second) {
+		return false
+	}
+
+	if self.HasCpu != b.HasCpu {
+		return false
+	}
+	if !reflect.DeepEqual(self.Cpu, b.Cpu) {
+		return false
+	}
+	if self.HasMemory != b.HasMemory {
+		return false
+	}
+	if !reflect.DeepEqual(self.Memory, b.Memory) {
+		return false
+	}
+	if self.HasNetwork != b.HasNetwork {
+		return false
+	}
+	if self.HasFilesystem != b.HasFilesystem {
+		return false
+	}
+	if self.HasDiskIo != b.HasDiskIo {
+		return false
+	}
 	return true
 }
 
@@ -194,7 +232,11 @@ type CpuStats struct {
 		// Unit: nanoseconds
 		System uint64 `json:"system"`
 	} `json:"usage"`
-	Load int32 `json:"load"`
+	// Smoothed average of number of runnable threads x 1000.
+	// We multiply by thousand to avoid using floats, but preserving precision.
+	// Load is smoothed over the last 10 seconds. Instantaneous value can be read
+	// from LoadStats.NrRunning.
+	LoadAverage int32 `json:"load_average"`
 }
 
 type PerDiskStats struct {
@@ -397,4 +439,38 @@ func calculateCpuUsage(prev, cur uint64) uint64 {
 		return 0
 	}
 	return cur - prev
+}
+
+type Percentiles struct {
+	// Indicates whether the stats are present or not.
+	// If true, values below do not have any data.
+	Present bool `json:"present"`
+	// Average over the collected sample.
+	Mean uint64 `json:"mean"`
+	// Max seen over the collected sample.
+	Max uint64 `json:"max"`
+	// 90th percentile over the collected sample.
+	Ninety uint64 `json:"ninety"`
+}
+
+type Usage struct {
+	// Indicates amount of data available [0-100].
+	// If we have data for half a day, we'll still process DayUsage,
+	// but set PercentComplete to 50.
+	PercentComplete int32 `json:"percent_complete"`
+	// Mean, Max, and 90p cpu rate value in milliCpus/seconds. Converted to milliCpus to avoid floats.
+	Cpu Percentiles `json:"cpu"`
+	// Mean, Max, and 90p memory size in bytes.
+	Memory Percentiles `json:"memory"`
+}
+
+type DerivedStats struct {
+	// Time of generation of these stats.
+	Timestamp time.Time `json:"timestamp"`
+	// Percentiles in last observed minute.
+	MinuteUsage Usage `json:"minute_usage"`
+	// Percentile in last hour.
+	HourUsage Usage `json:"hour_usage"`
+	// Percentile in last day.
+	DayUsage Usage `json:"day_usage"`
 }
