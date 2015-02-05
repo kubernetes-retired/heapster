@@ -106,10 +106,10 @@ type NetInfo struct {
 	MacAddress string `json:"mac_address"`
 
 	// Speed in MBits/s
-	Speed uint64 `json:"speed"`
+	Speed int64 `json:"speed"`
 
 	// Maximum Transmission Unit
-	Mtu uint64 `json:"mtu"`
+	Mtu int64 `json:"mtu"`
 }
 
 type MachineInfo struct {
@@ -132,7 +132,7 @@ type MachineInfo struct {
 	NetworkDevices []NetInfo `json:"network_devices"`
 
 	// Machine Topology
-	// Describes cpu layout and hierarchy. TODO(rjnagal): Add Memory hierarchy.
+	// Describes cpu/memory layout and hierarchy.
 	Topology []Node `json:"topology"`
 }
 
