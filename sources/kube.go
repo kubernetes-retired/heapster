@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -250,10 +251,15 @@ func newKubeSource() (*KubeSource, error) {
 	if len(*argMaster) == 0 {
 		return nil, fmt.Errorf("kubernetes_master flag not specified")
 	}
+
+	if !(strings.HasPrefix(*argMaster, "http://") || strings.HasPrefix(*argMaster, "https://")) {
+		*argMaster = "http://" + *argMaster
+	}
+
 	kubeClient := kube_client.NewOrDie(&kube_client.Config{
-		Host:     "http://" + *argMaster,
+		Host:     *argMaster,
 		Version:  kubeClientVersion,
-		Insecure: true,
+		Insecure: *argMasterInsecure,
 	})
 
 	glog.Infof("Using Kubernetes client with master %q and version %s\n", *argMaster, kubeClientVersion)
