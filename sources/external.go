@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This file is dedicated to heapster running outside of kubernetes. Heapster
+// will poll a file to get the hosts that it needs to monitor and will collect
+// stats from cadvisor running on those hosts.
+
 package sources
 
 import (
@@ -37,7 +41,7 @@ func (self *externalSource) GetInfo() (ContainerData, error) {
 		return ContainerData{}, err
 	}
 
-	containers, nodes, err := self.cadvisor.fetchData(nodeList.Items)
+	containers, nodes, err := self.cadvisor.fetchData(nodeList)
 	if err != nil {
 		glog.Error(err)
 		return ContainerData{}, nil
@@ -64,7 +68,7 @@ func newExternalSource(pollDuration time.Duration) (Source, error) {
 	}, nil
 }
 
-func (self *externalSource) GetConfig() string {
+func (self *externalSource) DebugInfo() string {
 	desc := "Source type: External\n"
 	// TODO(rjnagal): Cache config?
 	nodeList, err := self.nodesApi.List()

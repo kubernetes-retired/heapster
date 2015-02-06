@@ -20,9 +20,15 @@ type Node struct {
 	IP string `json:"ip,omitempty"`
 }
 
+type Empty struct{}
+
 // NodeList contains the nodes that an instance of heapster is required to
 // monitor.
 type NodeList struct {
+	Items map[Node]Empty
+}
+
+type ExternalNodeList struct {
 	Items []Node `json:"items,omitempty"`
 }
 

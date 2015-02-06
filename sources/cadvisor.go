@@ -72,8 +72,8 @@ func (self *cadvisorSource) getAllCadvisorData(hostname, ip, port, container str
 	return containers, nodeInfo, nil
 }
 
-func (self *cadvisorSource) fetchData(nodes []nodes.Node) (rawContainers []RawContainer, nodesInfo []RawContainer, err error) {
-	for _, node := range nodes {
+func (self *cadvisorSource) fetchData(nodeList *nodes.NodeList) (rawContainers []RawContainer, nodesInfo []RawContainer, err error) {
+	for node := range nodeList.Items {
 		containers, nodeInfo, err := self.getAllCadvisorData(node.Name, node.IP, self.port, "/")
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to get cAdvisor data from host %q: %v", node.Name, err)

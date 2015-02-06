@@ -66,22 +66,26 @@ func (self *kubeNodes) createMinionLW() *cache.ListWatch {
 }
 
 func (self *kubeNodes) List() (*NodeList, error) {
-	nodeList := &NodeList{}
+	nodeList := &NodeList{Items: map[Node]Empty{}}
 	allNodes, err := self.minionLister.List()
 	if err != nil {
+		glog.Errorf("failed to list minions via watch interface - %v", err)
 		return nil, fmt.Errorf("failed to list minions via watch interface - %v", err)
 	}
+	glog.V(3).Infof("all kube nodes: %+v", allNodes)
+
 	goodNodes := []string{}
 	for _, node := range allNodes.Items {
-		// TODO(vishh): Consider dropping nodes that are not healthy.
+		// TODO(vishh): Consider dropping nodes that are not healthy as indicated in node.Status.Phase.
 		if node.Status.HostIP != "" {
-			nodeList.Items = append(nodeList.Items, Node{Name: node.Name, IP: node.Status.HostIP})
+			nodeList.Items[Node{node.Name, node.Status.HostIP}] = Empty{}
+			goodNodes = append(goodNodes, node.Name)
 			continue
 		}
 		// TODO(vishh): Remove this logic once Status.HostIP is reliable.
 		addrs, err := net.LookupIP(node.Name)
 		if err == nil {
-			nodeList.Items = append(nodeList.Items, Node{Name: node.Name, IP: addrs[0].String()})
+			nodeList.Items[Node{node.Name, addrs[0].String()}] = Empty{}
 			goodNodes = append(goodNodes, node.Name)
 		} else {
 			glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
@@ -89,7 +93,7 @@ func (self *kubeNodes) List() (*NodeList, error) {
 		}
 	}
 	self.recordGoodNodes(goodNodes)
-
+	glog.V(2).Infof("kube nodes found: %+v", nodeList)
 	return nodeList, nil
 }
 

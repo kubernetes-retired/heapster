@@ -1,0 +1,134 @@
+// Copyright 2014 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package sources
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/cache"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
+	"github.com/golang/glog"
+)
+
+// podsApi provides an interface to access all the pods that an instance of heapster
+// needs to process.
+// TODO(vishh): Add an interface to select specific nodes as part of the Watch.
+type podsApi interface {
+	// Returns a list of pods that exist on the nodes in 'nodeList'
+	List(nodeList *nodes.NodeList) ([]Pod, error)
+
+	// Returns debug information.
+	DebugInfo() string
+}
+
+type realPodsApi struct {
+	client *client.Client
+	// a means to list all scheduled pods
+	podLister *cache.StoreToPodLister
+}
+
+func (self *realPodsApi) parsePod(pod *api.Pod) *Pod {
+	localPod := Pod{
+		Name:       pod.Name,
+		Namespace:  pod.Namespace,
+		ID:         string(pod.UID),
+		Hostname:   pod.Status.Host,
+		HostIP:     pod.Status.HostIP,
+		Status:     string(pod.Status.Phase),
+		PodIP:      pod.Status.PodIP,
+		Labels:     make(map[string]string, 0),
+		Containers: make([]*Container, 0),
+	}
+	for key, value := range pod.Labels {
+		localPod.Labels[key] = value
+	}
+	for _, container := range pod.Spec.Containers {
+		localContainer := newContainer()
+		localContainer.Name = container.Name
+		localPod.Containers = append(localPod.Containers, localContainer)
+	}
+	glog.V(3).Infof("parsed kube pod: %+v", localPod)
+
+	return &localPod
+}
+
+func (self *realPodsApi) parseAllPods(pods []api.Pod) []Pod {
+	out := make([]Pod, 0)
+	for _, pod := range pods {
+		glog.V(3).Infof("Found kube Pod: %+v", pod)
+		out = append(out, *self.parsePod(&pod))
+	}
+
+	return out
+}
+
+func (self *realPodsApi) getNodeSelector(nodeList *nodes.NodeList) (labels.Selector, error) {
+	nodeLabels := []string{}
+	for node := range nodeList.Items {
+		nodeLabels = append(nodeLabels, fmt.Sprintf("Status.Host==%s", node.Name))
+	}
+	glog.V(2).Infof("using labels %v to find pods", nodeLabels)
+	return labels.ParseSelector(strings.Join(nodeLabels, ","))
+}
+
+// Returns a map of minion hostnames to the Pods running in them.
+func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]Pod, error) {
+	pods, err := self.podLister.List(labels.Everything())
+	if err != nil {
+		return []Pod{}, err
+	}
+	selectedPods := []api.Pod{}
+	// TODO(vishh): Avoid this loop by setting a node selector on the watcher.
+	for _, pod := range pods {
+		if _, ok := nodeList.Items[nodes.Node{
+			Name: pod.Status.Host,
+			IP:   pod.Status.HostIP}]; ok {
+			selectedPods = append(selectedPods, pod)
+		}
+	}
+	glog.V(2).Infof("got pods from api server %+v", selectedPods)
+
+	return self.parseAllPods(pods), nil
+}
+
+func (self *realPodsApi) DebugInfo() string {
+	return ""
+}
+
+func newPodsApi(client *client.Client) podsApi {
+	podsApi := &realPodsApi{
+		client:    client,
+		podLister: &cache.StoreToPodLister{cache.NewStore(cache.MetaNamespaceKeyFunc)},
+	}
+	selector, err := labels.ParseSelector("Status.Host!=")
+	if err != nil {
+		panic(err)
+	}
+
+	lw := &cache.ListWatch{
+		Client:        client,
+		FieldSelector: selector,
+		Resource:      "pods",
+	}
+
+	// Watch and cache all running pods.
+	cache.NewReflector(lw, &api.Pod{}, podsApi.podLister.Store).Run()
+
+	return podsApi
+}

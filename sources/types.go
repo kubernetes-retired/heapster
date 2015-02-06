@@ -32,8 +32,9 @@ func newContainer() *Container {
 
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
 type Pod struct {
-	Name       string            `json:"name,omitempty"`
-	Namespace  string            `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	// TODO(vishh): Rename to UID.
 	ID         string            `json:"id,omitempty"`
 	Hostname   string            `json:"hostname,omitempty"`
 	Containers []*Container      `json:"containers"`
@@ -48,15 +49,11 @@ type RawContainer struct {
 	Container
 }
 
+// TODO(vishh): Rename this to something more generic
 type ContainerData struct {
 	Pods       []Pod
 	Containers []RawContainer
 	Machine    []RawContainer
-}
-
-type CadvisorHosts struct {
-	Port  int               `json:"port"`
-	Hosts map[string]string `json:"hosts"`
 }
 
 type Source interface {
@@ -66,8 +63,8 @@ type Source interface {
 	// 2. nodes: A slice of RawContainer, one for each node in the cluster, that contains
 	// root cgroup information.
 	GetInfo() (ContainerData, error)
-	// Returns a debug config for the source.
-	GetConfig() string
+	// Returns debug information for the source.
+	DebugInfo() string
 }
 
 func NewSource(pollDuration time.Duration) (Source, error) {
