@@ -26,6 +26,10 @@
 			"Rev": "e1c259484b495133836706f46319f5897f1e9bf6"
 		},
 		{
+			"ImportPath": "github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata",
+			"Rev": "542bfb014d8e28df6e27be847dfdc40c510dab1a"
+		},
+		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/api",
 			"Comment": "v0.8.0-2-gf96be47",
 			"Rev": "f96be472b427267475f2975a7bbf5120b64ced16"
@@ -234,6 +238,10 @@
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
 			"Rev": "aa91ac681e18e52b1a0dfe29b9d8354e88c0dcf5"
+		},
+		{
+			"ImportPath": "google.golang.org/cloud/internal",
+			"Rev": "542bfb014d8e28df6e27be847dfdc40c510dab1a"
 		},
 		{
 			"ImportPath": "gopkg.in/v2/yaml",
