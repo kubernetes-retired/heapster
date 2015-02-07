@@ -164,8 +164,9 @@ func (self *gcmDriver) refreshToken() error {
 		}
 
 		// Expire the token a bit early.
-		if token.ExpiresIn > 2 {
-			token.ExpiresIn -= 2
+		const earlyRefreshSeconds = 60
+		if token.ExpiresIn > earlyRefreshSeconds {
+			token.ExpiresIn -= earlyRefreshSeconds
 		}
 		self.token = token.AccessToken
 		self.tokenExpiration = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
