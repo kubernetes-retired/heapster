@@ -34,8 +34,8 @@ import (
 )
 
 var (
-	influxdbController          = "monitoring-influxGrafanaController"
-	heapsterController          = "monitoring-heapsterController"
+	influxdbController          = "monitoring-influx-grafana-controller"
+	heapsterController          = "monitoring-heapster-controller"
 	targetTags                  = "kubernetes-minion"
 	heapsterFirewallRule        = "heapster-e2e"
 	influxdbLabels              = map[string]string{"name": "influxGrafana"}
