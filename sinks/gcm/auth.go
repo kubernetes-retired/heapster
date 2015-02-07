@@ -43,7 +43,7 @@ func getToken() (authToken, error) {
 	var token authToken
 	err = json.Unmarshal([]byte(rawToken), &token)
 	if err != nil {
-		return authToken{}, err
+		return authToken{}, fmt.Errorf("failed to unmarshal service account token with output %q: %v", rawToken, err)
 	}
 
 	return token, err
