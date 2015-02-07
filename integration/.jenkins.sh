@@ -6,7 +6,7 @@ if ! git diff --name-only origin/master | grep -c -E "*.go|*.sh|.*yaml" &> /dev/
   exit 0
 fi
 
-SUPPORTED_KUBE_VERSIONS="0.9.0"
+SUPPORTED_KUBE_VERSIONS="0.9.3,0.10.0"
 export GOPATH="$JENKINS_HOME/workspace/project"
 export GOBIN="$GOPATH/bin"
 
