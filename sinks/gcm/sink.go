@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources"
-	cadvisor "github.com/google/cadvisor/info"
 )
 
 type GcmSink struct {
@@ -208,62 +207,6 @@ var allLabels = []LabelDescriptor{
 	},
 	LabelDescriptor{
 		Key:         labelHostname,
-		Description: "Hostname where the container ran",
-	},
-}
-
-type supportedMetric struct {
-	MetricDescriptor
-
-	// Returns whether this metric is present.
-	HasValue func(*cadvisor.ContainerSpec) bool
-
-	// Returns the desired data point for this metric from the stats.
-	GetValue func(*cadvisor.ContainerStats) interface{}
-}
-
-// TODO(vmarmol): Add the rest of the metrics.
-var allMetrics = []supportedMetric{
-	supportedMetric{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "cpu/usage",
-			Description: "Cumulative CPU usage on all cores",
-			Type:        MetricCumulative,
-			ValueType:   ValueInt64,
-		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
-			return spec.HasCpu
-		},
-		GetValue: func(stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Cpu.Usage.Total)
-		},
-	},
-	supportedMetric{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "memory/usage",
-			Description: "Total memory usage",
-			Type:        MetricGauge,
-			ValueType:   ValueInt64,
-		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
-			return spec.HasMemory
-		},
-		GetValue: func(stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Memory.Usage)
-		},
-	},
-	supportedMetric{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "memory/working_set",
-			Description: "Total working set usage. Working set is the memory being used and not easily dropped by the kernel",
-			Type:        MetricGauge,
-			ValueType:   ValueInt64,
-		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
-			return spec.HasMemory
-		},
-		GetValue: func(stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Memory.WorkingSet)
-		},
+		Description: "Hostname of the node where the container ran",
 	},
 }
