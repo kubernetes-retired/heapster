@@ -33,21 +33,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	targetTags           = "kubernetes-minion"
+	heapsterFirewallRule = "heapster-e2e"
+	maxInfluxdbRetries   = 5
+)
+
 var (
-	influxdbController          = "monitoring-influxGrafanaController"
-	heapsterController          = "monitoring-heapsterController"
-	targetTags                  = "kubernetes-minion"
-	heapsterFirewallRule        = "heapster-e2e"
-	influxdbLabels              = map[string]string{"name": "influxGrafana"}
-	heapsterLabels              = map[string]string{"name": "heapster"}
-	kubeVersions                = flag.String("kube_versions", "", "Comma separated list of kube versions to test against")
-	heapsterManifestFile        = flag.String("heapster_controller", "../deploy/heapster-controller.yaml", "Path to heapster replication controller file.")
-	influxdbGrafanaManifestFile = flag.String("influxdb_grafana_controller", "../deploy/influxdb-grafana-controller.yaml", "Path to Influxdb-Grafana replication controller file.")
-	influxdbServiceFile         = flag.String("influxdb_service", "../deploy/influxdb-service.yaml", "Path to Inlufxdb service file.")
-	heapsterImage               = flag.String("heapster_image", "vish/heapster:e2e_test", "heapster docker image that needs to be tested.")
-	influxdbImage               = flag.String("influxdb_image", "vish/heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
-	grafanaImage                = flag.String("grafana_image", "vish/heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
-	maxInfluxdbRetries          = 5
+	kubeVersions                  = flag.String("kube_versions", "", "Comma separated list of kube versions to test against")
+	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/heapster-controller.yaml", "Path to heapster replication controller file.")
+	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/influxdb-grafana-controller.yaml", "Path to Influxdb-Grafana replication controller file.")
+	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/influxdb-service.yaml", "Path to Inlufxdb service file.")
+	heapsterImage                 = flag.String("heapster_image", "vish/heapster:e2e_test", "heapster docker image that needs to be tested.")
+	influxdbImage                 = flag.String("influxdb_image", "vish/heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
+	grafanaImage                  = flag.String("grafana_image", "vish/heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
+	namespace                     = flag.String("namespace", "default", "namespace to be used for testing")
 )
 
 func replaceImages(inputFile, outputBaseDir string, containerNameImageMap map[string]string) (string, error) {
@@ -75,8 +75,8 @@ func replaceImages(inputFile, outputBaseDir string, containerNameImageMap map[st
 	return outFile, ioutil.WriteFile(outFile, output, 0644)
 }
 
-func waitUntilPodRunning(fm kubeFramework, podLabels map[string]string, timeout time.Duration) (string, error) {
-	podsInterface := fm.Client().Pods(kube_api.NamespaceDefault)
+func waitUntilPodRunning(fm kubeFramework, ns string, podLabels map[string]string, timeout time.Duration) (string, error) {
+	podsInterface := fm.Client().Pods(ns)
 	for i := 0; i < int(timeout/time.Second); i++ {
 		selector := labels.Set(podLabels).AsSelector()
 		podList, err := podsInterface.List(selector)
@@ -84,43 +84,92 @@ func waitUntilPodRunning(fm kubeFramework, podLabels map[string]string, timeout 
 			glog.V(1).Info(err)
 			return "", err
 		}
-		if len(podList.Items) != 1 {
-			glog.V(1).Info(err)
-			return "", fmt.Errorf("found %d pod with labels %v", len(podList.Items), podLabels)
-		}
-		podSpec := podList.Items[0]
-		glog.V(2).Infof("%+v", podSpec)
-		if podSpec.Status.Phase == kube_api.PodRunning {
-			return podSpec.Status.HostIP, nil
+		if len(podList.Items) > 0 {
+			podSpec := podList.Items[0]
+			glog.V(2).Infof("%+v", podSpec)
+			if podSpec.Status.Phase == kube_api.PodRunning {
+				return podSpec.Status.HostIP, nil
+			}
 		}
 		time.Sleep(time.Second)
 	}
 	return "", fmt.Errorf("pod not in running state after %d seconds", timeout/time.Second)
 }
 
-func updateReplicas(fm kubeFramework, name string, count int) error {
-	rcInterface := fm.Client().ReplicationControllers(kube_api.NamespaceDefault)
-	controller, err := rcInterface.Get(name)
-	if err == nil {
-		controller.Spec.Replicas = 0
-		if _, rerr := rcInterface.Update(controller); rerr != nil {
-			return rerr
+func createAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []*kube_api.ReplicationController) error {
+	for _, rc := range rcs {
+		if err := fm.CreateRC(ns, rc); err != nil {
+			return err
 		}
 	}
-	glog.Errorf("updateReplicas failed for controller %+v with error: %q", controller, err)
-	return err
+
+	for _, service := range services {
+		if err := fm.CreateService(ns, service); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func deletePods(fm kubeFramework) {
-	if out, err := fm.RunKubecfgCmd("resize", influxdbController, "0"); err != nil {
-		glog.Errorf("failed to bring down the number of replicas for influxdb: %q - %v", out, err)
+func deleteAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []*kube_api.ReplicationController) {
+	for _, rc := range rcs {
+		if err := fm.DeleteRC(ns, rc); err != nil {
+			glog.Error(err)
+		}
 	}
-	if out, err := fm.RunKubecfgCmd("resize", heapsterController, "0"); err != nil {
-		glog.Errorf("failed to bring down the number of replicas for influxdb: %q - %v", out, err)
+
+	for _, service := range services {
+		if err := fm.DeleteService(ns, service); err != nil {
+			glog.Error(err)
+		}
 	}
-	_, _ = fm.RunKubectlCmd("delete", "-f", *heapsterManifestFile)
-	_, _ = fm.RunKubectlCmd("delete", "-f", *influxdbGrafanaManifestFile)
-	_, _ = fm.RunKubectlCmd("delete", "-f", *influxdbServiceFile)
+}
+
+var replicationControllers = []*kube_api.ReplicationController{}
+var services = []*kube_api.Service{}
+var influxdbNodeIP = ""
+
+func createAndWaitForRunning(fm kubeFramework, ns string) error {
+	// Add test docker image
+	heapsterRC, err := fm.ParseRC(*heapsterControllerFile)
+	if err != nil {
+		return fmt.Errorf("failed to parse heapster controller - %v", err)
+	}
+	heapsterRC.Spec.Template.Spec.Containers[0].Image = *heapsterImage
+	replicationControllers = append(replicationControllers, heapsterRC)
+
+	influxdbRC, err := fm.ParseRC(*influxdbGrafanaControllerFile)
+	if err != nil {
+		return fmt.Errorf("failed to parse influxdb controller - %v", err)
+	}
+
+	for _, cont := range influxdbRC.Spec.Template.Spec.Containers {
+		if strings.Contains(cont.Name, "grafana") {
+			cont.Image = *grafanaImage
+		} else if strings.Contains(cont.Name, "influxdb") {
+			cont.Image = *influxdbImage
+		}
+	}
+	replicationControllers = append(replicationControllers, influxdbRC)
+
+	influxdbService, err := fm.ParseService(*influxdbServiceFile)
+	if err != nil {
+		return fmt.Errorf("failed to parse influxdb service - %v", err)
+	}
+	services = append(services, influxdbService)
+
+	deleteAll(fm, ns, services, replicationControllers)
+	if err = createAll(fm, ns, services, replicationControllers); err != nil {
+		return err
+	}
+
+	glog.V(1).Info("waiting for pods to be running")
+	influxdbNodeIP, err = waitUntilPodRunning(fm, ns, influxdbRC.Spec.Template.Labels, 10*time.Minute)
+	if err != nil {
+		return err
+	}
+	_, err = waitUntilPodRunning(fm, ns, heapsterRC.Spec.Template.Labels, 1*time.Minute)
+	return err
 }
 
 func TestHeapsterInfluxDBWorks(t *testing.T) {
@@ -142,32 +191,13 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 			require.NoError(t, err, "failed to create firewall rule")
 		}
 
-		// Delete any pre-existing heapster pods
-		deletePods(fm)
+		// create pods and wait for them to run.
+		require.NoError(t, createAndWaitForRunning(fm, *namespace))
 
-		// Add test docker image
-		heapsterManifest, err := replaceImages(*heapsterManifestFile, tempDir, map[string]string{"heapster": *heapsterImage})
-		require.NoError(t, err, "failed to add test heapster docker image to manifest")
-		influxdbGrafanaManifest, err := replaceImages(*influxdbGrafanaManifestFile, tempDir, map[string]string{"influxdb": *influxdbImage, "grafana": *grafanaImage})
-		require.NoError(t, err, "failed to add test influxdb and grafana docker images to manifest")
-
-		// Create heapster pods
-		out, err := fm.RunKubectlCmd("create", "-f", influxdbGrafanaManifest)
-		require.NoError(t, err, "failed to create Influxdb-grafana pod ", out)
-		out, err = fm.RunKubectlCmd("create", "-f", *influxdbServiceFile)
-		require.NoError(t, err, "failed to create Influxdb service ", out)
-		out, err = fm.RunKubectlCmd("create", "-f", heapsterManifest)
-		require.NoError(t, err, "failed to create heapster pod ", out)
-
-		glog.V(1).Info("waiting for pods to be running")
-		influxdbHostIP, err := waitUntilPodRunning(fm, influxdbLabels, 10*time.Minute)
-		require.NoError(t, err, "influxdb pod is not running")
-		_, err = waitUntilPodRunning(fm, heapsterLabels, 1*time.Minute)
-		require.NoError(t, err, "heapster pod is not running")
-
-		glog.V(1).Infof("checking if data exists in influxdb running at %s", influxdbHostIP)
+		glog.V(1).Infof("checking if data exists in influxdb running at %s", influxdbNodeIP)
 		config := &influxdb.ClientConfig{
-			Host: influxdbHostIP + ":8086",
+			// Use master proxy to access influxdb Service.
+			Host: influxdbNodeIP + ":8086",
 			// TODO(vishh): Infer username and pw from the Pod spec.
 			Username: "root",
 			Password: "root",
@@ -197,7 +227,7 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 		}
 		require.NoError(t, err, "failed to query data from 'machine' table in Influxdb")
 		require.NotEmpty(t, series, "'machine' table does not contain any data")
-		glog.V(1).Info("HeapsterInfluxDB test passed")
+		glog.Info("HeapsterInfluxDB test passed")
+		deleteAll(fm, *namespace, services, replicationControllers)
 	}
-	fm.DestroyCluster()
 }

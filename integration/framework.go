@@ -25,8 +25,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	kube_clientauth "github.com/GoogleCloudPlatform/kubernetes/pkg/clientauth"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 	"github.com/golang/glog"
 )
 
@@ -37,11 +40,23 @@ type kubeFramework interface {
 	// Kube client
 	Client() *kube_client.Client
 
-	// Run kubectl.sh command
-	RunKubectlCmd(cmd ...string) (string, error)
+	// Parses and Returns a replication Controller object contained in 'filePath'
+	ParseRC(filePath string) (*api.ReplicationController, error)
 
-	// Run kubectl.sh command
-	RunKubecfgCmd(cmd ...string) (string, error)
+	// Parses and Returns a service object contained in 'filePath'
+	ParseService(filePath string) (*api.Service, error)
+
+	// Creates a kube service.
+	CreateService(ns string, service *api.Service) error
+
+	// Deletes a kube service.
+	DeleteService(ns string, service *api.Service) error
+
+	// Creates a kube replication controller.
+	CreateRC(ns string, rc *api.ReplicationController) error
+
+	// Deletes a kube replication controller.
+	DeleteRC(ns string, rc *api.ReplicationController) error
 
 	// Add firewall rules. Rules will be deleted automatically when the cluster is destroyed.
 	AddFirewallRule(name string, allow []string, targetTags string) error
@@ -117,7 +132,9 @@ func runKubeClusterCommand(kubeBaseDir, command string) ([]byte, error) {
 }
 
 func setupNewCluster(kubeBaseDir string) error {
-	out, err := runKubeClusterCommand(kubeBaseDir, "kube-up.sh")
+	cmd := "kube-up.sh"
+	destroyCluster(kubeBaseDir)
+	out, err := runKubeClusterCommand(kubeBaseDir, cmd)
 	if err != nil {
 		glog.Errorf("failed to bring up cluster - %q\n%s", err, out)
 		return fmt.Errorf("failed to bring up cluster - %q", err)
@@ -210,17 +227,12 @@ func validateCluster(baseDir string) bool {
 	return true
 }
 
-func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
-	// All integration tests are large.
-	if testing.Short() {
-		t.Skip("Skipping framework test in short mode")
-	}
-
+func downloadAndSetupCluster(version string) (baseDir string, err error) {
 	// Create a temp dir to store the kube release files.
 	tempDir := path.Join(*workDir, version)
 	if !exists(tempDir) {
 		if err := os.MkdirAll(tempDir, 0700); err != nil {
-			return nil, fmt.Errorf("failed to create a temp dir at %s - %q", tempDir, err)
+			return "", fmt.Errorf("failed to create a temp dir at %s - %q", tempDir, err)
 		}
 		glog.V(1).Infof("Successfully setup work dir at %s", tempDir)
 	}
@@ -229,45 +241,57 @@ func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
 
 	if !exists(kubeBaseDir) {
 		if err := downloadRelease(tempDir, version); err != nil {
-			return nil, err
+			return "", err
 		}
 		glog.V(1).Infof("Successfully downloaded kubernetes release at %s", tempDir)
 	}
 
 	// Disable monitoring
 	if err := disableClusterMonitoring(kubeBaseDir); err != nil {
-		return nil, fmt.Errorf("failed to disable cluster monitoring in kube cluster config - %q", err)
+		return "", fmt.Errorf("failed to disable cluster monitoring in kube cluster config - %q", err)
 	}
 	glog.V(1).Info("Disabled cluster monitoring")
 
-	if !*useExistingCluster {
-		// TODO(vishh): Do a kube-push if a cluster already exists and bring down monitoring jobs.
-		// Teardown any pre-existing cluster - This can happen due to a failed test or bad release.
-		// Ignore teardown errors since a cluster may not even exist.
-		destroyCluster(kubeBaseDir)
-
-		// Setup kube cluster
-		glog.V(1).Infof("Setting up new kubernetes cluster version: %s", version)
-		if err := setupNewCluster(kubeBaseDir); err != nil {
-			// Cluster setup failed for some reason.
-			// Attempting to validate the cluster to see if it failed in the validate phase.
-			sleepDuration := 10 * time.Second
-			var clusterReady bool = false
-			for i := 0; i < int(time.Minute/sleepDuration); i++ {
-				if !validateCluster(kubeBaseDir) {
-					glog.Infof("Retry validation after %v seconds.", sleepDuration/time.Second)
-					time.Sleep(sleepDuration)
-				} else {
-					clusterReady = true
-					break
-				}
-			}
-			if !clusterReady {
-				return nil, fmt.Errorf("failed to setup cluster - %q", err)
+	// Setup kube cluster
+	glog.V(1).Infof("Setting up new kubernetes cluster version: %s", version)
+	if err := setupNewCluster(kubeBaseDir); err != nil {
+		// Cluster setup failed for some reason.
+		// Attempting to validate the cluster to see if it failed in the validate phase.
+		sleepDuration := 10 * time.Second
+		var clusterReady bool = false
+		for i := 0; i < int(time.Minute/sleepDuration); i++ {
+			if !validateCluster(kubeBaseDir) {
+				glog.Infof("Retry validation after %v seconds.", sleepDuration/time.Second)
+				time.Sleep(sleepDuration)
+			} else {
+				clusterReady = true
+				break
 			}
 		}
+		if !clusterReady {
+			return "", fmt.Errorf("failed to setup cluster - %q", err)
+		}
+	}
+	glog.V(1).Infof("Successfully setup new kubernetes cluster version %s", version)
 
-		glog.V(1).Infof("Successfully setup new kubernetes cluster version %s", version)
+	return kubeBaseDir, nil
+}
+
+func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
+	var err error
+	kubeBaseDir := ""
+	// All integration tests are large.
+	if testing.Short() {
+		t.Skip("Skipping framework test in short mode")
+	}
+	if !*useExistingCluster {
+		if version == "" || len(strings.Split(version, ".")) != 3 {
+			return nil, fmt.Errorf("invalid kubernetes version specified - %q", version)
+		}
+		kubeBaseDir, err = downloadAndSetupCluster(version)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Setup kube client
@@ -291,18 +315,71 @@ func (self *realKubeFramework) Client() *kube_client.Client {
 	return self.kubeClient
 }
 
-func (self *realKubeFramework) RunKubectlCmd(args ...string) (string, error) {
-	cmd := exec.Command(path.Join(self.baseDir, "cluster", "kubectl.sh"), args...)
-	glog.V(2).Infof("about to run cmd: %+v", cmd)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+func (self *realKubeFramework) loadObject(filePath string) (runtime.Object, error) {
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read object: %v", err)
+	}
+	return latest.Codec.Decode(data)
 }
 
-func (self *realKubeFramework) RunKubecfgCmd(args ...string) (string, error) {
-	cmd := exec.Command(path.Join(self.baseDir, "cluster", "kubecfg.sh"), args...)
-	glog.V(2).Infof("about to run cmd: %+v", cmd)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+func (self *realKubeFramework) ParseRC(filePath string) (*api.ReplicationController, error) {
+	obj, err := self.loadObject(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	rc, ok := obj.(*api.ReplicationController)
+	if !ok {
+		return nil, fmt.Errorf("Failed to cast replicationController: %v", obj)
+	}
+	return rc, nil
+}
+
+func (self *realKubeFramework) ParseService(filePath string) (*api.Service, error) {
+	obj, err := self.loadObject(filePath)
+	if err != nil {
+		return nil, err
+	}
+	service, ok := obj.(*api.Service)
+	if !ok {
+		return nil, fmt.Errorf("Failed to cast service: %v", obj)
+	}
+	return service, nil
+}
+
+func (self *realKubeFramework) CreateService(ns string, service *api.Service) error {
+	_, err := self.kubeClient.Services(ns).Create(service)
+	return err
+}
+
+func (self *realKubeFramework) DeleteService(ns string, service *api.Service) error {
+	if _, err := self.kubeClient.Services(ns).Get(service.Name); err != nil {
+		return fmt.Errorf("cannot find service %q - %v", service.Name, err)
+	}
+
+	return self.kubeClient.Services(ns).Delete(service.Name)
+}
+
+func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController) error {
+	_, err := self.kubeClient.ReplicationControllers(ns).Create(rc)
+	return err
+}
+
+func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationController) error {
+	rc, err := self.kubeClient.ReplicationControllers(ns).Get(inputRc.Name)
+	if err != nil {
+		return fmt.Errorf("Cannot find Replication Controller %q. Skipping deletion - %v", inputRc.Name, err)
+	}
+	rc.Spec.Replicas = 0
+	if _, err := self.kubeClient.ReplicationControllers(ns).Update(rc); err != nil {
+		return fmt.Errorf("unable to modify replica count for rc %v: %v", inputRc.Name, err)
+	}
+	if err := self.kubeClient.ReplicationControllers(ns).Delete(rc.Name); err != nil {
+		return fmt.Errorf("unable to delete rc %v: %v", inputRc.Name, err)
+	}
+
+	return nil
 }
 
 func (self *realKubeFramework) DestroyCluster() {

@@ -11,8 +11,8 @@ start() {
 }
 
 stop() {
-  kubecfg.sh resize monitoring-influxGrafanaController 0 > /dev/null || true
-  kubecfg.sh resize monitoring-heapsterController 0 > /dev/null || true
+  kubecfg.sh resize monitoring-influx-grafana-controller 0 > /dev/null || true
+  kubecfg.sh resize monitoring-heapster-controller 0 > /dev/null || true
   # wait for the pods to disappear.
   while kubectl.sh get pods -l "name=influxGrafana" -o template -t {{range.items}}{{.id}}:{{end}} | grep -c . &> /dev/null \
     || kubectl.sh get pods -l "name=heapster" -o template -t {{range.items}}{{.id}}:{{end}} | grep -c . &> /dev/null; do
