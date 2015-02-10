@@ -30,7 +30,7 @@ type supportedMetric struct {
 
 // TODO(vmarmol): Add the rest of the metrics.
 var allMetrics = []supportedMetric{
-	supportedMetric{
+	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "cpu/usage",
 			Description: "Cumulative CPU usage on all cores",
@@ -44,7 +44,7 @@ var allMetrics = []supportedMetric{
 			return int64(stat.Cpu.Usage.Total)
 		},
 	},
-	supportedMetric{
+	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "memory/usage",
 			Description: "Total memory usage",
@@ -58,7 +58,7 @@ var allMetrics = []supportedMetric{
 			return int64(stat.Memory.Usage)
 		},
 	},
-	supportedMetric{
+	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "memory/working_set",
 			Description: "Total working set usage. Working set is the memory being used and not easily dropped by the kernel",

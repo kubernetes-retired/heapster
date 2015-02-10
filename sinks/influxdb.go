@@ -163,24 +163,7 @@ func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, con
 		values = append(values, stat.Network.TxErrors)
 	}
 
-	// DiskIo stats.
-	// TODO(vishh): Use spec.HasDiskIo once that is exported by cadvisor.
-	columns = append(columns, colDiskIoServiceBytes)
-	values = append(values, stat.DiskIo.IoServiceBytes)
-	columns = append(columns, colDiskIoServiced)
-	values = append(values, stat.DiskIo.IoServiced)
-	columns = append(columns, colDiskIoQueued)
-	values = append(values, stat.DiskIo.IoQueued)
-	columns = append(columns, colDiskIoSectors)
-	values = append(values, stat.DiskIo.Sectors)
-	columns = append(columns, colDiskIoServiceTime)
-	values = append(values, stat.DiskIo.IoServiceTime)
-	columns = append(columns, colDiskIoWaitTime)
-	values = append(values, stat.DiskIo.IoWaitTime)
-	columns = append(columns, colDiskIoMerged)
-	values = append(values, stat.DiskIo.IoMerged)
-	columns = append(columns, colDiskIoTime)
-	values = append(values, stat.DiskIo.IoTime)
+	// TODO(vishh): Export DiskIo stats.
 	return
 }
 

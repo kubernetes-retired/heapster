@@ -193,19 +193,19 @@ const (
 // - POD name, container name, and host IP: Useful to users but maybe we should just mangle them with ID and IP
 // - Namespace: Are IDs unique only per namespace? If so, mangle it into the ID.
 var allLabels = []LabelDescriptor{
-	LabelDescriptor{
+	{
 		Key:         labelPodId,
 		Description: "The unique ID of the pod",
 	},
-	LabelDescriptor{
+	{
 		Key:         labelContainerName,
 		Description: "User-provided name of the container or full container name for system containers",
 	},
-	LabelDescriptor{
+	{
 		Key:         labelLabels,
 		Description: "Comma-separated list of user-provided labels",
 	},
-	LabelDescriptor{
+	{
 		Key:         labelHostname,
 		Description: "Hostname of the node where the container ran",
 	},
