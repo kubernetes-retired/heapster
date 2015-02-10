@@ -41,19 +41,29 @@ type realPodsApi struct {
 	client *client.Client
 	// a means to list all scheduled pods
 	podLister *cache.StoreToPodLister
+	reflector *cache.Reflector
+	stopChan  chan struct{}
 }
 
-func (self *realPodsApi) parsePod(pod *api.Pod) *Pod {
+type podNodePair struct {
+	pod      *api.Pod
+	nodeInfo *nodes.Info
+}
+
+func (self *realPodsApi) parsePod(podNodePair *podNodePair) *Pod {
+	pod := podNodePair.pod
+	node := podNodePair.nodeInfo
 	localPod := Pod{
-		Name:       pod.Name,
-		Namespace:  pod.Namespace,
-		ID:         string(pod.UID),
-		Hostname:   pod.Status.Host,
-		HostIP:     pod.Status.HostIP,
-		Status:     string(pod.Status.Phase),
-		PodIP:      pod.Status.PodIP,
-		Labels:     make(map[string]string, 0),
-		Containers: make([]*Container, 0),
+		Name:           pod.Name,
+		Namespace:      pod.Namespace,
+		ID:             string(pod.UID),
+		Hostname:       pod.Status.Host,
+		HostPublicIP:   pod.Status.HostIP,
+		HostInternalIP: node.InternalIP,
+		Status:         string(pod.Status.Phase),
+		PodIP:          pod.Status.PodIP,
+		Labels:         make(map[string]string, 0),
+		Containers:     make([]*Container, 0),
 	}
 	for key, value := range pod.Labels {
 		localPod.Labels[key] = value
@@ -68,11 +78,11 @@ func (self *realPodsApi) parsePod(pod *api.Pod) *Pod {
 	return &localPod
 }
 
-func (self *realPodsApi) parseAllPods(pods []api.Pod) []Pod {
+func (self *realPodsApi) parseAllPods(podNodePairs []podNodePair) []Pod {
 	out := make([]Pod, 0)
-	for _, pod := range pods {
-		glog.V(3).Infof("Found kube Pod: %+v", pod)
-		out = append(out, *self.parsePod(&pod))
+	for _, podNodePair := range podNodePairs {
+		glog.V(3).Infof("Found kube Pod: %+v", podNodePair)
+		out = append(out, *self.parsePod(&podNodePair))
 	}
 
 	return out
@@ -80,8 +90,8 @@ func (self *realPodsApi) parseAllPods(pods []api.Pod) []Pod {
 
 func (self *realPodsApi) getNodeSelector(nodeList *nodes.NodeList) (labels.Selector, error) {
 	nodeLabels := []string{}
-	for node := range nodeList.Items {
-		nodeLabels = append(nodeLabels, fmt.Sprintf("Status.Host==%s", node.Name))
+	for host := range nodeList.Items {
+		nodeLabels = append(nodeLabels, fmt.Sprintf("Status.Host==%s", host))
 	}
 	glog.V(2).Infof("using labels %v to find pods", nodeLabels)
 	return labels.ParseSelector(strings.Join(nodeLabels, ","))
@@ -93,18 +103,16 @@ func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]Pod, error) {
 	if err != nil {
 		return []Pod{}, err
 	}
-	selectedPods := []api.Pod{}
+	selectedPods := []podNodePair{}
 	// TODO(vishh): Avoid this loop by setting a node selector on the watcher.
 	for _, pod := range pods {
-		if _, ok := nodeList.Items[nodes.Node{
-			Name: pod.Status.Host,
-			IP:   pod.Status.HostIP}]; ok {
-			selectedPods = append(selectedPods, pod)
+		if nodeInfo, ok := nodeList.Items[nodes.Host(pod.Status.Host)]; ok && pod.Status.HostIP == nodeInfo.PublicIP {
+			selectedPods = append(selectedPods, podNodePair{&pod, &nodeInfo})
 		}
 	}
 	glog.V(2).Infof("got pods from api server %+v", selectedPods)
 
-	return self.parseAllPods(pods), nil
+	return self.parseAllPods(selectedPods), nil
 }
 
 func (self *realPodsApi) DebugInfo() string {
@@ -112,10 +120,8 @@ func (self *realPodsApi) DebugInfo() string {
 }
 
 func newPodsApi(client *client.Client) podsApi {
-	podsApi := &realPodsApi{
-		client:    client,
-		podLister: &cache.StoreToPodLister{cache.NewStore(cache.MetaNamespaceKeyFunc)},
-	}
+	// Extend the selector to include specific nodes to monitor
+	// or provide an API to update the nodes to monitor.
 	selector, err := labels.ParseSelector("Status.Host!=")
 	if err != nil {
 		panic(err)
@@ -127,8 +133,18 @@ func newPodsApi(client *client.Client) podsApi {
 		Resource:      "pods",
 	}
 
+	podLister := &cache.StoreToPodLister{cache.NewStore(cache.MetaNamespaceKeyFunc)}
 	// Watch and cache all running pods.
-	cache.NewReflector(lw, &api.Pod{}, podsApi.podLister.Store).Run()
+	reflector := cache.NewReflector(lw, &api.Pod{}, podLister.Store)
+	stopChan := make(chan struct{})
+	reflector.RunUntil(stopChan)
+
+	podsApi := &realPodsApi{
+		client:    client,
+		podLister: podLister,
+		stopChan:  stopChan,
+		reflector: reflector,
+	}
 
 	return podsApi
 }

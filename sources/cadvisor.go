@@ -27,8 +27,8 @@ import (
 
 type cadvisorSource struct {
 	pollDuration time.Duration
-	port      string
-	lastQuery time.Time
+	port         string
+	lastQuery    time.Time
 }
 
 func (self *cadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) RawContainer {
@@ -51,7 +51,7 @@ func (self *cadvisorSource) getAllCadvisorData(hostname, ip, port, container str
 	}
 	numStats := int(self.pollDuration / time.Second)
 	if time.Since(self.lastQuery) > self.pollDuration {
-		numStats = int(time.Since(self.lastQuery)/time.Second)
+		numStats = int(time.Since(self.lastQuery) / time.Second)
 	}
 	allContainers, err := client.SubcontainersInfo("/",
 		&cadvisor.ContainerInfoRequest{NumStats: numStats})
@@ -73,10 +73,10 @@ func (self *cadvisorSource) getAllCadvisorData(hostname, ip, port, container str
 }
 
 func (self *cadvisorSource) fetchData(nodeList *nodes.NodeList) (rawContainers []RawContainer, nodesInfo []RawContainer, err error) {
-	for node := range nodeList.Items {
-		containers, nodeInfo, err := self.getAllCadvisorData(node.Name, node.IP, self.port, "/")
+	for host, info := range nodeList.Items {
+		containers, nodeInfo, err := self.getAllCadvisorData(string(host), info.InternalIP, self.port, "/")
 		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to get cAdvisor data from host %q: %v", node.Name, err)
+			return nil, nil, fmt.Errorf("Failed to get cAdvisor data from host %q: %v", host, err)
 		}
 		rawContainers = append(rawContainers, containers...)
 		nodesInfo = append(nodesInfo, nodeInfo)
@@ -91,7 +91,7 @@ func newCadvisorSource(pollDuration time.Duration, port int) (*cadvisorSource, e
 	}
 	return &cadvisorSource{
 		pollDuration: pollDuration,
-		port:      strconv.Itoa(port),
-		lastQuery: time.Now(),
+		port:         strconv.Itoa(port),
+		lastQuery:    time.Now(),
 	}, nil
 }

@@ -15,12 +15,12 @@
 package sources
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
-	"net/url"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,20 +39,20 @@ const (
 )
 
 var (
-	argMaster      = flag.String("kubernetes_master", "", "Kubernetes master IP")
+	argMaster         = flag.String("kubernetes_master", "", "Kubernetes master IP")
 	argMasterInsecure = flag.Bool("kubernetes_insecure", true, "Trust Kubernetes master certificate (if using https)")
-	argKubeletPort = flag.String("kubelet_port", "10250", "Kubelet port")
+	argKubeletPort    = flag.String("kubelet_port", "10250", "Kubelet port")
 )
 
 type kubeSource struct {
 	client       *kube_client.Client
 	kubeletPort  string
 	pollDuration time.Duration
-	nodesApi    nodes.NodesApi
-	podsApi     podsApi
+	nodesApi     nodes.NodesApi
+	podsApi      podsApi
 	stateLock    sync.RWMutex
 	podErrors    map[podInstance]int // guarded by stateLock
-	lastQuery time.Time
+	lastQuery    time.Time
 }
 
 type podInstance struct {
@@ -71,7 +71,7 @@ func (self *kubeSource) recordPodError(pod Pod) {
 	self.stateLock.Lock()
 	defer self.stateLock.Unlock()
 
-	podInstance := podInstance{name: pod.Name, id: pod.ID, ip: pod.HostIP}
+	podInstance := podInstance{name: pod.Name, id: pod.ID, ip: pod.HostPublicIP}
 	self.podErrors[podInstance]++
 }
 
@@ -91,24 +91,30 @@ func (self *kubeSource) getState() string {
 func (self *kubeSource) getNumStatsToFetch() int {
 	numStats := int(self.pollDuration / time.Second)
 	if time.Since(self.lastQuery) > self.pollDuration {
-		numStats = int(time.Since(self.lastQuery)/time.Second)
+		numStats = int(time.Since(self.lastQuery) / time.Second)
 	}
 	return numStats
 }
 
 func (self *kubeSource) getStatsFromKubelet(pod Pod, containerName string) (cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
 	var containerInfo cadvisor.ContainerInfo
-	values := url.Values{}
-	values.Add("num_stats", strconv.Itoa(self.getNumStatsToFetch()))
-	url := "http://" + pod.HostIP + ":" + self.kubeletPort + filepath.Join("/stats", pod.Namespace, pod.Name, pod.ID, containerName) + "?" + values.Encode()
-	req, err := http.NewRequest("GET", url, nil)
+	body, err := json.Marshal(cadvisor.ContainerInfoRequest{NumStats: self.getNumStatsToFetch()})
 	if err != nil {
 		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, err
 	}
-	err = PostRequestAndGetValue(&http.Client{}, req, &containerInfo)
+	url := fmt.Sprintf("http://%s:%s%s", pod.HostInternalIP, self.kubeletPort, filepath.Join("/stats", pod.Name, containerName))
+	if containerName == "/" {
+		url += "/"
+	}
+	glog.V(2).Infof("about to query kubelet using url: %q", url)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	err = PostRequestAndGetValue(http.DefaultClient, req, &containerInfo)
 	if err != nil {
 		glog.Errorf("failed to get stats from kubelet url: %s - %s\n", url, err)
-		self.recordPodError(pod)
 		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, nil
 	}
 
@@ -118,15 +124,15 @@ func (self *kubeSource) getStatsFromKubelet(pod Pod, containerName string) (cadv
 func (self *kubeSource) getNodesInfo(nodeList *nodes.NodeList) ([]RawContainer, error) {
 	glog.V(2).Infof("current nodes %+v", nodeList)
 	nodesInfo := []RawContainer{}
-	for node := range nodeList.Items {
-		spec, stats, err := self.getStatsFromKubelet(Pod{HostIP: node.Name}, "/")
+	for host, info := range nodeList.Items {
+		spec, stats, err := self.getStatsFromKubelet(Pod{HostInternalIP: info.InternalIP}, "/")
 		if err != nil {
-			glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", node)
+			glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", host)
 			return []RawContainer{}, err
 		}
 		if len(stats) > 0 {
 			container := RawContainer{
-				Hostname:  node.Name,
+				Hostname:  string(host),
 				Container: Container{"/", spec, stats},
 			}
 			nodesInfo = append(nodesInfo, container)
@@ -200,13 +206,13 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 	glog.Infof("Using kubelet port %q", *argKubeletPort)
 
 	return &kubeSource{
-		client:      kubeClient,
-		lastQuery:   time.Now(),
+		client:       kubeClient,
+		lastQuery:    time.Now(),
 		pollDuration: pollDuration,
-		kubeletPort: *argKubeletPort,
-		nodesApi:    nodesApi,
-		podsApi:     newPodsApi(kubeClient),
-		podErrors:   make(map[podInstance]int),
+		kubeletPort:  *argKubeletPort,
+		nodesApi:     nodesApi,
+		podsApi:      newPodsApi(kubeClient),
+		podErrors:    make(map[podInstance]int),
 	}, nil
 }
 

@@ -93,7 +93,8 @@ func TestNodes(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Printf("%+v\n", nodeList)
 	for _, expectedNode := range expectedNodeList.Items {
-		_, ok := nodeList.Items[Node{expectedNode.Name, expectedNode.Status.HostIP}]
+		node, ok := nodeList.Items[Host(expectedNode.Name)]
 		assert.True(t, ok)
+		assert.Equal(t, node.PublicIP, expectedNode.Status.HostIP)
 	}
 }

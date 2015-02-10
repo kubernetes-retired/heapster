@@ -32,7 +32,7 @@ var argCadvisorPort = flag.Int("cadvisor_port", 8080, "The port on which cadviso
 type externalSource struct {
 	cadvisor     *cadvisorSource
 	pollDuration time.Duration
-	nodesApi nodes.NodesApi
+	nodesApi     nodes.NodesApi
 }
 
 func (self *externalSource) GetInfo() (ContainerData, error) {

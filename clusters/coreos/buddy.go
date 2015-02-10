@@ -78,7 +78,7 @@ func getMachines(client fleetClient.API, outMachines map[string]string) error {
 func updateHeapsterHostsFile(hosts map[string]string) error {
 	nodeList := &nodes.ExternalNodeList{}
 	for hostname, ip := range hosts {
-		nodeList.Items = append(nodeList.Items, nodes.Node{Name: hostname, IP: ip})
+		nodeList.Items = append(nodeList.Items, nodes.ExternalNode{Name: hostname, IP: ip})
 	}
 	data, err := json.Marshal(nodeList)
 	if err != nil {

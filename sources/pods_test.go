@@ -116,9 +116,9 @@ func TestPodsParsing(t *testing.T) {
 	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Version()})
 	podsApi := newPodsApi(client)
 	nodeList := &nodes.NodeList{
-		Items: map[nodes.Node]nodes.Empty{
-			nodes.Node{Name: "test-machine-b", IP: "10.10.10.1"}: {},
-			nodes.Node{Name: "test-machine-a", IP: "10.10.10.0"}: {},
+		Items: map[nodes.Host]nodes.Info{
+			nodes.Host("test-machine-b"): {PublicIP: "10.10.10.1"},
+			nodes.Host("test-machine-1"): {PublicIP: "10.10.10.0"},
 		},
 	}
 	pods, err := podsApi.List(nodeList)
