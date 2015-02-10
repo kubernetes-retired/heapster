@@ -58,14 +58,12 @@ type kubeFramework interface {
 	// Deletes a kube replication controller.
 	DeleteRC(ns string, rc *api.ReplicationController) error
 
-	// Add firewall rules. Rules will be deleted automatically when the cluster is destroyed.
-	AddFirewallRule(name string, allow []string, targetTags string) error
-
-	// Returns true if a firewall rule exists.
-	FirewallRuleExists(name string) bool
-
 	// Destroy cluster
 	DestroyCluster()
+
+	// Returns a url that provides access to a kubernetes service via the proxy on the apiserver.
+	// This url requires master auth.
+	GetProxyUrlForService(serviceName string) string
 }
 
 type realKubeFramework struct {
@@ -75,17 +73,14 @@ type realKubeFramework struct {
 	// The version of the kube cluster
 	version string
 
-	// Master host for this framework
-	master string
+	// Master IP for this framework
+	masterIP string
 
 	// The base directory of current kubernetes release.
 	baseDir string
 
 	// Testing framework in use
 	t *testing.T
-
-	// Firewall rules that need to be destroyed.
-	firewallRules map[string]struct{}
 }
 
 const imageUrlTemplate = "https://github.com/GoogleCloudPlatform/kubernetes/releases/download/v%s/kubernetes.tar.gz"
@@ -189,10 +184,10 @@ func downloadRelease(workDir, version string) error {
 	return nil
 }
 
-func getKubeClient() (*kube_client.Client, error) {
+func getKubeClient() (string, *kube_client.Client, error) {
 	masterIP, err := getMasterIP()
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	glog.V(1).Infof("Kubernetes master IP is %s", masterIP)
 
@@ -203,19 +198,19 @@ func getKubeClient() (*kube_client.Client, error) {
 
 	auth, err := kube_clientauth.LoadFromFile(*authConfig)
 	if err != nil {
-		return nil, fmt.Errorf("error loading auth - %q", err)
+		return "", nil, fmt.Errorf("error loading auth - %q", err)
 	}
 	config, err = auth.MergeWithConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("error creating client - %q", err)
+		return "", nil, fmt.Errorf("error creating client - %q", err)
 	}
 
 	kubeClient, err := kube_client.New(&config)
 	if err != nil {
-		return nil, fmt.Errorf("error creating client - %q", err)
+		return "", nil, fmt.Errorf("error creating client - %q", err)
 	}
 
-	return kubeClient, nil
+	return masterIP, kubeClient, nil
 }
 
 func validateCluster(baseDir string) bool {
@@ -295,7 +290,7 @@ func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
 	}
 
 	// Setup kube client
-	kubeClient, err := getKubeClient()
+	masterIP, kubeClient, err := getKubeClient()
 	if err != nil {
 		return nil, err
 	}
@@ -304,6 +299,7 @@ func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
 		kubeClient: kubeClient,
 		t:          t,
 		baseDir:    kubeBaseDir,
+		masterIP:   masterIP,
 	}, nil
 }
 
@@ -355,7 +351,8 @@ func (self *realKubeFramework) CreateService(ns string, service *api.Service) er
 
 func (self *realKubeFramework) DeleteService(ns string, service *api.Service) error {
 	if _, err := self.kubeClient.Services(ns).Get(service.Name); err != nil {
-		return fmt.Errorf("cannot find service %q - %v", service.Name, err)
+		glog.V(1).Infof("cannot find service %q - %v", service.Name, err)
+		return nil
 	}
 
 	return self.kubeClient.Services(ns).Delete(service.Name)
@@ -369,7 +366,8 @@ func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController
 func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationController) error {
 	rc, err := self.kubeClient.ReplicationControllers(ns).Get(inputRc.Name)
 	if err != nil {
-		return fmt.Errorf("Cannot find Replication Controller %q. Skipping deletion - %v", inputRc.Name, err)
+		glog.V(1).Infof("Cannot find Replication Controller %q. Skipping deletion - %v", inputRc.Name, err)
+		return nil
 	}
 	rc.Spec.Replicas = 0
 	if _, err := self.kubeClient.ReplicationControllers(ns).Update(rc); err != nil {
@@ -383,48 +381,11 @@ func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationContr
 }
 
 func (self *realKubeFramework) DestroyCluster() {
-	for firewallRule := range self.firewallRules {
-		self.deleteFirewallRule(firewallRule)
-	}
 	if !*useExistingCluster {
 		destroyCluster(self.baseDir)
 	}
 }
 
-func (self *realKubeFramework) AddFirewallRule(name string, allow []string, targetTags string) error {
-	allowed := strings.Join(allow, " ")
-	cmd := exec.Command("gcloud", "compute", "firewall-rules", "create", name, "--allow", allowed, "--target-tags", targetTags)
-	glog.V(2).Infof("about to run cmd: %+v", cmd)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		glog.V(1).Infof("creating firewall rule failed: %q - %v", out, err)
-	} else {
-		self.firewallRules[name] = struct{}{}
-	}
-
-	return err
-}
-
-func (self *realKubeFramework) FirewallRuleExists(name string) bool {
-	cmd := exec.Command("gcloud", "compute", "firewall-rules", "list", name)
-	glog.V(2).Infof("about to run cmd: %+v", cmd)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		glog.V(2).Infof("listing firewall rule failed: %q - %v", out, err)
-		return false
-	}
-	return true
-}
-
-func (self *realKubeFramework) deleteFirewallRule(name string) error {
-	cmd := exec.Command("gcloud", "compute", "firewall-rules", "delete", name)
-	glog.V(2).Infof("about to run cmd: %+v", cmd)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		glog.Errorf("deleting firewall rule failed: %q - %v", out, err)
-	} else {
-		delete(self.firewallRules, name)
-	}
-
-	return err
+func (self *realKubeFramework) GetProxyUrlForService(serviceName string) string {
+	return fmt.Sprintf("%s/api/v1beta1/proxy/services/%s/", self.masterIP, serviceName)
 }

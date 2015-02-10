@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -34,9 +35,8 @@ import (
 )
 
 const (
-	targetTags           = "kubernetes-minion"
-	heapsterFirewallRule = "heapster-e2e"
-	maxInfluxdbRetries   = 5
+	targetTags         = "kubernetes-minion"
+	maxInfluxdbRetries = 5
 )
 
 var (
@@ -44,9 +44,9 @@ var (
 	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/heapster-controller.yaml", "Path to heapster replication controller file.")
 	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/influxdb-grafana-controller.yaml", "Path to Influxdb-Grafana replication controller file.")
 	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/influxdb-service.yaml", "Path to Inlufxdb service file.")
-	heapsterImage                 = flag.String("heapster_image", "vish/heapster:e2e_test", "heapster docker image that needs to be tested.")
-	influxdbImage                 = flag.String("influxdb_image", "vish/heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
-	grafanaImage                  = flag.String("grafana_image", "vish/heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
+	heapsterImage                 = flag.String("heapster_image", "vish/heapster:e2e_test1", "heapster docker image that needs to be tested.")
+	influxdbImage                 = flag.String("influxdb_image", "vish/heapster_influxdb:e2e_test1", "influxdb docker image that needs to be tested.")
+	grafanaImage                  = flag.String("grafana_image", "vish/heapster_grafana:e2e_test1", "grafana docker image that needs to be tested.")
 	namespace                     = flag.String("namespace", "default", "namespace to be used for testing")
 )
 
@@ -75,25 +75,25 @@ func replaceImages(inputFile, outputBaseDir string, containerNameImageMap map[st
 	return outFile, ioutil.WriteFile(outFile, output, 0644)
 }
 
-func waitUntilPodRunning(fm kubeFramework, ns string, podLabels map[string]string, timeout time.Duration) (string, error) {
+func waitUntilPodRunning(fm kubeFramework, ns string, podLabels map[string]string, timeout time.Duration) error {
 	podsInterface := fm.Client().Pods(ns)
 	for i := 0; i < int(timeout/time.Second); i++ {
 		selector := labels.Set(podLabels).AsSelector()
 		podList, err := podsInterface.List(selector)
 		if err != nil {
 			glog.V(1).Info(err)
-			return "", err
+			return err
 		}
 		if len(podList.Items) > 0 {
 			podSpec := podList.Items[0]
 			glog.V(2).Infof("%+v", podSpec)
 			if podSpec.Status.Phase == kube_api.PodRunning {
-				return podSpec.Status.HostIP, nil
+				return nil
 			}
 		}
 		time.Sleep(time.Second)
 	}
-	return "", fmt.Errorf("pod not in running state after %d seconds", timeout/time.Second)
+	return fmt.Errorf("pod not in running state after %d seconds", timeout/time.Second)
 }
 
 func createAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []*kube_api.ReplicationController) error {
@@ -127,7 +127,7 @@ func deleteAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []
 
 var replicationControllers = []*kube_api.ReplicationController{}
 var services = []*kube_api.Service{}
-var influxdbNodeIP = ""
+var influxdbService = ""
 
 func createAndWaitForRunning(fm kubeFramework, ns string) error {
 	// Add test docker image
@@ -164,12 +164,25 @@ func createAndWaitForRunning(fm kubeFramework, ns string) error {
 	}
 
 	glog.V(1).Info("waiting for pods to be running")
-	influxdbNodeIP, err = waitUntilPodRunning(fm, ns, influxdbRC.Spec.Template.Labels, 10*time.Minute)
-	if err != nil {
+	if err = waitUntilPodRunning(fm, ns, influxdbRC.Spec.Template.Labels, 10*time.Minute); err != nil {
 		return err
 	}
-	_, err = waitUntilPodRunning(fm, ns, heapsterRC.Spec.Template.Labels, 1*time.Minute)
-	return err
+	return waitUntilPodRunning(fm, ns, heapsterRC.Spec.Template.Labels, 1*time.Minute)
+}
+
+func queryInfluxDB(t *testing.T, table string, client *influxdb.Client) {
+	var series []*influxdb.Series
+	var err error
+	for i := 0; i < maxInfluxdbRetries; i++ {
+		series, err = client.Query(fmt.Sprintf("select * from %s limit 1", table), influxdb.Second)
+		if err == nil {
+			glog.V(2).Infof("influxdb query failed. Retrying - %v", err)
+			break
+		}
+		time.Sleep(30 * time.Second)
+	}
+	require.NoError(t, err, "failed to query data from %q table in Influxdb", table)
+	require.NotEmpty(t, series, "%q table does not contain any data", table)
 }
 
 func TestHeapsterInfluxDBWorks(t *testing.T) {
@@ -188,49 +201,29 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 		fm, err = newKubeFramework(t, kubeVersion)
 		require.NoError(t, err, "failed to create kube framework")
 
-		// add firewall rules.
-		if !fm.FirewallRuleExists(heapsterFirewallRule) {
-			err := fm.AddFirewallRule(heapsterFirewallRule, []string{"tcp:8086"}, targetTags)
-			require.NoError(t, err, "failed to create firewall rule")
-		}
-
 		// create pods and wait for them to run.
 		require.NoError(t, createAndWaitForRunning(fm, *namespace))
 
-		glog.V(1).Infof("checking if data exists in influxdb running at %s", influxdbNodeIP)
+		kubeMasterHttpClient, ok := fm.Client().Client.(*http.Client)
+		require.True(t, ok, "failed to get http client to kube master.")
+
+		glog.V(2).Infof("checking if data exists in influxdb using apiserver proxy url %q", fm.GetProxyUrlForService(services[0].Name))
 		config := &influxdb.ClientConfig{
-			// Use master proxy to access influxdb Service.
-			Host: influxdbNodeIP + ":8086",
+			Host: fm.GetProxyUrlForService(services[0].Name),
 			// TODO(vishh): Infer username and pw from the Pod spec.
-			Username: "root",
-			Password: "root",
-			Database: "k8s",
-			IsSecure: false,
+			Username:   "root",
+			Password:   "root",
+			Database:   "k8s",
+			HttpClient: kubeMasterHttpClient,
+			IsSecure:   true,
 		}
 		influxdbClient, err := influxdb.NewClient(config)
 		require.NoError(t, err, "failed to create influxdb client")
 
-		var series []*influxdb.Series
-		for i := 0; i < maxInfluxdbRetries; i++ {
-			series, err = influxdbClient.Query("select * from stats limit 1", influxdb.Second)
-			if err == nil {
-				break
-			}
-			time.Sleep(30 * time.Second)
-		}
-		require.NoError(t, err, "failed to query data from 'stats' table in Influxdb")
-		require.NotEmpty(t, series, "'stats' table does not contain any data")
+		queryInfluxDB(t, "stats", influxdbClient)
+		queryInfluxDB(t, "machine", influxdbClient)
 
-		for i := 0; i < maxInfluxdbRetries; i++ {
-			series, err = influxdbClient.Query("select * from machine limit 1", influxdb.Second)
-			if err == nil {
-				break
-			}
-			time.Sleep(30 * time.Second)
-		}
-		require.NoError(t, err, "failed to query data from 'machine' table in Influxdb")
-		require.NotEmpty(t, series, "'machine' table does not contain any data")
-		glog.Info("HeapsterInfluxDB test passed")
+		glog.Info("**HeapsterInfluxDB test passed**")
 		deleteAll(fm, *namespace, services, replicationControllers)
 	}
 }
