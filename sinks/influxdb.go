@@ -192,7 +192,7 @@ func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
 	}
 }
 
-func (self *InfluxdbSink) handleContainers(containers []sources.RawContainer, tableName string) {
+func (self *InfluxdbSink) handleContainers(containers []sources.Container, tableName string) {
 	// TODO(vishh): Export spec into a separate table and update it whenever it changes.
 	for _, container := range containers {
 		for _, stat := range container.Stats {

@@ -69,8 +69,8 @@ func (self *GcmSink) StoreData(input interface{}) error {
 	for _, pod := range data.Pods {
 		metrics = append(metrics, self.podToMetrics(&pod)...)
 	}
-	metrics = append(metrics, self.rawContainersToMetrics(data.Containers)...)
-	metrics = append(metrics, self.rawContainersToMetrics(data.Machine)...)
+	metrics = append(metrics, self.containersToMetrics(data.Containers)...)
+	metrics = append(metrics, self.containersToMetrics(data.Machine)...)
 
 	// Push the metrics step size at a time. Try to push all the metrics even if there are errors.
 	var lastErr error
@@ -122,13 +122,13 @@ func (self *GcmSink) podToMetrics(pod *sources.Pod) []Metric {
 	return metrics
 }
 
-func (self *GcmSink) rawContainersToMetrics(containers []sources.RawContainer) []Metric {
+func (self *GcmSink) containersToMetrics(containers []sources.Container) []Metric {
 	metrics := make([]Metric, 0, len(containers))
 
 	labels := make(map[string]string)
 	for _, container := range containers {
 		labels[labelHostname] = container.Hostname
-		metrics = append(metrics, self.containerToMetrics(&container.Container, labels)...)
+		metrics = append(metrics, self.containerToMetrics(&container, labels)...)
 	}
 	return metrics
 }

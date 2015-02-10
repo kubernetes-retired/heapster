@@ -69,7 +69,7 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *Pod {
 		localPod.Labels[key] = value
 	}
 	for _, container := range pod.Spec.Containers {
-		localContainer := newContainer()
+		localContainer := &Container{}
 		localContainer.Name = container.Name
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}

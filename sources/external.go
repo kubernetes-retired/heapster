@@ -21,8 +21,10 @@ package sources
 import (
 	"flag"
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	"github.com/golang/glog"
 )
@@ -30,9 +32,11 @@ import (
 var argCadvisorPort = flag.Int("cadvisor_port", 8080, "The port on which cadvisor binds to on all nodes.")
 
 type externalSource struct {
-	cadvisor     *cadvisorSource
+	cadvisorPort string
+	cadvisorApi  datasource.Cadvisor
 	pollDuration time.Duration
 	nodesApi     nodes.NodesApi
+	lastQuery    time.Time
 }
 
 func (self *externalSource) GetInfo() (ContainerData, error) {
@@ -41,30 +45,63 @@ func (self *externalSource) GetInfo() (ContainerData, error) {
 		return ContainerData{}, err
 	}
 
-	containers, nodes, err := self.cadvisor.fetchData(nodeList)
-	if err != nil {
-		glog.Error(err)
-		return ContainerData{}, nil
+	result := ContainerData{}
+	for hostname, info := range nodeList.Items {
+		host := datasource.Host{
+			IP:   info.InternalIP,
+			Port: self.cadvisorPort,
+		}
+		subcontainers, node, err := self.cadvisorApi.GetAllContainers(host, self.numStatsToFetch())
+		if err != nil {
+			glog.Error(err)
+			continue
+		}
+		for _, cont := range subcontainers {
+			if cont != nil {
+				result.Containers = append(result.Containers, Container{
+					Hostname: string(hostname),
+					Name:     cont.Name,
+					Spec:     cont.Spec,
+					Stats:    cont.Stats,
+				})
+			}
+		}
+		if node != nil {
+			result.Machine = append(result.Machine, Container{
+				Hostname: string(hostname),
+				Name:     node.Name,
+				Spec:     node.Spec,
+				Stats:    node.Stats,
+			})
+		}
 	}
+	self.lastQuery = time.Now()
 
-	return ContainerData{
-		Containers: containers,
-		Machine:    nodes,
-	}, nil
+	return result, nil
+}
+
+func (self *externalSource) numStatsToFetch() int {
+	numStats := int(self.pollDuration / time.Second)
+	if time.Since(self.lastQuery) > self.pollDuration {
+		numStats = int(time.Since(self.lastQuery) / time.Second)
+	}
+	return numStats
 }
 
 func newExternalSource(pollDuration time.Duration) (Source, error) {
-	cadvisorSource, err := newCadvisorSource(pollDuration, *argCadvisorPort)
-	if err != nil {
-		return nil, err
+	if *argCadvisorPort <= 0 {
+		return nil, fmt.Errorf("invalid cadvisor port - %d", *argCadvisorPort)
 	}
 	nodesApi, err := nodes.NewExternalNodes()
 	if err != nil {
 		return nil, err
 	}
 	return &externalSource{
-		cadvisor: cadvisorSource,
-		nodesApi: nodesApi,
+		pollDuration: pollDuration,
+		cadvisorApi:  datasource.NewCadvisor(),
+		nodesApi:     nodesApi,
+		cadvisorPort: strconv.Itoa(*argCadvisorPort),
+		lastQuery:    time.Now(),
 	}, nil
 }
 

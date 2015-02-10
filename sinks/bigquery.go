@@ -204,7 +204,7 @@ func (self *bigquerySink) handlePods(pods []sources.Pod) {
 	}
 }
 
-func (self *bigquerySink) handleContainers(containers []sources.RawContainer) {
+func (self *bigquerySink) handleContainers(containers []sources.Container) {
 	for _, container := range containers {
 		for _, stat := range container.Stats {
 			self.rows = append(self.rows, self.containerStatsToValues(nil, container.Hostname, container.Name, container.Spec, stat))

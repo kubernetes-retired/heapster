@@ -20,16 +20,6 @@ import (
 	cadvisor "github.com/google/cadvisor/info"
 )
 
-type Container struct {
-	Name  string                     `json:"name,omitempty"`
-	Spec  cadvisor.ContainerSpec     `json:"spec,omitempty"`
-	Stats []*cadvisor.ContainerStats `json:"stats,omitempty"`
-}
-
-func newContainer() *Container {
-	return &Container{Stats: make([]*cadvisor.ContainerStats, 0)}
-}
-
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
 type Pod struct {
 	Name      string `json:"name,omitempty"`
@@ -45,16 +35,20 @@ type Pod struct {
 	HostInternalIP string            `json:"host_internal_ip,omitempty"`
 }
 
-type RawContainer struct {
-	Hostname string `json:"hostname,omitempty"`
-	Container
-}
-
 // TODO(vishh): Rename this to something more generic
 type ContainerData struct {
 	Pods       []Pod
-	Containers []RawContainer
-	Machine    []RawContainer
+	Containers []Container
+	Machine    []Container
+}
+
+type Container struct {
+	Hostname string
+	Name     string
+	// TODO(vishh): Consider defining an internal Spec and Stats API to guard against
+	// changed to cadvisor API.
+	Spec  cadvisor.ContainerSpec
+	Stats []*cadvisor.ContainerStats
 }
 
 type Source interface {
