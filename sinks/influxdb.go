@@ -275,10 +275,21 @@ func NewInfluxdbSink() (Sink, error) {
 		return nil, err
 	}
 	client.DisableCompression()
-	if err := client.CreateDatabase(*argDbName); err != nil {
-		glog.Infof("Database creation failed - %s", err)
+	createDatabase := true
+	if databases, err := client.GetDatabaseList(); err == nil {
+		for _, database := range databases {
+			if database["name"] == *argDbName {
+				createDatabase = false
+				break
+			}
+		}
 	}
-	// Create the database if it does not already exist. Ignore errors.
+	if createDatabase {
+		if err := client.CreateDatabase(*argDbName); err != nil {
+			glog.Errorf("Database creation failed: %v", err)
+			return nil, err
+		}
+	}
 	return &InfluxdbSink{
 		client:         client,
 		series:         make([]*influxdb.Series, 0),
