@@ -39,6 +39,7 @@ func main() {
 	flag.Parse()
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", version.HeapsterVersion)
+	glog.Infof("Flags: %s", strings.Join(getFlags(), " "))
 	if err := validateFlags(); err != nil {
 		glog.Fatal(err)
 	}
@@ -52,6 +53,14 @@ func main() {
 	glog.Infof("Starting heapster on port %d", *argPort)
 	glog.Fatal(http.ListenAndServe(addr, nil))
 	os.Exit(0)
+}
+
+func getFlags() []string {
+	flagData := []string{}
+	flag.VisitAll(func(flag *flag.Flag) {
+		flagData = append(flagData, fmt.Sprintf("%s='%v'", flag.Name, flag.Value))
+	})
+	return flagData
 }
 
 func validateFlags() error {
