@@ -16,6 +16,7 @@ package sources
 
 import (
 	"flag"
+	"time"
 
 	cadvisor "github.com/google/cadvisor/info"
 )
@@ -76,10 +77,10 @@ type Source interface {
 	GetConfig() string
 }
 
-func NewSource() (Source, error) {
+func NewSource(pollDuration time.Duration) (Source, error) {
 	if len(*argMaster) > 0 {
-		return newKubeSource()
+		return newKubeSource(pollDuration)
 	} else {
-		return newExternalSource()
+		return newExternalSource(pollDuration)
 	}
 }

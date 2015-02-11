@@ -46,13 +46,13 @@ type PodInstance struct {
 }
 
 type KubeSource struct {
-	client      *kube_client.Client
-	lastQuery   time.Time
-	kubeletPort string
-	stateLock   sync.RWMutex
-	goodNodes   []string            // guarded by stateLock
-	nodeErrors  map[string]int      // guarded by stateLock
-	podErrors   map[PodInstance]int // guarded by stateLock
+	client       *kube_client.Client
+	kubeletPort  string
+	pollDuration time.Duration
+	stateLock    sync.RWMutex
+	goodNodes    []string            // guarded by stateLock
+	nodeErrors   map[string]int      // guarded by stateLock
+	podErrors    map[PodInstance]int // guarded by stateLock
 }
 
 type nodeList CadvisorHosts
@@ -184,7 +184,7 @@ func (self *KubeSource) getPods() ([]Pod, error) {
 func (self *KubeSource) getStatsFromKubelet(pod Pod, containerName string) (cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
 	var containerInfo cadvisor.ContainerInfo
 	values := url.Values{}
-	values.Add("num_stats", strconv.Itoa(int(time.Since(self.lastQuery)/time.Second)))
+	values.Add("num_stats", strconv.Itoa(int(self.pollDuration/time.Second)))
 	url := "http://" + pod.HostIP + ":" + self.kubeletPort + filepath.Join("/stats", pod.Namespace, pod.Name, pod.ID, containerName) + "?" + values.Encode()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -242,12 +242,11 @@ func (self *KubeSource) GetInfo() (ContainerData, error) {
 		return ContainerData{}, err
 	}
 	glog.V(2).Info("Fetched list of nodes from the master")
-	self.lastQuery = time.Now()
 
 	return ContainerData{Pods: pods, Machine: nodesInfo}, nil
 }
 
-func newKubeSource() (*KubeSource, error) {
+func newKubeSource(pollDuration time.Duration) (*KubeSource, error) {
 	if len(*argMaster) == 0 {
 		return nil, fmt.Errorf("kubernetes_master flag not specified")
 	}
@@ -266,11 +265,11 @@ func newKubeSource() (*KubeSource, error) {
 	glog.Infof("Using kubelet port %q", *argKubeletPort)
 
 	return &KubeSource{
-		client:      kubeClient,
-		lastQuery:   time.Now(),
-		kubeletPort: *argKubeletPort,
-		nodeErrors:  make(map[string]int),
-		podErrors:   make(map[PodInstance]int),
+		client:       kubeClient,
+		pollDuration: pollDuration,
+		kubeletPort:  *argKubeletPort,
+		nodeErrors:   make(map[string]int),
+		podErrors:    make(map[PodInstance]int),
 	}, nil
 }
 
