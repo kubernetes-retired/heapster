@@ -173,6 +173,9 @@ func createAndWaitForRunning(fm kubeFramework, ns string) error {
 }
 
 func TestHeapsterInfluxDBWorks(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping kubernetes integration test.")
+	}
 	var fm kubeFramework
 	var err error
 
