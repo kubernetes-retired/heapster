@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/golang/glog"
 )
@@ -26,11 +27,12 @@ import (
 // While updating this, also update heapster/deploy/Dockerfile.
 const HostsFile = "/var/run/heapster/hosts"
 
-type ExternalSource struct {
-	cadvisor *cadvisorSource
+type externalSource struct {
+	cadvisor     *cadvisorSource
+	pollDuration time.Duration
 }
 
-func (self *ExternalSource) getCadvisorHosts() (*CadvisorHosts, error) {
+func (self *externalSource) getCadvisorHosts() (*CadvisorHosts, error) {
 	fi, err := os.Stat(HostsFile)
 	if err != nil {
 		return nil, fmt.Errorf("cannot stat hosts_file %q: %s", HostsFile, err)
@@ -51,11 +53,11 @@ func (self *ExternalSource) getCadvisorHosts() (*CadvisorHosts, error) {
 	return &cadvisorHosts, nil
 }
 
-func (self *ExternalSource) GetPods() ([]Pod, error) {
+func (self *externalSource) GetPods() ([]Pod, error) {
 	return []Pod{}, nil
 }
 
-func (self *ExternalSource) GetInfo() (ContainerData, error) {
+func (self *externalSource) GetInfo() (ContainerData, error) {
 	hosts, err := self.getCadvisorHosts()
 	if err != nil {
 		return ContainerData{}, err
@@ -73,17 +75,17 @@ func (self *ExternalSource) GetInfo() (ContainerData, error) {
 	}, nil
 }
 
-func newExternalSource() (Source, error) {
+func newExternalSource(pollDuration time.Duration) (Source, error) {
 	if _, err := os.Stat(HostsFile); err != nil {
 		return nil, fmt.Errorf("cannot stat hosts_file %s. Error: %s", HostsFile, err)
 	}
-	cadvisorSource := newCadvisorSource()
-	return &ExternalSource{
+	cadvisorSource := newCadvisorSource(pollDuration)
+	return &externalSource{
 		cadvisor: cadvisorSource,
 	}, nil
 }
 
-func (self *ExternalSource) GetConfig() string {
+func (self *externalSource) GetConfig() string {
 	desc := "Source type: External\n"
 	// TODO(rjnagal): Cache config?
 	hosts, err := self.getCadvisorHosts()

@@ -29,14 +29,20 @@ import (
 	"github.com/golang/glog"
 )
 
-var argPollDuration = flag.Duration("poll_duration", 10*time.Second, "Polling duration")
-var argPort = flag.Int("port", 8082, "port to listen")
-var argIp = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
+var (
+	argPollDuration = flag.Duration("poll_duration", 10*time.Second, "Polling duration")
+	argPort         = flag.Int("port", 8082, "port to listen")
+	argIp           = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
+)
 
 func main() {
 	flag.Parse()
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", version.HeapsterVersion)
+	glog.Infof("Flags: %s", strings.Join(getFlags(), " "))
+	if err := validateFlags(); err != nil {
+		glog.Fatal(err)
+	}
 	source, sink, err := doWork()
 	if err != nil {
 		glog.Error(err)
@@ -49,6 +55,20 @@ func main() {
 	os.Exit(0)
 }
 
+func getFlags() []string {
+	flagData := []string{}
+	flag.VisitAll(func(flag *flag.Flag) {
+		flagData = append(flagData, fmt.Sprintf("%s='%v'", flag.Name, flag.Value))
+	})
+	return flagData
+}
+
+func validateFlags() error {
+	if *argPollDuration <= time.Second {
+		return fmt.Errorf("poll duration is invalid '%d'. Set it to a duration greater than a second", *argPollDuration)
+	}
+	return nil
+}
 func setupHandlers(source sources.Source, sink sinks.Sink) {
 	// Validation/Debug handler.
 	http.HandleFunc(validate.ValidatePage, func(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +83,7 @@ func setupHandlers(source sources.Source, sink sinks.Sink) {
 }
 
 func doWork() (sources.Source, sinks.Sink, error) {
-	source, err := sources.NewSource()
+	source, err := sources.NewSource(*argPollDuration)
 	if err != nil {
 		return nil, nil, err
 	}

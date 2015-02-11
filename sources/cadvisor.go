@@ -25,7 +25,7 @@ import (
 )
 
 type cadvisorSource struct {
-	lastQuery time.Time
+	pollDuration time.Duration
 }
 
 func (self *cadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) RawContainer {
@@ -47,7 +47,7 @@ func (self *cadvisorSource) getAllCadvisorData(hostname, ip, port, container str
 		return
 	}
 	allContainers, err := client.SubcontainersInfo("/",
-		&cadvisor.ContainerInfoRequest{NumStats: int(time.Since(self.lastQuery) / time.Second)})
+		&cadvisor.ContainerInfoRequest{NumStats: int(self.pollDuration / time.Second)})
 	if err != nil {
 		glog.Errorf("failed to get stats from cadvisor on host %s with ip %s - %s\n", hostname, ip, err)
 		return
@@ -62,7 +62,7 @@ func (self *cadvisorSource) getAllCadvisorData(hostname, ip, port, container str
 		}
 	}
 
-	return
+	return containers, nodeInfo, nil
 }
 
 func (self *cadvisorSource) fetchData(cadvisorHosts *CadvisorHosts) (rawContainers []RawContainer, nodesInfo []RawContainer, err error) {
@@ -75,11 +75,11 @@ func (self *cadvisorSource) fetchData(cadvisorHosts *CadvisorHosts) (rawContaine
 		nodesInfo = append(nodesInfo, nodeInfo)
 	}
 
-	return
+	return rawContainers, nodesInfo, nil
 }
 
-func newCadvisorSource() *cadvisorSource {
+func newCadvisorSource(pollDuration time.Duration) *cadvisorSource {
 	return &cadvisorSource{
-		lastQuery: time.Now(),
+		pollDuration: pollDuration,
 	}
 }
