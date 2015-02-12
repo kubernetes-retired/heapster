@@ -9,45 +9,39 @@ Heapster can be used to enable cluster wide monitoring on other Cluster manageme
 
 #####Run Heapster in a Kubernetes cluster with an Influxdb backend and [Grafana](http://grafana.org/docs/features/influxdb)
 
-**Step 1: Setup Kube cluster**
+_Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform optimally._
 
-Fork the Kubernetes repository and [turn up a Kubernetes cluster](https://github.com/GoogleCloudPlatform/kubernetes-new#contents), if you haven't already. Make sure kubecfg.sh is exported. By default, [cAdvisor](https://github.com/google/cadvisor) runs as a Pod on all nodes using a [static manifest file](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/cluster/saltbase/salt/cadvisor/cadvisor.manifest#L1) that is distributed via salt. Make sure that it is running on port 4194 on all nodes.
+**Setup Kube cluster**
 
-**Step 2: Start a Pod with Influxdb, grafana and elasticsearch**
+ [Bring up a Kubernetes cluster](https://github.com/GoogleCloudPlatform/kubernetes), if you haven't already. Make sure kubecfg.sh is exported. By default, [cAdvisor](https://github.com/google/cadvisor) runs as a Pod on all nodes using a [static manifest file](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/cluster/saltbase/salt/cadvisor/cadvisor.manifest#L1) that is distributed via salt. Make sure that it is running on port 4194 on all nodes.
 
-```shell
-$ kubectl.sh create -f deploy/influxdb-grafana-controller.js
-```
-
-**Step 3: Start Influxdb service**
+**Start all the Pods and Services**
 
 ```shell
-$ kubectl.sh create -f deploy/influxdb-service.json
+$ kubectl.sh create -f deploy/
 ```
 
-```shell
-$ gcloud compute firewall-rules create monitoring-heapster --allow "tcp:80" "tcp:8083" "tcp:8086" --target-tags=kubernetes-minion
-```
+Grafana will be accessible at `https://<masterIP>/api/v1beta1/proxy/services/monitoring-grafana/`. Use the master auth to access Grafana.
 
-**Step 5: Start Heapster Pod**
+#####Troubleshooting guide
 
-```shell
-$ kubectl.sh create -f deploy/heapster-controller.js
-```
-
-Verify that all the pods and services are up and running:
-
+1. If the Grafana service is not accessible, chances are it might not be running. Use `kubectl.sh` to verify that `heapster`, and `influxdb & grafana` Pods are alive.
 ```shell
 $ kubectl.sh get pods
 ```
 ```shell
 $ kubectl.sh get services
 ```
-
-Grafana will be accessible at `https://<masterIP>/api/v1beta1/proxy/services/monitoring-grafana/`. Use the master auth to access Grafana.
-
-
-_Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform optimally._
+2. If the default Grafana dashboard doesn't show any graphs, check the heapster logs. `kubectl.sh log <heapster pod name>`. Look for any errors related to accessing the kubernetes master or the kubelet.
+3. To access the InfluxDB UI, you will have to open up the InfluxDB UI port(8083) on the nodes. Find out the IP of the Node where InfluxDB is running to access the UI - `http://<NodeIP>:8083/`
+```shell
+gcloud compute firewall-rules create monitoring-heapster --allow "tcp:8083" --target-tags=kubernetes-minion
+```
+Note: We are working on exposing the InfluxDB UI using the proxy service on the Kubernetes master.
+4. If you find InfluxDB to be using up a lot of CPU or Memory, consider placing Resource Restrictions on the InfluxDB+Grafana Pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](deploy/influxdb-grafana-controller.yaml) and relaunch the Controller.
+```shell
+deploy/kube.sh restart
+```
 
 #####Hints
 * To enable memory and swap accounting on the minions follow the instructions [here](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting)
@@ -55,12 +49,12 @@ _Warning: Virtual Machines need to have at least 2 cores for InfluxDB to perform
 #####How heapster works on Kubernetes:
 1. Discovers all minions in a Kubernetes cluster
 2. Collects container statistics from the kubelets running on the minions
-2. Organizes stats into Pods
+2. Organizes stats into Pods and adds kubernetes specific metadata.
 3. Stores Pod stats in a configurable backend
 
 Along with each container stat entry, it's Pod ID, Container name, Pod IP, Hostname and Labels are also stored. Labels are stored as key:value pairs.
 
-Heapster currently supports in-memory and [InfluxDB](http://influxdb.com) backends. Patches are welcome for adding more storage backends.
+Heapster currently supports [InfluxDB](http://influxdb.com), and BigQuery backends. Patches are welcome for adding more storage backends.
 
 #### Community
 
