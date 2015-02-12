@@ -35,6 +35,14 @@ func writeMarshaledData(f *os.File, v interface{}) error {
 	return err
 }
 
+func externalizeNodes(nodeList *NodeList) *ExternalNodeList {
+	externalNodeList := ExternalNodeList{}
+	for host, info := range nodeList.Items {
+		externalNodeList.Items = append(externalNodeList.Items, ExternalNode{Name: string(host), IP: info.PublicIP})
+	}
+	return &externalNodeList
+}
+
 func TestExternalFile(t *testing.T) {
 	f, err := ioutil.TempFile("", "")
 	if err != nil {
@@ -44,18 +52,18 @@ func TestExternalFile(t *testing.T) {
 	nodesApi := externalCadvisorNodes{f.Name()}
 
 	testData := &NodeList{
-		Items: []Node{
-			{"host1", "1.2.3.4"},
-			{"host2", "1.2.3.5"},
+		Items: map[Host]Info{
+			Host("host1"): {PublicIP: "1.2.3.4", InternalIP: "1.2.3.4"},
+			Host("host2"): {PublicIP: "1.2.3.5", InternalIP: "1.2.3.5"},
 		},
 	}
-	require.NoError(t, writeMarshaledData(f, testData))
+	require.NoError(t, writeMarshaledData(f, externalizeNodes(testData)))
 	res, err := nodesApi.List()
 	require.NoError(t, err)
 	require.True(t, reflect.DeepEqual(res, testData), "failure. Expected: %+v, got: %+v", res, testData)
 
-	testData.Items = append(testData.Items, Node{"host3", "2.2.2.2"})
-	require.NoError(t, writeMarshaledData(f, testData))
+	testData.Items[Host("host3")] = Info{PublicIP: "2.2.2.2", InternalIP: "2.2.2.2"}
+	require.NoError(t, writeMarshaledData(f, externalizeNodes(testData)))
 	res, err = nodesApi.List()
 	require.NoError(t, err)
 	require.True(t, reflect.DeepEqual(res, testData), "failure. Expected: %+v, got: %+v", res, testData)

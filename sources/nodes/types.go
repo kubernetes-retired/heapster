@@ -15,15 +15,38 @@ package nodes
 
 type Node struct {
 	// Hostname
-	Name string `json:"name,omitempty"`
-	// HostIP
-	IP string `json:"ip,omitempty"`
+	Name string
+}
+
+type Host string
+
+type Info struct {
+	// Public IP of the host. Nodes running in cloud usually
+	// get assigned a public and an internal IP.
+	PublicIP string
+	// Internal IP of the host. This is the IP that heapster will
+	// use to communicate with the host sinc Public IP access is usually
+	// restricted behind firewalls.
+	InternalIP string `json:"internal_ip,omitempty"`
 }
 
 // NodeList contains the nodes that an instance of heapster is required to
 // monitor.
 type NodeList struct {
-	Items []Node `json:"items,omitempty"`
+	Items map[Host]Info
+}
+
+func newNodeList() *NodeList {
+	return &NodeList{map[Host]Info{}}
+}
+
+type ExternalNode struct {
+	Name string `json:"name,omitempty"`
+	IP   string `json:"ip,omitempty"`
+}
+
+type ExternalNodeList struct {
+	Items []ExternalNode `json:"items,omitempty"`
 }
 
 type NodesApi interface {

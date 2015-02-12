@@ -15,16 +15,9 @@
 package sources
 
 import (
-	"flag"
 	"time"
 
 	cadvisor "github.com/google/cadvisor/info"
-)
-
-var (
-	argMaster         = flag.String("kubernetes_master", "", "Kubernetes master address")
-	argMasterInsecure = flag.Bool("kubernetes_insecure", true, "Trust Kubernetes master certificate (if using https)")
-	argKubeletPort    = flag.String("kubelet_port", "10250", "Kubelet port")
 )
 
 type Container struct {
@@ -39,15 +32,17 @@ func newContainer() *Container {
 
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
 type Pod struct {
-	Name       string            `json:"name,omitempty"`
-	Namespace  string            `json:"namespace,omitempty"`
-	ID         string            `json:"id,omitempty"`
-	Hostname   string            `json:"hostname,omitempty"`
-	Containers []*Container      `json:"containers"`
-	Status     string            `json:"status,omitempty"`
-	PodIP      string            `json:"podIP,omitempty"`
-	Labels     map[string]string `json:"labels,omitempty"`
-	HostIP     string            `json:"hostIP,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	// TODO(vishh): Rename to UID.
+	ID             string            `json:"id,omitempty"`
+	Hostname       string            `json:"hostname,omitempty"`
+	Containers     []*Container      `json:"containers"`
+	Status         string            `json:"status,omitempty"`
+	PodIP          string            `json:"pod_ip,omitempty"`
+	Labels         map[string]string `json:"labels,omitempty"`
+	HostPublicIP   string            `json:"host_public_ip,omitempty"`
+	HostInternalIP string            `json:"host_internal_ip,omitempty"`
 }
 
 type RawContainer struct {
@@ -55,15 +50,11 @@ type RawContainer struct {
 	Container
 }
 
+// TODO(vishh): Rename this to something more generic
 type ContainerData struct {
 	Pods       []Pod
 	Containers []RawContainer
 	Machine    []RawContainer
-}
-
-type CadvisorHosts struct {
-	Port  int               `json:"port"`
-	Hosts map[string]string `json:"hosts"`
 }
 
 type Source interface {
@@ -73,8 +64,8 @@ type Source interface {
 	// 2. nodes: A slice of RawContainer, one for each node in the cluster, that contains
 	// root cgroup information.
 	GetInfo() (ContainerData, error)
-	// Returns a debug config for the source.
-	GetConfig() string
+	// Returns debug information for the source.
+	DebugInfo() string
 }
 
 func NewSource(pollDuration time.Duration) (Source, error) {

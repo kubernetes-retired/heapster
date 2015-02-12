@@ -44,14 +44,18 @@ func (self *externalCadvisorNodes) List() (*NodeList, error) {
 	if err != nil {
 		return nil, err
 	}
-	var nodes NodeList
-	err = json.Unmarshal(contents, &nodes)
+	var externalNodes ExternalNodeList
+	err = json.Unmarshal(contents, &externalNodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal contents of file %s. Error: %s", self.hostsFile, err)
 	}
+	nodes := newNodeList()
+	for _, node := range externalNodes.Items {
+		nodes.Items[Host(node.Name)] = Info{PublicIP: node.IP, InternalIP: node.IP}
+	}
 	glog.V(1).Infof("Using cAdvisor hosts %+v", nodes)
 
-	return &nodes, nil
+	return nodes, nil
 }
 
 func (self *externalCadvisorNodes) DebugInfo() string {

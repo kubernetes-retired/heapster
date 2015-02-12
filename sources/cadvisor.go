@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	"github.com/golang/glog"
 	cadvisorClient "github.com/google/cadvisor/client"
 	cadvisor "github.com/google/cadvisor/info"
@@ -26,6 +27,8 @@ import (
 
 type cadvisorSource struct {
 	pollDuration time.Duration
+	port         string
+	lastQuery    time.Time
 }
 
 func (self *cadvisorSource) processStat(hostname string, containerInfo *cadvisor.ContainerInfo) RawContainer {
@@ -46,8 +49,12 @@ func (self *cadvisorSource) getAllCadvisorData(hostname, ip, port, container str
 	if err != nil {
 		return
 	}
+	numStats := int(self.pollDuration / time.Second)
+	if time.Since(self.lastQuery) > self.pollDuration {
+		numStats = int(time.Since(self.lastQuery) / time.Second)
+	}
 	allContainers, err := client.SubcontainersInfo("/",
-		&cadvisor.ContainerInfoRequest{NumStats: int(self.pollDuration / time.Second)})
+		&cadvisor.ContainerInfoRequest{NumStats: numStats})
 	if err != nil {
 		glog.Errorf("failed to get stats from cadvisor on host %s with ip %s - %s\n", hostname, ip, err)
 		return
@@ -65,21 +72,26 @@ func (self *cadvisorSource) getAllCadvisorData(hostname, ip, port, container str
 	return containers, nodeInfo, nil
 }
 
-func (self *cadvisorSource) fetchData(cadvisorHosts *CadvisorHosts) (rawContainers []RawContainer, nodesInfo []RawContainer, err error) {
-	for hostname, ip := range cadvisorHosts.Hosts {
-		containers, nodeInfo, err := self.getAllCadvisorData(hostname, ip, strconv.Itoa(cadvisorHosts.Port), "/")
+func (self *cadvisorSource) fetchData(nodeList *nodes.NodeList) (rawContainers []RawContainer, nodesInfo []RawContainer, err error) {
+	for host, info := range nodeList.Items {
+		containers, nodeInfo, err := self.getAllCadvisorData(string(host), info.InternalIP, self.port, "/")
 		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to get cAdvisor data from host %q: %v", hostname, err)
+			return nil, nil, fmt.Errorf("Failed to get cAdvisor data from host %q: %v", host, err)
 		}
 		rawContainers = append(rawContainers, containers...)
 		nodesInfo = append(nodesInfo, nodeInfo)
 	}
-
+	self.lastQuery = time.Now()
 	return rawContainers, nodesInfo, nil
 }
 
-func newCadvisorSource(pollDuration time.Duration) *cadvisorSource {
+func newCadvisorSource(pollDuration time.Duration, port int) (*cadvisorSource, error) {
+	if port <= 0 {
+		return nil, fmt.Errorf("cadvisor port invalid - %d", port)
+	}
 	return &cadvisorSource{
 		pollDuration: pollDuration,
-	}
+		port:         strconv.Itoa(port),
+		lastQuery:    time.Now(),
+	}, nil
 }

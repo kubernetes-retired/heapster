@@ -29,7 +29,7 @@ const (
 
 func HandleRequest(w http.ResponseWriter, source sources.Source, sink sinks.Sink) error {
 	out := fmt.Sprintf("Heapster Version: %v\n\n", version.HeapsterVersion)
-	out += source.GetConfig()
+	out += source.DebugInfo()
 	out += sink.GetConfig()
 	_, err := w.Write([]byte(out))
 	return err

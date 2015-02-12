@@ -29,10 +29,13 @@ import (
 type kubeNodes struct {
 	client *client.Client
 	// a means to list all minions
-	minionLister *cache.StoreToNodeLister
-	goodNodes    []string       // guarded by stateLock
-	nodeErrors   map[string]int // guarded by stateLock
-	stateLock    sync.RWMutex
+	nodeLister *cache.StoreToNodeLister
+	reflector  *cache.Reflector
+	// Used to stop the existing reflector.
+	stopChan   chan struct{}
+	goodNodes  []string       // guarded by stateLock
+	nodeErrors map[string]int // guarded by stateLock
+	stateLock  sync.RWMutex
 }
 
 func (self *kubeNodes) recordNodeError(name string) {
@@ -57,31 +60,22 @@ func parseSelectorOrDie(s string) labels.Selector {
 	return selector
 }
 
-func (self *kubeNodes) createMinionLW() *cache.ListWatch {
-	return &cache.ListWatch{
-		Client:        self.client,
-		FieldSelector: parseSelectorOrDie(""),
-		Resource:      "minions",
-	}
-}
-
 func (self *kubeNodes) List() (*NodeList, error) {
-	nodeList := &NodeList{}
-	allNodes, err := self.minionLister.List()
+	nodeList := newNodeList()
+	allNodes, err := self.nodeLister.List()
 	if err != nil {
+		glog.Errorf("failed to list minions via watch interface - %v", err)
 		return nil, fmt.Errorf("failed to list minions via watch interface - %v", err)
 	}
+	glog.V(3).Infof("all kube nodes: %+v", allNodes)
+
 	goodNodes := []string{}
 	for _, node := range allNodes.Items {
-		// TODO(vishh): Consider dropping nodes that are not healthy.
-		if node.Status.HostIP != "" {
-			nodeList.Items = append(nodeList.Items, Node{Name: node.Name, IP: node.Status.HostIP})
-			continue
-		}
-		// TODO(vishh): Remove this logic once Status.HostIP is reliable.
+		// TODO(vishh): Consider dropping nodes that are not healthy as indicated in node.Status.Phase.
+		// The IP returned as part of the API is the external IP and not the internal IP.
 		addrs, err := net.LookupIP(node.Name)
 		if err == nil {
-			nodeList.Items = append(nodeList.Items, Node{Name: node.Name, IP: addrs[0].String()})
+			nodeList.Items[Host(node.Name)] = Info{PublicIP: node.Status.HostIP, InternalIP: addrs[0].String()}
 			goodNodes = append(goodNodes, node.Name)
 		} else {
 			glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
@@ -89,7 +83,7 @@ func (self *kubeNodes) List() (*NodeList, error) {
 		}
 	}
 	self.recordGoodNodes(goodNodes)
-
+	glog.V(2).Infof("kube nodes found: %+v", nodeList)
 	return nodeList, nil
 }
 
@@ -122,12 +116,21 @@ func NewKubeNodes(client *client.Client) (NodesApi, error) {
 		return nil, fmt.Errorf("client is nil")
 	}
 
-	kubeNodes := &kubeNodes{
-		client:       client,
-		minionLister: &cache.StoreToNodeLister{cache.NewStore(cache.MetaNamespaceKeyFunc)},
-		nodeErrors:   make(map[string]int),
+	lw := &cache.ListWatch{
+		Client:        client,
+		FieldSelector: parseSelectorOrDie(""),
+		Resource:      "minions",
 	}
-	cache.NewReflector(kubeNodes.createMinionLW(), &api.Node{}, kubeNodes.minionLister.Store).Run()
+	nodeLister := &cache.StoreToNodeLister{cache.NewStore(cache.MetaNamespaceKeyFunc)}
+	reflector := cache.NewReflector(lw, &api.Node{}, nodeLister.Store)
+	stopChan := make(chan struct{})
+	reflector.RunUntil(stopChan)
 
-	return kubeNodes, nil
+	return &kubeNodes{
+		client:     client,
+		nodeLister: nodeLister,
+		reflector:  reflector,
+		stopChan:   stopChan,
+		nodeErrors: make(map[string]int),
+	}, nil
 }
