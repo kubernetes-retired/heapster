@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
@@ -40,6 +41,10 @@ type externalSource struct {
 }
 
 func (self *externalSource) GetInfo() (ContainerData, error) {
+	var (
+		lock sync.Mutex
+		wg   sync.WaitGroup
+	)
 	nodeList, err := self.nodesApi.List()
 	if err != nil {
 		return ContainerData{}, err
@@ -47,34 +52,43 @@ func (self *externalSource) GetInfo() (ContainerData, error) {
 
 	result := ContainerData{}
 	for hostname, info := range nodeList.Items {
-		host := datasource.Host{
-			IP:   info.InternalIP,
-			Port: self.cadvisorPort,
-		}
-		subcontainers, node, err := self.cadvisorApi.GetAllContainers(host, self.numStatsToFetch())
-		if err != nil {
-			glog.Error(err)
-			continue
-		}
-		for _, cont := range subcontainers {
-			if cont != nil {
-				result.Containers = append(result.Containers, Container{
-					Hostname: string(hostname),
-					Name:     cont.Name,
-					Spec:     cont.Spec,
-					Stats:    cont.Stats,
+		wg.Add(1)
+		go func(hostname string, info nodes.Info) {
+			defer wg.Done()
+			host := datasource.Host{
+				IP:   info.InternalIP,
+				Port: self.cadvisorPort,
+			}
+			rawSubcontainers, rawNode, err := self.cadvisorApi.GetAllContainers(host, self.numStatsToFetch())
+			if err != nil {
+				glog.Error(err)
+				return
+			}
+			subcontainers := []Container{}
+			for _, cont := range rawSubcontainers {
+				if cont != nil {
+					subcontainers = append(subcontainers, Container{
+						Hostname: hostname,
+						Name:     cont.Name,
+						Spec:     cont.Spec,
+						Stats:    cont.Stats,
+					})
+				}
+			}
+			lock.Lock()
+			defer lock.Unlock()
+			result.Containers = append(result.Containers, subcontainers...)
+			if rawNode != nil {
+				result.Machine = append(result.Machine, Container{
+					Hostname: hostname,
+					Name:     rawNode.Name,
+					Spec:     rawNode.Spec,
+					Stats:    rawNode.Stats,
 				})
 			}
-		}
-		if node != nil {
-			result.Machine = append(result.Machine, Container{
-				Hostname: string(hostname),
-				Name:     node.Name,
-				Spec:     node.Spec,
-				Stats:    node.Stats,
-			})
-		}
+		}(string(hostname), info)
 	}
+	wg.Wait()
 	self.lastQuery = time.Now()
 
 	return result, nil

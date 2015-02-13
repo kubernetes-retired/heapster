@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -33,10 +34,13 @@ var (
 	argPollDuration = flag.Duration("poll_duration", 10*time.Second, "Polling duration")
 	argPort         = flag.Int("port", 8082, "port to listen")
 	argIp           = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
+	argMaxProcs     = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores).")
 )
 
 func main() {
+	defer glog.Flush()
 	flag.Parse()
+	setMaxProcs()
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", version.HeapsterVersion)
 	glog.Infof("Flags: %s", strings.Join(getFlags(), " "))
@@ -112,4 +116,21 @@ func housekeep(source sources.Source, sink sinks.Sink) {
 		}
 	}
 
+}
+
+func setMaxProcs() {
+	// Allow as many threads as we have cores unless the user specified a value.
+	var numProcs int
+	if *argMaxProcs < 1 {
+		numProcs = runtime.NumCPU()
+	} else {
+		numProcs = *argMaxProcs
+	}
+	runtime.GOMAXPROCS(numProcs)
+
+	// Check if the setting was successful.
+	actualNumProcs := runtime.GOMAXPROCS(0)
+	if actualNumProcs != numProcs {
+		glog.Warningf("Specified max procs of %d but using %d", numProcs, actualNumProcs)
+	}
 }

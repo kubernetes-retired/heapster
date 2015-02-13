@@ -81,7 +81,7 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *Pod {
 func (self *realPodsApi) parseAllPods(podNodePairs []podNodePair) []Pod {
 	out := make([]Pod, 0)
 	for _, podNodePair := range podNodePairs {
-		glog.V(3).Infof("Found kube Pod: %+v", podNodePair)
+		glog.V(3).Infof("Found kube Pod: %+v", podNodePair.pod)
 		out = append(out, *self.parsePod(&podNodePair))
 	}
 

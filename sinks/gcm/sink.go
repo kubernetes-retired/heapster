@@ -117,8 +117,9 @@ func (self *GcmSink) podToMetrics(pod *sources.Pod) []Metric {
 
 	// Break the individual metrics from the container statistics.
 	for _, container := range pod.Containers {
-		metrics = append(metrics, self.containerToMetrics(container, labels)...)
+		metrics = self.containerToMetrics(container, labels)
 	}
+
 	return metrics
 }
 
