@@ -18,8 +18,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/cache"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
@@ -31,7 +32,7 @@ import (
 // TODO(vishh): Add an interface to select specific nodes as part of the Watch.
 type podsApi interface {
 	// Returns a list of pods that exist on the nodes in 'nodeList'
-	List(nodeList *nodes.NodeList) ([]Pod, error)
+	List(nodeList *nodes.NodeList) ([]api.Pod, error)
 
 	// Returns debug information.
 	DebugInfo() string
@@ -46,14 +47,14 @@ type realPodsApi struct {
 }
 
 type podNodePair struct {
-	pod      *api.Pod
+	pod      *kube_api.Pod
 	nodeInfo *nodes.Info
 }
 
-func (self *realPodsApi) parsePod(podNodePair *podNodePair) *Pod {
+func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 	pod := podNodePair.pod
 	node := podNodePair.nodeInfo
-	localPod := Pod{
+	localPod := api.Pod{
 		Name:           pod.Name,
 		Namespace:      pod.Namespace,
 		ID:             string(pod.UID),
@@ -63,13 +64,13 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *Pod {
 		Status:         string(pod.Status.Phase),
 		PodIP:          pod.Status.PodIP,
 		Labels:         make(map[string]string, 0),
-		Containers:     make([]*Container, 0),
+		Containers:     make([]*api.Container, 0),
 	}
 	for key, value := range pod.Labels {
 		localPod.Labels[key] = value
 	}
 	for _, container := range pod.Spec.Containers {
-		localContainer := &Container{}
+		localContainer := &api.Container{}
 		localContainer.Name = container.Name
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}
@@ -78,8 +79,8 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *Pod {
 	return &localPod
 }
 
-func (self *realPodsApi) parseAllPods(podNodePairs []podNodePair) []Pod {
-	out := make([]Pod, 0)
+func (self *realPodsApi) parseAllPods(podNodePairs []podNodePair) []api.Pod {
+	out := make([]api.Pod, 0)
 	for _, podNodePair := range podNodePairs {
 		glog.V(3).Infof("Found kube Pod: %+v", podNodePair.pod)
 		out = append(out, *self.parsePod(&podNodePair))
@@ -98,10 +99,10 @@ func (self *realPodsApi) getNodeSelector(nodeList *nodes.NodeList) (labels.Selec
 }
 
 // Returns a map of minion hostnames to the Pods running in them.
-func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]Pod, error) {
+func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	pods, err := self.podLister.List(labels.Everything())
 	if err != nil {
-		return []Pod{}, err
+		return []api.Pod{}, err
 	}
 	selectedPods := []podNodePair{}
 	// TODO(vishh): Avoid this loop by setting a node selector on the watcher.
@@ -135,7 +136,7 @@ func newPodsApi(client *client.Client) podsApi {
 
 	podLister := &cache.StoreToPodLister{cache.NewStore(cache.MetaNamespaceKeyFunc)}
 	// Watch and cache all running pods.
-	reflector := cache.NewReflector(lw, &api.Pod{}, podLister.Store)
+	reflector := cache.NewReflector(lw, &kube_api.Pod{}, podLister.Store)
 	stopChan := make(chan struct{})
 	reflector.RunUntil(stopChan)
 

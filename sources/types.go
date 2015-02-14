@@ -17,39 +17,8 @@ package sources
 import (
 	"time"
 
-	cadvisor "github.com/google/cadvisor/info"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 )
-
-// PodState is the state of a pod, used as either input (desired state) or output (current state)
-type Pod struct {
-	Name      string `json:"name,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-	// TODO(vishh): Rename to UID.
-	ID             string            `json:"id,omitempty"`
-	Hostname       string            `json:"hostname,omitempty"`
-	Containers     []*Container      `json:"containers"`
-	Status         string            `json:"status,omitempty"`
-	PodIP          string            `json:"pod_ip,omitempty"`
-	Labels         map[string]string `json:"labels,omitempty"`
-	HostPublicIP   string            `json:"host_public_ip,omitempty"`
-	HostInternalIP string            `json:"host_internal_ip,omitempty"`
-}
-
-// TODO(vishh): Rename this to something more generic
-type ContainerData struct {
-	Pods       []Pod
-	Containers []Container
-	Machine    []Container
-}
-
-type Container struct {
-	Hostname string
-	Name     string
-	// TODO(vishh): Consider defining an internal Spec and Stats API to guard against
-	// changed to cadvisor API.
-	Spec  cadvisor.ContainerSpec
-	Stats []*cadvisor.ContainerStats
-}
 
 type Source interface {
 	// Fetches containers or pod information from all the nodes in the cluster.
@@ -57,7 +26,7 @@ type Source interface {
 	// 1. podsOrContainers: A slice of Pod or a slice of RawContainer
 	// 2. nodes: A slice of RawContainer, one for each node in the cluster, that contains
 	// root cgroup information.
-	GetInfo() (ContainerData, error)
+	GetInfo() (api.AggregateData, error)
 	// Returns debug information for the source.
 	DebugInfo() string
 }

@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	"github.com/golang/glog"
@@ -40,17 +41,17 @@ type externalSource struct {
 	lastQuery    time.Time
 }
 
-func (self *externalSource) GetInfo() (ContainerData, error) {
+func (self *externalSource) GetInfo() (api.AggregateData, error) {
 	var (
 		lock sync.Mutex
 		wg   sync.WaitGroup
 	)
 	nodeList, err := self.nodesApi.List()
 	if err != nil {
-		return ContainerData{}, err
+		return api.AggregateData{}, err
 	}
 
-	result := ContainerData{}
+	result := api.AggregateData{}
 	for hostname, info := range nodeList.Items {
 		wg.Add(1)
 		go func(hostname string, info nodes.Info) {
@@ -59,32 +60,24 @@ func (self *externalSource) GetInfo() (ContainerData, error) {
 				IP:   info.InternalIP,
 				Port: self.cadvisorPort,
 			}
-			rawSubcontainers, rawNode, err := self.cadvisorApi.GetAllContainers(host, self.numStatsToFetch())
+			rawSubcontainers, node, err := self.cadvisorApi.GetAllContainers(host, self.numStatsToFetch())
 			if err != nil {
 				glog.Error(err)
 				return
 			}
-			subcontainers := []Container{}
+			subcontainers := []api.Container{}
 			for _, cont := range rawSubcontainers {
 				if cont != nil {
-					subcontainers = append(subcontainers, Container{
-						Hostname: hostname,
-						Name:     cont.Name,
-						Spec:     cont.Spec,
-						Stats:    cont.Stats,
-					})
+					cont.Hostname = hostname
+					subcontainers = append(subcontainers, *cont)
 				}
 			}
 			lock.Lock()
 			defer lock.Unlock()
 			result.Containers = append(result.Containers, subcontainers...)
-			if rawNode != nil {
-				result.Machine = append(result.Machine, Container{
-					Hostname: hostname,
-					Name:     rawNode.Name,
-					Spec:     rawNode.Spec,
-					Stats:    rawNode.Stats,
-				})
+			if node != nil {
+				node.Hostname = hostname
+				result.Machine = append(result.Machine, *node)
 			}
 		}(string(hostname), info)
 	}

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
 type GcmSink struct {
@@ -59,7 +59,7 @@ func NewSink() (*GcmSink, error) {
 }
 
 func (self *GcmSink) StoreData(input interface{}) error {
-	data, ok := input.(sources.ContainerData)
+	data, ok := input.(api.AggregateData)
 	if !ok {
 		return fmt.Errorf("requesting unrecognized type to be stored in GCM")
 	}
@@ -106,7 +106,7 @@ func labelsToString(labels map[string]string) string {
 	return buffer.String()
 }
 
-func (self *GcmSink) podToMetrics(pod *sources.Pod) []Metric {
+func (self *GcmSink) podToMetrics(pod *api.Pod) []Metric {
 	metrics := make([]Metric, 0, len(pod.Containers))
 
 	// Generate the labels.
@@ -123,7 +123,7 @@ func (self *GcmSink) podToMetrics(pod *sources.Pod) []Metric {
 	return metrics
 }
 
-func (self *GcmSink) containersToMetrics(containers []sources.Container) []Metric {
+func (self *GcmSink) containersToMetrics(containers []api.Container) []Metric {
 	metrics := make([]Metric, 0, len(containers))
 
 	labels := make(map[string]string)
@@ -134,7 +134,7 @@ func (self *GcmSink) containersToMetrics(containers []sources.Container) []Metri
 	return metrics
 }
 
-func (self *GcmSink) containerToMetrics(container *sources.Container, labels map[string]string) []Metric {
+func (self *GcmSink) containerToMetrics(container *api.Container, labels map[string]string) []Metric {
 	labels[labelContainerName] = container.Name
 
 	// One metric value per data point.

@@ -20,15 +20,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/google/cadvisor/client"
-	api "github.com/google/cadvisor/info"
+	cadvisor_api "github.com/google/cadvisor/info"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBasicCadvisor(t *testing.T) {
-	response := []api.ContainerInfo{}
+	response := []cadvisor_api.ContainerInfo{}
 	data, err := json.Marshal(&response)
 	require.NoError(t, err)
 	handler := util.FakeHandler{
@@ -49,28 +50,28 @@ func TestBasicCadvisor(t *testing.T) {
 }
 
 func TestDetailedCadvisor(t *testing.T) {
-	rootContainer := Container{
+	rootContainer := api.Container{
 		Name: "/",
-		Spec: api.ContainerSpec{
+		Spec: cadvisor_api.ContainerSpec{
 			CreationTime: time.Now(),
 			HasCpu:       true,
 			HasMemory:    true,
 		},
-		Stats: []*api.ContainerStats{
+		Stats: []*cadvisor_api.ContainerStats{
 			{
 				Timestamp: time.Now(),
 			},
 		},
 	}
-	subContainers := []Container{
+	subContainers := []api.Container{
 		{
 			Name: "a",
-			Spec: api.ContainerSpec{
+			Spec: cadvisor_api.ContainerSpec{
 				CreationTime: time.Now(),
 				HasCpu:       true,
 				HasMemory:    true,
 			},
-			Stats: []*api.ContainerStats{
+			Stats: []*cadvisor_api.ContainerStats{
 				{
 					Timestamp: time.Now(),
 				},
@@ -78,12 +79,12 @@ func TestDetailedCadvisor(t *testing.T) {
 		},
 		{
 			Name: "b",
-			Spec: api.ContainerSpec{
+			Spec: cadvisor_api.ContainerSpec{
 				CreationTime: time.Now(),
 				HasCpu:       true,
 				HasMemory:    true,
 			},
-			Stats: []*api.ContainerStats{
+			Stats: []*cadvisor_api.ContainerStats{
 				{
 					Timestamp: time.Now(),
 				},
@@ -91,9 +92,9 @@ func TestDetailedCadvisor(t *testing.T) {
 		},
 	}
 
-	response := []api.ContainerInfo{
+	response := []cadvisor_api.ContainerInfo{
 		{
-			ContainerReference: api.ContainerReference{
+			ContainerReference: cadvisor_api.ContainerReference{
 				Name: rootContainer.Name,
 			},
 			Spec:  rootContainer.Spec,
@@ -101,8 +102,8 @@ func TestDetailedCadvisor(t *testing.T) {
 		},
 	}
 	for _, cont := range subContainers {
-		response = append(response, api.ContainerInfo{
-			ContainerReference: api.ContainerReference{
+		response = append(response, cadvisor_api.ContainerInfo{
+			ContainerReference: cadvisor_api.ContainerReference{
 				Name: cont.Name,
 			},
 			Spec:  cont.Spec,

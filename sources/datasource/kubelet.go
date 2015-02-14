@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info"
 )
@@ -47,11 +48,11 @@ func (self *kubeletSource) postRequestAndGetValue(client *http.Client, req *http
 	return nil
 }
 
-func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo) *Container {
+func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
 	if len(containerInfo.Stats) == 0 {
 		return nil
 	}
-	container := &Container{
+	container := &api.Container{
 		Name:  containerInfo.Name,
 		Spec:  containerInfo.Spec,
 		Stats: containerInfo.Stats,
@@ -63,7 +64,7 @@ func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo) *Con
 	return container
 }
 
-func (self *kubeletSource) getContainer(url string, numStats int) (*Container, error) {
+func (self *kubeletSource) getContainer(url string, numStats int) (*api.Container, error) {
 	body, err := json.Marshal(cadvisor.ContainerInfoRequest{NumStats: numStats})
 	if err != nil {
 		return nil, err
@@ -83,7 +84,7 @@ func (self *kubeletSource) getContainer(url string, numStats int) (*Container, e
 	return self.parseStat(&containerInfo), nil
 }
 
-func (self *kubeletSource) GetContainer(host Host, numStats int) (container *Container, err error) {
+func (self *kubeletSource) GetContainer(host Host, numStats int) (container *api.Container, err error) {
 	url := fmt.Sprintf("http://%s:%s/%s", host.IP, host.Port, host.Resource)
 	glog.V(2).Infof("about to query kubelet using url: %q", url)
 

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
 var argMaxStorageDuration = flag.Duration("sink_memory_ttl", 1*time.Hour, "Time duration for which stats should be cached if the memory sink is used")
@@ -44,7 +44,7 @@ func (self *MemorySink) reapOldData() {
 }
 
 func (self *MemorySink) StoreData(data Data) error {
-	if data, ok := data.([]sources.Pod); ok {
+	if data, ok := data.([]api.Pod); ok {
 		for _, value := range data {
 			self.containersData.PushFront(entry{time.Now(), value})
 			if self.containersData.Len() == 1 {

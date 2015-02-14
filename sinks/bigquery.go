@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	bigquery "code.google.com/p/google-api-go-client/bigquery/v2"
-	"github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info"
 	bigquery_client "github.com/google/cadvisor/storage/bigquery/client"
@@ -135,7 +135,7 @@ func (self *bigquerySink) GetSchema() *bigquery.TableSchema {
 }
 
 func (self *bigquerySink) containerStatsToValues(
-	pod *sources.Pod,
+	pod *api.Pod,
 	hostname,
 	containerName string,
 	spec cadvisor.ContainerSpec,
@@ -194,7 +194,7 @@ func (self *bigquerySink) containerStatsToValues(
 	return
 }
 
-func (self *bigquerySink) handlePods(pods []sources.Pod) {
+func (self *bigquerySink) handlePods(pods []api.Pod) {
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
 			for _, stat := range container.Stats {
@@ -204,7 +204,7 @@ func (self *bigquerySink) handlePods(pods []sources.Pod) {
 	}
 }
 
-func (self *bigquerySink) handleContainers(containers []sources.Container) {
+func (self *bigquerySink) handleContainers(containers []api.Container) {
 	for _, container := range containers {
 		for _, stat := range container.Stats {
 			self.rows = append(self.rows, self.containerStatsToValues(nil, container.Hostname, container.Name, container.Spec, stat))
@@ -213,7 +213,7 @@ func (self *bigquerySink) handleContainers(containers []sources.Container) {
 }
 
 func (self *bigquerySink) StoreData(ip Data) error {
-	if data, ok := ip.(sources.ContainerData); ok {
+	if data, ok := ip.(api.AggregateData); ok {
 		self.handlePods(data.Pods)
 		self.handleContainers(data.Containers)
 		self.handleContainers(data.Machine)

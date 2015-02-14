@@ -20,6 +20,7 @@ package datasource
 import (
 	"fmt"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 	cadvisorClient "github.com/google/cadvisor/client"
 	cadvisor "github.com/google/cadvisor/info"
@@ -27,8 +28,8 @@ import (
 
 type cadvisorSource struct{}
 
-func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo) *Container {
-	container := &Container{
+func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
+	container := &api.Container{
 		Name:  containerInfo.Name,
 		Spec:  containerInfo.Spec,
 		Stats: containerInfo.Stats,
@@ -40,7 +41,7 @@ func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo) *Co
 	return container
 }
 
-func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, numStats int) (subcontainers []*Container, root *Container, err error) {
+func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, numStats int) (subcontainers []*api.Container, root *api.Container, err error) {
 	allContainers, err := client.SubcontainersInfo("/",
 		&cadvisor.ContainerInfoRequest{NumStats: numStats})
 	if err != nil {
@@ -60,7 +61,7 @@ func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, numS
 	return subcontainers, root, nil
 }
 
-func (self *cadvisorSource) GetAllContainers(host Host, numStats int) (subcontainers []*Container, root *Container, err error) {
+func (self *cadvisorSource) GetAllContainers(host Host, numStats int) (subcontainers []*api.Container, root *api.Container, err error) {
 	url := fmt.Sprintf("http://%s:%s/", host.IP, host.Port)
 	client, err := cadvisorClient.NewClient(url)
 	if err != nil {

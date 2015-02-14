@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	"github.com/stretchr/testify/require"
@@ -36,10 +37,10 @@ func (self *fakeNodesApi) DebugInfo() string {
 }
 
 type fakePodsApi struct {
-	podList []Pod
+	podList []api.Pod
 }
 
-func (self *fakePodsApi) List(nodeList *nodes.NodeList) ([]Pod, error) {
+func (self *fakePodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	return self.podList, nil
 }
 
@@ -48,16 +49,16 @@ func (self *fakePodsApi) DebugInfo() string {
 }
 
 type fakeKubeletApi struct {
-	container *datasource.Container
+	container *api.Container
 }
 
-func (self *fakeKubeletApi) GetContainer(host datasource.Host, numStats int) (*datasource.Container, error) {
+func (self *fakeKubeletApi) GetContainer(host datasource.Host, numStats int) (*api.Container, error) {
 	return self.container, nil
 }
 
 func TestKubeSourceBasic(t *testing.T) {
 	nodesApi := &fakeNodesApi{nodes.NodeList{}}
-	podsApi := &fakePodsApi{[]Pod{}}
+	podsApi := &fakePodsApi{[]api.Pod{}}
 	kubeSource := &kubeSource{
 		lastQuery:   time.Now(),
 		kubeletPort: "10250",
@@ -77,7 +78,7 @@ func TestKubeSourceDetail(t *testing.T) {
 			nodes.Host("test-machine-1"): {InternalIP: "10.10.10.0"},
 		},
 	}
-	podList := []Pod{
+	podList := []api.Pod{
 		{
 			Name: "blah",
 		},
@@ -85,7 +86,7 @@ func TestKubeSourceDetail(t *testing.T) {
 			Name: "blah1",
 		},
 	}
-	container := &datasource.Container{
+	container := &api.Container{
 		Name: "test",
 	}
 	nodesApi := &fakeNodesApi{nodeList}

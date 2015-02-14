@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
@@ -58,7 +59,7 @@ type podInstance struct {
 	ip   string
 }
 
-func (self *kubeSource) recordPodError(pod Pod) {
+func (self *kubeSource) recordPodError(pod api.Pod) {
 	// Heapster knows about pods before they are up and running on a node.
 	// Ignore errors for Pods that are not Running.
 	if pod.Status != "Running" {
@@ -93,7 +94,7 @@ func (self *kubeSource) numStatsToFetch() int {
 	return numStats
 }
 
-func (self *kubeSource) getStatsFromKubelet(pod *Pod, containerName string) (*datasource.Container, error) {
+func (self *kubeSource) getStatsFromKubelet(pod *api.Pod, containerName string) (*api.Container, error) {
 	resource := filepath.Join("stats", pod.Name, containerName)
 	if containerName == "/" {
 		resource += "/"
@@ -102,32 +103,27 @@ func (self *kubeSource) getStatsFromKubelet(pod *Pod, containerName string) (*da
 	return self.kubeletApi.GetContainer(datasource.Host{IP: pod.HostInternalIP, Port: self.kubeletPort, Resource: resource}, self.numStatsToFetch())
 }
 
-func (self *kubeSource) updateStats(host nodes.Host, info nodes.Info) (Container, error) {
-	rawContainer, err := self.getStatsFromKubelet(&Pod{HostInternalIP: info.InternalIP}, "/")
+func (self *kubeSource) updateStats(host nodes.Host, info nodes.Info) (api.Container, error) {
+	container, err := self.getStatsFromKubelet(&api.Pod{HostInternalIP: info.InternalIP}, "/")
 	if err != nil {
 		glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", host)
-		return Container{}, err
+		return api.Container{}, err
 	}
-	if rawContainer == nil {
+	if container == nil {
 		// no stats found.
 		glog.V(1).Infof("no machine stats from kubelet on node %s", host)
-		return Container{}, fmt.Errorf("no machine stats from kubelet on node %s", host)
+		return api.Container{}, fmt.Errorf("no machine stats from kubelet on node %s", host)
 	}
-	container := Container{
-		Hostname: string(host),
-		Name:     rawContainer.Name,
-		Spec:     rawContainer.Spec,
-		Stats:    rawContainer.Stats,
-	}
-	return container, nil
+	container.Hostname = string(host)
+	return *container, nil
 }
 
-func (self *kubeSource) getNodesInfo(nodeList *nodes.NodeList) ([]Container, error) {
+func (self *kubeSource) getNodesInfo(nodeList *nodes.NodeList) ([]api.Container, error) {
 	var (
 		lock sync.Mutex
 		wg   sync.WaitGroup
 	)
-	nodesInfo := []Container{}
+	nodesInfo := []api.Container{}
 	for host, info := range nodeList.Items {
 		wg.Add(1)
 		go func(host nodes.Host, info nodes.Info) {
@@ -143,17 +139,17 @@ func (self *kubeSource) getNodesInfo(nodeList *nodes.NodeList) ([]Container, err
 	return nodesInfo, nil
 }
 
-func (self *kubeSource) getPodInfo(nodeList *nodes.NodeList) ([]Pod, error) {
+func (self *kubeSource) getPodInfo(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	pods, err := self.podsApi.List(nodeList)
 	if err != nil {
-		return []Pod{}, err
+		return []api.Pod{}, err
 	}
 	var (
 		wg sync.WaitGroup
 	)
 	for _, pod := range pods {
 		wg.Add(1)
-		go func(pod *Pod) {
+		go func(pod *api.Pod) {
 			defer wg.Done()
 			for _, container := range pod.Containers {
 				rawContainer, err := self.getStatsFromKubelet(pod, container.Name)
@@ -163,8 +159,9 @@ func (self *kubeSource) getPodInfo(nodeList *nodes.NodeList) ([]Pod, error) {
 					return
 				}
 				glog.V(2).Infof("Fetched stats from kubelet for container %s in pod %s", container.Name, pod.Name)
-				container.Stats = rawContainer.Stats
+				container.Hostname = pod.Hostname
 				container.Spec = rawContainer.Spec
+				container.Stats = rawContainer.Stats
 			}
 		}(&pod)
 	}
@@ -173,24 +170,23 @@ func (self *kubeSource) getPodInfo(nodeList *nodes.NodeList) ([]Pod, error) {
 	return pods, nil
 }
 
-func (self *kubeSource) GetInfo() (ContainerData, error) {
+func (self *kubeSource) GetInfo() (api.AggregateData, error) {
 	kubeNodes, err := self.nodesApi.List()
 	if err != nil || len(kubeNodes.Items) == 0 {
-		return ContainerData{}, err
+		return api.AggregateData{}, err
 	}
 	podsInfo, err := self.getPodInfo(kubeNodes)
 	if err != nil {
-		return ContainerData{}, err
+		return api.AggregateData{}, err
 	}
-
 	nodesInfo, err := self.getNodesInfo(kubeNodes)
 	if err != nil {
-		return ContainerData{}, err
+		return api.AggregateData{}, err
 	}
 	glog.V(2).Info("Fetched list of nodes from the master")
 	self.lastQuery = time.Now()
 
-	return ContainerData{Pods: podsInfo, Machine: nodesInfo}, nil
+	return api.AggregateData{Pods: podsInfo, Machine: nodesInfo}, nil
 }
 
 func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {

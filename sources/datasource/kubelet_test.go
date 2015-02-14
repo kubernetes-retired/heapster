@@ -20,14 +20,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-	api "github.com/google/cadvisor/info"
+	cadvisor_api "github.com/google/cadvisor/info"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBasicKubelet(t *testing.T) {
-	response := api.ContainerInfo{}
+	response := cadvisor_api.ContainerInfo{}
 	data, err := json.Marshal(&response)
 	require.NoError(t, err)
 	handler := util.FakeHandler{
@@ -45,21 +46,21 @@ func TestBasicKubelet(t *testing.T) {
 }
 
 func TestDetailedKubelet(t *testing.T) {
-	rootContainer := Container{
+	rootContainer := api.Container{
 		Name: "/",
-		Spec: api.ContainerSpec{
+		Spec: cadvisor_api.ContainerSpec{
 			CreationTime: time.Now(),
 			HasCpu:       true,
 			HasMemory:    true,
 		},
-		Stats: []*api.ContainerStats{
+		Stats: []*cadvisor_api.ContainerStats{
 			{
 				Timestamp: time.Now(),
 			},
 		},
 	}
-	response := api.ContainerInfo{
-		ContainerReference: api.ContainerReference{
+	response := cadvisor_api.ContainerInfo{
+		ContainerReference: cadvisor_api.ContainerReference{
 			Name: rootContainer.Name,
 		},
 		Spec:  rootContainer.Spec,

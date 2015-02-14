@@ -15,7 +15,7 @@
 package datasource
 
 import (
-	cadvisor "github.com/google/cadvisor/info"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
 type Host struct {
@@ -24,22 +24,10 @@ type Host struct {
 	Resource string
 }
 
-type Container struct {
-	Name string
-	// TODO(vishh): Consider defining an internal Spec and Stats API to guard against
-	// changed to cadvisor API.
-	Spec  cadvisor.ContainerSpec
-	Stats []*cadvisor.ContainerStats
-}
-
-func newContainer() *Container {
-	return &Container{Stats: make([]*cadvisor.ContainerStats, 0)}
-}
-
 type Cadvisor interface {
 	// GetAllContainers returns container spec and stats for the root cgroup as 'root' and
 	// and all containers on the 'host' as 'subcontainers'.
-	GetAllContainers(host Host, numStats int) (subcontainers []*Container, root *Container, err error)
+	GetAllContainers(host Host, numStats int) (subcontainers []*api.Container, root *api.Container, err error)
 }
 
 func NewCadvisor() Cadvisor {
@@ -49,7 +37,7 @@ func NewCadvisor() Cadvisor {
 type Kubelet interface {
 	// GetContainer returns container spec and stats for the container pointed to by 'host.Resource', running on the kubelet specified in 'host.IP'.
 	// TODO(vishh): Once kubelet exposes a get all stats API, modify this API to return stats for all Pods.
-	GetContainer(host Host, numStats int) (containers *Container, err error)
+	GetContainer(host Host, numStats int) (containers *api.Container, err error)
 }
 
 func NewKubelet() Kubelet {

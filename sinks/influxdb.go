@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info"
 	influxdb "github.com/influxdb/influxdb/client"
@@ -60,7 +60,7 @@ func (self *InfluxdbSink) getState() string {
 	return fmt.Sprintf("\tNumber of write failures: %d\n", self.writeFailures)
 }
 
-func (self *InfluxdbSink) getDefaultSeriesData(pod *sources.Pod, hostname, containerName string, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
+func (self *InfluxdbSink) getDefaultSeriesData(pod *api.Pod, hostname, containerName string, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
 	// Timestamp
 	columns = append(columns, colTimestamp)
 	values = append(values, stat.Timestamp.Unix())
@@ -97,7 +97,7 @@ func (self *InfluxdbSink) getDefaultSeriesData(pod *sources.Pod, hostname, conta
 	return
 }
 
-func (self *InfluxdbSink) containerFsStatsToSeries(tableName, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats, pod *sources.Pod) (series []*influxdb.Series) {
+func (self *InfluxdbSink) containerFsStatsToSeries(tableName, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats, pod *api.Pod) (series []*influxdb.Series) {
 	if len(stat.Filesystem) == 0 {
 		return
 	}
@@ -126,7 +126,7 @@ func (self *InfluxdbSink) containerFsStatsToSeries(tableName, hostname, containe
 
 }
 
-func (self *InfluxdbSink) containerStatsToValues(pod *sources.Pod, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
+func (self *InfluxdbSink) containerStatsToValues(pod *api.Pod, hostname, containerName string, spec cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) (columns []string, values []interface{}) {
 	columns, values = self.getDefaultSeriesData(pod, hostname, containerName, stat)
 	if spec.HasCpu {
 		// Cumulative Cpu Usage
@@ -179,7 +179,7 @@ func (self *InfluxdbSink) newSeries(tableName string, columns []string, points [
 	return out
 }
 
-func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
+func (self *InfluxdbSink) handlePods(pods []api.Pod) {
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
 			for _, stat := range container.Stats {
@@ -192,7 +192,7 @@ func (self *InfluxdbSink) handlePods(pods []sources.Pod) {
 	}
 }
 
-func (self *InfluxdbSink) handleContainers(containers []sources.Container, tableName string) {
+func (self *InfluxdbSink) handleContainers(containers []api.Container, tableName string) {
 	// TODO(vishh): Export spec into a separate table and update it whenever it changes.
 	for _, container := range containers {
 		for _, stat := range container.Stats {
@@ -209,7 +209,7 @@ func (self *InfluxdbSink) readyToFlush() bool {
 
 func (self *InfluxdbSink) StoreData(ip Data) error {
 	var seriesToFlush []*influxdb.Series
-	if data, ok := ip.(sources.ContainerData); ok {
+	if data, ok := ip.(api.AggregateData); ok {
 		self.handlePods(data.Pods)
 		self.handleContainers(data.Containers, statsTable)
 		self.handleContainers(data.Machine, machineTable)
