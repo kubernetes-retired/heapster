@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
 type GcmSink struct {
@@ -59,7 +59,7 @@ func NewSink() (*GcmSink, error) {
 }
 
 func (self *GcmSink) StoreData(input interface{}) error {
-	data, ok := input.(sources.ContainerData)
+	data, ok := input.(api.AggregateData)
 	if !ok {
 		return fmt.Errorf("requesting unrecognized type to be stored in GCM")
 	}
@@ -69,8 +69,8 @@ func (self *GcmSink) StoreData(input interface{}) error {
 	for _, pod := range data.Pods {
 		metrics = append(metrics, self.podToMetrics(&pod)...)
 	}
-	metrics = append(metrics, self.rawContainersToMetrics(data.Containers)...)
-	metrics = append(metrics, self.rawContainersToMetrics(data.Machine)...)
+	metrics = append(metrics, self.containersToMetrics(data.Containers)...)
+	metrics = append(metrics, self.containersToMetrics(data.Machine)...)
 
 	// Push the metrics step size at a time. Try to push all the metrics even if there are errors.
 	var lastErr error
@@ -106,7 +106,7 @@ func labelsToString(labels map[string]string) string {
 	return buffer.String()
 }
 
-func (self *GcmSink) podToMetrics(pod *sources.Pod) []Metric {
+func (self *GcmSink) podToMetrics(pod *api.Pod) []Metric {
 	metrics := make([]Metric, 0, len(pod.Containers))
 
 	// Generate the labels.
@@ -117,23 +117,24 @@ func (self *GcmSink) podToMetrics(pod *sources.Pod) []Metric {
 
 	// Break the individual metrics from the container statistics.
 	for _, container := range pod.Containers {
-		metrics = append(metrics, self.containerToMetrics(container, labels)...)
+		metrics = self.containerToMetrics(container, labels)
 	}
+
 	return metrics
 }
 
-func (self *GcmSink) rawContainersToMetrics(containers []sources.RawContainer) []Metric {
+func (self *GcmSink) containersToMetrics(containers []api.Container) []Metric {
 	metrics := make([]Metric, 0, len(containers))
 
 	labels := make(map[string]string)
 	for _, container := range containers {
 		labels[labelHostname] = container.Hostname
-		metrics = append(metrics, self.containerToMetrics(&container.Container, labels)...)
+		metrics = append(metrics, self.containerToMetrics(&container, labels)...)
 	}
 	return metrics
 }
 
-func (self *GcmSink) containerToMetrics(container *sources.Container, labels map[string]string) []Metric {
+func (self *GcmSink) containerToMetrics(container *api.Container, labels map[string]string) []Metric {
 	labels[labelContainerName] = container.Name
 
 	// One metric value per data point.

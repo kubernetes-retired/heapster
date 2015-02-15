@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/testapi"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
@@ -43,7 +43,7 @@ func TestPodsApiCreation(t *testing.T) {
 	handler := util.FakeHandler{
 		StatusCode:   200,
 		RequestBody:  "something",
-		ResponseBody: body(&api.PodList{}),
+		ResponseBody: body(&kube_api.PodList{}),
 		T:            t,
 	}
 	server := httptest.NewServer(&handler)
@@ -55,16 +55,16 @@ func TestPodsApiCreation(t *testing.T) {
 }
 
 func TestPodsParsing(t *testing.T) {
-	podList := &api.PodList{
-		Items: []api.Pod{
+	podList := &kube_api.PodList{
+		Items: []kube_api.Pod{
 			{
-				Status: api.PodStatus{
-					Phase:  api.PodRunning,
+				Status: kube_api.PodStatus{
+					Phase:  kube_api.PodRunning,
 					PodIP:  "1.2.3.4",
 					Host:   "test-machine-a",
 					HostIP: "10.10.10.0",
 				},
-				ObjectMeta: api.ObjectMeta{
+				ObjectMeta: kube_api.ObjectMeta{
 					Name:      "pod1",
 					Namespace: "test",
 					UID:       "x-y-z",
@@ -73,21 +73,21 @@ func TestPodsParsing(t *testing.T) {
 						"name": "baz",
 					},
 				},
-				Spec: api.PodSpec{
-					Containers: []api.Container{
+				Spec: kube_api.PodSpec{
+					Containers: []kube_api.Container{
 						{Name: "test1"},
 						{Name: "test2"},
 					},
 				},
 			},
 			{
-				Status: api.PodStatus{
-					Phase:  api.PodRunning,
+				Status: kube_api.PodStatus{
+					Phase:  kube_api.PodRunning,
 					PodIP:  "1.2.3.5",
 					Host:   "test-machine-b",
 					HostIP: "10.10.10.1",
 				},
-				ObjectMeta: api.ObjectMeta{
+				ObjectMeta: kube_api.ObjectMeta{
 					Name:      "pod2",
 					Namespace: "test",
 					UID:       "x-y-a",
@@ -96,8 +96,8 @@ func TestPodsParsing(t *testing.T) {
 						"name": "baz",
 					},
 				},
-				Spec: api.PodSpec{
-					Containers: []api.Container{
+				Spec: kube_api.PodSpec{
+					Containers: []kube_api.Container{
 						{Name: "test1"},
 						{Name: "test2"},
 					},

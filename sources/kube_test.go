@@ -15,14 +15,12 @@
 package sources
 
 import (
-	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/testapi"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,10 +37,10 @@ func (self *fakeNodesApi) DebugInfo() string {
 }
 
 type fakePodsApi struct {
-	podList []Pod
+	podList []api.Pod
 }
 
-func (self *fakePodsApi) List(nodeList *nodes.NodeList) ([]Pod, error) {
+func (self *fakePodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	return self.podList, nil
 }
 
@@ -50,26 +48,59 @@ func (self *fakePodsApi) DebugInfo() string {
 	return ""
 }
 
+type fakeKubeletApi struct {
+	container *api.Container
+}
+
+func (self *fakeKubeletApi) GetContainer(host datasource.Host, numStats int) (*api.Container, error) {
+	return self.container, nil
+}
+
 func TestKubeSourceBasic(t *testing.T) {
-	handler := util.FakeHandler{
-		StatusCode:   200,
-		RequestBody:  "",
-		ResponseBody: "",
-		T:            t,
-	}
-	server := httptest.NewServer(&handler)
-	defer server.Close()
-	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Version()})
 	nodesApi := &fakeNodesApi{nodes.NodeList{}}
-	podsApi := &fakePodsApi{[]Pod{}}
+	podsApi := &fakePodsApi{[]api.Pod{}}
 	kubeSource := &kubeSource{
-		client:      client,
 		lastQuery:   time.Now(),
 		kubeletPort: "10250",
 		nodesApi:    nodesApi,
 		podsApi:     podsApi,
+		kubeletApi:  &fakeKubeletApi{nil},
 	}
 	_, err := kubeSource.GetInfo()
 	require.NoError(t, err)
 	require.NotEmpty(t, kubeSource.DebugInfo())
+}
+
+func TestKubeSourceDetail(t *testing.T) {
+	nodeList := nodes.NodeList{
+		Items: map[nodes.Host]nodes.Info{
+			nodes.Host("test-machine-b"): {InternalIP: "10.10.10.1"},
+			nodes.Host("test-machine-1"): {InternalIP: "10.10.10.0"},
+		},
+	}
+	podList := []api.Pod{
+		{
+			Name: "blah",
+		},
+		{
+			Name: "blah1",
+		},
+	}
+	container := &api.Container{
+		Name: "test",
+	}
+	nodesApi := &fakeNodesApi{nodeList}
+	podsApi := &fakePodsApi{podList}
+	kubeletApi := &fakeKubeletApi{container}
+
+	kubeSource := &kubeSource{
+		lastQuery:   time.Now(),
+		kubeletPort: "10250",
+		nodesApi:    nodesApi,
+		podsApi:     podsApi,
+		kubeletApi:  kubeletApi,
+	}
+	data, err := kubeSource.GetInfo()
+	require.NoError(t, err)
+	require.NotEmpty(t, data)
 }

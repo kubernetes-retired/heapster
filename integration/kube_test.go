@@ -44,9 +44,9 @@ var (
 	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/heapster-controller.yaml", "Path to heapster replication controller file.")
 	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/influxdb-grafana-controller.yaml", "Path to Influxdb-Grafana replication controller file.")
 	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/influxdb-service.yaml", "Path to Inlufxdb service file.")
-	heapsterImage                 = flag.String("heapster_image", "vish/heapster:e2e_test1", "heapster docker image that needs to be tested.")
-	influxdbImage                 = flag.String("influxdb_image", "vish/heapster_influxdb:e2e_test1", "influxdb docker image that needs to be tested.")
-	grafanaImage                  = flag.String("grafana_image", "vish/heapster_grafana:e2e_test1", "grafana docker image that needs to be tested.")
+	heapsterImage                 = flag.String("heapster_image", "vish/heapster:e2e_test", "heapster docker image that needs to be tested.")
+	influxdbImage                 = flag.String("influxdb_image", "vish/heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
+	grafanaImage                  = flag.String("grafana_image", "vish/heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
 	namespace                     = flag.String("namespace", "default", "namespace to be used for testing")
 )
 

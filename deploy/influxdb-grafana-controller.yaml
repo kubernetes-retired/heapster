@@ -18,6 +18,8 @@ desiredState:
             ports: 
               - containerPort: 8083
                 hostPort: 8083
+              - containerPort: 8086
+                hostPort: 8086
           - name: "grafana"
             image: "kubernetes/heapster_grafana:v0.4"
             env: 

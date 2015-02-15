@@ -15,20 +15,18 @@
 package sources
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/golang/glog"
-	cadvisor "github.com/google/cadvisor/info"
 )
 
 const (
@@ -45,11 +43,11 @@ var (
 )
 
 type kubeSource struct {
-	client       *kube_client.Client
 	kubeletPort  string
 	pollDuration time.Duration
 	nodesApi     nodes.NodesApi
 	podsApi      podsApi
+	kubeletApi   datasource.Kubelet
 	stateLock    sync.RWMutex
 	podErrors    map[podInstance]int // guarded by stateLock
 	lastQuery    time.Time
@@ -61,7 +59,7 @@ type podInstance struct {
 	ip   string
 }
 
-func (self *kubeSource) recordPodError(pod Pod) {
+func (self *kubeSource) recordPodError(pod api.Pod) {
 	// Heapster knows about pods before they are up and running on a node.
 	// Ignore errors for Pods that are not Running.
 	if pod.Status != "Running" {
@@ -88,7 +86,7 @@ func (self *kubeSource) getState() string {
 	return state
 }
 
-func (self *kubeSource) getNumStatsToFetch() int {
+func (self *kubeSource) numStatsToFetch() int {
 	numStats := int(self.pollDuration / time.Second)
 	if time.Since(self.lastQuery) > self.pollDuration {
 		numStats = int(time.Since(self.lastQuery) / time.Second)
@@ -96,91 +94,99 @@ func (self *kubeSource) getNumStatsToFetch() int {
 	return numStats
 }
 
-func (self *kubeSource) getStatsFromKubelet(pod Pod, containerName string) (cadvisor.ContainerSpec, []*cadvisor.ContainerStats, error) {
-	var containerInfo cadvisor.ContainerInfo
-	body, err := json.Marshal(cadvisor.ContainerInfoRequest{NumStats: self.getNumStatsToFetch()})
-	if err != nil {
-		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, err
-	}
-	url := fmt.Sprintf("http://%s:%s%s", pod.HostInternalIP, self.kubeletPort, filepath.Join("/stats", pod.Name, containerName))
+func (self *kubeSource) getStatsFromKubelet(pod *api.Pod, containerName string) (*api.Container, error) {
+	resource := filepath.Join("stats", pod.Name, containerName)
 	if containerName == "/" {
-		url += "/"
-	}
-	glog.V(2).Infof("about to query kubelet using url: %q", url)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	if err != nil {
-		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	err = PostRequestAndGetValue(http.DefaultClient, req, &containerInfo)
-	if err != nil {
-		glog.Errorf("failed to get stats from kubelet url: %s - %s\n", url, err)
-		return cadvisor.ContainerSpec{}, []*cadvisor.ContainerStats{}, nil
+		resource += "/"
 	}
 
-	return containerInfo.Spec, containerInfo.Stats, nil
+	return self.kubeletApi.GetContainer(datasource.Host{IP: pod.HostInternalIP, Port: self.kubeletPort, Resource: resource}, self.numStatsToFetch())
 }
 
-func (self *kubeSource) getNodesInfo(nodeList *nodes.NodeList) ([]RawContainer, error) {
-	glog.V(2).Infof("current nodes %+v", nodeList)
-	nodesInfo := []RawContainer{}
-	for host, info := range nodeList.Items {
-		spec, stats, err := self.getStatsFromKubelet(Pod{HostInternalIP: info.InternalIP}, "/")
-		if err != nil {
-			glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", host)
-			return []RawContainer{}, err
-		}
-		if len(stats) > 0 {
-			container := RawContainer{
-				Hostname:  string(host),
-				Container: Container{"/", spec, stats},
-			}
-			nodesInfo = append(nodesInfo, container)
-		}
+func (self *kubeSource) updateStats(host nodes.Host, info nodes.Info) (api.Container, error) {
+	container, err := self.getStatsFromKubelet(&api.Pod{HostInternalIP: info.InternalIP}, "/")
+	if err != nil {
+		glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", host)
+		return api.Container{}, err
 	}
+	if container == nil {
+		// no stats found.
+		glog.V(1).Infof("no machine stats from kubelet on node %s", host)
+		return api.Container{}, fmt.Errorf("no machine stats from kubelet on node %s", host)
+	}
+	container.Hostname = string(host)
+	return *container, nil
+}
 
+func (self *kubeSource) getNodesInfo(nodeList *nodes.NodeList) ([]api.Container, error) {
+	var (
+		lock sync.Mutex
+		wg   sync.WaitGroup
+	)
+	nodesInfo := []api.Container{}
+	for host, info := range nodeList.Items {
+		wg.Add(1)
+		go func(host nodes.Host, info nodes.Info) {
+			defer wg.Done()
+			if container, err := self.updateStats(host, info); err == nil {
+				lock.Lock()
+				defer lock.Unlock()
+				nodesInfo = append(nodesInfo, container)
+			}
+		}(host, info)
+	}
+	wg.Wait()
 	return nodesInfo, nil
 }
 
-func (self *kubeSource) getPodInfo(nodeList *nodes.NodeList) ([]Pod, error) {
+func (self *kubeSource) getPodInfo(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	pods, err := self.podsApi.List(nodeList)
 	if err != nil {
-		return []Pod{}, err
+		return []api.Pod{}, err
 	}
+	var (
+		wg sync.WaitGroup
+	)
 	for _, pod := range pods {
-		for _, container := range pod.Containers {
-			spec, stats, err := self.getStatsFromKubelet(pod, container.Name)
-			if err != nil {
-				// Containers could be in the process of being setup or restarting while the pod is alive.
-				glog.Errorf("failed to get stats for container %q/%q in pod %q", container.Name, pod.Namespace, pod.Name)
-				continue
+		wg.Add(1)
+		go func(pod *api.Pod) {
+			defer wg.Done()
+			for _, container := range pod.Containers {
+				rawContainer, err := self.getStatsFromKubelet(pod, container.Name)
+				if err != nil {
+					// Containers could be in the process of being setup or restarting while the pod is alive.
+					glog.Errorf("failed to get stats for container %q/%q in pod %q", container.Name, pod.Namespace, pod.Name)
+					return
+				}
+				glog.V(2).Infof("Fetched stats from kubelet for container %s in pod %s", container.Name, pod.Name)
+				container.Hostname = pod.Hostname
+				container.Spec = rawContainer.Spec
+				container.Stats = rawContainer.Stats
 			}
-			glog.V(2).Infof("Fetched stats from kubelet for container %s in pod %s", container.Name, pod.Name)
-			container.Stats = stats
-			container.Spec = spec
-		}
+		}(&pod)
 	}
+	wg.Wait()
 
 	return pods, nil
 }
 
-func (self *kubeSource) GetInfo() (ContainerData, error) {
+func (self *kubeSource) GetInfo() (api.AggregateData, error) {
 	kubeNodes, err := self.nodesApi.List()
 	if err != nil || len(kubeNodes.Items) == 0 {
-		return ContainerData{}, err
+		return api.AggregateData{}, err
 	}
 	podsInfo, err := self.getPodInfo(kubeNodes)
 	if err != nil {
-		return ContainerData{}, err
+		return api.AggregateData{}, err
 	}
-
 	nodesInfo, err := self.getNodesInfo(kubeNodes)
 	if err != nil {
-		return ContainerData{}, err
+		return api.AggregateData{}, err
 	}
 	glog.V(2).Info("Fetched list of nodes from the master")
 	self.lastQuery = time.Now()
-	return ContainerData{Pods: podsInfo, Machine: nodesInfo}, nil
+
+	return api.AggregateData{Pods: podsInfo, Machine: nodesInfo}, nil
 }
 
 func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
@@ -206,10 +212,10 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 	glog.Infof("Using kubelet port %q", *argKubeletPort)
 
 	return &kubeSource{
-		client:       kubeClient,
 		lastQuery:    time.Now(),
 		pollDuration: pollDuration,
 		kubeletPort:  *argKubeletPort,
+		kubeletApi:   datasource.NewKubelet(),
 		nodesApi:     nodesApi,
 		podsApi:      newPodsApi(kubeClient),
 		podErrors:    make(map[podInstance]int),
