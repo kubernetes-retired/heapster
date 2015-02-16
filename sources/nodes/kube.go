@@ -78,8 +78,15 @@ func (self *kubeNodes) List() (*NodeList, error) {
 			nodeList.Items[Host(node.Name)] = Info{PublicIP: node.Status.HostIP, InternalIP: addrs[0].String()}
 			goodNodes = append(goodNodes, node.Name)
 		} else {
-			glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
-			self.recordNodeError(node.Name)
+			ip := net.ParseIP(node.Name)
+			if ip != nil {
+				//If the node name can't be resolved, and we can parse nodeName as IP, we use IP directly, this solve CoreOS problems
+				nodeList.Items[Host(node.Name)] = Info{PublicIP: node.Status.HostIP, InternalIP: node.Name}
+				goodNodes = append(goodNodes, node.Name)
+			} else {
+				glog.Errorf("Skipping host %s since looking up its IP failed and %s is not an IP address - %s", node.Name, err)
+				self.recordNodeError(node.Name)
+			}
 		}
 	}
 	self.recordGoodNodes(goodNodes)

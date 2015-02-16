@@ -95,7 +95,7 @@ func (self *kubeSource) numStatsToFetch() int {
 }
 
 func (self *kubeSource) getStatsFromKubelet(pod *api.Pod, containerName string) (*api.Container, error) {
-	resource := filepath.Join("stats", pod.Name, containerName)
+	resource := filepath.Join("stats", pod.Namespace, pod.Name, pod.ID, containerName)
 	if containerName == "/" {
 		resource += "/"
 	}
