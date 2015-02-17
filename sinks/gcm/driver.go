@@ -20,10 +20,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
+	"github.com/golang/glog"
 )
 
 type MetricType int
@@ -107,7 +109,7 @@ type Metric struct {
 	Value interface{}
 }
 
-type gcmDriver struct {
+type Driver struct {
 	// Token to use for authentication.
 	token string
 
@@ -124,7 +126,8 @@ type gcmDriver struct {
 }
 
 // Returns a thread-compatible implementation of GCM interactions.
-func NewDriver() (*gcmDriver, error) {
+func NewDriver() (*Driver, error) {
+	time.Sleep(3 * time.Second)
 	// Only support GCE for now.
 	if !metadata.OnGCE() {
 		return nil, fmt.Errorf("the GCM sink is currently only supported on GCE")
@@ -142,7 +145,7 @@ func NewDriver() (*gcmDriver, error) {
 		return nil, err
 	}
 
-	impl := &gcmDriver{
+	impl := &Driver{
 		project:         project,
 		exportedMetrics: make(map[string]MetricDescriptor),
 	}
@@ -156,7 +159,7 @@ func NewDriver() (*gcmDriver, error) {
 	return impl, nil
 }
 
-func (self *gcmDriver) refreshToken() error {
+func (self *Driver) refreshToken() error {
 	if time.Now().After(self.tokenExpiration) {
 		token, err := getToken()
 		if err != nil {
@@ -191,7 +194,7 @@ type metricDescriptor struct {
 const maxNumLabels = 10
 
 // Adds the specified metrics or updates them if they already exist.
-func (self *gcmDriver) AddMetrics(metrics []MetricDescriptor) error {
+func (self *Driver) AddMetrics(metrics []MetricDescriptor) error {
 	for _, metric := range metrics {
 		// Enforce the most labels that GCM allows.
 		if len(metric.Labels) > maxNumLabels {
@@ -215,6 +218,7 @@ func (self *gcmDriver) AddMetrics(metrics []MetricDescriptor) error {
 		}
 
 		err := sendRequest(fmt.Sprintf("https://www.googleapis.com/cloudmonitoring/v2beta2/projects/%s/metricDescriptors", self.project), self.token, request)
+		glog.Infof("[GCM] Adding metric %q: %v", metric.Name, err)
 		if err != nil {
 			return err
 		}
@@ -248,16 +252,28 @@ type metricWriteRequest struct {
 	Timeseries []timeseries `json:"timeseries,omitempty"`
 }
 
+// Concatenates a map of labels into a comma-separated key=value pairs.
+func LabelsToString(labels map[string]string) string {
+	output := make([]string, 0, len(labels))
+	for key, value := range labels {
+		output = append(output, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	// Sort to produce a stable output.
+	sort.Strings(output)
+	return strings.Join(output, ",")
+}
+
 // The largest number of timeseries we can write to per request.
 const maxTimeseriesPerRequest = 200
 
 // Gets the largest number of metrics that can be pushed at a time.
-func (self *gcmDriver) MaxNumPushMetrics() int {
+func (self *Driver) MaxNumPushMetrics() int {
 	return maxTimeseriesPerRequest
 }
 
 // Pushes the specified metric values. The metrics must already exist.
-func (self *gcmDriver) PushMetrics(metrics []Metric) error {
+func (self *Driver) PushMetrics(metrics []Metric) error {
 	// Check we're not being asked to write more timeseries than we can..
 	if len(metrics) > maxTimeseriesPerRequest {
 		return fmt.Errorf("unable to write more than %d metrics at once and %d were provided", maxTimeseriesPerRequest, len(metrics))
@@ -303,7 +319,22 @@ func (self *gcmDriver) PushMetrics(metrics []Metric) error {
 		return err
 	}
 
-	return sendRequest(fmt.Sprintf("https://www.googleapis.com/cloudmonitoring/v2beta2/projects/%s/timeseries:write", self.project), self.token, request)
+	const requestAttempts = 3
+	for i := 0; i < requestAttempts; i++ {
+		err = sendRequest(fmt.Sprintf("https://www.googleapis.com/cloudmonitoring/v2beta2/projects/%s/timeseries:write", self.project), self.token, request)
+		if err != nil {
+			glog.Warningf("[GCM] Push attempt %d failed: %v", i, err)
+		} else {
+			break
+		}
+	}
+	if err != nil {
+		prettyRequest, _ := json.MarshalIndent(request, "", "  ")
+		glog.Warningf("[GCM] Pushing %d metrics \n%s\n failed: %v", len(request.Timeseries), string(prettyRequest), err)
+	} else {
+		glog.Infof("[GCM] Pushing %d metrics: SUCCESS", len(request.Timeseries))
+	}
+	return err
 }
 
 // Domain for the metrics.

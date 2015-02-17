@@ -12,38 +12,52 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gcm
+package sinks
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sinks/gcm"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	"github.com/golang/glog"
 )
 
 type GcmSink struct {
 	// The driver for GCM interactions.
-	driver *gcmDriver
+	driver *gcm.Driver
 
 	// The metrics currently supported.
-	supportedMetrics []supportedMetric
+	supportedMetrics []gcm.SupportedMetric
+
+	// TODO(vmarmol): Garbage collect these, as it stands we will always keep them around.
+	// Map of timeseries to the time of the last point we exported.
+	lastExported map[timeseriesKey]time.Time
 }
 
-func NewSink() (*GcmSink, error) {
-	driver, err := NewDriver()
+// For GCM, a timeseries is a unique pairing of metric name and labels with their values.
+type timeseriesKey struct {
+	// Name of the metric.
+	Name string
+
+	// Mangled labels on the metric.
+	Labels string
+}
+
+func NewGcmSink() (*GcmSink, error) {
+	driver, err := gcm.NewDriver()
 	if err != nil {
 		return nil, err
 	}
 
 	// Get supported metrics.
-	supportedMetrics := allMetrics[0:]
+	supportedMetrics := gcm.GetSupportedMetrics()
 	for i := range supportedMetrics {
 		supportedMetrics[i].Labels = allLabels
 	}
 
 	// Create the metrics.
-	descriptors := make([]MetricDescriptor, 0, len(supportedMetrics))
+	descriptors := make([]gcm.MetricDescriptor, 0, len(supportedMetrics))
 	for _, supported := range supportedMetrics {
 		descriptors = append(descriptors, supported.MetricDescriptor)
 	}
@@ -55,33 +69,48 @@ func NewSink() (*GcmSink, error) {
 	return &GcmSink{
 		driver:           driver,
 		supportedMetrics: supportedMetrics,
+		lastExported:     make(map[timeseriesKey]time.Time),
 	}, nil
 }
 
-func (self *GcmSink) StoreData(input interface{}) error {
+// TODO(vmarmol): Paralellize this.
+func (self *GcmSink) StoreData(input Data) error {
 	data, ok := input.(api.AggregateData)
 	if !ok {
 		return fmt.Errorf("requesting unrecognized type to be stored in GCM")
 	}
 
-	// Get metrics from the raw data.
-	metrics := make([]Metric, 0, len(data.Pods)+len(data.Containers)+len(data.Machine))
-	for _, pod := range data.Pods {
-		metrics = append(metrics, self.podToMetrics(&pod)...)
-	}
-	metrics = append(metrics, self.containersToMetrics(data.Containers)...)
-	metrics = append(metrics, self.containersToMetrics(data.Machine)...)
-
-	// Push the metrics step size at a time. Try to push all the metrics even if there are errors.
+	// Format metrics and push them.
 	var lastErr error
-	step := self.driver.MaxNumPushMetrics()
-	for i := 0; i < len(metrics); i += step {
-		endIndex := i + step
-		if endIndex > len(metrics) {
-			endIndex = len(metrics)
+	for _, pod := range data.Pods {
+		err := self.pushPodMetrics(&pod)
+		if err != nil {
+			lastErr = err
 		}
+	}
+	err := self.pushContainerSliceMetrics(data.Containers)
+	if err != nil {
+		lastErr = err
+	}
+	err = self.pushContainerSliceMetrics(data.Machine)
+	if err != nil {
+		lastErr = err
+	}
 
-		err := self.driver.PushMetrics(metrics[i:endIndex])
+	return lastErr
+}
+
+func (self *GcmSink) pushPodMetrics(pod *api.Pod) error {
+	// Generate the labels.
+	labels := make(map[string]string)
+	labels[labelPodId] = pod.ID
+	labels[labelLabels] = gcm.LabelsToString(pod.Labels)
+	labels[labelHostname] = pod.Hostname
+
+	// Break the individual metrics from the container statistics.
+	var lastErr error
+	for _, container := range pod.Containers {
+		err := self.pushContainerMetrics(container, labels)
 		if err != nil {
 			lastErr = err
 		}
@@ -90,78 +119,73 @@ func (self *GcmSink) StoreData(input interface{}) error {
 	return lastErr
 }
 
-// Concatenates a map of labels into a comma-separated key=value pairs.
-func labelsToString(labels map[string]string) string {
-	var buffer bytes.Buffer
-	first := true
-	for key, value := range labels {
-		if !first {
-			buffer.WriteString(",")
-		}
-		first = false
-		buffer.WriteString(key)
-		buffer.WriteString("=")
-		buffer.WriteString(value)
-	}
-	return buffer.String()
-}
-
-func (self *GcmSink) podToMetrics(pod *api.Pod) []Metric {
-	metrics := make([]Metric, 0, len(pod.Containers))
-
-	// Generate the labels.
+func (self *GcmSink) pushContainerSliceMetrics(containers []api.Container) error {
 	labels := make(map[string]string)
-	labels[labelPodId] = pod.ID
-	labels[labelLabels] = labelsToString(pod.Labels)
-	labels[labelHostname] = pod.Hostname
-
-	// Break the individual metrics from the container statistics.
-	for _, container := range pod.Containers {
-		metrics = self.containerToMetrics(container, labels)
-	}
-
-	return metrics
-}
-
-func (self *GcmSink) containersToMetrics(containers []api.Container) []Metric {
-	metrics := make([]Metric, 0, len(containers))
-
-	labels := make(map[string]string)
+	var lastErr error
 	for _, container := range containers {
 		labels[labelHostname] = container.Hostname
-		metrics = append(metrics, self.containerToMetrics(&container, labels)...)
+		err := self.pushContainerMetrics(&container, labels)
+		if err != nil {
+			lastErr = err
+		}
 	}
-	return metrics
+
+	return lastErr
 }
 
-func (self *GcmSink) containerToMetrics(container *api.Container, labels map[string]string) []Metric {
+func (self *GcmSink) pushContainerMetrics(container *api.Container, labels map[string]string) error {
 	labels[labelContainerName] = container.Name
 
 	// One metric value per data point.
-	metrics := make([]Metric, 0, len(container.Stats))
+	var lastErr error
+	labelsAsString := gcm.LabelsToString(labels)
 	for _, stat := range container.Stats {
 		// Add all supported metrics that have values.
+		m := make([]gcm.Metric, 0, len(self.supportedMetrics))
 		for _, supported := range self.supportedMetrics {
+			// GCM won't accept metrics older than the last point we pushed so ignore any stats
+			// older than the last push we did.
+			key := timeseriesKey{
+				Name:   supported.Name,
+				Labels: labelsAsString,
+			}
+			if self.lastExported[key].After(stat.Timestamp) {
+				continue
+			}
+
 			if supported.HasValue(&container.Spec) {
-				// Cumulative stats have container creation time as start time.
+				// Cumulative stats have container creation time as their start time.
 				var startTime time.Time
-				if supported.Type == MetricCumulative {
+				if supported.Type == gcm.MetricCumulative {
 					startTime = container.Spec.CreationTime
 				} else {
 					startTime = stat.Timestamp
 				}
 
-				metrics = append(metrics, Metric{
+				m = append(m, gcm.Metric{
 					Name:   supported.Name,
 					Labels: labels,
 					Start:  startTime,
 					End:    stat.Timestamp,
 					Value:  supported.GetValue(stat),
 				})
+				self.lastExported[key] = stat.Timestamp
 			}
 		}
+
+		// Skip pushing if there are no metrics.
+		if len(m) == 0 {
+			continue
+		}
+
+		err := self.driver.PushMetrics(m)
+		if err != nil {
+			lastErr = err
+			glog.Warningf("[GCM] Failed to push metrics for container %q with labels %q: %v", container.Name, labelsAsString, err)
+		}
 	}
-	return metrics
+
+	return lastErr
 }
 
 func (self *GcmSink) GetConfig() string {
@@ -193,7 +217,7 @@ const (
 // TODO(vmarmol): Things we should consider adding (note that we only get 10 labels):
 // - POD name, container name, and host IP: Useful to users but maybe we should just mangle them with ID and IP
 // - Namespace: Are IDs unique only per namespace? If so, mangle it into the ID.
-var allLabels = []LabelDescriptor{
+var allLabels = []gcm.LabelDescriptor{
 	{
 		Key:         labelPodId,
 		Description: "The unique ID of the pod",
@@ -208,6 +232,6 @@ var allLabels = []LabelDescriptor{
 	},
 	{
 		Key:         labelHostname,
-		Description: "Hostname of the node where the container ran",
+		Description: "Hostname where the container ran",
 	},
 }
