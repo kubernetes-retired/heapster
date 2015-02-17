@@ -18,7 +18,7 @@ import (
 	cadvisor "github.com/google/cadvisor/info"
 )
 
-type supportedMetric struct {
+type SupportedMetric struct {
 	MetricDescriptor
 
 	// Returns whether this metric is present.
@@ -28,8 +28,12 @@ type supportedMetric struct {
 	GetValue func(*cadvisor.ContainerStats) interface{}
 }
 
+func GetSupportedMetrics() []SupportedMetric {
+	return allMetrics
+}
+
 // TODO(vmarmol): Add the rest of the metrics.
-var allMetrics = []supportedMetric{
+var allMetrics = []SupportedMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "cpu/usage",
