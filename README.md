@@ -35,7 +35,7 @@ $ kubectl.sh get services
 2. If the default Grafana dashboard doesn't show any graphs, check the heapster logs. `kubectl.sh log <heapster pod name>`. Look for any errors related to accessing the kubernetes master or the kubelet.
 3. To access the InfluxDB UI, you will have to open up the InfluxDB UI port(8083) on the nodes. Find out the IP of the Node where InfluxDB is running to access the UI - `http://<NodeIP>:8083/`
 ```shell
-gcloud compute firewall-rules create monitoring-heapster --allow "tcp:8083" --target-tags=kubernetes-minion
+gcloud compute firewall-rules create monitoring-heapster --allow "tcp:8083" "tcp:8086" --target-tags=kubernetes-minion
 ```
 Note: We are working on exposing the InfluxDB UI using the proxy service on the Kubernetes master.
 4. If you find InfluxDB to be using up a lot of CPU or Memory, consider placing Resource Restrictions on the InfluxDB+Grafana Pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](deploy/influxdb-grafana-controller.yaml) and relaunch the Controller.
@@ -45,6 +45,11 @@ deploy/kube.sh restart
 
 #####Hints
 * To enable memory and swap accounting on the minions follow the instructions [here](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting)
+* If the Grafana UI is not accessible via the proxy on the master (URL mentioned above), open up port 80 on the nodes, find out the node on which Grafana container is running and access Grafana UI @ http://<minion-ip>/
+```shell
+gcloud compute firewall-rules update monitoring-heapster --allow "tcp:80" --target-tags=kubernetes-minion
+echo "Grafana URL: http://$(kubectl.sh get pods -l name=influxGrafana -o yaml | grep hostIP | awk '{print $2}')/"
+```
 
 #####How heapster works on Kubernetes:
 1. Discovers all minions in a Kubernetes cluster

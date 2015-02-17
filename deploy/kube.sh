@@ -11,8 +11,8 @@ start() {
 }
 
 stop() {
-  kubectl.sh stop replicationController monitoring-influx-grafana-controller &> /dev/null || true
-  kubectl.sh stop replicationController monitoring-heapster-controller 0 &> /dev/null || true
+  kubectl.sh stop replicationController monitoring-influx-grafana-controller &> /dev/null
+  kubectl.sh stop replicationController monitoring-heapster-controller &> /dev/null
   # wait for the pods to disappear.
   while kubectl.sh get pods -l "name=influxGrafana" -o template -t {{range.items}}{{.id}}:{{end}} | grep -c . &> /dev/null \
     || kubectl.sh get pods -l "name=heapster" -o template -t {{range.items}}{{.id}}:{{end}} | grep -c . &> /dev/null; do
