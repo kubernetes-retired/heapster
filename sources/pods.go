@@ -128,12 +128,7 @@ func newPodsApi(client *client.Client) podsApi {
 		panic(err)
 	}
 
-	lw := &cache.ListWatch{
-		Client:        client,
-		FieldSelector: selector,
-		Resource:      "pods",
-	}
-
+	lw := cache.NewListWatchFromClient(client, "pods", kube_api.NamespaceAll, selector)
 	podLister := &cache.StoreToPodLister{cache.NewStore(cache.MetaNamespaceKeyFunc)}
 	// Watch and cache all running pods.
 	reflector := cache.NewReflector(lw, &kube_api.Pod{}, podLister.Store)

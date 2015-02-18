@@ -116,11 +116,7 @@ func NewKubeNodes(client *client.Client) (NodesApi, error) {
 		return nil, fmt.Errorf("client is nil")
 	}
 
-	lw := &cache.ListWatch{
-		Client:        client,
-		FieldSelector: parseSelectorOrDie(""),
-		Resource:      "minions",
-	}
+	lw := cache.NewListWatchFromClient(client, "minions", api.NamespaceAll, parseSelectorOrDie(""))
 	nodeLister := &cache.StoreToNodeLister{cache.NewStore(cache.MetaNamespaceKeyFunc)}
 	reflector := cache.NewReflector(lw, &api.Node{}, nodeLister.Store)
 	stopChan := make(chan struct{})
