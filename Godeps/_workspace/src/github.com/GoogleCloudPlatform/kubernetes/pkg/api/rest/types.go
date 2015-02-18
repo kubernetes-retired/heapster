@@ -23,6 +23,27 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 )
 
+// ObjectFunc is a function to act on a given object. An error may be returned
+// if the hook cannot be completed. An ObjectFunc may transform the provided
+// object.
+type ObjectFunc func(obj runtime.Object) error
+
+// AllFuncs returns an ObjectFunc that attempts to run all of the provided functions
+// in order, returning early if there are any errors.
+func AllFuncs(fns ...ObjectFunc) ObjectFunc {
+	return func(obj runtime.Object) error {
+		for _, fn := range fns {
+			if fn == nil {
+				continue
+			}
+			if err := fn(obj); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
 // rcStrategy implements behavior for Replication Controllers.
 // TODO: move to a replicationcontroller specific package.
 type rcStrategy struct {
@@ -49,34 +70,6 @@ func (rcStrategy) ResetBeforeCreate(obj runtime.Object) {
 func (rcStrategy) Validate(obj runtime.Object) errors.ValidationErrorList {
 	controller := obj.(*api.ReplicationController)
 	return validation.ValidateReplicationController(controller)
-}
-
-// podStrategy implements behavior for Pods
-// TODO: move to a pod specific package.
-type podStrategy struct {
-	runtime.ObjectTyper
-	api.NameGenerator
-}
-
-// Pods is the default logic that applies when creating and updating Pod
-// objects.
-var Pods RESTCreateStrategy = podStrategy{api.Scheme, api.SimpleNameGenerator}
-
-// NamespaceScoped is true for pods.
-func (podStrategy) NamespaceScoped() bool {
-	return true
-}
-
-// ResetBeforeCreate clears fields that are not allowed to be set by end users on creation.
-func (podStrategy) ResetBeforeCreate(obj runtime.Object) {
-	pod := obj.(*api.Pod)
-	pod.Status = api.PodStatus{}
-}
-
-// Validate validates a new pod.
-func (podStrategy) Validate(obj runtime.Object) errors.ValidationErrorList {
-	pod := obj.(*api.Pod)
-	return validation.ValidatePod(pod)
 }
 
 // svcStrategy implements behavior for Services
@@ -118,7 +111,7 @@ type nodeStrategy struct {
 // objects.
 var Nodes RESTCreateStrategy = nodeStrategy{api.Scheme, api.SimpleNameGenerator}
 
-// NamespaceScoped is false for services.
+// NamespaceScoped is false for nodes.
 func (nodeStrategy) NamespaceScoped() bool {
 	return false
 }
@@ -133,4 +126,31 @@ func (nodeStrategy) ResetBeforeCreate(obj runtime.Object) {
 func (nodeStrategy) Validate(obj runtime.Object) errors.ValidationErrorList {
 	node := obj.(*api.Node)
 	return validation.ValidateMinion(node)
+}
+
+// namespaceStrategy implements behavior for nodes
+type namespaceStrategy struct {
+	runtime.ObjectTyper
+	api.NameGenerator
+}
+
+// Namespaces is the default logic that applies when creating and updating Namespace
+// objects.
+var Namespaces RESTCreateStrategy = namespaceStrategy{api.Scheme, api.SimpleNameGenerator}
+
+// NamespaceScoped is false for namespaces.
+func (namespaceStrategy) NamespaceScoped() bool {
+	return false
+}
+
+// ResetBeforeCreate clears fields that are not allowed to be set by end users on creation.
+func (namespaceStrategy) ResetBeforeCreate(obj runtime.Object) {
+	_ = obj.(*api.Namespace)
+	// Namespace allow *all* fields, including status, to be set.
+}
+
+// Validate validates a new namespace.
+func (namespaceStrategy) Validate(obj runtime.Object) errors.ValidationErrorList {
+	namespace := obj.(*api.Namespace)
+	return validation.ValidateNamespace(namespace)
 }
