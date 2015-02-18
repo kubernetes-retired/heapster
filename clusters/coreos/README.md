@@ -9,7 +9,7 @@ NOTE: Some of the following steps should be handled using fleet and unit files.
 
 gce-cloud-config-with-cadvisor.yml contains 'cadvisor.service' which can be specified as part of your cloud config to bring up cAdvisor by default on all hosts.
 
-**Step 2: Start InfluxDB and Grafana**
+**Step 2: Start InfluxDB**
 
 On a CoreOS machine start InfluxDB and grafana
 
