@@ -77,7 +77,7 @@ func (self *kubeSource) getState() string {
 	self.stateLock.RLock()
 	defer self.stateLock.RUnlock()
 
-	state := "\tHealthy Nodes:\n"
+	state := fmt.Sprintf("poll duration: %d\n", self.pollDuration)
 	if len(self.podErrors) != 0 {
 		state += fmt.Sprintf("\tPod Errors: %+v\n", self.podErrors)
 	} else {

@@ -34,7 +34,9 @@ type Source interface {
 func NewSource(pollDuration time.Duration) (Source, error) {
 	if len(*argMaster) > 0 {
 		return newKubeSource(pollDuration)
+	} else if *argCoreOSMode {
+		return newCoreOSCadvisorSource(pollDuration)
 	} else {
-		return newExternalSource(pollDuration)
+		return newExternalCadvisorSource(pollDuration)
 	}
 }

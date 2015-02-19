@@ -31,9 +31,12 @@ import (
 	"github.com/golang/glog"
 )
 
-var argCadvisorPort = flag.Int("cadvisor_port", 8080, "The port on which cadvisor binds to on all nodes.")
+var (
+	argCadvisorPort = flag.Int("cadvisor_port", 8080, "The port on which cadvisor binds to on all nodes.")
+	argCoreOSMode   = flag.Bool("coreos", false, "When true, heapster looks will connect with fleet servers to get the list of nodes to monitor. It is expected that cadvisor will be running on all the nodes at the port specified using flag '--cadvisor_port'. Use flag '--fleet_endpoints' to manage fleet endpoints to watch.")
+)
 
-type externalSource struct {
+type cadvisorSource struct {
 	cadvisorPort string
 	cadvisorApi  datasource.Cadvisor
 	pollDuration time.Duration
@@ -41,7 +44,7 @@ type externalSource struct {
 	lastQuery    time.Time
 }
 
-func (self *externalSource) GetInfo() (api.AggregateData, error) {
+func (self *cadvisorSource) GetInfo() (api.AggregateData, error) {
 	var (
 		lock sync.Mutex
 		wg   sync.WaitGroup
@@ -87,7 +90,7 @@ func (self *externalSource) GetInfo() (api.AggregateData, error) {
 	return result, nil
 }
 
-func (self *externalSource) numStatsToFetch() int {
+func (self *cadvisorSource) numStatsToFetch() int {
 	numStats := int(self.pollDuration / time.Second)
 	if time.Since(self.lastQuery) > self.pollDuration {
 		numStats = int(time.Since(self.lastQuery) / time.Second)
@@ -95,7 +98,20 @@ func (self *externalSource) numStatsToFetch() int {
 	return numStats
 }
 
-func newExternalSource(pollDuration time.Duration) (Source, error) {
+func (self *cadvisorSource) DebugInfo() string {
+	desc := "Source type: Cadvisor\n"
+	// TODO(rjnagal): Cache config?
+	nodeList, err := self.nodesApi.List()
+	if err != nil {
+		desc += fmt.Sprintf("\tFailed to read host config: %s", err)
+	}
+	desc += fmt.Sprintf("\tNodeList: %+v\n", *nodeList)
+	desc += fmt.Sprintf("\t%s\n", self.nodesApi.DebugInfo())
+	desc += "\n"
+	return desc
+}
+
+func newExternalCadvisorSource(pollDuration time.Duration) (Source, error) {
 	if *argCadvisorPort <= 0 {
 		return nil, fmt.Errorf("invalid cadvisor port - %d", *argCadvisorPort)
 	}
@@ -103,7 +119,7 @@ func newExternalSource(pollDuration time.Duration) (Source, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &externalSource{
+	return &cadvisorSource{
 		pollDuration: pollDuration,
 		cadvisorApi:  datasource.NewCadvisor(),
 		nodesApi:     nodesApi,
@@ -112,14 +128,19 @@ func newExternalSource(pollDuration time.Duration) (Source, error) {
 	}, nil
 }
 
-func (self *externalSource) DebugInfo() string {
-	desc := "Source type: External\n"
-	// TODO(rjnagal): Cache config?
-	nodeList, err := self.nodesApi.List()
-	if err != nil {
-		desc += fmt.Sprintf("\tFailed to read host config: %s", err)
+func newCoreOSCadvisorSource(pollDuration time.Duration) (Source, error) {
+	if *argCadvisorPort <= 0 {
+		return nil, fmt.Errorf("invalid cadvisor port - %d", *argCadvisorPort)
 	}
-	desc += fmt.Sprintf("\tNodeList: %+v\n", *nodeList)
-	desc += "\n"
-	return desc
+	nodesApi, err := nodes.NewCoreOSNodes()
+	if err != nil {
+		return nil, err
+	}
+	return &cadvisorSource{
+		pollDuration: pollDuration,
+		cadvisorApi:  datasource.NewCadvisor(),
+		nodesApi:     nodesApi,
+		cadvisorPort: strconv.Itoa(*argCadvisorPort),
+		lastQuery:    time.Now(),
+	}, nil
 }

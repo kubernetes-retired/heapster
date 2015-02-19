@@ -95,7 +95,7 @@ func (self *kubeNodes) getState() string {
 	for _, node := range self.goodNodes {
 		state += fmt.Sprintf("\t\t%s\n", node)
 	}
-	if len(self.nodeErrors) != 0 {
+	if len(self.nodeErrors) > 0 {
 		state += fmt.Sprintf("\tNode Errors: %+v\n", self.nodeErrors)
 	} else {
 		state += "\tNo node errors\n"
@@ -104,7 +104,7 @@ func (self *kubeNodes) getState() string {
 }
 
 func (self *kubeNodes) DebugInfo() string {
-	desc := "Node watcher: Kubernetes\n"
+	desc := "Kubernetes Nodes plugin: \n"
 	desc += self.getState()
 	desc += "\n"
 

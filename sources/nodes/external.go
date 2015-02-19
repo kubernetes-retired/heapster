@@ -28,6 +28,7 @@ import (
 // Provides a list of external cadvisor nodes to monitor.
 type externalCadvisorNodes struct {
 	hostsFile string
+	nodes     *NodeList
 }
 
 // While updating this, also update heapster/deploy/Dockerfile.
@@ -55,12 +56,16 @@ func (self *externalCadvisorNodes) List() (*NodeList, error) {
 		nodes.Items[Host(node.Name)] = Info{PublicIP: node.IP, InternalIP: node.IP}
 	}
 	glog.V(1).Infof("Using cAdvisor hosts %+v", nodes)
-
+	self.nodes = nodes
 	return nodes, nil
 }
 
 func (self *externalCadvisorNodes) DebugInfo() string {
-	return ""
+	output := "External Nodes plugin:"
+	if self.nodes != nil {
+		output = fmt.Sprintf("%s hosts are\n %v", output, self.nodes.Items)
+	}
+	return output
 }
 
 func NewExternalNodes() (NodesApi, error) {
@@ -72,5 +77,8 @@ func NewExternalNodes() (NodesApi, error) {
 		return nil, fmt.Errorf("cannot stat file %q: %s", *hostsFile, err)
 	}
 
-	return &externalCadvisorNodes{*hostsFile}, nil
+	return &externalCadvisorNodes{
+		hostsFile: *hostsFile,
+		nodes:     nil,
+	}, nil
 }

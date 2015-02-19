@@ -50,7 +50,7 @@ func TestExternalFile(t *testing.T) {
 		t.Error(err)
 	}
 	defer os.Remove(f.Name())
-	nodesApi := externalCadvisorNodes{f.Name()}
+	nodesApi := externalCadvisorNodes{hostsFile: f.Name(), nodes: nil}
 
 	testData := &NodeList{
 		Items: map[Host]Info{
