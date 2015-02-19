@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.7 (2-18-2014)
+- Support for Google Cloud Monitoring Backend
+- Watch kubernetes api-server instead of polling for pods and nodes info.
+- Fetch stats in parallel.
+- Refactor code and improve testing.
+- Miscellaneous bug fixes.
+
 ## 0.6 (1-21-2014)
 - New /validate REST endpoint to probe heapster.
 - Heapster supports kube namespaces.
