@@ -40,15 +40,6 @@ func newNodeList() *NodeList {
 	return &NodeList{map[Host]Info{}}
 }
 
-type ExternalNode struct {
-	Name string `json:"name,omitempty"`
-	IP   string `json:"ip,omitempty"`
-}
-
-type ExternalNodeList struct {
-	Items []ExternalNode `json:"items,omitempty"`
-}
-
 type NodesApi interface {
 	// Returns a list of nodes that needs to be monitores or error on failure.
 	List() (*NodeList, error)

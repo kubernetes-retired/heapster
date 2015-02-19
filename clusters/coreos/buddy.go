@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	fleetClient "github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/etcd"
 	fleetPkg "github.com/coreos/fleet/pkg"
@@ -76,9 +76,9 @@ func getMachines(client fleetClient.API, outMachines map[string]string) error {
 }
 
 func updateHeapsterHostsFile(hosts map[string]string) error {
-	nodeList := &nodes.ExternalNodeList{}
+	nodeList := &api.ExternalNodeList{}
 	for hostname, ip := range hosts {
-		nodeList.Items = append(nodeList.Items, nodes.ExternalNode{Name: hostname, IP: ip})
+		nodeList.Items = append(nodeList.Items, api.ExternalNode{Name: hostname, IP: ip})
 	}
 	data, err := json.Marshal(nodeList)
 	if err != nil {
@@ -113,6 +113,7 @@ func validateHostsFile() error {
 }
 
 func main() {
+	flag.Parse()
 	if err := validateHostsFile(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

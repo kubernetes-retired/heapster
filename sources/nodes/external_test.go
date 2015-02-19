@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,10 +36,10 @@ func writeMarshaledData(f *os.File, v interface{}) error {
 	return err
 }
 
-func externalizeNodes(nodeList *NodeList) *ExternalNodeList {
-	externalNodeList := ExternalNodeList{}
+func externalizeNodes(nodeList *NodeList) *api.ExternalNodeList {
+	externalNodeList := api.ExternalNodeList{}
 	for host, info := range nodeList.Items {
-		externalNodeList.Items = append(externalNodeList.Items, ExternalNode{Name: string(host), IP: info.PublicIP})
+		externalNodeList.Items = append(externalNodeList.Items, api.ExternalNode{Name: string(host), IP: info.PublicIP})
 	}
 	return &externalNodeList
 }

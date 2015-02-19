@@ -21,16 +21,17 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 )
-
-// While updating this, also update heapster/deploy/Dockerfile.
-var hostsFile = flag.String("external_hosts_file", "/var/run/heapster/hosts", "A file that heapster refers to get a list of nodes to monitor.")
 
 // Provides a list of external cadvisor nodes to monitor.
 type externalCadvisorNodes struct {
 	hostsFile string
 }
+
+// While updating this, also update heapster/deploy/Dockerfile.
+var hostsFile = flag.String("external_hosts_file", "/var/run/heapster/hosts", "A file that heapster refers to get a list of nodes to monitor.")
 
 func (self *externalCadvisorNodes) List() (*NodeList, error) {
 	fi, err := os.Stat(self.hostsFile)
@@ -44,7 +45,7 @@ func (self *externalCadvisorNodes) List() (*NodeList, error) {
 	if err != nil {
 		return nil, err
 	}
-	var externalNodes ExternalNodeList
+	var externalNodes api.ExternalNodeList
 	err = json.Unmarshal(contents, &externalNodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal contents of file %s. Error: %s", self.hostsFile, err)
