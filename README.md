@@ -3,7 +3,7 @@ Heapster enables monitoring of clusters using [cAdvisor](https://github.com/goog
 
 Heapster supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) natively and collects resource usage of all the pods running in the cluster. It was built to showcase the power of core Kubernetes concepts like labels and pods and the awesomeness that is cAdvisor.
 
-Heapster can be used to enable cluster-wide monitoring on other cluster management solutions by running a simple cluster-specific buddy container that will help Heapster with discovery of hosts. For example, take a look at [this guide](clusters/coreos/README.md) for setting up cluster monitoring in [CoreOS](https://coreos.com).
+Heapster can be used to enable cluster-wide monitoring on other cluster management solutions by running a simple cluster-specific buddy container that will help Heapster with discovery of hosts. For example, take a look at [this guide](clusters/coreos/README.md) for setting up cluster monitoring in [CoreOS](https://coreos.com) without using Kubernetes.
 
 #### Run Heapster in a Kubernetes cluster with an Influxdb backend and [Grafana](http://grafana.org/docs/features/influxdb)
 

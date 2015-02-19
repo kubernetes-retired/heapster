@@ -14,7 +14,7 @@ gce-cloud-config-with-cadvisor.yml contains 'cadvisor.service' which can be spec
 On a CoreOS machine start InfluxDB and grafana
 
 ```shell
-$ ../../influx-grafana/influxdb/start
+$ docker run -d -p 8083:8083 -p 8086:8086 --name influxdb kubernetes/heapster_influxdb:v0.3
 ```
 
 **Step 3: Start heapster coreos buddy**
@@ -22,24 +22,27 @@ $ ../../influx-grafana/influxdb/start
 Heapster does not natively support CoreOS. To help with discovering all the hosts in the cluster start a heapster buddy container that will handle discovery.
 
 ```shell
-$ mkdir heapster
-$ docker run --name heapster-buddy --net host -d -v $PWD/heapster:/var/run/heapster vish/heapster-buddy-coreos
+$ touch heapster_hosts
+$ chmod a+x heapster_hosts
+$ docker run --name heapster-buddy --net host -d -v $PWD/heapster_hosts:/var/run/heapster/hosts vish/heapster-buddy-coreos
 ```
 
 **Step 4: Start heapster**
 
-Figure out the host where InfluxDB is running and pass that to heapster through 'INFLUXDB_HOST' environment variable.
+Pass the host where is running to heapster through 'INFLUXDB_HOST' environment variable.
 
 ```shell
-$ docker run --name heapster -d -e INFLUXDB_HOST=<ip>:8086 -v $PWD/heapster:/var/run/heapster kubernetes/heapster
+$ docker run --name heapster -d -e INFLUXDB_HOST=<ip>:8086 -v $PWD/heapster_hosts:/var/run/heapster/hosts kubernetes/heapster:v0.7
 ```
+Note: If you are running cadvisor on ports other than 8080, pass cadvisor port number as an additional environment variable while starting heapster - `-e CADVISOR_PORT=<port>`. Do not run cadvisor on different ports in individual machines.
 
 **Step 5: Start Grafana**
 
 ```
-docker run -d -p 80:80 -e INFLUXDB_HOST=<host_ip> -e INFLUXDB_NAME=k8s tutum/grafana
+docker run -d -p 80:80 -e INFLUXDB_HOST=<host_ip> kubernetes/heapster_grafana:v0.4
 ```
 
+### Unit files for the various components.
 cadvisor (globally deployed)
 ```
 [Unit]
@@ -74,7 +77,7 @@ Restart=always
 ExecStartPre=-/usr/bin/docker kill influxdb
 ExecStartPre=-/usr/bin/docker rm -f influxdb
 ExecStartPre=/usr/bin/docker pull kubernetes/heapster_influxdb
-ExecStart=/usr/bin/docker run --name influxdb -p 8083:8083 -p 8086:8086 -p 8090:8090 -p 8099:8099 kubernetes/heapster_influxdb
+ExecStart=/usr/bin/docker run --name influxdb -p 8083:8083 -p 8086:8086 kubernetes/heapster_influxdb:v0.3
 ExecStop=/usr/bin/docker stop -t 2 influxdb
 ```
 
@@ -88,11 +91,12 @@ Requires=docker.service
 [Service]
 TimeoutStartSec=10m
 Restart=always
-ExecStartPre=-/usr/bin/mkdir -p /home/core/heapster
+ExecStartPre=-/usr/bin/touch /home/core/heapster_hosts
+ExecStartPre=-/bin/chmod a+rw /home/core/heapster_hosts
 ExecStartPre=-/usr/bin/docker kill heapster-agent
 ExecStartPre=-/usr/bin/docker rm -f heapster-agent
 ExecStartPre=/usr/bin/docker pull vish/heapster-buddy-coreos
-ExecStart=/usr/bin/docker run --name heapster-agent --net host -v /home/core/heapster:/var/run/heapster vish/heapster-buddy-coreos
+ExecStart=/usr/bin/docker run --name heapster-agent --net host -v /home/core/heapster_hosts:/var/run/heapster/hosts vish/heapster-buddy-coreos
 ExecStop=/usr/bin/docker stop -t 2 heapster-agent
 
 [X-Fleet]
@@ -113,8 +117,8 @@ TimeoutStartSec=10m
 Restart=always
 ExecStartPre=-/usr/bin/docker kill heapster
 ExecStartPre=-/usr/bin/docker rm -f heapster
-ExecStartPre=/usr/bin/docker pull vish/heapster
-ExecStart=/usr/bin/docker run --name heapster --net host -e INFLUXDB_HOST=127.0.0.1:8086 -v /home/core/heapster:/var/run/heapster vish/heapster
+ExecStartPre=/usr/bin/docker pull kubernetes/heapster:v0.7
+ExecStart=/usr/bin/docker run --name heapster --net host -e INFLUXDB_HOST=127.0.0.1:8086 -v /home/core/heapster_hosts:/var/run/heapster/hosts kubernetes/heapster:v0.7
 ExecStop=/usr/bin/docker stop -t 2 heapster
 
 [X-Fleet]

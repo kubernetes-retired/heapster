@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM progrium/busybox
 MAINTAINER vishnuk@google.com
 
 VOLUME /var/run/heapster

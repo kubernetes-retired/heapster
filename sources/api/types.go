@@ -49,3 +49,15 @@ type Container struct {
 func NewContainer() *Container {
 	return &Container{Stats: make([]*cadvisor.ContainerStats, 0)}
 }
+
+// An external node represents a host which is running cadvisor. Heapster will expect
+// data in this format via its external files API.
+type ExternalNode struct {
+	Name string `json:"name,omitempty"`
+	IP   string `json:"ip,omitempty"`
+}
+
+// ExternalNodeList represents a list of all hosts that are running cadvisor which heapster will monitor.
+type ExternalNodeList struct {
+	Items []ExternalNode `json:"items,omitempty"`
+}
