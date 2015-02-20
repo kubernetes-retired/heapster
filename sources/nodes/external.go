@@ -35,6 +35,17 @@ type externalCadvisorNodes struct {
 var hostsFile = flag.String("external_hosts_file", "/var/run/heapster/hosts", "A file that heapster refers to get a list of nodes to monitor.")
 
 func (self *externalCadvisorNodes) List() (*NodeList, error) {
+	// No hosts file means only localhost.
+	if self.hostsFile == "" {
+		self.nodes = newNodeList()
+		const localhostIP = "127.0.0.1"
+		self.nodes.Items["localhost"] = Info{
+			PublicIP:   localhostIP,
+			InternalIP: localhostIP,
+		}
+		return self.nodes, nil
+	}
+
 	fi, err := os.Stat(self.hostsFile)
 	if err != nil {
 		return nil, fmt.Errorf("cannot stat file %q: %s", self.hostsFile, err)
@@ -70,11 +81,12 @@ func (self *externalCadvisorNodes) DebugInfo() string {
 
 func NewExternalNodes() (NodesApi, error) {
 	if *hostsFile == "" {
-		return nil, fmt.Errorf("external hosts file is invalid")
-	}
-	_, err := os.Stat(*hostsFile)
-	if err != nil {
-		return nil, fmt.Errorf("cannot stat file %q: %s", *hostsFile, err)
+		glog.Infof("External nodes source using localhost only due to an empty hosts file")
+	} else {
+		_, err := os.Stat(*hostsFile)
+		if err != nil {
+			return nil, fmt.Errorf("cannot stat file %q: %s", *hostsFile, err)
+		}
 	}
 
 	return &externalCadvisorNodes{
