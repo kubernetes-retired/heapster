@@ -6,6 +6,7 @@
 - Fetch stats in parallel.
 - Refactor code and improve testing.
 - Miscellaneous bug fixes.
+- Native support for CoreOS.
 
 ## 0.6 (1-21-2014)
 - New /validate REST endpoint to probe heapster.

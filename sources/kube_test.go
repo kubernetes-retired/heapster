@@ -24,18 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fakeNodesApi struct {
-	nodeList nodes.NodeList
-}
-
-func (self *fakeNodesApi) List() (*nodes.NodeList, error) {
-	return &self.nodeList, nil
-}
-
-func (self *fakeNodesApi) DebugInfo() string {
-	return ""
-}
-
 type fakePodsApi struct {
 	podList []api.Pod
 }
