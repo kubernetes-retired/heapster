@@ -1,12 +1,18 @@
 #!/bin/bash
 
 set -ex
-
 EXTRA_ARGS=""
-if [ ! -z $CADVISOR_PORT ]; then
-  EXTRA_ARGS="--cadvisor_port=$CADVISOR_PORT"
+if [ ! -z $COREOS ]; then
+  EXTRA_ARGS="$EXTRA_ARGS --coreos"
+fi
+if [ ! -z $DEBUG ]; then
+  EXTRA_ARGS="$EXTRA_ARGS --vmodule=*=3"
+fi
+if [ ! -x $CADVISOR_PORT ]; then
+  EXTRA_ARGS="$EXTRA_ARGS --cadvisor_port=$CADVISOR_PORT"
 fi
 
+HEAPSTER="/usr/bin/heapster $EXTRA_ARGS "
 # Check if InfluxDB service is running
 if [ ! -z $KUBERNETES_RO_SERVICE_HOST ]; then
   # TODO(vishh): add support for passing in user name and password.    
@@ -19,9 +25,9 @@ if [ ! -z $KUBERNETES_RO_SERVICE_HOST ]; then
     echo "InfluxDB service address not found. Exiting."
     exit 1
   fi
-  /usr/bin/heapster --kubernetes_master "${KUBERNETES_RO_SERVICE_HOST}:${KUBERNETES_RO_SERVICE_PORT}" --sink influxdb --sink_influxdb_host $INFLUXDB_ADDRESS
+  $HEAPSTER --kubernetes_master "${KUBERNETES_RO_SERVICE_HOST}:${KUBERNETES_RO_SERVICE_PORT}" --sink influxdb --sink_influxdb_host $INFLUXDB_ADDRESS
 elif [ ! -z $INFLUXDB_HOST ]; then
-    /usr/bin/heapster --sink influxdb --sink_influxdb_host ${INFLUXDB_HOST} $EXTRA_ARGS
+  $HEAPSTER --sink influxdb --sink_influxdb_host ${INFLUXDB_HOST}
 else
-    /usr/bin/heapster $EXTRA_ARGS
+  $HEAPSTER
 fi
