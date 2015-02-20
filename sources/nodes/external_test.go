@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,4 +69,24 @@ func TestExternalFile(t *testing.T) {
 	res, err = nodesApi.List()
 	require.NoError(t, err)
 	require.True(t, reflect.DeepEqual(res, testData), "failure. Expected: %+v, got: %+v", res, testData)
+}
+
+func TestLocalhostMonitoring(t *testing.T) {
+	*hostsFile = ""
+	nodesApi, err := NewExternalNodes()
+	require.NoError(t, err)
+
+	const (
+		localhost   = "localhost"
+		localhostIP = "127.0.0.1"
+	)
+
+	// Should only have the localhost node.
+	res, err := nodesApi.List()
+	require.NoError(t, err)
+	assert.Len(t, res.Items, 1)
+	_, ok := res.Items[localhost]
+	require.True(t, ok)
+	assert.Equal(t, res.Items[localhost].InternalIP, localhostIP)
+	assert.Equal(t, res.Items[localhost].PublicIP, localhostIP)
 }
