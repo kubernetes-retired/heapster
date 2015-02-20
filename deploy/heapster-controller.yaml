@@ -18,6 +18,15 @@ desiredState:
               - 
                 name: "INFLUXDB_HOST"
                 value: "monitoring-influxdb"
+            volumeMounts:
+              - name: ssl-certs
+                mountPath: /etc/ssl/certs
+                readOnly: true
+        volumes:
+          - name: ssl-certs
+            source:
+              hostDir:
+                path: /etc/ssl/certs
     labels: 
       name: "heapster"
       uses: "monitoring-influxdb"
