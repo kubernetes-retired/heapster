@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.8 (2-22-2014)
+- Avoid expecting HostIP of Pod to match node's HostIP. 
+
 ## 0.7 (2-18-2014)
 - Support for Google Cloud Monitoring Backend
 - Watch kubernetes api-server instead of polling for pods and nodes info.
