@@ -167,7 +167,7 @@ func (self *GcmSink) pushContainerMetrics(container *api.Container, labels map[s
 					Labels: labels,
 					Start:  startTime,
 					End:    stat.Timestamp,
-					Value:  supported.GetValue(stat),
+					Value:  supported.GetValue(&container.Spec, stat),
 				})
 				self.lastExported[key] = stat.Timestamp
 			}

@@ -15,6 +15,8 @@
 package gcm
 
 import (
+	"time"
+
 	cadvisor "github.com/google/cadvisor/info"
 )
 
@@ -25,7 +27,7 @@ type SupportedMetric struct {
 	HasValue func(*cadvisor.ContainerSpec) bool
 
 	// Returns the desired data point for this metric from the stats.
-	GetValue func(*cadvisor.ContainerStats) interface{}
+	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) interface{}
 }
 
 func GetSupportedMetrics() []SupportedMetric {
@@ -36,6 +38,20 @@ func GetSupportedMetrics() []SupportedMetric {
 var allMetrics = []SupportedMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
+			Name:        "uptime",
+			Description: "Number of milliseconds since the container was started",
+			Type:        MetricCumulative,
+			ValueType:   ValueInt64,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return !spec.CreationTime.IsZero()
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
+			return time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()
+		},
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
 			Name:        "cpu/usage",
 			Description: "Cumulative CPU usage on all cores",
 			Type:        MetricCumulative,
@@ -44,7 +60,7 @@ var allMetrics = []SupportedMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasCpu
 		},
-		GetValue: func(stat *cadvisor.ContainerStats) interface{} {
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
 			return int64(stat.Cpu.Usage.Total)
 		},
 	},
@@ -58,7 +74,7 @@ var allMetrics = []SupportedMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasMemory
 		},
-		GetValue: func(stat *cadvisor.ContainerStats) interface{} {
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
 			return int64(stat.Memory.Usage)
 		},
 	},
@@ -72,7 +88,7 @@ var allMetrics = []SupportedMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasMemory
 		},
-		GetValue: func(stat *cadvisor.ContainerStats) interface{} {
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
 			return int64(stat.Memory.WorkingSet)
 		},
 	},
