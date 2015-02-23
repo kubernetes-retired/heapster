@@ -2,11 +2,11 @@
 set -x
 
 if ! git diff --name-only origin/master | grep -c -E "*.go|*.sh|.*yaml" &> /dev/null; then
-  echo "This PR does not touch files that require integration testing. Skipping integration tests."
+  echo "This PR does not touch files that require integration testing. Skipping integration tests!"
   exit 0
 fi
 
-SUPPORTED_KUBE_VERSIONS="0.10.0"
+SUPPORTED_KUBE_VERSIONS="0.11.0"
 TEST_NAMESPACE="default"
 export GOPATH="$JENKINS_HOME/workspace/project"
 export GOBIN="$GOPATH/bin"
