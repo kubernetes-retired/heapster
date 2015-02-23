@@ -108,7 +108,7 @@ func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	selectedPods := []podNodePair{}
 	// TODO(vishh): Avoid this loop by setting a node selector on the watcher.
 	for _, pod := range pods {
-		if nodeInfo, ok := nodeList.Items[nodes.Host(pod.Status.Host)]; ok && pod.Status.HostIP == nodeInfo.PublicIP {
+		if nodeInfo, ok := nodeList.Items[nodes.Host(pod.Status.Host)]; ok {
 			selectedPods = append(selectedPods, podNodePair{&pod, &nodeInfo})
 		} else {
 			glog.V(2).Infof("pod %q with host %q and hostip %q not found in nodeList", pod.Name, pod.Status.Host, pod.Status.HostIP)
