@@ -14,6 +14,6 @@ export GOBIN="$GOPATH/bin"
 deploy/build-test.sh \
 && influx-grafana/grafana/build-test.sh \
 && influx-grafana/influxdb/build-test.sh \
-&& pushd integration \
-&& godep go test -a -v --vmodule=*=1 --timeout=30m --namespace=$TEST_NAMESPACE --kube_versions=$SUPPORTED_KUBE_VERSIONS github.com/GoogleCloudPlatform/heapster/integration/... \
-&& popd
+&& cd integration \
+&& godep go test -a -v --vmodule=*=1 --timeout=30m --namespace=$TEST_NAMESPACE --kube_versions=$SUPPORTED_KUBE_VERSIONS github.com/GoogleCloudPlatform/heapster/integration/...;
+docker rmi -f `docker images -q` || true
