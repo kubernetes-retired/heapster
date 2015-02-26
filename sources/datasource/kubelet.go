@@ -69,7 +69,7 @@ func (self *kubeletSource) getContainer(url string, numStats int) (*api.Containe
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
