@@ -51,13 +51,6 @@ $ deploy/kube.sh restart
 ##### Hints
 * To enable memory and swap accounting on the minions, follow [these instructions](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting).
 
-* If the Grafana UI is not accessible via the proxy on the master (URL mentioned above), open up port 80 on the nodes, find out the node on which Grafana container is running, and access the Grafana UI at `http://<minion-ip>/`
-
-	```shell
-gcloud compute firewall-rules update monitoring-heapster --allow "tcp:80" --target-tags=kubernetes-minion
-echo "Grafana URL: http://$(kubectl.sh get pods -l name=influxGrafana -o yaml | grep hostIP | awk '{print $2}')/"
-	```
-
 #### How Heapster works on Kubernetes
 1. Discovers all minions in a Kubernetes cluster
 2. Collects container statistics from the kubelets running on the nodes
