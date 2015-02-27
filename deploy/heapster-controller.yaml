@@ -1,9 +1,9 @@
 apiVersion: "v1beta1"
 id: "monitoring-heapster-controller"
 kind: "ReplicationController"
-desiredState: 
+desiredState:
   replicas: 1
-  replicaSelector:    
+  replicaSelector:
     name: "heapster"
   podTemplate:
     desiredState:
@@ -11,12 +11,10 @@ desiredState:
         version: "v1beta1"
         id: "monitoring-heapster-controller"
         containers:
-          -
-            name: "heapster"
+          - name: "heapster"
             image: "kubernetes/heapster:v0.7"
-            env: 
-              - 
-                name: "INFLUXDB_HOST"
+            env:
+              - name: "INFLUXDB_HOST"
                 value: "monitoring-influxdb"
             volumeMounts:
               - name: ssl-certs
@@ -27,8 +25,8 @@ desiredState:
             source:
               hostDir:
                 path: /etc/ssl/certs
-    labels: 
+    labels:
       name: "heapster"
       uses: "monitoring-influxdb"
-labels: 
+labels:
   name: "heapster"

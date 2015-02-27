@@ -1,7 +1,7 @@
 apiVersion: "v1beta1"
 kind: "ReplicationController"
 id: "monitoring-influx-grafana-controller"
-desiredState: 
+desiredState:
   replicas: 1
   replicaSelector:
     name: "influxGrafana"
@@ -12,19 +12,19 @@ desiredState:
       manifest:
         version: "v1beta1"
         id: "monitoring-influx-grafana-controller"
-        containers: 
+        containers:
           - name: "influxdb"
             image: "kubernetes/heapster_influxdb:v0.3"
-            ports: 
+            ports:
               - containerPort: 8083
                 hostPort: 8083
               - containerPort: 8086
                 hostPort: 8086
           - name: "grafana"
             image: "kubernetes/heapster_grafana:v0.4"
-            ports: 
+            ports:
               - containerPort: 80
-            env: 
+            env:
               - name: "HTTP_USER"
                 value: "admin"
               - name: "HTTP_PASS"
