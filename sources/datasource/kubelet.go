@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
@@ -60,7 +61,11 @@ func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api
 	if len(containerInfo.Aliases) > 0 {
 		container.Name = containerInfo.Aliases[0]
 	}
-
+	timestamps := []string{}
+	for _, stat := range container.Stats {
+		timestamps = append(timestamps, stat.Timestamp.String())
+	}
+	glog.Infof("%q stats\n%q", container.Name, strings.Join(timestamps, " "))
 	return container
 }
 
@@ -69,7 +74,7 @@ func (self *kubeletSource) getContainer(url string, numStats int) (*api.Containe
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}

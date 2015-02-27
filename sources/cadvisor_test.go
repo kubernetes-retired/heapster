@@ -98,6 +98,10 @@ func TestWorkflowSuccess(t *testing.T) {
 	assert.Len(t, data.Machine, 2)
 	assert.Equal(t, data.Machine[0].Name, expectedData[hostA].root.Name)
 	assert.Equal(t, data.Machine[1].Name, expectedData[hostB].root.Name)
-	assert.Equal(t, data.Containers[0].Name, expectedData[hostA].subcontainers[0].Name)
-	assert.Equal(t, data.Containers[1].Name, expectedData[hostB].subcontainers[0].Name)
+	containerNames := []string{
+		data.Containers[0].Name,
+		data.Containers[1].Name,
+	}
+	assert.Contains(t, containerNames, expectedData[hostA].subcontainers[0].Name)
+	assert.Contains(t, containerNames, expectedData[hostB].subcontainers[0].Name)
 }
