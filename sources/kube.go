@@ -147,23 +147,23 @@ func (self *kubeSource) getPodInfo(nodeList *nodes.NodeList) ([]api.Pod, error) 
 	var (
 		wg sync.WaitGroup
 	)
-	for _, pod := range pods {
+	for index := range pods {
 		wg.Add(1)
 		go func(pod *api.Pod) {
 			defer wg.Done()
-			for _, container := range pod.Containers {
+			for index, container := range pod.Containers {
 				rawContainer, err := self.getStatsFromKubelet(pod, container.Name)
 				if err != nil {
 					// Containers could be in the process of being setup or restarting while the pod is alive.
-					glog.Errorf("failed to get stats for container %q/%q in pod %q", container.Name, pod.Namespace, pod.Name)
+					glog.Errorf("failed to get stats for container %q in pod %q/%q", container.Name, pod.Namespace, pod.Name)
 					return
 				}
 				glog.V(2).Infof("Fetched stats from kubelet for container %s in pod %s", container.Name, pod.Name)
-				container.Hostname = pod.Hostname
-				container.Spec = rawContainer.Spec
-				container.Stats = rawContainer.Stats
+				pod.Containers[index].Hostname = pod.Hostname
+				pod.Containers[index].Spec = rawContainer.Spec
+				pod.Containers[index].Stats = rawContainer.Stats
 			}
-		}(&pod)
+		}(&pods[index])
 	}
 	wg.Wait()
 
