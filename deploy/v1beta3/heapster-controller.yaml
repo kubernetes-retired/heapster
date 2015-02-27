@@ -1,0 +1,31 @@
+apiVersion: v1beta3
+kind: ReplicationController
+metadata: 
+  labels: 
+    name: heapster
+  name: monitoring-heapster-controller
+spec: 
+  replicas: 1
+  selector: 
+    name: heapster
+  template: 
+    metadata: 
+      labels: 
+        name: heapster
+    spec: 
+      containers: 
+        - image: kubernetes/heapster:v0.8
+          name: heapster
+          env: 
+            - name: "INFLUXDB_HOST"
+              value: "monitoring-influxdb"
+          volumeMounts:
+            - name: ssl-certs
+              mountPath: /etc/ssl/certs
+              readOnly: true
+      volumes:
+        - name: ssl-certs
+          source:
+            hostDir:
+              path: /etc/ssl/certs
+
