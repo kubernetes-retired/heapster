@@ -1,13 +1,7 @@
-apiVersion: v1beta3
-kind: Service
-metadata: 
-  labels: 
-    name: influxGrafana
-  name: monitoring-grafana
-spec: 
-  containerPort: 80
-  port: 80
-  selector: 
-    name: influxGrafana
-
-
+apiVersion: "v1beta1"
+kind: "Service"
+id: "monitoring-grafana"
+port: 80
+containerPort: 80
+selector:
+  name: "influxGrafana"
