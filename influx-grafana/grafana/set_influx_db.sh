@@ -21,11 +21,12 @@ if [ "${INFLUXDB_PORT}" = "**ChangeMe**" ]; then
 fi
 
 url="${INFLUXDB_PROTO}://$INFLUXDB_HOST"
-if [ -z "${INFLUXDB_PORT}" ]; then
-  url="$url/db"
+if [ -z "${KUBERNETES_API_PORT}" ]; then
+  url="$url/api/v1beta1/proxy/services/monitoring-influxdb/db"
 else
-  url="$url:$INFLUXDB_PORT/db"
+  url="$url:$KUBERNETES_API_PORT/api/v1beta1/proxy/services/monitoring-influxdb/db"
 fi
+
 escaped_url=${url////\\/}
 
 echo "=> Configuring InfluxDB"
