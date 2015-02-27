@@ -18,4 +18,4 @@ deploy/build-test.sh \
 && godep go test -a -v --vmodule=*=1 --timeout=30m --namespace=$TEST_NAMESPACE --kube_versions=$SUPPORTED_KUBE_VERSIONS github.com/GoogleCloudPlatform/heapster/integration/...;
 result=$?;
 docker rmi -f `docker images -a -q`;
-exit $result
+exit $result 
