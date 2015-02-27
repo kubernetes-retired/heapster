@@ -4,13 +4,13 @@ function (Settings) {
     datasources: {
 	'metrics': {
             type: 'influxdb',
-            url: "<--URL-->/<--DB_NAME-->",
+            url: window.location.origin+"/db/<--DB_NAME-->",
             username: "<--USER-->",
             password: "<--PASS-->"
 	},
 	'grafana': {
             type: 'influxdb',
-            url: "<--URL-->/<--GRAFANA_DB_NAME-->",
+            url: window.location.origin+"/db/<--GRAFANA_DB_NAME-->",
             username: "<--USER-->",
             password: "<--PASS-->",
 	    grafanaDB: true
