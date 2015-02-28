@@ -35,6 +35,7 @@ import (
 )
 
 const (
+	heapsterPackage    = "github.com/GoogleCloudPlatform/heapster"
 	targetTags         = "kubernetes-minion"
 	maxInfluxdbRetries = 5
 )
@@ -48,7 +49,73 @@ var (
 	influxdbImage                 = flag.String("influxdb_image", "vish/heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
 	grafanaImage                  = flag.String("grafana_image", "vish/heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
 	namespace                     = flag.String("namespace", "default", "namespace to be used for testing")
+	heapsterBuildDir              = "../deploy"
+	influxdbBuildDir              = "../influx-grafana/influxdb"
+	grafanaBuildDir               = "../influx-grafana/grafana"
 )
+
+func buildAndPushHeapsterImage(hostnames []string) error {
+	curwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if err := os.Chdir(heapsterBuildDir); err != nil {
+		return err
+	}
+	if err := buildGoBinary(heapsterPackage); err != nil {
+		return err
+	}
+	if err := buildDockerImage(*heapsterImage); err != nil {
+		return err
+	}
+	for _, host := range hostnames {
+		if err := copyDockerImage(*heapsterImage, host); err != nil {
+			return err
+		}
+	}
+	glog.Info("built and pushed heapster image")
+	return os.Chdir(curwd)
+}
+
+func buildAndPushInfluxdbImage(hostnames []string) error {
+	curwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if err := os.Chdir(influxdbBuildDir); err != nil {
+		return err
+	}
+	if err := buildDockerImage(*influxdbImage); err != nil {
+		return err
+	}
+	for _, host := range hostnames {
+		if err := copyDockerImage(*influxdbImage, host); err != nil {
+			return err
+		}
+	}
+	glog.Info("built and pushed influxdb image")
+	return os.Chdir(curwd)
+}
+
+func buildAndPushGrafanaImage(hostnames []string) error {
+	curwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if err := os.Chdir(grafanaBuildDir); err != nil {
+		return err
+	}
+	if err := buildDockerImage(*grafanaImage); err != nil {
+		return err
+	}
+	for _, host := range hostnames {
+		if err := copyDockerImage(*grafanaImage, host); err != nil {
+			return err
+		}
+	}
+	glog.Info("built and pushed grafana image")
+	return os.Chdir(curwd)
+}
 
 func replaceImages(inputFile, outputBaseDir string, containerNameImageMap map[string]string) (string, error) {
 	input, err := ioutil.ReadFile(inputFile)
@@ -123,6 +190,15 @@ func deleteAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []
 			glog.Error(err)
 		}
 	}
+	if err := removeDockerImage(*heapsterImage); err != nil {
+		glog.Error(err)
+	}
+	if err := removeDockerImage(*influxdbImage); err != nil {
+		glog.Error(err)
+	}
+	if err := removeDockerImage(*grafanaImage); err != nil {
+		glog.Error(err)
+	}
 }
 
 var replicationControllers = []*kube_api.ReplicationController{}
@@ -185,6 +261,26 @@ func queryInfluxDB(t *testing.T, table string, client *influxdb.Client) {
 	require.NotEmpty(t, series, "%q table does not contain any data", table)
 }
 
+func buildAndPushImages(fm kubeFramework) error {
+	nodeList, err := fm.Client().Nodes().List()
+	if err != nil {
+		return err
+	}
+
+	nodes := []string{}
+	for _, node := range nodeList.Items {
+		name := strings.Split(node.Name, ".")[0]
+		nodes = append(nodes, name)
+	}
+	if err := buildAndPushHeapsterImage(nodes); err != nil {
+		return err
+	}
+	if err := buildAndPushInfluxdbImage(nodes); err != nil {
+		return err
+	}
+	return buildAndPushGrafanaImage(nodes)
+}
+
 func TestHeapsterInfluxDBWorks(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping kubernetes integration test.")
@@ -200,6 +296,8 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 	for _, kubeVersion := range kubeVersionsList {
 		fm, err = newKubeFramework(t, kubeVersion)
 		require.NoError(t, err, "failed to create kube framework")
+
+		require.NoError(t, buildAndPushImages(fm), "failed to build and push images")
 
 		// create pods and wait for them to run.
 		require.NoError(t, createAndWaitForRunning(fm, *namespace))
