@@ -214,12 +214,29 @@ func getKubeClient() (string, *kube_client.Client, error) {
 }
 
 func validateCluster(baseDir string) bool {
+	glog.V(1).Info("validating existing cluster")
 	out, err := runKubeClusterCommand(baseDir, "validate-cluster.sh")
 	if err != nil {
 		glog.V(1).Infof("cluster validation failed - %q\n %s", err, out)
 		return false
 	}
 	return true
+}
+
+func requireNewCluster(baseDir, version string) bool {
+	// Setup kube client
+	_, kubeClient, err := getKubeClient()
+	if err != nil {
+		glog.V(1).Infof("kube client creation failed - %q", err)
+		return true
+	}
+	glog.V(1).Infof("checking if existing cluster can be used")
+	versionInfo, err := kubeClient.ServerVersion()
+	if err != nil {
+		glog.V(1).Infof("failed to get kube version info - %q", err)
+		return true
+	}
+	return !strings.Contains(versionInfo.GitVersion, version)
 }
 
 func downloadAndSetupCluster(version string) (baseDir string, err error) {
@@ -246,6 +263,10 @@ func downloadAndSetupCluster(version string) (baseDir string, err error) {
 		return "", fmt.Errorf("failed to disable cluster monitoring in kube cluster config - %q", err)
 	}
 	glog.V(1).Info("Disabled cluster monitoring")
+	if !requireNewCluster(kubeBaseDir, version) {
+		glog.V(1).Infof("skipping cluster setup since a cluster with required version already exists")
+		return kubeBaseDir, nil
+	}
 
 	// Setup kube cluster
 	glog.V(1).Infof("Setting up new kubernetes cluster version: %s", version)
