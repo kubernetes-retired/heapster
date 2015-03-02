@@ -27,16 +27,22 @@ import (
 
 // Provides a list of external cadvisor nodes to monitor.
 type externalCadvisorNodes struct {
+	// File containing list of hosts to monitor.
 	hostsFile string
-	nodes     *NodeList
+
+	// Whether to run in "standalone" mode and only consider localhost.
+	standalone bool
+
+	nodes *NodeList
 }
 
 // While updating this, also update heapster/deploy/Dockerfile.
 var hostsFile = flag.String("external_hosts_file", "/var/run/heapster/hosts", "A file that heapster refers to get a list of nodes to monitor.")
+var standaloneMode = flag.Bool("standalone", false, "Whether to run Heapster in \"standalone\" mode where it only targets the current node.")
 
 func (self *externalCadvisorNodes) List() (*NodeList, error) {
-	// No hosts file means only localhost.
-	if self.hostsFile == "" {
+	// Standalone means only localhost.
+	if self.standalone {
 		self.nodes = newNodeList()
 		const localhostIP = "127.0.0.1"
 		self.nodes.Items["localhost"] = Info{
@@ -73,6 +79,9 @@ func (self *externalCadvisorNodes) List() (*NodeList, error) {
 
 func (self *externalCadvisorNodes) DebugInfo() string {
 	output := "External Nodes plugin:"
+	if self.standalone {
+		output = fmt.Sprintf(" Running in standalone mode.\n")
+	}
 	if self.nodes != nil {
 		output = fmt.Sprintf("%s hosts are\n %v", output, self.nodes.Items)
 	}
@@ -80,8 +89,8 @@ func (self *externalCadvisorNodes) DebugInfo() string {
 }
 
 func NewExternalNodes() (NodesApi, error) {
-	if *hostsFile == "" {
-		glog.Infof("External nodes source using localhost only due to an empty hosts file")
+	if *standaloneMode {
+		glog.Infof("Running in standalone mode, external nodes source will only use localhost")
 	} else {
 		_, err := os.Stat(*hostsFile)
 		if err != nil {
@@ -90,7 +99,8 @@ func NewExternalNodes() (NodesApi, error) {
 	}
 
 	return &externalCadvisorNodes{
-		hostsFile: *hostsFile,
-		nodes:     nil,
+		hostsFile:  *hostsFile,
+		standalone: *standaloneMode,
+		nodes:      nil,
 	}, nil
 }

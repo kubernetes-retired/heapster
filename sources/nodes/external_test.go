@@ -72,7 +72,7 @@ func TestExternalFile(t *testing.T) {
 }
 
 func TestLocalhostMonitoring(t *testing.T) {
-	*hostsFile = ""
+	*standaloneMode = true
 	nodesApi, err := NewExternalNodes()
 	require.NoError(t, err)
 
