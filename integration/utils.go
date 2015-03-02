@@ -56,9 +56,16 @@ func copyDockerImage(imageName, hostname string) error {
 	}
 	out, err = exec.Command("gcutil", "ssh", hostname, "sudo", "docker", "load", "-i", remoteFile).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to load docker binary on host %q (%q) - %q", hostname, err, out)
+		err = fmt.Errorf("failed to load docker image %q using temp file %q on host %q (%q) - %q", imageName, remoteFile, hostname, err, out)
 	}
-	return nil
+	out, rmErr := exec.Command("gcutil", "ssh", hostname, "sudo", "rm", "-f", remoteFile).CombinedOutput()
+	if rmErr != nil {
+		if err != nil {
+			rmErr = fmt.Errorf("%v\nfailed to remove tempfile on host %q (%q) - %q", err, hostname, err, out)
+		}
+		return rmErr
+	}
+	return err
 }
 
 func removeDockerImage(imageName string) error {
@@ -67,4 +74,9 @@ func removeDockerImage(imageName string) error {
 		return fmt.Errorf("failed to remove docker image %q (%q) - %q", imageName, err, out)
 	}
 	return nil
+}
+
+func cleanupRemoteHost(hostname string) {
+	_ = exec.Command("gcutil", "ssh", hostname, "sudo", "docker", "rm", "`docker ps -a -q`").Run()
+	_ = exec.Command("gcutil", "ssh", hostname, "sudo", "docker", "rmi", "`docker images -a -q`").Run()
 }
