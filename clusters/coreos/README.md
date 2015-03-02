@@ -19,12 +19,12 @@ $ docker run -d -p 8083:8083 -p 8086:8086 --name influxdb kubernetes/heapster_in
 
 **Step 3: Start heapster**
 
-Pass the host where is running to heapster through 'INFLUXDB_HOST' environment variable.
+Pass the host where heapster is running via the 'INFLUXDB_HOST' environment variable.
 
 ```shell
 $ docker run --name heapster -d -e INFLUXDB_HOST=<ip>:8086 -e COREOS kubernetes/heapster:v0.7
 ```
-Note: If you are running cadvisor on ports other than 8080, pass cadvisor port number as an additional environment variable while starting heapster - `-e CADVISOR_PORT=<port>`. Do not run cadvisor on different ports on individual machines.
+Note: If you are running cadvisor on a port other than 8080, pass the cadvisor port number as an additional environment variable while starting heapster - `-e CADVISOR_PORT=<port>`. Do not run cadvisor on different ports on individual machines.
 
 **Step 4: Start Grafana**
 
