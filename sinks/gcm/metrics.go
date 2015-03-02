@@ -34,7 +34,6 @@ func GetSupportedMetrics() []SupportedMetric {
 	return allMetrics
 }
 
-// TODO(vmarmol): Add the rest of the metrics.
 var allMetrics = []SupportedMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
@@ -92,4 +91,76 @@ var allMetrics = []SupportedMetric{
 			return int64(stat.Memory.WorkingSet)
 		},
 	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "memory/page_faults",
+			Description: "Number of major page faults",
+			Type:        MetricGauge,
+			ValueType:   ValueInt64,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasMemory
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
+			return int64(stat.Memory.ContainerData.Pgfault)
+		},
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "network/rx_bytes",
+			Description: "Cumulative number of bytes received over the network",
+			Type:        MetricCumulative,
+			ValueType:   ValueInt64,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasNetwork
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
+			return int64(stat.Network.RxBytes)
+		},
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "network/rx_errors",
+			Description: "Cumulative number of errors while receiving over the network",
+			Type:        MetricCumulative,
+			ValueType:   ValueInt64,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasNetwork
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
+			return int64(stat.Network.RxErrors)
+		},
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "network/tx_bytes",
+			Description: "Cumulative number of bytes sent over the network",
+			Type:        MetricCumulative,
+			ValueType:   ValueInt64,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasNetwork
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
+			return int64(stat.Network.TxBytes)
+		},
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "network/tx_errors",
+			Description: "Cumulative number of errors while sending over the network",
+			Type:        MetricCumulative,
+			ValueType:   ValueInt64,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasNetwork
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
+			return int64(stat.Network.TxErrors)
+		},
+	},
+	// TODO(vmarmol): DiskIO stats if we find those useful and know how to export them in a user-friendly way.
+	// TODO(vmarmol): FS usage. That requires more labels that the rest here so we will need a new function.
 }
