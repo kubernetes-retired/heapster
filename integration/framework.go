@@ -64,6 +64,9 @@ type kubeFramework interface {
 	// Returns a url that provides access to a kubernetes service via the proxy on the apiserver.
 	// This url requires master auth.
 	GetProxyUrlForService(serviceName string) string
+
+	// Returns the node hostnames.
+	GetNodes() ([]string, error)
 }
 
 type realKubeFramework struct {
@@ -409,4 +412,18 @@ func (self *realKubeFramework) DestroyCluster() {
 
 func (self *realKubeFramework) GetProxyUrlForService(serviceName string) string {
 	return fmt.Sprintf("%s/api/v1beta1/proxy/services/%s/", self.masterIP, serviceName)
+}
+
+func (self *realKubeFramework) GetNodes() ([]string, error) {
+	var nodes []string
+	nodeList, err := self.kubeClient.Nodes().List()
+	if err != nil {
+		return nodes, err
+	}
+
+	for _, node := range nodeList.Items {
+		name := strings.Split(node.Name, ".")[0]
+		nodes = append(nodes, name)
+	}
+	return nodes, nil
 }

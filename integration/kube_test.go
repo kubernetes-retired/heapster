@@ -179,25 +179,34 @@ func createAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []
 }
 
 func deleteAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []*kube_api.ReplicationController) {
+	var err error
 	for _, rc := range rcs {
-		if err := fm.DeleteRC(ns, rc); err != nil {
+		if err = fm.DeleteRC(ns, rc); err != nil {
 			glog.Error(err)
 		}
 	}
 
 	for _, service := range services {
-		if err := fm.DeleteService(ns, service); err != nil {
+		if err = fm.DeleteService(ns, service); err != nil {
 			glog.Error(err)
 		}
 	}
-	if err := removeDockerImage(*heapsterImage); err != nil {
+	if err = removeDockerImage(*heapsterImage); err != nil {
 		glog.Error(err)
 	}
-	if err := removeDockerImage(*influxdbImage); err != nil {
+	if err = removeDockerImage(*influxdbImage); err != nil {
 		glog.Error(err)
 	}
-	if err := removeDockerImage(*grafanaImage); err != nil {
+	if err = removeDockerImage(*grafanaImage); err != nil {
 		glog.Error(err)
+	}
+	var nodes []string
+	if nodes, err = fm.GetNodes(); err == nil {
+		for _, node := range nodes {
+			cleanupRemoteHost(node)
+		}
+	} else {
+		glog.Errorf("failed to cleanup nodes - %v", err)
 	}
 }
 
@@ -262,15 +271,9 @@ func queryInfluxDB(t *testing.T, table string, client *influxdb.Client) {
 }
 
 func buildAndPushImages(fm kubeFramework) error {
-	nodeList, err := fm.Client().Nodes().List()
+	nodes, err := fm.GetNodes()
 	if err != nil {
 		return err
-	}
-
-	nodes := []string{}
-	for _, node := range nodeList.Items {
-		name := strings.Split(node.Name, ".")[0]
-		nodes = append(nodes, name)
 	}
 	if err := buildAndPushHeapsterImage(nodes); err != nil {
 		return err
