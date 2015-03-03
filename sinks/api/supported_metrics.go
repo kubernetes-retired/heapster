@@ -15,8 +15,9 @@
 package api
 
 import (
-	cadvisor "github.com/google/cadvisor/info"
 	"time"
+
+	cadvisor "github.com/google/cadvisor/info"
 )
 
 var statMetrics = []SupportedStatMetric{
@@ -160,3 +161,7 @@ var statMetrics = []SupportedStatMetric{
 }
 
 // TODO: Add Status metrics - restarts, OOMs, etc.
+
+func SupportedStatMetrics() []SupportedStatMetric {
+	return statMetrics
+}
