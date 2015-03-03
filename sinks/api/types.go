@@ -145,13 +145,18 @@ type Timeseries struct {
 	MetricDescriptor *MetricDescriptor
 }
 
-// Sink is the interface that needs to be implemented by all storage backends.
-type Sink interface {
-	// Stores input Timeseries into the backend.
-	StoreTimeseries(Timeseries) error
-
-	// Returns debuf information specific to the sink.
-	DebugData() string
+// ExternalSink is the interface that needs to be implemented by all external storage backends.
+type ExternalSink interface {
+	// Registers a metric with the backend.
+	Register([]MetricDescriptor) error
+	// Stores input data into the backend.
+	// Support input types are as follows:
+	// 1. []Timeseries
+	// TODO: Add map[string]string to support storing raw data like node or pod status, spec, etc.
+	// TODO: Add events.
+	StoreTimeseries([]Timeseries) error
+	// Returns debug information specific to the sink.
+	DebugInfo() string
 }
 
 // Codec represents an engine that translated from sources.api to sink.api objects.

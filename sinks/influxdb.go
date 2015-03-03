@@ -27,6 +27,8 @@ import (
 	influxdb "github.com/influxdb/influxdb/client"
 )
 
+// TODO: Transition this file to inside influxdb/driver.go.
+
 var (
 	argBufferDuration = flag.Duration("sink_influxdb_buffer_duration", 10*time.Second, "Time duration for which stats should be buffered in influxdb sink before being written as a single transaction")
 	argDbUsername     = flag.String("sink_influxdb_username", "root", "InfluxDB username")
