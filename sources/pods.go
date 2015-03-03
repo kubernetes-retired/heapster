@@ -64,13 +64,13 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 		Status:         string(pod.Status.Phase),
 		PodIP:          pod.Status.PodIP,
 		Labels:         make(map[string]string, 0),
-		Containers:     make([]*api.Container, 0),
+		Containers:     make([]api.Container, 0),
 	}
 	for key, value := range pod.Labels {
 		localPod.Labels[key] = value
 	}
 	for _, container := range pod.Spec.Containers {
-		localContainer := &api.Container{}
+		localContainer := api.Container{}
 		localContainer.Name = container.Name
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}

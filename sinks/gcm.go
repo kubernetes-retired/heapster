@@ -109,8 +109,8 @@ func (self *GcmSink) pushPodMetrics(pod *api.Pod) error {
 
 	// Break the individual metrics from the container statistics.
 	var lastErr error
-	for _, container := range pod.Containers {
-		err := self.pushContainerMetrics(container, labels)
+	for index := range pod.Containers {
+		err := self.pushContainerMetrics(&pod.Containers[index], labels)
 		if err != nil {
 			lastErr = err
 		}
@@ -122,9 +122,9 @@ func (self *GcmSink) pushPodMetrics(pod *api.Pod) error {
 func (self *GcmSink) pushContainerSliceMetrics(containers []api.Container) error {
 	labels := make(map[string]string)
 	var lastErr error
-	for _, container := range containers {
+	for index, container := range containers {
 		labels[labelHostname] = container.Hostname
-		err := self.pushContainerMetrics(&container, labels)
+		err := self.pushContainerMetrics(&containers[index], labels)
 		if err != nil {
 			lastErr = err
 		}
