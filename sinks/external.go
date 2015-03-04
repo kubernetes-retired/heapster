@@ -15,11 +15,23 @@
 package sinks
 
 import (
+	"flag"
 	"fmt"
 
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
 	"github.com/GoogleCloudPlatform/heapster/sinks/gcm"
+	"github.com/GoogleCloudPlatform/heapster/sinks/influxdb"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
+)
+
+var (
+	argSink = flag.String("sink", "memory", "Backend storage. Options are [memory | influxdb | bigquery | gcm ]")
+	// TODO: Take in auth via some other secure mechanism.
+	argDbUsername   = flag.String("sink_influxdb_username", "root", "InfluxDB username")
+	argDbPassword   = flag.String("sink_influxdb_password", "root", "InfluxDB password")
+	argDbHost       = flag.String("sink_influxdb_host", "localhost:8086", "InfluxDB host:port")
+	argDbName       = flag.String("sink_influxdb_name", "k8s", "Influxdb database name")
+	argAvoidColumns = flag.Bool("sink_influxdb_no_columns", false, "When true, prefixes metric series names with metadata instead of storing metadata in additional columns. Metadata includes hostname, container name, etc. ")
 )
 
 type externalSinkManager struct {
@@ -27,12 +39,7 @@ type externalSinkManager struct {
 	externalSinks []sink_api.ExternalSink
 }
 
-func NewGcmSink() (Sink, error) {
-	externalSink, err := gcm.NewGCMExternalSink()
-	if err != nil {
-		return nil, err
-	}
-
+func newExternalSinkManager(externalSinks []sink_api.ExternalSink) (ExternalSinkManager, error) {
 	// Get supported metrics.
 	supportedMetrics := sink_api.SupportedStatMetrics()
 	for i := range supportedMetrics {
@@ -44,19 +51,22 @@ func NewGcmSink() (Sink, error) {
 	for _, supported := range supportedMetrics {
 		descriptors = append(descriptors, supported.MetricDescriptor)
 	}
-	err = externalSink.Register(descriptors)
-	if err != nil {
-		return nil, err
+
+	for _, externalSink := range externalSinks {
+		err := externalSink.Register(descriptors)
+		if err != nil {
+			return nil, err
+		}
 	}
 	decoder := sink_api.NewDecoder()
 	return &externalSinkManager{
-		externalSinks: []sink_api.ExternalSink{externalSink},
+		externalSinks: externalSinks,
 		decoder:       decoder,
 	}, nil
 }
 
 // TODO(vmarmol): Paralellize this.
-func (self *externalSinkManager) StoreData(input Data) error {
+func (self *externalSinkManager) Store(input interface{}) error {
 	data, ok := input.(source_api.AggregateData)
 	if !ok {
 		return fmt.Errorf("unknown input type %T", input)
@@ -78,13 +88,13 @@ func (self *externalSinkManager) StoreData(input Data) error {
 		for _, err := range errors {
 			errStr = fmt.Sprintf("%v ", err)
 		}
-		err = fmt.Errorf("encountered following errors: %s", errStr)
+		err = fmt.Errorf("encountered the following errors: %s", errStr)
 	}
 
 	return err
 }
 
-func (self *externalSinkManager) GetConfig() string {
+func (self *externalSinkManager) DebugInfo() string {
 	desc := "External Sinks\n"
 
 	// Add metrics being exported.
@@ -104,4 +114,34 @@ func (self *externalSinkManager) GetConfig() string {
 	}
 
 	return desc
+}
+
+func NewSink() (ExternalSinkManager, error) {
+	switch *argSink {
+	case "memory":
+		return NewMemorySink(), nil
+	case "influxdb":
+		if *argDbHost == "" {
+			return nil, fmt.Errorf("flag '-sink_influxdb_host' invalid")
+		}
+		if *argDbName == "" {
+			return nil, fmt.Errorf("flag '-sink_influxdb_name' invalid")
+		}
+
+		externalSink, err := influxdb.NewSink(*argDbHost, *argDbUsername, *argDbPassword, *argDbName, *argAvoidColumns)
+		if err != nil {
+			return nil, err
+		}
+		return newExternalSinkManager([]sink_api.ExternalSink{externalSink})
+	case "gcm":
+		externalSink, err := gcm.NewSink()
+		if err != nil {
+			return nil, err
+		}
+		return newExternalSinkManager([]sink_api.ExternalSink{externalSink})
+	case "bigquery":
+		return NewBigQuerySink()
+	default:
+		return nil, fmt.Errorf("invalid sink specified - %s", *argSink)
+	}
 }

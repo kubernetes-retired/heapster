@@ -65,7 +65,7 @@ func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api
 	for _, stat := range container.Stats {
 		timestamps = append(timestamps, stat.Timestamp.String())
 	}
-	glog.Infof("%q stats\n%q", container.Name, strings.Join(timestamps, " "))
+	glog.V(3).Infof("%q stats\n%q", container.Name, strings.Join(timestamps, " "))
 	return container
 }
 

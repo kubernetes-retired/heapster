@@ -97,6 +97,7 @@ type LabelDescriptor struct {
 	Description string `json:"description,omitempty"`
 }
 
+// TODO: Add cluster name.
 type MetricDescriptor struct {
 	// The unique name of the metric.
 	Name string

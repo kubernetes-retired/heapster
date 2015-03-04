@@ -262,8 +262,8 @@ func (self *gcmSink) DebugInfo() string {
 }
 
 // Returns a thread-compatible implementation of GCM interactions.
-func NewGCMExternalSink() (sink_api.ExternalSink, error) {
-	// TODO: Document why this sleep is necessary.
+func NewSink() (sink_api.ExternalSink, error) {
+	// TODO: Retry OnGCE call for ~15 seconds before declaring failure.
 	time.Sleep(3 * time.Second)
 	// Only support GCE for now.
 	if !metadata.OnGCE() {

@@ -73,7 +73,7 @@ func validateFlags() error {
 	}
 	return nil
 }
-func setupHandlers(source sources.Source, sink sinks.Sink) {
+func setupHandlers(source sources.Source, sink sinks.ExternalSinkManager) {
 	// Validation/Debug handler.
 	http.HandleFunc(validate.ValidatePage, func(w http.ResponseWriter, r *http.Request) {
 		err := validate.HandleRequest(w, source, sink)
@@ -86,7 +86,7 @@ func setupHandlers(source sources.Source, sink sinks.Sink) {
 	http.Handle("/", http.RedirectHandler(validate.ValidatePage, http.StatusTemporaryRedirect))
 }
 
-func doWork() (sources.Source, sinks.Sink, error) {
+func doWork() (sources.Source, sinks.ExternalSinkManager, error) {
 	source, err := sources.NewSource(*argPollDuration)
 	if err != nil {
 		return nil, nil, err
@@ -99,7 +99,7 @@ func doWork() (sources.Source, sinks.Sink, error) {
 	return source, sink, nil
 }
 
-func housekeep(source sources.Source, sink sinks.Sink) {
+func housekeep(source sources.Source, sink sinks.ExternalSinkManager) {
 	ticker := time.NewTicker(*argPollDuration)
 	defer ticker.Stop()
 	for {
@@ -107,10 +107,10 @@ func housekeep(source sources.Source, sink sinks.Sink) {
 		case <-ticker.C:
 			data, err := source.GetInfo()
 			if err != nil {
-				glog.Fatalf("failed to get information from source")
+				glog.Errorf("failed to get information from source")
 			}
-			if err := sink.StoreData(data); err != nil {
-				glog.Fatalf("failed to push information to sink")
+			if err := sink.Store(data); err != nil {
+				glog.Errorf("failed to push information to sink")
 
 			}
 		}
