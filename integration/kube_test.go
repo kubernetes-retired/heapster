@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	kube_api_v1beta1 "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta1"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
@@ -255,19 +256,23 @@ func createAndWaitForRunning(fm kubeFramework, ns string) error {
 	return waitUntilPodRunning(fm, ns, heapsterRC.Spec.Template.Labels, 1*time.Minute)
 }
 
-func queryInfluxDB(t *testing.T, table string, client *influxdb.Client) {
+func queryInfluxDB(t *testing.T, client *influxdb.Client) {
 	var series []*influxdb.Series
 	var err error
+	success := false
 	for i := 0; i < maxInfluxdbRetries; i++ {
-		series, err = client.Query(fmt.Sprintf("select * from %s limit 1", table), influxdb.Second)
-		if err == nil {
-			glog.V(2).Infof("influxdb query failed. Retrying - %v", err)
-			break
+		if series, err = client.Query("list series", influxdb.Second); err == nil {
+			glog.V(1).Infof("query:' list series' - output %+v from influxdb", series[0].Points)
+			if len(series[0].Points) >= (len(sink_api.SupportedStatMetrics()) - 1) {
+				success = true
+				break
+			}
 		}
+		glog.V(2).Infof("influxdb test case failed. Retrying")
 		time.Sleep(30 * time.Second)
 	}
-	require.NoError(t, err, "failed to query data from %q table in Influxdb", table)
-	require.NotEmpty(t, series, "%q table does not contain any data", table)
+	require.NoError(t, err, "failed to list series in Influxdb")
+	require.True(t, success, "list series test case failed.")
 }
 
 func buildAndPushImages(fm kubeFramework) error {
@@ -321,8 +326,7 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 		influxdbClient, err := influxdb.NewClient(config)
 		require.NoError(t, err, "failed to create influxdb client")
 
-		queryInfluxDB(t, "stats", influxdbClient)
-		queryInfluxDB(t, "machine", influxdbClient)
+		queryInfluxDB(t, influxdbClient)
 
 		glog.Info("**HeapsterInfluxDB test passed**")
 		deleteAll(fm, *namespace, services, replicationControllers)
