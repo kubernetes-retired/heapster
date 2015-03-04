@@ -12,68 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This package implements the various storage backends supported by heapster.
 package sinks
 
-import (
-	"flag"
-	"fmt"
-)
-
-var argSink = flag.String("sink", "memory", "Backend storage. Options are [memory | influxdb | bigquery | gcm ]")
-
-type Data interface{}
-
-type Sink interface {
-	StoreData(data Data) error
-	GetConfig() string
-}
-
-const (
-	statsTable            = "stats"
-	specTable             = "spec"
-	machineTable          = "machine"
-	colTimestamp          = "time"
-	colPodName            = "pod"
-	colPodStatus          = "pod_status"
-	colPodIP              = "pod_ip"
-	colLabels             = "labels"
-	colHostName           = "hostname"
-	colContainerName      = "container_name"
-	colCpuCumulativeUsage = "cpu_cumulative_usage"
-	colCpuInstantUsage    = "cpu_instant_usage"
-	colMemoryUsage        = "memory_usage"
-	colMemoryWorkingSet   = "memory_working_set"
-	colMemoryPgFaults     = "page_faults"
-	colRxBytes            = "rx_bytes"
-	colRxErrors           = "rx_errors"
-	colTxBytes            = "tx_bytes"
-	colTxErrors           = "tx_errors"
-	colDiskIoServiceBytes = "diskio_service_bytes"
-	colDiskIoServiced     = "diskio_serviced"
-	colDiskIoQueued       = "diskio_queued"
-	colDiskIoSectors      = "diskio_sectors"
-	colDiskIoServiceTime  = "diskio_service_time"
-	colDiskIoWaitTime     = "diskio_wait_time"
-	colDiskIoMerged       = "diskio_merged"
-	colDiskIoTime         = "diskio_time"
-	colFsDevice           = "fs_device"
-	colFsCapacity         = "fs_capacity"
-	colFsUsage            = "fs_usage"
-	colFsIoTime           = "fs_iotime"
-	colFsIoTimeWeighted   = "fs_iotime_weighted"
-)
-
-func NewSink() (Sink, error) {
-	switch *argSink {
-	case "memory":
-		return NewMemorySink(), nil
-	case "influxdb":
-		return NewInfluxdbSink()
-	case "bigquery":
-		return NewBigQuerySink()
-	case "gcm":
-		return NewGcmSink()
-	default:
-		return nil, fmt.Errorf("invalid sink specified - %s", *argSink)
-	}
+// TODO: Once in-memory storage is implemented, make the manager extract data from the in-memory store periodically.
+type ExternalSinkManager interface {
+	Store(input interface{}) error
+	DebugInfo() string
 }

@@ -20,96 +20,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
 	"github.com/golang/glog"
 )
 
-type MetricType int
-
-const (
-	// A cumulative metric.
-	MetricCumulative MetricType = iota
-
-	// An instantaneous value metric.
-	MetricGauge
-)
-
-func (self MetricType) String() string {
-	switch self {
-	case MetricCumulative:
-		return "cumulative"
-	case MetricGauge:
-		return "gauge"
-	}
-	return ""
-}
-
-type MetricValueType int
-
-const (
-	// An int64 value.
-	ValueInt64 MetricValueType = iota
-	// A boolean value
-	ValueBool
-	// A double-precision floating point number.
-	ValueDouble
-)
-
-func (self MetricValueType) String() string {
-	switch self {
-	case ValueInt64:
-		return "int64"
-	case ValueBool:
-		return "bool"
-	case ValueDouble:
-		return "double"
-	}
-	return ""
-}
-
-type LabelDescriptor struct {
-	// Key to use for the label.
-	Key string `json:"key,omitempty"`
-
-	// Description of the label.
-	Description string `json:"description,omitempty"`
-}
-
-type MetricDescriptor struct {
-	// The unique name of the metric.
-	Name string
-
-	// Description of the metric.
-	Description string
-
-	// Descriptor of the labels used by this metric.
-	Labels []LabelDescriptor
-
-	// Type and value of metric data.
-	Type      MetricType
-	ValueType MetricValueType
-}
-
-type Metric struct {
-	// The name of the metric. Must match an existing descriptor.
-	Name string
-
-	// The labels and values for the metric. The keys must match those in the descriptor.
-	Labels map[string]string
-
-	// The start and end time for which this data is representative.
-	Start time.Time
-	End   time.Time
-
-	// The value of the metric. Must match the type in the descriptor.
-	Value interface{}
-}
-
-type Driver struct {
+type gcmSink struct {
 	// Token to use for authentication.
 	token string
 
@@ -122,44 +41,10 @@ type Driver struct {
 
 	// TODO(vmarmol): Also store labels?
 	// Map of metrics we currently export.
-	exportedMetrics map[string]MetricDescriptor
+	exportedMetrics map[string]sink_api.MetricDescriptor
 }
 
-// Returns a thread-compatible implementation of GCM interactions.
-func NewDriver() (*Driver, error) {
-	time.Sleep(3 * time.Second)
-	// Only support GCE for now.
-	if !metadata.OnGCE() {
-		return nil, fmt.Errorf("the GCM sink is currently only supported on GCE")
-	}
-
-	// Detect project.
-	project, err := metadata.ProjectID()
-	if err != nil {
-		return nil, err
-	}
-
-	// Check required service accounts
-	err = checkServiceAccounts()
-	if err != nil {
-		return nil, err
-	}
-
-	impl := &Driver{
-		project:         project,
-		exportedMetrics: make(map[string]MetricDescriptor),
-	}
-
-	// Get an initial token.
-	err = impl.refreshToken()
-	if err != nil {
-		return nil, err
-	}
-
-	return impl, nil
-}
-
-func (self *Driver) refreshToken() error {
+func (self *gcmSink) refreshToken() error {
 	if time.Now().After(self.tokenExpiration) {
 		token, err := getToken()
 		if err != nil {
@@ -184,17 +69,17 @@ type typeDescriptor struct {
 }
 
 type metricDescriptor struct {
-	Name           string            `json:"name,omitempty"`
-	Project        string            `json:"project,omitempty"`
-	Description    string            `json:"description,omitempty"`
-	Labels         []LabelDescriptor `json:"labels,omitempty"`
-	TypeDescriptor typeDescriptor    `json:"typeDescriptor,omitempty"`
+	Name           string                     `json:"name,omitempty"`
+	Project        string                     `json:"project,omitempty"`
+	Description    string                     `json:"description,omitempty"`
+	Labels         []sink_api.LabelDescriptor `json:"labels,omitempty"`
+	TypeDescriptor typeDescriptor             `json:"typeDescriptor,omitempty"`
 }
 
 const maxNumLabels = 10
 
 // Adds the specified metrics or updates them if they already exist.
-func (self *Driver) AddMetrics(metrics []MetricDescriptor) error {
+func (self *gcmSink) Register(metrics []sink_api.MetricDescriptor) error {
 	for _, metric := range metrics {
 		// Enforce the most labels that GCM allows.
 		if len(metric.Labels) > maxNumLabels {
@@ -252,35 +137,25 @@ type metricWriteRequest struct {
 	Timeseries []timeseries `json:"timeseries,omitempty"`
 }
 
-// Concatenates a map of labels into a comma-separated key=value pairs.
-func LabelsToString(labels map[string]string) string {
-	output := make([]string, 0, len(labels))
-	for key, value := range labels {
-		output = append(output, fmt.Sprintf("%s=%s", key, value))
-	}
-
-	// Sort to produce a stable output.
-	sort.Strings(output)
-	return strings.Join(output, ",")
-}
-
 // The largest number of timeseries we can write to per request.
 const maxTimeseriesPerRequest = 200
 
-// Gets the largest number of metrics that can be pushed at a time.
-func (self *Driver) MaxNumPushMetrics() int {
-	return maxTimeseriesPerRequest
-}
-
-// Pushes the specified metric values. The metrics must already exist.
-func (self *Driver) PushMetrics(metrics []Metric) error {
-	// Check we're not being asked to write more timeseries than we can..
-	if len(metrics) > maxTimeseriesPerRequest {
-		return fmt.Errorf("unable to write more than %d metrics at once and %d were provided", maxTimeseriesPerRequest, len(metrics))
+// Pushes the specified metric values in input. The metrics must already exist.
+func (self *gcmSink) Store(input interface{}) error {
+	inputTimeseries, ok := input.([]sink_api.Timeseries)
+	if !ok {
+		return fmt.Errorf("unsupported input type: %T", input)
+	}
+	// Check we're not being asked to write more timeseries than we can.
+	// TODO: Why not split the input into multiple batches.
+	if len(inputTimeseries) > maxTimeseriesPerRequest {
+		return fmt.Errorf("unable to write more than %d metrics at once and %d were provided", maxTimeseriesPerRequest, len(inputTimeseries))
 	}
 
 	// Ensure the metrics exist.
-	for _, metric := range metrics {
+	for _, entry := range inputTimeseries {
+		metric := entry.Metric
+		// TODO: Remove this check if possible.
 		if _, ok := self.exportedMetrics[metric.Name]; !ok {
 			return fmt.Errorf("unable to push unknown metric %q", metric.Name)
 		}
@@ -288,7 +163,8 @@ func (self *Driver) PushMetrics(metrics []Metric) error {
 
 	// Push the metrics.
 	var request metricWriteRequest
-	for _, metric := range metrics {
+	for _, entry := range inputTimeseries {
+		metric := entry.Metric
 		// Use full label names.
 		labels := make(map[string]string, len(metric.Labels))
 		for key, value := range metric.Labels {
@@ -383,4 +259,43 @@ func sendRequest(url string, token string, request interface{}) error {
 	}
 
 	return nil
+}
+
+func (self *gcmSink) DebugInfo() string {
+	return "Sink Type: GCM"
+}
+
+// Returns a thread-compatible implementation of GCM interactions.
+func NewSink() (sink_api.ExternalSink, error) {
+	// TODO: Document why this sleep is necessary.
+	time.Sleep(3 * time.Second)
+	// Only support GCE for now.
+	if !metadata.OnGCE() {
+		return nil, fmt.Errorf("the GCM sink is currently only supported on GCE")
+	}
+
+	// Detect project.
+	project, err := metadata.ProjectID()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check required service accounts
+	err = checkServiceAccounts()
+	if err != nil {
+		return nil, err
+	}
+
+	impl := &gcmSink{
+		project:         project,
+		exportedMetrics: make(map[string]sink_api.MetricDescriptor),
+	}
+
+	// Get an initial token.
+	err = impl.refreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return impl, nil
 }

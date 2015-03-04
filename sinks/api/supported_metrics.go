@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gcm
+package api
 
 import (
 	"time"
@@ -20,27 +20,14 @@ import (
 	cadvisor "github.com/google/cadvisor/info"
 )
 
-type SupportedMetric struct {
-	MetricDescriptor
-
-	// Returns whether this metric is present.
-	HasValue func(*cadvisor.ContainerSpec) bool
-
-	// Returns the desired data point for this metric from the stats.
-	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) interface{}
-}
-
-func GetSupportedMetrics() []SupportedMetric {
-	return allMetrics
-}
-
-var allMetrics = []SupportedMetric{
+var statMetrics = []SupportedStatMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "uptime",
 			Description: "Number of milliseconds since the container was started",
 			Type:        MetricCumulative,
 			ValueType:   ValueInt64,
+			Units:       UnitsMilliseconds,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return !spec.CreationTime.IsZero()
@@ -55,6 +42,7 @@ var allMetrics = []SupportedMetric{
 			Description: "Cumulative CPU usage on all cores",
 			Type:        MetricCumulative,
 			ValueType:   ValueInt64,
+			Units:       UnitsNanoseconds,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasCpu
@@ -69,6 +57,7 @@ var allMetrics = []SupportedMetric{
 			Description: "Total memory usage",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
+			Units:       UnitsBytes,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasMemory
@@ -83,6 +72,7 @@ var allMetrics = []SupportedMetric{
 			Description: "Total working set usage. Working set is the memory being used and not easily dropped by the kernel",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
+			Units:       UnitsBytes,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasMemory
@@ -97,6 +87,7 @@ var allMetrics = []SupportedMetric{
 			Description: "Number of major page faults",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
+			Units:       UnitsNone,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasMemory
@@ -107,10 +98,11 @@ var allMetrics = []SupportedMetric{
 	},
 	{
 		MetricDescriptor: MetricDescriptor{
-			Name:        "network/rx_bytes",
+			Name:        "network/rx",
 			Description: "Cumulative number of bytes received over the network",
 			Type:        MetricCumulative,
 			ValueType:   ValueInt64,
+			Units:       UnitsBytes,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasNetwork
@@ -125,6 +117,7 @@ var allMetrics = []SupportedMetric{
 			Description: "Cumulative number of errors while receiving over the network",
 			Type:        MetricCumulative,
 			ValueType:   ValueInt64,
+			Units:       UnitsNone,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasNetwork
@@ -135,10 +128,11 @@ var allMetrics = []SupportedMetric{
 	},
 	{
 		MetricDescriptor: MetricDescriptor{
-			Name:        "network/tx_bytes",
+			Name:        "network/tx",
 			Description: "Cumulative number of bytes sent over the network",
 			Type:        MetricCumulative,
 			ValueType:   ValueInt64,
+			Units:       UnitsBytes,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasNetwork
@@ -153,6 +147,7 @@ var allMetrics = []SupportedMetric{
 			Description: "Cumulative number of errors while sending over the network",
 			Type:        MetricCumulative,
 			ValueType:   ValueInt64,
+			Units:       UnitsNone,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasNetwork
@@ -163,4 +158,10 @@ var allMetrics = []SupportedMetric{
 	},
 	// TODO(vmarmol): DiskIO stats if we find those useful and know how to export them in a user-friendly way.
 	// TODO(vmarmol): FS usage. That requires more labels that the rest here so we will need a new function.
+}
+
+// TODO: Add Status metrics - restarts, OOMs, etc.
+
+func SupportedStatMetrics() []SupportedStatMetric {
+	return statMetrics
 }
