@@ -28,11 +28,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInvalidInput(t *testing.T) {
-	_, err := NewDecoder().Timeseries(struct{}{})
-	assert.Error(t, err)
-}
-
 func TestEmptyInput(t *testing.T) {
 	timeseries, err := NewDecoder().Timeseries(source_api.AggregateData{})
 	assert.NoError(t, err)
