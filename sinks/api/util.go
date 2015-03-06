@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All Rights Reserved.
+// Copyright 2015 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This package implements the various storage backends supported by heapster.
-package sinks
+package api
 
-// TODO: Once in-memory storage is implemented, make the manager extract data from the in-memory store periodically.
-type ExternalSinkManager interface {
-	Store(input interface{}) error
-	DebugInfo() string
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// Concatenates a map of labels into a comma-separated key=value pairs.
+func LabelsToString(labels map[string]string, separator string) string {
+	output := make([]string, 0, len(labels))
+	for key, value := range labels {
+		output = append(output, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	// Sort to produce a stable output.
+	sort.Strings(output)
+	return strings.Join(output, separator)
 }

@@ -43,7 +43,7 @@ func (self *MemorySink) reapOldData() {
 	// TODO(vishh): Reap old data.
 }
 
-func (self *MemorySink) StoreData(data Data) error {
+func (self *MemorySink) Store(data interface{}) error {
 	if data, ok := data.([]api.Pod); ok {
 		for _, value := range data {
 			self.containersData.PushFront(entry{time.Now(), value})
@@ -56,14 +56,14 @@ func (self *MemorySink) StoreData(data Data) error {
 	return nil
 }
 
-func (self *MemorySink) GetConfig() string {
+func (self *MemorySink) DebugInfo() string {
 	desc := "Sink type: Memory\n"
 	desc += fmt.Sprintf("\tMaximum storage duration: %v\n", self.maxStorageDuration)
 	desc += "\n"
 	return desc
 }
 
-func NewMemorySink() Sink {
+func NewMemorySink() ExternalSinkManager {
 	return &MemorySink{
 		containersData:     list.New(),
 		oldestData:         time.Now(),

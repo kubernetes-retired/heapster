@@ -15,9 +15,6 @@
 package api
 
 import (
-	"fmt"
-	"sort"
-	"strings"
 	"time"
 
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
@@ -55,7 +52,7 @@ func (self *defaultDecoder) getPodMetrics(pod *source_api.Pod) []Timeseries {
 	// Generate the labels.
 	labels := make(map[string]string)
 	labels[labelPodId] = pod.ID
-	labels[labelLabels] = self.labelsToString(pod.Labels)
+	labels[labelLabels] = LabelsToString(pod.Labels, ",")
 	labels[labelHostname] = pod.Hostname
 
 	// Break the individual metrics from the container statistics.
@@ -78,18 +75,6 @@ func (self *defaultDecoder) getContainerSliceMetrics(containers []source_api.Con
 	return result
 }
 
-// Concatenates a map of labels into a comma-separated key=value pairs.
-func (self *defaultDecoder) labelsToString(labels map[string]string) string {
-	output := make([]string, 0, len(labels))
-	for key, value := range labels {
-		output = append(output, fmt.Sprintf("%s=%s", key, value))
-	}
-
-	// Sort to produce a stable output.
-	sort.Strings(output)
-	return strings.Join(output, ",")
-}
-
 func (self *defaultDecoder) getContainerMetrics(container *source_api.Container, labels map[string]string) []Timeseries {
 	if container == nil {
 		return nil
@@ -97,7 +82,7 @@ func (self *defaultDecoder) getContainerMetrics(container *source_api.Container,
 	labels[labelContainerName] = container.Name
 	// One metric value per data point.
 	var result []Timeseries
-	labelsAsString := self.labelsToString(labels)
+	labelsAsString := LabelsToString(labels, ",")
 	for _, stat := range container.Stats {
 		if stat == nil {
 			continue
