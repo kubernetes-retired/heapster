@@ -107,11 +107,10 @@ func housekeep(source sources.Source, sink sinks.ExternalSinkManager) {
 		case <-ticker.C:
 			data, err := source.GetInfo()
 			if err != nil {
-				glog.Errorf("failed to get information from source")
+				glog.Errorf("failed to get information from source - %v", err)
 			}
 			if err := sink.Store(data); err != nil {
-				glog.Errorf("failed to push information to sink")
-
+				glog.Errorf("failed to push information to sink - %v", err)
 			}
 		}
 	}
