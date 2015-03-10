@@ -92,7 +92,7 @@ func (self *realPodsApi) parseAllPods(podNodePairs []podNodePair) []api.Pod {
 func (self *realPodsApi) getNodeSelector(nodeList *nodes.NodeList) (labels.Selector, error) {
 	nodeLabels := []string{}
 	for host := range nodeList.Items {
-		nodeLabels = append(nodeLabels, fmt.Sprintf("Status.Host==%s", host))
+		nodeLabels = append(nodeLabels, fmt.Sprintf("DesiredState.Host==%s", host))
 	}
 	glog.V(2).Infof("using labels %v to find pods", nodeLabels)
 	return labels.ParseSelector(strings.Join(nodeLabels, ","))
@@ -126,7 +126,7 @@ func (self *realPodsApi) DebugInfo() string {
 func newPodsApi(client *client.Client) podsApi {
 	// Extend the selector to include specific nodes to monitor
 	// or provide an API to update the nodes to monitor.
-	selector, err := labels.ParseSelector("Status.Host!=")
+	selector, err := labels.ParseSelector("DesiredState.Host!=")
 	if err != nil {
 		panic(err)
 	}
