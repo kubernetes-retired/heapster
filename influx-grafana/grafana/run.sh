@@ -9,8 +9,8 @@ if [ "${HTTP_PASS}" == "**Random**" ]; then
     unset HTTP_PASS
 fi
 
-if [ ! -f /.basic_auth_configured ]; then
-    /set_basic_auth.sh
+if [ ! -f /.nginx_configured ]; then
+    /set_nginx_conf.sh
 fi
 
 if [ ! -f /.influx_db_configured ]; then

@@ -18,7 +18,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wget pwg
 
 ADD run.sh /run.sh
 ADD set_influx_db.sh /set_influx_db.sh
-ADD set_basic_auth.sh /set_basic_auth.sh
+ADD set_nginx_conf.sh /set_nginx_conf.sh
 ADD set_dashboard.sh /set_dashboard.sh
 
 ADD config.js /app/config.js
