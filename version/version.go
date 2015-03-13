@@ -18,4 +18,4 @@ package version
 // The version is of the format Major.Minor.
 // Increment minor number for bug fixes and performance enhancements.
 // Increment major number for new feature additions and behavioral changes.
-const HeapsterVersion = "0.8"
+const HeapsterVersion = "0.9"
