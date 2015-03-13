@@ -8,10 +8,10 @@ fi
 
 # If in Kubernetes, target the master.
 if [ ! -z $KUBERNETES_RO_SERVICE_HOST ]; then
-  EXTRA_ARGS="$EXTRA_ARGS --kubernetes_master ${KUBERNETES_RO_SERVICE_HOST}:${KUBERNETES_RO_SERVICE_PORT}"
+  EXTRA_ARGS="--kubernetes_master ${KUBERNETES_RO_SERVICE_HOST}:${KUBERNETES_RO_SERVICE_PORT} $EXTRA_ARGS"
 fi
 
-HEAPSTER="/usr/bin/heapster $EXTRA_ARGS"
+HEAPSTER="/usr/bin/heapster"
 
 case $SINK in
   'influxdb') 
@@ -28,16 +28,16 @@ case $SINK in
 	echo "InfluxDB service address not specified. Exiting."
 	exit 1
       fi
-      $HEAPSTER --sink_influxdb_host $INFLUXDB_ADDRESS
+      $HEAPSTER --sink_influxdb_host $INFLUXDB_ADDRESS $EXTRA_ARGS
     elif [ ! -z $INFLUXDB_HOST ]; then
-      $HEAPSTER --sink_influxdb_host ${INFLUXDB_HOST}
+      $HEAPSTER --sink_influxdb_host ${INFLUXDB_HOST} $EXTRA_ARGS
     else
       echo "Influxdb host invalid."
       exit 1
     fi
     ;;
-  'gcm') $HEAPSTER --sink gcm
+  'gcm') $HEAPSTER --sink gcm $EXTRA_ARGS
     ;;
-  *) $HEAPSTER
+  *) $HEAPSTER $EXTRA_ARGS
     ;;
 esac
