@@ -34,6 +34,7 @@ type influxdbSink struct {
 	// TODO(rjnagal): switch to atomic if writeFailures is the only protected data.
 	writeFailures int // guarded by stateLock
 	avoidColumns  bool
+	seqNum        metricSequenceNum
 }
 
 func (self *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
@@ -52,9 +53,7 @@ func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influ
 	if timeseries.MetricDescriptor.Type.String() != "" {
 		seriesName = fmt.Sprintf("%s_%s", seriesName, timeseries.MetricDescriptor.Type.String())
 	}
-	// Add timestamp.
-	columns = append(columns, "time")
-	values = append(values, timeseries.Point.End.Unix())
+
 	// Add the real metric value.
 	columns = append(columns, "value")
 	values = append(values, timeseries.Point.Value)
@@ -68,6 +67,13 @@ func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influ
 		seriesName = strings.Replace(seriesName, "/", "_", -1)
 		seriesName = fmt.Sprintf("%s_%s", sink_api.LabelsToString(timeseries.Point.Labels, "_"), seriesName)
 	}
+	// Add timestamp.
+	columns = append(columns, "time")
+	values = append(values, timeseries.Point.End.Unix())
+	// Ass sequence number
+	columns = append(columns, "sequence_number")
+	values = append(values, self.seqNum.Get(seriesName))
+
 	return self.newSeries(seriesName, columns, values)
 }
 
@@ -83,7 +89,7 @@ func (self *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) erro
 		glog.Errorf("failed to write stats to influxDB - %s", err)
 		self.recordWriteFailure()
 	}
-	glog.Info("flushed stats to influxDB")
+	glog.V(1).Info("flushed stats to influxDB")
 	return err
 }
 
@@ -178,5 +184,6 @@ func NewSink(hostname, username, password, databaseName string, avoidColumns boo
 		client:       client,
 		dbName:       databaseName,
 		avoidColumns: avoidColumns,
+		seqNum:       newMetricSequenceNum(),
 	}, nil
 }
