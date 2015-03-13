@@ -37,7 +37,7 @@ func TestEmptyInput(t *testing.T) {
 func getLabelsAsString(labels map[string]string) string {
 	output := make([]string, 0, len(labels))
 	for key, value := range labels {
-		output = append(output, fmt.Sprintf("%s=%s", key, value))
+		output = append(output, fmt.Sprintf("%s:%s", key, value))
 	}
 
 	// Sort to produce a stable output.

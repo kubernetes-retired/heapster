@@ -17,6 +17,8 @@ desiredState:
             env:
               - name: "INFLUXDB_HOST"
                 value: "monitoring-influxdb"
+              - name: "SINK"
+                value: "influxdb"
             volumeMounts:
               - name: ssl-certs
                 mountPath: /etc/ssl/certs
