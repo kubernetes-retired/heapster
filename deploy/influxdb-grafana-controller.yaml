@@ -15,7 +15,6 @@ desiredState:
         containers:
           - name: "influxdb"
             image: "kubernetes/heapster_influxdb:v0.3"
-            imagePullPolicy: "Always"
             ports:
               - containerPort: 8083
                 hostPort: 8083
@@ -23,7 +22,6 @@ desiredState:
                 hostPort: 8086
           - name: "grafana"
             image: "kubernetes/heapster_grafana:v0.4"
-            imagePullPolicy: "Always"
             ports:
               - containerPort: 80
             env:

@@ -13,7 +13,6 @@ desiredState:
         containers:
           - name: "heapster"
             image: "kubernetes/heapster:v0.8"
-            imagePullPolicy: "Always"
             env:
               - name: "INFLUXDB_HOST"
                 value: "monitoring-influxdb"

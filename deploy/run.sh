@@ -1,13 +1,17 @@
 #!/bin/bash
 
 set -ex
-EXTRA_ARGS=$FLAGS
+EXTRA_ARGS=""
+if [ ! -z $FLAGS ]; then
+  EXTRA_ARGS=$FLAGS
+fi
+
 # If in Kubernetes, target the master.
 if [ ! -z $KUBERNETES_RO_SERVICE_HOST ]; then
   EXTRA_ARGS="$EXTRA_ARGS --kubernetes_master ${KUBERNETES_RO_SERVICE_HOST}:${KUBERNETES_RO_SERVICE_PORT}"
 fi
 
-HEAPSTER="/usr/bin/heapster $EXTRA_ARGS "
+HEAPSTER="/usr/bin/heapster $EXTRA_ARGS"
 
 case $SINK in
   'influxdb') 

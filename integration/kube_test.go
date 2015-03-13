@@ -51,8 +51,8 @@ var (
 	grafanaImage                  = flag.String("grafana_image", "heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
 	namespace                     = flag.String("namespace", "default", "namespace to be used for testing")
 	heapsterBuildDir              = "../deploy"
-	influxdbBuildDir              = "../influx-grafana/influxdb"
-	grafanaBuildDir               = "../influx-grafana/grafana"
+	influxdbBuildDir              = "../influxdb"
+	grafanaBuildDir               = "../grafana"
 )
 
 func buildAndPushHeapsterImage(hostnames []string) error {
@@ -222,6 +222,13 @@ func createAndWaitForRunning(fm kubeFramework, ns string) error {
 		return fmt.Errorf("failed to parse heapster controller - %v", err)
 	}
 	heapsterRC.Spec.Template.Spec.Containers[0].Image = *heapsterImage
+	heapsterRC.Spec.Template.Spec.Containers[0].ImagePullPolicy = kube_api.PullNever
+	// increase logging level
+	heapsterRC.Spec.Template.Spec.Containers[0].Env = append(heapsterRC.Spec.Template.Spec.Containers[0].Env, kube_api.EnvVar{Name: "FLAGS", Value: "--vmodule=*=3"})
+	glog.V(3).Infof("Heapster RC: %+v", heapsterRC)
+	glog.V(3).Infof("Heapster Pod: %+v", heapsterRC.Spec.Template)
+	glog.V(3).Infof("Heapster Container: %+v", heapsterRC.Spec.Template.Spec.Containers[0])
+	
 	replicationControllers = append(replicationControllers, heapsterRC)
 
 	influxdbRC, err := fm.ParseRC(*influxdbGrafanaControllerFile)
@@ -229,7 +236,11 @@ func createAndWaitForRunning(fm kubeFramework, ns string) error {
 		return fmt.Errorf("failed to parse influxdb controller - %v", err)
 	}
 
+	glog.V(3).Infof("Influxdb RC: %+v", influxdbRC)
+	glog.V(3).Infof("Influxdb Pod: %+v", influxdbRC.Spec.Template)
 	for _, cont := range influxdbRC.Spec.Template.Spec.Containers {
+		glog.V(3).Infof("%s Container: %+v", cont.Name, cont)
+		cont.ImagePullPolicy = kube_api.PullNever
 		if strings.Contains(cont.Name, "grafana") {
 			cont.Image = *grafanaImage
 		} else if strings.Contains(cont.Name, "influxdb") {
