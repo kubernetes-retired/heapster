@@ -44,7 +44,7 @@ else
     echo "=> No database need to be pre-created"
 fi
 
-echo "=>influxDB for heapster version: 0.2!"
+echo "=>influxDB for heapster version: 0.3!"
 echo "=> Starting InfluxDB..."
 
 exec /usr/bin/influxdb -config=${CONFIG_FILE}

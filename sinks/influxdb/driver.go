@@ -76,17 +76,14 @@ func (self *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) erro
 	for index := range timeseries {
 		dataPoints = append(dataPoints, self.metricToSeries(&timeseries[index]))
 	}
-	// TODO: record average number of data points.
-	glog.V(2).Info("flushing data to influxdb sink")
-	glog.V(3).Infof("%+v", dataPoints)
 	// TODO: Group all datapoints belonging to a metric into a single series.
 	// TODO: Record the average time taken to flush data.
-	err := self.client.WriteSeriesWithTimePrecision(dataPoints, influxdb.Millisecond)
+	err := self.client.WriteSeriesWithTimePrecision(dataPoints, influxdb.Second)
 	if err != nil {
-		glog.Errorf("failed to write stats to influxDb - %s", err)
+		glog.Errorf("failed to write stats to influxDB - %s", err)
 		self.recordWriteFailure()
 	}
-
+	glog.Info("flushed stats to influxDB")
 	return err
 }
 

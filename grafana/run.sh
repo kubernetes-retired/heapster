@@ -2,7 +2,7 @@
 
 set -e
 
-RELEASE="v0.4"
+RELEASE="v0.5"
 echo "${HTTP_PASS}"
 
 if [ "${HTTP_PASS}" == "**Random**" ]; then

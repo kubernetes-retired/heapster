@@ -39,8 +39,8 @@ type timeseriesKey struct {
 func (self *defaultDecoder) Timeseries(input source_api.AggregateData) ([]Timeseries, error) {
 	var result []Timeseries
 	// Format metrics and push them.
-	for _, pod := range input.Pods {
-		result = append(result, self.getPodMetrics(&pod)...)
+	for index := range input.Pods {
+		result = append(result, self.getPodMetrics(&input.Pods[index])...)
 	}
 	result = append(result, self.getContainerSliceMetrics(input.Containers)...)
 	result = append(result, self.getContainerSliceMetrics(input.Machine)...)
@@ -48,17 +48,22 @@ func (self *defaultDecoder) Timeseries(input source_api.AggregateData) ([]Timese
 	return result, nil
 }
 
-func (self *defaultDecoder) getPodMetrics(pod *source_api.Pod) []Timeseries {
-	// Generate the labels.
+// Generate the labels.
+func (self *defaultDecoder) getPodLabels(pod *source_api.Pod) map[string]string {
 	labels := make(map[string]string)
 	labels[labelPodId] = pod.ID
 	labels[labelLabels] = LabelsToString(pod.Labels, ",")
 	labels[labelHostname] = pod.Hostname
 
+	return labels
+}
+
+func (self *defaultDecoder) getPodMetrics(pod *source_api.Pod) []Timeseries {
 	// Break the individual metrics from the container statistics.
-	var result []Timeseries
+	result := []Timeseries{}
 	for index := range pod.Containers {
-		result = append(result, self.getContainerMetrics(&pod.Containers[index], labels)...)
+		timeseries := self.getContainerMetrics(&pod.Containers[index], self.getPodLabels(pod))
+		result = append(result, timeseries...)
 	}
 
 	return result
@@ -67,9 +72,9 @@ func (self *defaultDecoder) getPodMetrics(pod *source_api.Pod) []Timeseries {
 func (self *defaultDecoder) getContainerSliceMetrics(containers []source_api.Container) []Timeseries {
 	labels := make(map[string]string)
 	var result []Timeseries
-	for _, container := range containers {
-		labels[labelHostname] = container.Hostname
-		result = append(result, self.getContainerMetrics(&container, labels)...)
+	for index := range containers {
+		labels[labelHostname] = containers[index].Hostname
+		result = append(result, self.getContainerMetrics(&containers[index], labels)...)
 	}
 
 	return result
