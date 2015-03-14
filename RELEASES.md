@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.9 (3-13-2014)
+- [Standardized metrics](sinks/api/supported_metrics.go)
+- New [common API](sinks/api/types.go) in place for all external storage drivers.
+- Simplified heapster deployment scripts.
+- Bug fixes and misc enhancements.
+
 ## 0.8 (2-22-2014)
 - Avoid expecting HostIP of Pod to match node's HostIP. 
 
