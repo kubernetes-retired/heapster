@@ -3,6 +3,7 @@ kind: ReplicationController
 metadata: 
   labels: 
     name: heapster
+    kubernetes.io/cluster-service: "true"
   name: monitoring-heapster-controller
 spec: 
   replicas: 1
@@ -12,13 +13,16 @@ spec:
     metadata: 
       labels: 
         name: heapster
+        kubernetes.io/cluster-service: "true"
     spec: 
       containers: 
-        - image: kubernetes/heapster:v0.8
+        - image: kubernetes/heapster:v0.9
           name: heapster
           env: 
             - name: "INFLUXDB_HOST"
               value: "monitoring-influxdb"
+            - name: "SINK"
+              value: "influxdb"
           volumeMounts:
             - name: ssl-certs
               mountPath: /etc/ssl/certs
