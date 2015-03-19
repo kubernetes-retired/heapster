@@ -35,7 +35,7 @@ import (
 
 var argEndpoints = flag.String("endpoints", "http://127.0.0.1:4001", "Comma separated list of fleet server endpoints")
 
-// While updating this, also update heapster/deploy/Dockerfile.
+// While updating this, also update deploy/docker/Dockerfile.
 var hostsFile = flag.String("external_hosts_file", "/var/run/heapster/hosts", "A file that heapster refers to get a list of nodes to monitor.")
 
 func getFleetRegistryClient() (fleetClient.API, error) {

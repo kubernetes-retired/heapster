@@ -36,7 +36,7 @@ type externalCadvisorNodes struct {
 	nodes *NodeList
 }
 
-// While updating this, also update heapster/deploy/Dockerfile.
+// While updating this, also update deploy/docker/Dockerfile.
 var hostsFile = flag.String("external_hosts_file", "/var/run/heapster/hosts", "A file that heapster refers to get a list of nodes to monitor.")
 var standaloneMode = flag.Bool("standalone", false, "Whether to run Heapster in \"standalone\" mode where it only targets the current node.")
 
