@@ -7,7 +7,7 @@ _Warning: Virtual machines need to have at least 2 cores for InfluxDB to perform
 
 ### Start all of the pods and services
 ```shell
-$ kubectl.sh create -f deploy/kube-config/
+$ kubectl.sh create -f deploy/kube-config/influxdb/
 ```
 
 Grafana will be accessible at `https://<masterIP>/api/v1beta1/proxy/services/monitoring-grafana/`. Use the master auth to access Grafana.
@@ -35,7 +35,7 @@ $ gcloud compute firewall-rules create monitoring-heapster --allow "tcp:8083" "t
 
 	_Note: We are working on exposing the InfluxDB UI using the proxy service on the Kubernetes master._
 
-4. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](deploy/kube-config/influxdb-grafana-controller.yaml) and relaunch the controllers:
+4. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](deploy/kube-config/influxdb/influxdb-grafana-controller.yaml) and relaunch the controllers:
 
 	```shell
 $ deploy/kube.sh restart
