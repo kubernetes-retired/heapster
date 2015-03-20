@@ -30,6 +30,10 @@ desiredState:
               - name: "HTTP_PASS"
                 value: "**None**"
               - name: "INFLUXDB_PROTO"
+                value: '"+window.location.protocol.slice(0,-1)+"'
+              - name: "INFLUXDB_HOST"
+                value: '"+window.location.host+"'
+              - name: "INFLUXDB_PROTO"
                 value: "https"
               - name: "INFLUXDB_HOST"
                 value: "localhost"

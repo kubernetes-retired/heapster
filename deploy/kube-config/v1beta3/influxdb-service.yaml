@@ -2,8 +2,7 @@ apiVersion: v1beta3
 kind: Service
 metadata: 
   labels: 
-    name: influxGrafana
-  name: monitoring-influxdb
+    name: monitoring-influxdb
 spec: 
   containerPort: 8086
   port: 80
