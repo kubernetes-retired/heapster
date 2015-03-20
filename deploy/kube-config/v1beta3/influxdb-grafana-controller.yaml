@@ -3,7 +3,6 @@ kind: ReplicationController
 metadata: 
   labels: 
     name: influxGrafana
-    kubernetes.io/cluster-service: "true"
   name: monitoring-influx-grafana-controller
 spec: 
   replicas: 1
@@ -13,7 +12,6 @@ spec:
     metadata: 
       labels: 
         name: influxGrafana
-        kubernetes.io/cluster-service: "true"
     spec: 
       containers: 
         - image: kubernetes/heapster_influxdb:v0.3
