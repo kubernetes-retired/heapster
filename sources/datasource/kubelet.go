@@ -40,11 +40,14 @@ func (self *kubeletSource) postRequestAndGetValue(client *http.Client, req *http
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read response body - %v", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("request failed - %q, response: %q", response.Status, string(body))
 	}
 	err = json.Unmarshal(body, value)
 	if err != nil {
-		return fmt.Errorf("Got '%s': %v", string(body), err)
+		return fmt.Errorf("failed to parse output. Response: %q. Error: %v", string(body), err)
 	}
 	return nil
 }

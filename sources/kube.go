@@ -156,7 +156,8 @@ func (self *kubeSource) getPodInfo(nodeList *nodes.NodeList) ([]api.Pod, error) 
 				if err != nil {
 					// Containers could be in the process of being setup or restarting while the pod is alive.
 					glog.Errorf("failed to get stats for container %q in pod %q/%q", container.Name, pod.Namespace, pod.Name)
-					return
+					self.recordPodError(*pod)
+					continue
 				}
 				glog.V(2).Infof("Fetched stats from kubelet for container %s in pod %s", container.Name, pod.Name)
 				pod.Containers[index].Hostname = pod.Hostname
