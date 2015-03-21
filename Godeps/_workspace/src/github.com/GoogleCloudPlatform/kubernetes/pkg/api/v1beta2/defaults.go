@@ -21,18 +21,20 @@ import (
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"github.com/golang/glog"
 )
 
 func init() {
 	api.Scheme.AddDefaultingFuncs(
 		func(obj *Volume) {
 			if util.AllPtrFieldsNil(&obj.Source) {
+				glog.Errorf("Defaulting volume source for %v", obj)
 				obj.Source = VolumeSource{
-					EmptyDir: &EmptyDir{},
+					EmptyDir: &EmptyDirVolumeSource{},
 				}
 			}
 		},
-		func(obj *Port) {
+		func(obj *ContainerPort) {
 			if obj.Protocol == "" {
 				obj.Protocol = ProtocolTCP
 			}
@@ -78,6 +80,26 @@ func init() {
 		func(obj *LivenessProbe) {
 			if obj.TimeoutSeconds == 0 {
 				obj.TimeoutSeconds = 1
+			}
+		},
+		func(obj *Secret) {
+			if obj.Type == "" {
+				obj.Type = SecretTypeOpaque
+			}
+		},
+		func(obj *Endpoints) {
+			if obj.Protocol == "" {
+				obj.Protocol = "TCP"
+			}
+		},
+		func(obj *HTTPGetAction) {
+			if obj.Path == "" {
+				obj.Path = "/"
+			}
+		},
+		func(obj *NamespaceStatus) {
+			if obj.Phase == "" {
+				obj.Phase = NamespaceActive
 			}
 		},
 	)

@@ -22,6 +22,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ghodss/yaml"
@@ -75,6 +76,72 @@ var (
 	}
 )
 
+func TestNonExistentCommandLineFile(t *testing.T) {
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: "bogus_file",
+	}
+
+	_, err := loadingRules.Load()
+	if err == nil {
+		t.Fatalf("Expected error for missing command-line file, got none")
+	}
+	if !strings.Contains(err.Error(), "bogus_file") {
+		t.Fatalf("Expected error about 'bogus_file', got %s", err.Error())
+	}
+}
+
+func TestToleratingMissingFiles(t *testing.T) {
+	loadingRules := ClientConfigLoadingRules{
+		Precedence: []string{"bogus1", "bogus2", "bogus3"},
+	}
+
+	_, err := loadingRules.Load()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+}
+
+func TestErrorReadingFile(t *testing.T) {
+	commandLineFile, _ := ioutil.TempFile("", "")
+	defer os.Remove(commandLineFile.Name())
+
+	if err := ioutil.WriteFile(commandLineFile.Name(), []byte("bogus value"), 0644); err != nil {
+		t.Fatalf("Error creating tempfile: %v", err)
+	}
+
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: commandLineFile.Name(),
+	}
+
+	_, err := loadingRules.Load()
+	if err == nil {
+		t.Fatalf("Expected error for unloadable file, got none")
+	}
+	if !strings.Contains(err.Error(), commandLineFile.Name()) {
+		t.Fatalf("Expected error about '%s', got %s", commandLineFile.Name(), err.Error())
+	}
+}
+
+func TestErrorReadingNonFile(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Couldn't create tmpdir")
+	}
+	defer os.Remove(tmpdir)
+
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: tmpdir,
+	}
+
+	_, err = loadingRules.Load()
+	if err == nil {
+		t.Fatalf("Expected error for non-file, got none")
+	}
+	if !strings.Contains(err.Error(), tmpdir) {
+		t.Fatalf("Expected error about '%s', got %s", tmpdir, err.Error())
+	}
+}
+
 func TestConflictingCurrentContext(t *testing.T) {
 	commandLineFile, _ := ioutil.TempFile("", "")
 	defer os.Remove(commandLineFile.Name())
@@ -92,8 +159,8 @@ func TestConflictingCurrentContext(t *testing.T) {
 	WriteToFile(mockEnvVarConfig, envVarFile.Name())
 
 	loadingRules := ClientConfigLoadingRules{
-		CommandLinePath: commandLineFile.Name(),
-		EnvVarPath:      envVarFile.Name(),
+		ExplicitPath: commandLineFile.Name(),
+		Precedence:   []string{envVarFile.Name()},
 	}
 
 	mergedConfig, err := loadingRules.Load()
@@ -142,8 +209,8 @@ func TestResolveRelativePaths(t *testing.T) {
 	WriteToFile(pathResolutionConfig2, configFile2)
 
 	loadingRules := ClientConfigLoadingRules{
-		CommandLinePath: configFile1,
-		EnvVarPath:      configFile2,
+		ExplicitPath: configFile1,
+		Precedence:   []string{configFile2},
 	}
 
 	mergedConfig, err := loadingRules.Load()
@@ -217,8 +284,8 @@ func ExampleMergingSomeWithConflict() {
 	WriteToFile(testConfigConflictAlfa, envVarFile.Name())
 
 	loadingRules := ClientConfigLoadingRules{
-		CommandLinePath: commandLineFile.Name(),
-		EnvVarPath:      envVarFile.Name(),
+		ExplicitPath: commandLineFile.Name(),
+		Precedence:   []string{envVarFile.Name()},
 	}
 
 	mergedConfig, err := loadingRules.Load()
@@ -277,10 +344,8 @@ func ExampleMergingEverythingNoConflicts() {
 	WriteToFile(testConfigDelta, homeDirFile.Name())
 
 	loadingRules := ClientConfigLoadingRules{
-		CommandLinePath:      commandLineFile.Name(),
-		EnvVarPath:           envVarFile.Name(),
-		CurrentDirectoryPath: currentDirFile.Name(),
-		HomeDirectoryPath:    homeDirFile.Name(),
+		ExplicitPath: commandLineFile.Name(),
+		Precedence:   []string{envVarFile.Name(), currentDirFile.Name(), homeDirFile.Name()},
 	}
 
 	mergedConfig, err := loadingRules.Load()

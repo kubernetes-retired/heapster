@@ -60,6 +60,9 @@ var Semantic = conversion.EqualitiesOrDie(
 		}
 		return a.Amount.Cmp(b.Amount) == 0
 	},
+	func(a, b util.Time) bool {
+		return a.UTC() == b.UTC()
+	},
 )
 
 var standardResources = util.NewStringSet(
@@ -72,4 +75,23 @@ var standardResources = util.NewStringSet(
 
 func IsStandardResourceName(str string) bool {
 	return standardResources.Has(str)
+}
+
+// NewDeleteOptions returns a DeleteOptions indicating the resource should
+// be deleted within the specified grace period. Use zero to indicate
+// immediate deletion. If you would prefer to use the default grace period,
+// use &api.DeleteOptions{} directly.
+func NewDeleteOptions(grace int64) *DeleteOptions {
+	return &DeleteOptions{GracePeriodSeconds: &grace}
+}
+
+// this function aims to check if the service portal IP is set or not
+// the objective is not to perform validation here
+func IsServiceIPSet(service *Service) bool {
+	return service.Spec.PortalIP != PortalIPNone && service.Spec.PortalIP != ""
+}
+
+// this function aims to check if the service portal IP is requested or not
+func IsServiceIPRequested(service *Service) bool {
+	return service.Spec.PortalIP == ""
 }

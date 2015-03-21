@@ -23,7 +23,7 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 	cadvisorClient "github.com/google/cadvisor/client"
-	cadvisor "github.com/google/cadvisor/info"
+	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
 type cadvisorSource struct{}

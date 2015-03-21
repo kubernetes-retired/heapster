@@ -22,7 +22,7 @@ import (
 	"time"
 
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
-	cadvisor "github.com/google/cadvisor/info"
+	cadvisor "github.com/google/cadvisor/info/v1"
 	"github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

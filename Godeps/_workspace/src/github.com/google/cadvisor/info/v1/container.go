@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package info
+package v1
 
 import (
 	"reflect"
@@ -71,11 +71,32 @@ type ContainerReference struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
+// Sorts by container name.
+type ContainerReferenceSlice []ContainerReference
+
+func (self ContainerReferenceSlice) Len() int           { return len(self) }
+func (self ContainerReferenceSlice) Swap(i, j int)      { self[i], self[j] = self[j], self[i] }
+func (self ContainerReferenceSlice) Less(i, j int) bool { return self[i].Name < self[j].Name }
+
 // ContainerInfoQuery is used when users check a container info from the REST api.
 // It specifies how much data users want to get about a container
 type ContainerInfoRequest struct {
 	// Max number of stats to return.
 	NumStats int `json:"num_stats,omitempty"`
+
+	// Start time for which to query information.
+	// If ommitted, the beginning of time is assumed.
+	Start time.Time `json:"start,omitempty"`
+
+	// End time for which to query information.
+	// If ommitted, current time is assumed.
+	End time.Time `json:"end,omitempty"`
+}
+
+func (self *ContainerInfoRequest) Equals(other ContainerInfoRequest) bool {
+	return self.NumStats == other.NumStats &&
+		self.Start.Equal(other.Start) &&
+		self.End.Equal(other.End)
 }
 
 type ContainerInfo struct {
@@ -207,31 +228,34 @@ type LoadStats struct {
 	NrStopped uint64 `json:"nr_stopped"`
 
 	// Number of tasks in uninterruptible state
-	NrUinterruptible uint64 `json:"nr_uninterruptible"`
+	NrUninterruptible uint64 `json:"nr_uninterruptible"`
 
 	// Number of tasks waiting on IO
 	NrIoWait uint64 `json:"nr_io_wait"`
 }
 
+// CPU usage time statistics.
+type CpuUsage struct {
+	// Total CPU usage.
+	// Units: nanoseconds
+	Total uint64 `json:"total"`
+
+	// Per CPU/core usage of the container.
+	// Unit: nanoseconds.
+	PerCpu []uint64 `json:"per_cpu_usage,omitempty"`
+
+	// Time spent in user space.
+	// Unit: nanoseconds
+	User uint64 `json:"user"`
+
+	// Time spent in kernel space.
+	// Unit: nanoseconds
+	System uint64 `json:"system"`
+}
+
 // All CPU usage metrics are cumulative from the creation of the container
 type CpuStats struct {
-	Usage struct {
-		// Total CPU usage.
-		// Units: nanoseconds
-		Total uint64 `json:"total"`
-
-		// Per CPU/core usage of the container.
-		// Unit: nanoseconds.
-		PerCpu []uint64 `json:"per_cpu_usage,omitempty"`
-
-		// Time spent in user space.
-		// Unit: nanoseconds
-		User uint64 `json:"user"`
-
-		// Time spent in kernel space.
-		// Unit: nanoseconds
-		System uint64 `json:"system"`
-	} `json:"usage"`
+	Usage CpuUsage `json:"usage"`
 	// Smoothed average of number of runnable threads x 1000.
 	// We multiply by thousand to avoid using floats, but preserving precision.
 	// Load is smoothed over the last 10 seconds. Instantaneous value can be read
@@ -439,38 +463,4 @@ func calculateCpuUsage(prev, cur uint64) uint64 {
 		return 0
 	}
 	return cur - prev
-}
-
-type Percentiles struct {
-	// Indicates whether the stats are present or not.
-	// If true, values below do not have any data.
-	Present bool `json:"present"`
-	// Average over the collected sample.
-	Mean uint64 `json:"mean"`
-	// Max seen over the collected sample.
-	Max uint64 `json:"max"`
-	// 90th percentile over the collected sample.
-	Ninety uint64 `json:"ninety"`
-}
-
-type Usage struct {
-	// Indicates amount of data available [0-100].
-	// If we have data for half a day, we'll still process DayUsage,
-	// but set PercentComplete to 50.
-	PercentComplete int32 `json:"percent_complete"`
-	// Mean, Max, and 90p cpu rate value in milliCpus/seconds. Converted to milliCpus to avoid floats.
-	Cpu Percentiles `json:"cpu"`
-	// Mean, Max, and 90p memory size in bytes.
-	Memory Percentiles `json:"memory"`
-}
-
-type DerivedStats struct {
-	// Time of generation of these stats.
-	Timestamp time.Time `json:"timestamp"`
-	// Percentiles in last observed minute.
-	MinuteUsage Usage `json:"minute_usage"`
-	// Percentile in last hour.
-	HourUsage Usage `json:"hour_usage"`
-	// Percentile in last day.
-	DayUsage Usage `json:"day_usage"`
 }

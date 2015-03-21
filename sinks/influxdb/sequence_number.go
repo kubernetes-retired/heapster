@@ -24,7 +24,7 @@ type metricSequenceNum interface {
 
 type realMetricSequenceNum struct {
 	store map[string]uint64
-	lock sync.Mutex
+	lock  sync.Mutex
 }
 
 func (self *realMetricSequenceNum) Get(metric string) uint64 {

@@ -14,7 +14,7 @@
 
 package api
 
-import cadvisor "github.com/google/cadvisor/info"
+import cadvisor "github.com/google/cadvisor/info/v1"
 
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
 type Pod struct {
