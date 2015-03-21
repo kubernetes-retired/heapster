@@ -75,7 +75,7 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 		localContainer.Name = container.Name
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}
-	glog.V(3).Infof("parsed kube pod: %+v", localPod)
+	glog.V(5).Infof("parsed kube pod: %+v", localPod)
 
 	return &localPod
 }
@@ -83,7 +83,7 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 func (self *realPodsApi) parseAllPods(podNodePairs []podNodePair) []api.Pod {
 	out := make([]api.Pod, 0)
 	for i := range podNodePairs {
-		glog.V(3).Infof("Found kube Pod: %+v", podNodePairs[i].pod)
+		glog.V(5).Infof("Found kube Pod: %+v", podNodePairs[i].pod)
 		out = append(out, *self.parsePod(&podNodePairs[i]))
 	}
 
@@ -105,7 +105,7 @@ func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	if err != nil {
 		return []api.Pod{}, err
 	}
-	glog.V(3).Infof("got pods from api server %+v", pods)
+	glog.V(5).Infof("got pods from api server %+v", pods)
 	selectedPods := []podNodePair{}
 	// TODO(vishh): Avoid this loop by setting a node selector on the watcher.
 	for i, pod := range pods {
@@ -115,7 +115,7 @@ func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 			glog.V(2).Infof("pod %q with host %q and hostip %q not found in nodeList", pod.Name, pod.Status.Host, pod.Status.HostIP)
 		}
 	}
-	glog.V(3).Infof("selected pods from api server %+v", selectedPods)
+	glog.V(4).Infof("selected pods from api server %+v", selectedPods)
 
 	return self.parseAllPods(selectedPods), nil
 }

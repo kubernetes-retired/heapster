@@ -22,11 +22,11 @@ import (
 
 type Source interface {
 	// Fetches containers or pod information from all the nodes in the cluster.
+	// start, end: Represents the time range for stats
+	// resolution: Represents the intervals at which samples are collected.
 	// Returns:
-	// 1. podsOrContainers: A slice of Pod or a slice of RawContainer
-	// 2. nodes: A slice of RawContainer, one for each node in the cluster, that contains
-	// root cgroup information.
-	GetInfo() (api.AggregateData, error)
+	// AggregateData: A composite object that contains node, pod and container stats.
+	GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error)
 	// Returns debug information for the source.
 	DebugInfo() string
 }

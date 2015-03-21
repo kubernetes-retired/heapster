@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
+	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
@@ -52,28 +52,25 @@ func (self *kubeletSource) postRequestAndGetValue(client *http.Client, req *http
 	return nil
 }
 
-func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
+func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo, resolution time.Duration) *api.Container {
 	if len(containerInfo.Stats) == 0 {
 		return nil
 	}
 	container := &api.Container{
 		Name:  containerInfo.Name,
 		Spec:  containerInfo.Spec,
-		Stats: containerInfo.Stats,
+		Stats: sampleContainerStats(containerInfo.Stats, resolution),
 	}
 	if len(containerInfo.Aliases) > 0 {
 		container.Name = containerInfo.Aliases[0]
 	}
-	timestamps := []string{}
-	for _, stat := range container.Stats {
-		timestamps = append(timestamps, stat.Timestamp.String())
-	}
-	glog.V(3).Infof("%q stats\n%q", container.Name, strings.Join(timestamps, " "))
+
 	return container
 }
 
-func (self *kubeletSource) getContainer(url string, numStats int) (*api.Container, error) {
-	body, err := json.Marshal(cadvisor.ContainerInfoRequest{NumStats: numStats})
+func (self *kubeletSource) getContainer(url string, start, end time.Time, resolution time.Duration) (*api.Container, error) {
+	// TODO: Get rid of 'NumStats' once cadvisor supports time range queries without specifying that.
+	body, err := json.Marshal(cadvisor.ContainerInfoRequest{Start: start, End: end, NumStats: int(time.Minute / time.Second)})
 	if err != nil {
 		return nil, err
 	}
@@ -88,13 +85,13 @@ func (self *kubeletSource) getContainer(url string, numStats int) (*api.Containe
 		glog.Errorf("failed to get stats from kubelet url: %s - %s\n", url, err)
 		return nil, err
 	}
-
-	return self.parseStat(&containerInfo), nil
+	glog.V(4).Infof("url: %q, body: %q, data: %+v", url, string(body), containerInfo)
+	return self.parseStat(&containerInfo, resolution), nil
 }
 
-func (self *kubeletSource) GetContainer(host Host, numStats int) (container *api.Container, err error) {
+func (self *kubeletSource) GetContainer(host Host, start, end time.Time, resolution time.Duration) (container *api.Container, err error) {
 	url := fmt.Sprintf("http://%s:%s/%s", host.IP, host.Port, host.Resource)
-	glog.V(2).Infof("about to query kubelet using url: %q", url)
+	glog.V(3).Infof("about to query kubelet using url: %q", url)
 
-	return self.getContainer(url, numStats)
+	return self.getContainer(url, start, end, resolution)
 }

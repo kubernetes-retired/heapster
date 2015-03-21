@@ -68,7 +68,7 @@ func (self *kubeNodes) List() (*NodeList, error) {
 		glog.Errorf("failed to list minions via watch interface - %v", err)
 		return nil, fmt.Errorf("failed to list minions via watch interface - %v", err)
 	}
-	glog.V(3).Infof("all kube nodes: %+v", allNodes)
+	glog.V(5).Infof("all kube nodes: %+v", allNodes)
 
 	goodNodes := []string{}
 	for _, node := range allNodes.Items {
@@ -101,7 +101,7 @@ func (self *kubeNodes) List() (*NodeList, error) {
 		goodNodes = append(goodNodes, node.Name)
 	}
 	self.recordGoodNodes(goodNodes)
-	glog.V(2).Infof("kube nodes found: %+v", nodeList)
+	glog.V(5).Infof("kube nodes found: %+v", nodeList)
 	return nodeList, nil
 }
 

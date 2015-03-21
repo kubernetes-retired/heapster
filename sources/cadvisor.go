@@ -41,10 +41,9 @@ type cadvisorSource struct {
 	cadvisorApi  datasource.Cadvisor
 	pollDuration time.Duration
 	nodesApi     nodes.NodesApi
-	lastQuery    time.Time
 }
 
-func (self *cadvisorSource) GetInfo() (api.AggregateData, error) {
+func (self *cadvisorSource) GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error) {
 	var (
 		lock sync.Mutex
 		wg   sync.WaitGroup
@@ -63,7 +62,7 @@ func (self *cadvisorSource) GetInfo() (api.AggregateData, error) {
 				IP:   info.InternalIP,
 				Port: self.cadvisorPort,
 			}
-			rawSubcontainers, node, err := self.cadvisorApi.GetAllContainers(host, self.numStatsToFetch())
+			rawSubcontainers, node, err := self.cadvisorApi.GetAllContainers(host, start, end, resolution)
 			if err != nil {
 				glog.Error(err)
 				return
@@ -85,17 +84,8 @@ func (self *cadvisorSource) GetInfo() (api.AggregateData, error) {
 		}(string(hostname), info)
 	}
 	wg.Wait()
-	self.lastQuery = time.Now()
 
 	return result, nil
-}
-
-func (self *cadvisorSource) numStatsToFetch() int {
-	numStats := int(self.pollDuration / time.Second)
-	if time.Since(self.lastQuery) > self.pollDuration {
-		numStats = int(time.Since(self.lastQuery) / time.Second)
-	}
-	return numStats
 }
 
 func (self *cadvisorSource) DebugInfo() string {
@@ -124,7 +114,6 @@ func newExternalCadvisorSource(pollDuration time.Duration) (Source, error) {
 		cadvisorApi:  datasource.NewCadvisor(),
 		nodesApi:     nodesApi,
 		cadvisorPort: strconv.Itoa(*argCadvisorPort),
-		lastQuery:    time.Now(),
 	}, nil
 }
 
@@ -141,6 +130,5 @@ func newCoreOSCadvisorSource(pollDuration time.Duration) (Source, error) {
 		cadvisorApi:  datasource.NewCadvisor(),
 		nodesApi:     nodesApi,
 		cadvisorPort: strconv.Itoa(*argCadvisorPort),
-		lastQuery:    time.Now(),
 	}, nil
 }

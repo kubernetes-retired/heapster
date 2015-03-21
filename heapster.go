@@ -101,17 +101,19 @@ func doWork() (sources.Source, sinks.ExternalSinkManager, error) {
 
 func housekeep(source sources.Source, sink sinks.ExternalSinkManager) {
 	ticker := time.NewTicker(*argPollDuration)
+	lastGet := time.Now()
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			data, err := source.GetInfo()
+			data, err := source.GetInfo(lastGet, time.Now(), time.Second)
 			if err != nil {
 				glog.Errorf("failed to get information from source - %v", err)
 			}
 			if err := sink.Store(data); err != nil {
 				glog.Errorf("failed to push information to sink - %v", err)
 			}
+			lastGet = time.Now()
 		}
 	}
 

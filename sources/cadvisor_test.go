@@ -27,16 +27,16 @@ import (
 )
 
 type fakeDataSource struct {
-	f func(host datasource.Host, numStats int) (subcontainers []*api.Container, root *api.Container, err error)
+	f func(host datasource.Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error)
 }
 
-func (self *fakeDataSource) GetAllContainers(host datasource.Host, numStats int) (subcontainers []*api.Container, root *api.Container, err error) {
-	return self.f(host, numStats)
+func (self *fakeDataSource) GetAllContainers(host datasource.Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error) {
+	return self.f(host, start, end, resolution)
 }
 
 func TestBasicSuccess(t *testing.T) {
 	cadvisorApi := &fakeDataSource{
-		f: func(host datasource.Host, numStats int) (subcontainers []*api.Container, root *api.Container, err error) {
+		f: func(host datasource.Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error) {
 			return nil, nil, nil
 		},
 	}
@@ -45,10 +45,9 @@ func TestBasicSuccess(t *testing.T) {
 		nodesApi:     &fakeNodesApi{nodes.NodeList{}},
 		pollDuration: 1 * time.Second,
 		cadvisorPort: "8080",
-		lastQuery:    time.Now(),
 		cadvisorApi:  cadvisorApi,
 	}
-	data, err := source.GetInfo()
+	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	require.Equal(t, api.AggregateData{Pods: nil, Containers: nil, Machine: nil}, data)
 }
@@ -71,7 +70,7 @@ func TestWorkflowSuccess(t *testing.T) {
 		},
 	}
 	cadvisorApi := &fakeDataSource{
-		f: func(host datasource.Host, numStats int) (subcontainers []*api.Container, root *api.Container, err error) {
+		f: func(host datasource.Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error) {
 			data, exists := expectedData[host]
 			if !exists {
 				return nil, nil, fmt.Errorf("unexpected host: %+v", host)
@@ -89,10 +88,9 @@ func TestWorkflowSuccess(t *testing.T) {
 		nodesApi:     &fakeNodesApi{nodeList},
 		pollDuration: 1 * time.Second,
 		cadvisorPort: "8080",
-		lastQuery:    time.Now(),
 		cadvisorApi:  cadvisorApi,
 	}
-	data, err := source.GetInfo()
+	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	assert.Len(t, data.Containers, 2)
 	assert.Len(t, data.Machine, 2)

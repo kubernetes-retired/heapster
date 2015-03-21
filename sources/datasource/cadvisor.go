@@ -19,6 +19,7 @@ package datasource
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
@@ -28,11 +29,11 @@ import (
 
 type cadvisorSource struct{}
 
-func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
+func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo, resolution time.Duration) *api.Container {
 	container := &api.Container{
 		Name:  containerInfo.Name,
 		Spec:  containerInfo.Spec,
-		Stats: containerInfo.Stats,
+		Stats: sampleContainerStats(containerInfo.Stats, resolution),
 	}
 	if len(containerInfo.Aliases) > 0 {
 		container.Name = containerInfo.Aliases[0]
@@ -41,16 +42,16 @@ func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo) *ap
 	return container
 }
 
-func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, numStats int) (subcontainers []*api.Container, root *api.Container, err error) {
+func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error) {
 	allContainers, err := client.SubcontainersInfo("/",
-		&cadvisor.ContainerInfoRequest{NumStats: numStats})
+		&cadvisor.ContainerInfoRequest{Start: start, End: end})
 	if err != nil {
 
 		return nil, nil, err
 	}
 
 	for _, containerInfo := range allContainers {
-		container := self.parseStat(&containerInfo)
+		container := self.parseStat(&containerInfo, resolution)
 		if containerInfo.Name == "/" {
 			root = container
 		} else {
@@ -61,13 +62,13 @@ func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, numS
 	return subcontainers, root, nil
 }
 
-func (self *cadvisorSource) GetAllContainers(host Host, numStats int) (subcontainers []*api.Container, root *api.Container, err error) {
+func (self *cadvisorSource) GetAllContainers(host Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error) {
 	url := fmt.Sprintf("http://%s:%s/", host.IP, host.Port)
 	client, err := cadvisorClient.NewClient(url)
 	if err != nil {
 		return
 	}
-	subcontainers, root, err = self.getAllContainers(client, numStats)
+	subcontainers, root, err = self.getAllContainers(client, start, end, resolution)
 	if err != nil {
 		glog.Errorf("failed to get stats from cadvisor %q - %v\n", url, err)
 	}

@@ -40,7 +40,7 @@ func TestBasicKubelet(t *testing.T) {
 	server := httptest.NewServer(&handler)
 	defer server.Close()
 	kubeletSource := kubeletSource{}
-	container, err := kubeletSource.getContainer(server.URL, 10)
+	container, err := kubeletSource.getContainer(server.URL, time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	assert.Nil(t, container)
 }
@@ -77,7 +77,7 @@ func TestDetailedKubelet(t *testing.T) {
 	server := httptest.NewServer(&handler)
 	defer server.Close()
 	kubeletSource := kubeletSource{}
-	container, err := kubeletSource.getContainer(server.URL, 10)
+	container, err := kubeletSource.getContainer(server.URL, time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	assert.True(t, container.Spec.Eq(&rootContainer.Spec))
 	for i, stat := range container.Stats {
