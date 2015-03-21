@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
@@ -35,11 +36,15 @@ type EventNamespacer interface {
 type EventInterface interface {
 	Create(event *api.Event) (*api.Event, error)
 	Update(event *api.Event) (*api.Event, error)
-	List(label, field labels.Selector) (*api.EventList, error)
+	List(label labels.Selector, field fields.Selector) (*api.EventList, error)
 	Get(name string) (*api.Event, error)
-	Watch(label, field labels.Selector, resourceVersion string) (watch.Interface, error)
+	Watch(label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error)
 	// Search finds events about the specified object
 	Search(objOrRef runtime.Object) (*api.EventList, error)
+	Delete(name string) error
+	// Returns the appropriate field selector based on the API version being used to communicate with the server.
+	// The returned field selector can be used with List and Watch to filter desired events.
+	GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string) fields.Selector
 }
 
 // events implements Events interface
@@ -95,13 +100,13 @@ func (e *events) Update(event *api.Event) (*api.Event, error) {
 }
 
 // List returns a list of events matching the selectors.
-func (e *events) List(label, field labels.Selector) (*api.EventList, error) {
+func (e *events) List(label labels.Selector, field fields.Selector) (*api.EventList, error) {
 	result := &api.EventList{}
 	err := e.client.Get().
 		NamespaceIfScoped(e.namespace, len(e.namespace) > 0).
 		Resource("events").
-		SelectorParam("labels", label).
-		SelectorParam("fields", field).
+		LabelsSelectorParam(api.LabelSelectorQueryParam(e.client.APIVersion()), label).
+		FieldsSelectorParam(api.FieldSelectorQueryParam(e.client.APIVersion()), field).
 		Do().
 		Into(result)
 	return result, err
@@ -124,14 +129,14 @@ func (e *events) Get(name string) (*api.Event, error) {
 }
 
 // Watch starts watching for events matching the given selectors.
-func (e *events) Watch(label, field labels.Selector, resourceVersion string) (watch.Interface, error) {
+func (e *events) Watch(label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error) {
 	return e.client.Get().
 		Prefix("watch").
 		NamespaceIfScoped(e.namespace, len(e.namespace) > 0).
 		Resource("events").
 		Param("resourceVersion", resourceVersion).
-		SelectorParam("labels", label).
-		SelectorParam("fields", field).
+		LabelsSelectorParam(api.LabelSelectorQueryParam(e.client.APIVersion()), label).
+		FieldsSelectorParam(api.FieldSelectorQueryParam(e.client.APIVersion()), field).
 		Watch()
 }
 
@@ -146,18 +151,49 @@ func (e *events) Search(objOrRef runtime.Object) (*api.EventList, error) {
 	if e.namespace != "" && ref.Namespace != e.namespace {
 		return nil, fmt.Errorf("won't be able to find any events of namespace '%v' in namespace '%v'", ref.Namespace, e.namespace)
 	}
-	fields := labels.Set{}
-	if ref.Kind != "" {
-		fields["involvedObject.kind"] = ref.Kind
+	stringRefUID := string(ref.UID)
+	var refUID *string
+	if stringRefUID != "" {
+		refUID = &stringRefUID
 	}
-	if ref.Namespace != "" {
-		fields["involvedObject.namespace"] = ref.Namespace
+	fieldSelector := e.GetFieldSelector(&ref.Name, &ref.Namespace, &ref.Kind, refUID)
+	return e.List(labels.Everything(), fieldSelector)
+}
+
+// Delete deletes an existing event.
+func (e *events) Delete(name string) error {
+	return e.client.Delete().
+		NamespaceIfScoped(e.namespace, len(e.namespace) > 0).
+		Resource("events").
+		Name(name).
+		Do().
+		Error()
+}
+
+// Returns the appropriate field selector based on the API version being used to communicate with the server.
+// The returned field selector can be used with List and Watch to filter desired events.
+func (e *events) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string) fields.Selector {
+	apiVersion := e.client.APIVersion()
+	field := fields.Set{}
+	if involvedObjectName != nil {
+		field[getInvolvedObjectNameFieldLabel(apiVersion)] = *involvedObjectName
 	}
-	if ref.Name != "" {
-		fields["involvedObject.name"] = ref.Name
+	if involvedObjectNamespace != nil {
+		field["involvedObject.namespace"] = *involvedObjectNamespace
 	}
-	if ref.UID != "" {
-		fields["involvedObject.uid"] = string(ref.UID)
+	if involvedObjectKind != nil {
+		field["involvedObject.kind"] = *involvedObjectKind
 	}
-	return e.List(labels.Everything(), fields.AsSelector())
+	if involvedObjectUID != nil {
+		field["involvedObject.uid"] = *involvedObjectUID
+	}
+	return field.AsSelector()
+}
+
+// Returns the appropriate field label to use for name of the involved object as per the given API version.
+func getInvolvedObjectNameFieldLabel(version string) string {
+	if api.PreV1Beta3(version) {
+		return "involvedObject.id"
+	}
+	return "involvedObject.name"
 }

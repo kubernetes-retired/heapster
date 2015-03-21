@@ -29,6 +29,17 @@ import (
 
 var Convert = newer.Scheme.Convert
 
+func TestEmptyObjectConversion(t *testing.T) {
+	s, err := current.Codec.Encode(&current.LimitRange{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// DeletionTimestamp is not included, while CreationTimestamp is (would always be set)
+	if string(s) != `{"kind":"LimitRange","creationTimestamp":null,"apiVersion":"v1beta1","spec":{"limits":null}}` {
+		t.Errorf("unexpected empty object: %s", string(s))
+	}
+}
+
 func TestNodeConversion(t *testing.T) {
 	version, kind, err := newer.Scheme.ObjectVersionAndKind(&current.Minion{})
 	if err != nil {
@@ -379,6 +390,75 @@ func TestContainerConversion(t *testing.T) {
 		}
 		if memory := got.Resources.Limits.Memory(); memory.Value() != memoryLimit.Value() {
 			t.Errorf("[Case: %d] Expected memory: %v, got: %v", i, memoryLimit, *memory)
+		}
+	}
+}
+
+func TestEndpointsConversion(t *testing.T) {
+	testCases := []struct {
+		given    current.Endpoints
+		expected newer.Endpoints
+	}{
+		{
+			given: current.Endpoints{
+				TypeMeta: current.TypeMeta{
+					ID: "empty",
+				},
+				Protocol:  current.ProtocolTCP,
+				Endpoints: []string{},
+			},
+			expected: newer.Endpoints{
+				Protocol:  newer.ProtocolTCP,
+				Endpoints: []newer.Endpoint{},
+			},
+		},
+		{
+			given: current.Endpoints{
+				TypeMeta: current.TypeMeta{
+					ID: "one",
+				},
+				Protocol:  current.ProtocolTCP,
+				Endpoints: []string{"1.2.3.4:88"},
+			},
+			expected: newer.Endpoints{
+				Protocol:  newer.ProtocolTCP,
+				Endpoints: []newer.Endpoint{{IP: "1.2.3.4", Port: 88}},
+			},
+		},
+		{
+			given: current.Endpoints{
+				TypeMeta: current.TypeMeta{
+					ID: "several",
+				},
+				Protocol:  current.ProtocolUDP,
+				Endpoints: []string{"1.2.3.4:88", "1.2.3.4:89", "1.2.3.4:90"},
+			},
+			expected: newer.Endpoints{
+				Protocol:  newer.ProtocolUDP,
+				Endpoints: []newer.Endpoint{{IP: "1.2.3.4", Port: 88}, {IP: "1.2.3.4", Port: 89}, {IP: "1.2.3.4", Port: 90}},
+			},
+		},
+	}
+
+	for i, tc := range testCases {
+		// Convert versioned -> internal.
+		got := newer.Endpoints{}
+		if err := Convert(&tc.given, &got); err != nil {
+			t.Errorf("[Case: %d] Unexpected error: %v", i, err)
+			continue
+		}
+		if got.Protocol != tc.expected.Protocol || !newer.Semantic.DeepEqual(got.Endpoints, tc.expected.Endpoints) {
+			t.Errorf("[Case: %d] Expected %v, got %v", i, tc.expected, got)
+		}
+
+		// Convert internal -> versioned.
+		got2 := current.Endpoints{}
+		if err := Convert(&got, &got2); err != nil {
+			t.Errorf("[Case: %d] Unexpected error: %v", i, err)
+			continue
+		}
+		if got2.Protocol != tc.given.Protocol || !newer.Semantic.DeepEqual(got2.Endpoints, tc.given.Endpoints) {
+			t.Errorf("[Case: %d] Expected %v, got %v", i, tc.given, got2)
 		}
 	}
 }

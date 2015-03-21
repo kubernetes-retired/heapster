@@ -39,7 +39,7 @@ type Interface interface {
 	EventNamespacer
 	LimitRangesNamespacer
 	ResourceQuotasNamespacer
-	ResourceQuotaUsagesNamespacer
+	SecretsNamespacer
 	NamespacesInterface
 }
 
@@ -75,8 +75,8 @@ func (c *Client) ResourceQuotas(namespace string) ResourceQuotaInterface {
 	return newResourceQuotas(c, namespace)
 }
 
-func (c *Client) ResourceQuotaUsages(namespace string) ResourceQuotaUsageInterface {
-	return newResourceQuotaUsages(c, namespace)
+func (c *Client) Secrets(namespace string) SecretsInterface {
+	return newSecrets(c, namespace)
 }
 
 func (c *Client) Namespaces() NamespaceInterface {
@@ -148,9 +148,4 @@ func IsTimeout(err error) bool {
 		return true
 	}
 	return false
-}
-
-// preV1Beta3 returns true if the provided API version is an API introduced before v1beta3.
-func preV1Beta3(version string) bool {
-	return version == "v1beta1" || version == "v1beta2"
 }

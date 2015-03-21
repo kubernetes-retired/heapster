@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/GoogleCloudPlatform/heapster",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
@@ -31,63 +31,68 @@
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/api",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/auth/user",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/client",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/clientauth",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/conversion",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/fields",
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/labels",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/probe",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/runtime",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/types",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/util",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/version",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/watch",
-			"Comment": "v0.10.0-606-gdba24d1",
-			"Rev": "dba24d132569e49e14f18b210742ec3b1282159b"
+			"Comment": "v0.12.0-1041-gef75888",
+			"Rev": "ef758881d108bb53a128126c503689104d17f477"
 		},
 		{
 			"ImportPath": "github.com/coreos/fleet/client",

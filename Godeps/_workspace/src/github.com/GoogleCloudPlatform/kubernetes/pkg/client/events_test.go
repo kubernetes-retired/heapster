@@ -23,6 +23,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/testapi"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 )
@@ -33,7 +34,11 @@ func TestEventSearch(t *testing.T) {
 			Method: "GET",
 			Path:   "/events",
 			Query: url.Values{
-				"fields": []string{"involvedObject.kind=Pod,involvedObject.name=foo,involvedObject.namespace=baz"},
+				"fields": []string{
+					"involvedObject.kind=Pod,",
+					getInvolvedObjectNameFieldLabel(testapi.Version()) + "=foo,",
+					"involvedObject.namespace=baz",
+				},
 				"labels": []string{},
 			},
 		},
@@ -159,7 +164,7 @@ func TestEventList(t *testing.T) {
 		Response: Response{StatusCode: 200, Body: eventList},
 	}
 	response, err := c.Setup().Events(ns).List(labels.Everything(),
-		labels.Everything())
+		fields.Everything())
 
 	if err != nil {
 		t.Errorf("%#v should be nil.", err)
@@ -174,4 +179,14 @@ func TestEventList(t *testing.T) {
 		responseEvent.InvolvedObject; !reflect.DeepEqual(e, r) {
 		t.Errorf("%#v != %#v.", e, r)
 	}
+}
+
+func TestEventDelete(t *testing.T) {
+	ns := api.NamespaceDefault
+	c := &testClient{
+		Request:  testRequest{Method: "DELETE", Path: "/events/foo"},
+		Response: Response{StatusCode: 200},
+	}
+	err := c.Setup().Events(ns).Delete("foo")
+	c.Validate(t, nil, err)
 }

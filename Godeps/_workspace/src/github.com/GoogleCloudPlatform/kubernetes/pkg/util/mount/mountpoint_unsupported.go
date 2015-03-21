@@ -1,3 +1,5 @@
+// +build windows
+
 /*
 Copyright 2014 Google Inc. All rights reserved.
 
@@ -14,20 +16,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package client
+package mount
 
 import (
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"fmt"
 )
 
-// FakeResourceQuotaUsages implements ResourceQuotaUsageInterface. Meant to be embedded into a struct to get a default
-// implementation. This makes faking out just the methods you want to test easier.
-type FakeResourceQuotaUsages struct {
-	Fake      *Fake
-	Namespace string
-}
-
-func (c *FakeResourceQuotaUsages) Create(resourceQuotaUsage *api.ResourceQuotaUsage) error {
-	c.Fake.Actions = append(c.Fake.Actions, FakeAction{Action: "create-resourceQuotaUsage"})
-	return nil
+// Dummy implementation for Windows
+func IsMountPoint(file string) (bool, error) {
+	return false, fmt.Errorf("unimplemented")
 }
