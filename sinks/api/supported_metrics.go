@@ -17,7 +17,7 @@ package api
 import (
 	"time"
 
-	cadvisor "github.com/google/cadvisor/info"
+	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
 var statMetrics = []SupportedStatMetric{

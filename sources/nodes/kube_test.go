@@ -64,7 +64,12 @@ func TestNodes(t *testing.T) {
 					Name: "test-machine-a",
 				},
 				Status: api.NodeStatus{
-					HostIP: "1.2.3.5",
+					Addresses: []api.NodeAddress{
+						{
+							Type:    api.NodeExternalIP,
+							Address: "1.2.3.5",
+						},
+					},
 				},
 			},
 			{
@@ -72,7 +77,12 @@ func TestNodes(t *testing.T) {
 					Name: "test-machine-b",
 				},
 				Status: api.NodeStatus{
-					HostIP: "1.2.3.4",
+					Addresses: []api.NodeAddress{
+						{
+							Type:    api.NodeExternalIP,
+							Address: "1.2.3.4",
+						},
+					},
 				},
 			},
 		},
@@ -95,6 +105,6 @@ func TestNodes(t *testing.T) {
 	for _, expectedNode := range expectedNodeList.Items {
 		node, ok := nodeList.Items[Host(expectedNode.Name)]
 		assert.True(t, ok)
-		assert.Equal(t, node.PublicIP, expectedNode.Status.HostIP)
+		assert.Equal(t, node.PublicIP, expectedNode.Status.Addresses[0].Address)
 	}
 }

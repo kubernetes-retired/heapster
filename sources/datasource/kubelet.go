@@ -27,7 +27,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
-	cadvisor "github.com/google/cadvisor/info"
+	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
 type kubeletSource struct{}

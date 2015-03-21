@@ -23,6 +23,7 @@ import (
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/cache"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/golang/glog"
 )
@@ -126,15 +127,15 @@ func (self *realPodsApi) DebugInfo() string {
 func newPodsApi(client *client.Client) podsApi {
 	// Extend the selector to include specific nodes to monitor
 	// or provide an API to update the nodes to monitor.
-	selector, err := labels.ParseSelector("DesiredState.Host!=")
+	selector, err := fields.ParseSelector("DesiredState.Host!=")
 	if err != nil {
 		panic(err)
 	}
 
 	lw := cache.NewListWatchFromClient(client, "pods", kube_api.NamespaceAll, selector)
-	podLister := &cache.StoreToPodLister{cache.NewStore(cache.MetaNamespaceKeyFunc)}
+	podLister := &cache.StoreToPodLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
 	// Watch and cache all running pods.
-	reflector := cache.NewReflector(lw, &kube_api.Pod{}, podLister.Store)
+	reflector := cache.NewReflector(lw, &kube_api.Pod{}, podLister.Store, 0)
 	stopChan := make(chan struct{})
 	reflector.RunUntil(stopChan)
 

@@ -50,7 +50,7 @@ func TestBasicSuccess(t *testing.T) {
 	}
 	data, err := source.GetInfo()
 	require.NoError(t, err)
-	require.Equal(t, api.AggregateData{nil, nil, nil}, data)
+	require.Equal(t, api.AggregateData{Pods: nil, Containers: nil, Machine: nil}, data)
 }
 
 func TestWorkflowSuccess(t *testing.T) {

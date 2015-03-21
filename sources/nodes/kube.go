@@ -22,6 +22,7 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/cache"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/golang/glog"
 )
@@ -71,16 +72,33 @@ func (self *kubeNodes) List() (*NodeList, error) {
 
 	goodNodes := []string{}
 	for _, node := range allNodes.Items {
-		// TODO(vishh): Consider dropping nodes that are not healthy as indicated in node.Status.Phase.
-		// The IP returned as part of the API is the external IP and not the internal IP.
-		addrs, err := net.LookupIP(node.Name)
-		if err == nil {
-			nodeList.Items[Host(node.Name)] = Info{PublicIP: node.Status.HostIP, InternalIP: addrs[0].String()}
-			goodNodes = append(goodNodes, node.Name)
-		} else {
-			glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
-			self.recordNodeError(node.Name)
+		nodeInfo := Info{}
+		hostname := ""
+		for _, addr := range node.Status.Addresses {
+			switch addr.Type {
+			case api.NodeExternalIP:
+				nodeInfo.PublicIP = addr.Address
+			case api.NodeInternalIP:
+				nodeInfo.InternalIP = addr.Address
+			case api.NodeHostName:
+				hostname = addr.Address
+			}
 		}
+		if hostname == "" {
+			hostname = node.Name
+		}
+		if nodeInfo.InternalIP == "" {
+			addrs, err := net.LookupIP(hostname)
+			if err == nil {
+				nodeInfo.InternalIP = addrs[0].String()
+			} else {
+				glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
+				self.recordNodeError(node.Name)
+			}
+		}
+
+		nodeList.Items[Host(hostname)] = nodeInfo
+		goodNodes = append(goodNodes, node.Name)
 	}
 	self.recordGoodNodes(goodNodes)
 	glog.V(2).Infof("kube nodes found: %+v", nodeList)
@@ -116,9 +134,9 @@ func NewKubeNodes(client *client.Client) (NodesApi, error) {
 		return nil, fmt.Errorf("client is nil")
 	}
 
-	lw := cache.NewListWatchFromClient(client, "minions", api.NamespaceAll, parseSelectorOrDie(""))
-	nodeLister := &cache.StoreToNodeLister{cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &api.Node{}, nodeLister.Store)
+	lw := cache.NewListWatchFromClient(client, "minions", api.NamespaceAll, fields.Everything())
+	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
+	reflector := cache.NewReflector(lw, &api.Node{}, nodeLister.Store, 0)
 	stopChan := make(chan struct{})
 	reflector.RunUntil(stopChan)
 

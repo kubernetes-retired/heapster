@@ -21,7 +21,7 @@ import (
 	bigquery "code.google.com/p/google-api-go-client/bigquery/v2"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
-	cadvisor "github.com/google/cadvisor/info"
+	cadvisor "github.com/google/cadvisor/info/v1"
 	bigquery_client "github.com/google/cadvisor/storage/bigquery/client"
 )
 
