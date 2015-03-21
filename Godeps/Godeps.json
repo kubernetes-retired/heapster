@@ -162,18 +162,18 @@
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/client",
-			"Comment": "0.8.0-76-g238a761",
-			"Rev": "238a761ffc80f12503e60eebd0f6451ba06a1ba3"
+			"Comment": "0.10.1-90-g3390499",
+			"Rev": "3390499a8cdeebaa7b337bf1e3db3610b9ff1be7"
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/info",
-			"Comment": "0.8.0-76-g238a761",
-			"Rev": "238a761ffc80f12503e60eebd0f6451ba06a1ba3"
+			"Comment": "0.10.1-90-g3390499",
+			"Rev": "3390499a8cdeebaa7b337bf1e3db3610b9ff1be7"
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/storage/bigquery/client",
-			"Comment": "0.8.0-76-g238a761",
-			"Rev": "238a761ffc80f12503e60eebd0f6451ba06a1ba3"
+			"Comment": "0.10.1-90-g3390499",
+			"Rev": "3390499a8cdeebaa7b337bf1e3db3610b9ff1be7"
 		},
 		{
 			"ImportPath": "github.com/google/gofuzz",

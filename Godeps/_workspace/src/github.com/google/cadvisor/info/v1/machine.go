@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package info
+package v1
 
 type FsInfo struct {
 	// Block device associated with the filesystem.
@@ -121,6 +121,12 @@ type MachineInfo struct {
 
 	// The amount of memory (in bytes) in this machine
 	MemoryCapacity int64 `json:"memory_capacity"`
+
+	// The machine id
+	MachineID string `json:"machine_id"`
+
+	// The system uuid
+	SystemUUID string `json:"system_uuid"`
 
 	// Filesystems on this machine.
 	Filesystems []FsInfo `json:"filesystems"`
