@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // This file implements a cadvisor datasource, that collects metrics from an instance
-// of cadvisor runing on a specific host.
+// of cadvisor running on a specific host.
 
 package datasource
 

@@ -27,6 +27,12 @@ import (
 )
 
 func TestWithFuzzInput(t *testing.T) {
+	for i := 0; i < 1000; i++ {
+		testWithFuzzInternal()
+	}
+}
+
+func testWithFuzzInternal() {
 	inputStats := []*cadvisor.ContainerStats{}
 	fuzz.New().Fuzz(&inputStats)
 	_ = sampleContainerStats(inputStats, time.Nanosecond)

@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This file implements a cadvisor datasource, that collects metrics from an instance
-// of cadvisor runing on a specific host.
-
 package datasource
 
 import (
