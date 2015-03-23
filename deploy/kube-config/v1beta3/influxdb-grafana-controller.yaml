@@ -1,22 +1,22 @@
 apiVersion: v1beta3
 kind: ReplicationController
-metadata: 
-  labels: 
+metadata:
+  labels:
     name: influxGrafana
   name: monitoring-influx-grafana-controller
-spec: 
+spec:
   replicas: 1
-  selector: 
+  selector:
     name: influxGrafana
-  template: 
-    metadata: 
-      labels: 
+  template:
+    metadata:
+      labels:
         name: influxGrafana
-    spec: 
-      containers: 
+    spec:
+      containers:
         - image: kubernetes/heapster_influxdb:v0.3
           name: influxdb
-          ports: 
+          ports:
             - containerPort: 8083
               hostPort: 8083
             - containerPort: 8086
@@ -25,7 +25,7 @@ spec:
           image: kubernetes/heapster_grafana:v0.5
           ports:
               - containerPort: 80
-          env: 
+          env:
             - name: "HTTP_USER"
               value: "admin"
             - name: "HTTP_PASS"

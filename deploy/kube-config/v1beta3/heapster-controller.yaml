@@ -1,24 +1,24 @@
 apiVersion: v1beta3
 kind: ReplicationController
-metadata: 
-  labels: 
+metadata:
+  labels:
     name: heapster
     kubernetes.io/cluster-service: "true"
   name: monitoring-heapster-controller
-spec: 
+spec:
   replicas: 1
-  selector: 
+  selector:
     name: heapster
-  template: 
-    metadata: 
-      labels: 
+  template:
+    metadata:
+      labels:
         name: heapster
         kubernetes.io/cluster-service: "true"
-    spec: 
-      containers: 
+    spec:
+      containers:
         - image: kubernetes/heapster:v0.9
           name: heapster
-          env: 
+          env:
             - name: "INFLUXDB_HOST"
               value: "monitoring-influxdb"
             - name: "SINK"
@@ -32,4 +32,3 @@ spec:
           source:
             hostDir:
               path: /etc/ssl/certs
-
