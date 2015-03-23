@@ -22,7 +22,7 @@ spec:
             - containerPort: 8086
               hostPort: 8086
         - name: grafana
-          image: kubernetes/heapster_grafana:v0.5
+          image: kubernetes/heapster_grafana:v0.6
           ports:
               - containerPort: 80
           env:
@@ -30,11 +30,7 @@ spec:
               value: "admin"
             - name: "HTTP_PASS"
               value: "**None**"
-            - name: "INFLUXDB_PROTO"
-              value: '"+window.location.protocol.slice(0,-1)+"'
-            - name: "INFLUXDB_HOST"
-              value: '"+window.location.host+"'
-            - name: "INFLUXDB_PORT"
-              value: ""
-            - name: "KUBERNETES_API_PORT"
-              value: ""
+            - name: "INFLUXDB_METRICS_URL"
+              value: "/api/v1beta3/proxy/namespaces/default/services/monitoring-influxdb/db/k8s"
+            - name: "INFLUXDB_GRAFANA_URL"
+              value: "/api/v1beta3/proxy/namespaces/default/services/monitoring-influxdb/db/grafana"
