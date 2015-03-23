@@ -34,7 +34,8 @@ sed -i -e "s/<--URL-->/${escaped_url}/g" \
     -e "s/<--DB_NAME-->/${INFLUXDB_NAME}/g" \
     -e "s/<--GRAFANA_DB_NAME-->/${GRAFANA_DB_NAME}/g" \
     -e "s/<--USER-->/${INFLUXDB_USER}/g" \
-    -e "s/<--PASS-->/${INFLUXDB_PASS}/g" /app/config.js
+    -e "s/<--PASS-->/${INFLUXDB_PASS////\\/}/g" \
+    /app/config.js
 touch /.influx_db_configured
 echo "=> InfluxDB has been configured as follows:"
 echo "   InfluxDB URL:     ${url}"
