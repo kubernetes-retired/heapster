@@ -5,14 +5,14 @@ function (Settings) {
 	'metrics': {
             type: 'influxdb',
             url: "<--URL-->/<--DB_NAME-->",
-            username: "<--USER-->",
-            password: "<--PASS-->"
+            username: "<--INFLUXDB_USER-->",
+            password: "<--INFLUXDB_PASS-->"
 	},
 	'grafana': {
             type: 'influxdb',
             url: "<--URL-->/<--GRAFANA_DB_NAME-->",
-            username: "<--USER-->",
-            password: "<--PASS-->",
+            username: "<--INFLUXDB_USER-->",
+            password: "<--INFLUXDB_PASS-->",
 	    grafanaDB: true
 	}
     },
