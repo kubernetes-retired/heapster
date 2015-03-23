@@ -2,8 +2,8 @@
 
 set -ex
 EXTRA_ARGS=""
-if [ ! -z $FLAGS ]; then
-  EXTRA_ARGS=$FLAGS
+if [ ! -z "$FLAGS" ]; then
+  EXTRA_ARGS="$FLAGS"
 fi
 
 # If in Kubernetes, target the master.
