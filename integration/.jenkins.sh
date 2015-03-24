@@ -9,7 +9,7 @@ if ! git diff --name-only origin/master | grep -c -E "*.go|*.sh|.*yaml" &> /dev/
   exit 0
 fi
 
-SUPPORTED_KUBE_VERSIONS="0.12.0"
+SUPPORTED_KUBE_VERSIONS="0.13.2"
 TEST_NAMESPACE="default"
 
 cd integration
