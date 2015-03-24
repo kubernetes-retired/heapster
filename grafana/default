@@ -12,7 +12,7 @@ server {
     }
 
     location / {
-	<--AuthInfo-->
+	@NGINX_CONFIG@
 	if ($http_origin ~* (https?://[^/]*\.somedomain\.com(:[0-9]+)?)) {
 		set $cors "true";
 	}
