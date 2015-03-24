@@ -1,12 +1,10 @@
 apiVersion: v1beta3
 kind: Service
-metadata: 
-  labels: 
+metadata:
+  labels:
   name: monitoring-influxdb-ui
-spec: 
-  containerPort: 8083
+spec:
+  targetPort: 8083
   port: 80
-  selector: 
+  selector:
     name: influxGrafana
-
-
