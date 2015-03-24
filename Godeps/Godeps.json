@@ -171,7 +171,7 @@
 			"Rev": "3390499a8cdeebaa7b337bf1e3db3610b9ff1be7"
 		},
 		{
-			"ImportPath": "github.com/google/cadvisor/info",
+			"ImportPath": "github.com/google/cadvisor/info/v1",
 			"Comment": "0.10.1-90-g3390499",
 			"Rev": "3390499a8cdeebaa7b337bf1e3db3610b9ff1be7"
 		},
@@ -183,6 +183,11 @@
 		{
 			"ImportPath": "github.com/google/gofuzz",
 			"Rev": "95919286de1ca5a30261fac83b070e736286aae8"
+		},
+		{
+			"ImportPath": "github.com/imdario/mergo",
+			"Comment": "0.1.3-10-g67b9c0a",
+			"Rev": "67b9c0a23d7ee9dcbcd44cd7ece4bf15ef6f4d26"
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb/client",

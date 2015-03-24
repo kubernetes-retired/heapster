@@ -28,7 +28,7 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	kube_clientauth "github.com/GoogleCloudPlatform/kubernetes/pkg/clientauth"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 	"github.com/golang/glog"
 )
@@ -89,7 +89,7 @@ type realKubeFramework struct {
 const imageUrlTemplate = "https://github.com/GoogleCloudPlatform/kubernetes/releases/download/v%s/kubernetes.tar.gz"
 
 var (
-	authConfig         = flag.String("auth_config", os.Getenv("HOME")+"/.kubernetes_auth", "Path to the auth info file.")
+	kubeConfig         = flag.String("kube_config", os.Getenv("HOME")+"/.kube/.kubeconfig", "Path to cluster info file.")
 	useExistingCluster = flag.Bool("use_existing_cluster", false, "when true uses an existing kube cluster. A cluster needs to exist.")
 	workDir            = flag.String("work_dir", "/tmp/heapster_test", "Filesystem path where test files will be stored. Files will persist across runs to speed up tests.")
 )
@@ -194,21 +194,16 @@ func getKubeClient() (string, *kube_client.Client, error) {
 	}
 	glog.V(1).Infof("Kubernetes master IP is %s", masterIP)
 
-	config := kube_client.Config{
-		Host:    "https://" + masterIP,
-		Version: "v1beta1",
+	c, err := clientcmd.LoadFromFile(*kubeConfig)
+	if err != nil {
+		return "", nil, fmt.Errorf("error loading kubeConfig: %v", err.Error())
+	}
+	config, err := clientcmd.NewDefaultClientConfig(*c, &clientcmd.ConfigOverrides{}).ClientConfig()
+	if err != nil {
+		return "", nil, fmt.Errorf("error parsing kubeConfig: %v", err.Error())
 	}
 
-	auth, err := kube_clientauth.LoadFromFile(*authConfig)
-	if err != nil {
-		return "", nil, fmt.Errorf("error loading auth - %q", err)
-	}
-	config, err = auth.MergeWithConfig(config)
-	if err != nil {
-		return "", nil, fmt.Errorf("error creating client - %q", err)
-	}
-
-	kubeClient, err := kube_client.New(&config)
+	kubeClient, err := kube_client.New(config)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating client - %q", err)
 	}
