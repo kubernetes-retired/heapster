@@ -1,0 +1,27 @@
+define(['settings'],
+function (Settings) {
+  return new Settings({
+    datasources: {
+      'metrics': {
+        type: 'influxdb',
+        url: "/db/{{ .Env.INFLUXDB_NAME }}",
+        username: "{{ .Env.INFLUXDB_USER }}",
+        password: "{{ .Env.INFLUXDB_PASSWORD }}"
+      },
+      'grafana': {
+        type: 'influxdb',
+        url: "/db/{{ .Env.GRAFANA_DB_NAME }}",
+        username: "{{ .Env.INFLUXDB_USER }}",
+        password: "{{ .Env.INFLUXDB_PASSWORD }}",
+        grafanaDB: true
+      }
+    },
+    search: {
+      max_results: 100
+    },
+    window_title_prefix: 'Heapster - ',
+    default_route: "{{ .Env.GRAFANA_DEFAULT_DASHBOARD }}",
+    timezoneOffset: null,
+    unsaved_changes_warning: true,
+  });
+});

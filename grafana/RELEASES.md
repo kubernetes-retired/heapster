@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.6 (UNRELEASED)
+- Switch to kuisp for serving files & proxying to services
+- Configurable reverse proxy directly to InfluxDB service rather than using
+apiserver proxy
+
 ## 0.5 (3-13-2015)
 - Default dashboard uses the metrics schema exported by heapster version >= v0.9
 - Grafana container works on bare metal kubernetes setups.
