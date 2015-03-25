@@ -74,10 +74,18 @@ func (self *defaultDecoder) getContainerSliceMetrics(containers []source_api.Con
 	var result []Timeseries
 	for index := range containers {
 		labels[labelHostname] = containers[index].Hostname
-		result = append(result, self.getContainerMetrics(&containers[index], labels)...)
+		result = append(result, self.getContainerMetrics(&containers[index], copyLabels(labels))...)
 	}
 
 	return result
+}
+
+func copyLabels(labels map[string]string) map[string]string {
+	c := make(map[string]string, len(labels))
+	for key, val := range labels {
+		c[key] = val
+	}
+	return c
 }
 
 func (self *defaultDecoder) getContainerMetrics(container *source_api.Container, labels map[string]string) []Timeseries {
@@ -94,6 +102,8 @@ func (self *defaultDecoder) getContainerMetrics(container *source_api.Container,
 		}
 		// Add all supported metrics that have values.
 		for index, supported := range self.supportedStatMetrics {
+			// Finest allowed granularity is seconds.
+			stat.Timestamp = stat.Timestamp.Round(time.Second)
 			key := timeseriesKey{
 				Name:   supported.Name,
 				Labels: labelsAsString,
@@ -115,7 +125,7 @@ func (self *defaultDecoder) getContainerMetrics(container *source_api.Container,
 					Point: &Point{
 						Name:   supported.Name,
 						Labels: labels,
-						Start:  startTime,
+						Start:  startTime.Round(time.Second),
 						End:    stat.Timestamp,
 						Value:  supported.GetValue(&container.Spec, stat),
 					},
