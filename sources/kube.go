@@ -51,6 +51,7 @@ type kubeSource struct {
 	stateLock    sync.RWMutex
 	podErrors    map[podInstance]int // guarded by stateLock
 	lastQuery    time.Time
+	eventsApi    EventsSource
 }
 
 type podInstance struct {
@@ -185,9 +186,20 @@ func (self *kubeSource) GetInfo() (api.AggregateData, error) {
 		return api.AggregateData{}, err
 	}
 	glog.V(2).Info("Fetched list of nodes from the master")
+	events, err := self.eventsApi.GetEvents()
+	if err != nil {
+		if eventErr, ok := err.(EventError); ok && eventErr.WatchLoopTerminated() {
+			glog.Errorf("Event watch loop was terminated due to error. Will restart it. Error: %v", err)
+			self.eventsApi.RestartWatchLoop()
+		}
+		return api.AggregateData{}, err
+	} else {
+		glog.V(4).Infof("Kube.GetInfo fetched the following events: %v", events)
+	}
+	glog.V(2).Info("Fetched list of events from the master")
 	self.lastQuery = time.Now()
 
-	return api.AggregateData{Pods: podsInfo, Machine: nodesInfo}, nil
+	return api.AggregateData{Pods: podsInfo, Machine: nodesInfo, Events: events}, nil
 }
 
 func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
@@ -211,6 +223,7 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 	}
 	glog.Infof("Using Kubernetes client with master %q and version %s\n", *argMaster, kubeClientVersion)
 	glog.Infof("Using kubelet port %q", *argKubeletPort)
+	eventsSource := NewEventsSource(kubeClient)
 
 	return &kubeSource{
 		lastQuery:    time.Now(),
@@ -220,6 +233,7 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 		nodesApi:     nodesApi,
 		podsApi:      newPodsApi(kubeClient),
 		podErrors:    make(map[podInstance]int),
+		eventsApi:    eventsSource,
 	}, nil
 }
 
