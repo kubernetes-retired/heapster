@@ -2,13 +2,9 @@
 
 set -e
 
-RELEASE="v0.6"
+RELEASE="v0.7"
 
-if [ "$HTTP_PASS" = "**None**" ]; then
-  echo "=> Setting up Grafana without any auth"
-  sed -i "s/@NGINX_CONFIG@//g" /etc/nginx/sites-enabled/default
-  echo "=> Done!"
-else
+if [ "$HTTP_PASS" != "**None**" ]; then
   if [ "$HTTP_PASS" = "**Random**" ]; then
     PASS_STRATEGY="random"
     HTTP_PASS="$(pwgen -s 12 1)"
@@ -16,11 +12,8 @@ else
     PASS_STRATEGY="preset"
   fi
 
-  NGINX_CONFIG='auth_basic \"Restricted\";auth_basic_user_file \/app\/\.htpasswd;'
-
   echo "=> Creating basic auth for '$HTTP_USER' user with $PASS_STRATEGY password"
-  echo $HTTP_PASS | htpasswd -i -c /app/.htpasswd  $HTTP_USER
-  sed -i "s/@NGINX_CONFIG@/$NGINX_CONFIG/g" /etc/nginx/sites-enabled/default
+  echo $HTTP_PASS | htpasswd -i -c /usr/share/grafana/.htpasswd  $HTTP_USER
   echo "=> Done!"
   echo "You can now connect to Grafana with the following credential: ${HTTP_USER}:${HTTP_PASS}"
 fi
@@ -31,7 +24,7 @@ sed -i \
     -e "s/@INFLUXDB_GRAFANA_URL@/${INFLUXDB_GRAFANA_URL////\\/}/g" \
     -e "s/@INFLUXDB_USER@/${INFLUXDB_USER}/g" \
     -e "s/@INFLUXDB_PASS@/${INFLUXDB_PASS////\\/}/g" \
-    /app/config.js
+    /usr/share/grafana/config.js
 echo "=> InfluxDB has been configured as follows:"
 echo "   InfluxDB Metrics URL: ${INFLUXDB_METRICS_URL}"
 echo "   InfluxDB Grafana URL: ${INFLUXDB_GRAFANA_URL}"
@@ -47,9 +40,9 @@ else
 fi
 
 echo "=>Setting default dashboard to $DASHBOARD"
-sed -i "s/@DASHBOARD@/${DASHBOARD////\\/}/g" /app/config.js
+sed -i "s/@DASHBOARD@/${DASHBOARD////\\/}/g" /usr/share/grafana/config.js
 echo "=>Done"
 
 echo "=> Grafana for heapster - version: $RELEASE!"
-echo "=> Starting and running Nginx..."
-/usr/sbin/nginx
+echo "=> Starting and running Apache..."
+exec /usr/sbin/apachectl -D FOREGROUND
