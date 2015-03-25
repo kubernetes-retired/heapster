@@ -1,29 +1,40 @@
-FROM tutum/nginx
+FROM ubuntu:trusty
 MAINTAINER Vishnu Kannan <vishnuk@google.com>
 
 ENV GRAFANA_VERSION 1.9.1
-# Environment variables for HTTP AUTH
+
 ENV HTTP_USER admin
 ENV HTTP_PASS **Random**
 
-ENV INFLUXDB_PROTO http
-ENV INFLUXDB_HOST localhost
-ENV INFLUXDB_PORT 8086
-ENV INFLUXDB_NAME k8s
+ENV INFLUXDB_METRICS_URL http://localhost:8086/db/k8s
+ENV INFLUXDB_GRAFANA_URL http://localhost:8086/db/grafana
 ENV INFLUXDB_USER root
 ENV INFLUXDB_PASS root
-ENV GRAFANA_DB_NAME grafana
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wget pwgen apache2-utils curl && wget http://grafanarel.s3.amazonaws.com/grafana-${GRAFANA_VERSION}.tar.gz -O grafana.tar.gz && tar zxf grafana.tar.gz && rm grafana.tar.gz && rm -rf app && mv grafana-${GRAFANA_VERSION} app 
+RUN apt-get update && \
+    apt-get install -y \
+        pwgen \
+        apache2 \
+        apache2-utils \
+        curl && \
+    apt-get clean && \
+    curl -O http://grafanarel.s3.amazonaws.com/grafana-${GRAFANA_VERSION}.tar.gz && \
+    tar zxf grafana-${GRAFANA_VERSION}.tar.gz && \
+    rm grafana-${GRAFANA_VERSION}.tar.gz && \
+    mv grafana-${GRAFANA_VERSION} /usr/share/grafana
+
+EXPOSE 80
 
 ADD run.sh /run.sh
-ADD set_influx_db.sh /set_influx_db.sh
-ADD set_basic_auth.sh /set_basic_auth.sh
-ADD set_dashboard.sh /set_dashboard.sh
+ADD config.js /usr/share/grafana/config.js
+ADD kubernetes-dashboard.json /usr/share/grafana/app/dashboards/kubernetes.json
+ADD grafana.conf /etc/apache2/sites-available/grafana.conf
 
-ADD config.js /app/config.js
-RUN chmod +x /*.sh && chmod 0644 /app/config.js 
-ADD default /etc/nginx/sites-enabled/default
-ADD kubernetes-dashboard.json /app/app/dashboards/kubernetes.json
+RUN chmod +x /run.sh && \
+    chmod 0644 /usr/share/grafana/config.js && \
+    a2enmod proxy && \
+    a2enmod proxy_http && \
+    a2dissite 000-default && \
+    a2ensite grafana
 
 CMD ["/run.sh"]

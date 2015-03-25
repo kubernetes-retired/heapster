@@ -4,15 +4,15 @@ function (Settings) {
     datasources: {
 	'metrics': {
             type: 'influxdb',
-            url: "<--URL-->/<--DB_NAME-->",
-            username: "<--USER-->",
-            password: "<--PASS-->"
+            url: '@INFLUXDB_METRICS_URL@',
+            username: '@INFLUXDB_USER@',
+            password: '@INFLUXDB_PASS@'
 	},
 	'grafana': {
             type: 'influxdb',
-            url: "<--URL-->/<--GRAFANA_DB_NAME-->",
-            username: "<--USER-->",
-            password: "<--PASS-->",
+            url: '@INFLUXDB_GRAFANA_URL@',
+            username: '@INFLUXDB_USER@',
+            password: '@INFLUXDB_PASS@',
 	    grafanaDB: true
 	}
     },
@@ -20,7 +20,7 @@ function (Settings) {
       max_results: 100
     },
     window_title_prefix: 'Heapster - ',
-    default_route: "<--DASHBOARD-->",
+    default_route: '@DASHBOARD@',
     timezoneOffset: null,
     unsaved_changes_warning: true,
   });
