@@ -6,7 +6,7 @@ metadata:
     kubernetes.io/cluster-service: "true"
   name: monitoring-grafana
 spec:
-  targetPort: 80
+  targetPort: 8080
   port: 80
   selector:
     name: influxGrafana
