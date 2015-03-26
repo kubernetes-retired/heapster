@@ -1,29 +1,33 @@
-FROM tutum/nginx
-MAINTAINER Vishnu Kannan <vishnuk@google.com>
+FROM gliderlabs/alpine:3.1
+MAINTAINER Jimmi Dyson <jimmidyson@gmail.com>
+ENTRYPOINT ["/kuisp"]
+CMD ["-p", "8080", "-c", "/opt/grafana/config.js.tmpl=/opt/grafana/config.js", "-s", "/db/=${INFLUXDB_PROTO}://${INFLUXDB_HOST}:${INFLUXDB_PORT}/db/"]
+EXPOSE 8080
+
+ENV KUISP_VERSION 0.3
 
 ENV GRAFANA_VERSION 1.9.1
-# Environment variables for HTTP AUTH
-ENV HTTP_USER admin
-ENV HTTP_PASS **Random**
-
-ENV INFLUXDB_PROTO http
-ENV INFLUXDB_HOST localhost
-ENV INFLUXDB_PORT 8086
 ENV INFLUXDB_NAME k8s
-ENV INFLUXDB_USER root
-ENV INFLUXDB_PASS root
 ENV GRAFANA_DB_NAME grafana
+ENV GRAFANA_DEFAULT_DASHBOARD /dashboard/file/kubernetes.json
+ENV INFLUXDB_PROTO http
+ENV INFLUXDB_HOST influxdb
+ENV INFLUXDB_PORT 8086
+ENV INFLUXDB_USER root
+ENV INFLUXDB_PASSWORD root
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wget pwgen apache2-utils curl && wget http://grafanarel.s3.amazonaws.com/grafana-${GRAFANA_VERSION}.tar.gz -O grafana.tar.gz && tar zxf grafana.tar.gz && rm grafana.tar.gz && rm -rf app && mv grafana-${GRAFANA_VERSION} app 
+RUN apk-install ca-certificates curl tar && \
+    curl -L https://github.com/jimmidyson/kuisp/releases/download/v${KUISP_VERSION}/kuisp-${KUISP_VERSION}-linux-amd64.tar.gz | \
+      tar xzv && \
+    mkdir /opt && \
+    curl -L http://grafanarel.s3.amazonaws.com/grafana-${GRAFANA_VERSION}.tar.gz | \
+      tar xzv -C /opt && \
+    mv /opt/grafana-${GRAFANA_VERSION} /opt/grafana && \
+    chown nobody:nobody /opt/grafana/ && \
+    apk del curl tar
 
-ADD run.sh /run.sh
-ADD set_influx_db.sh /set_influx_db.sh
-ADD set_basic_auth.sh /set_basic_auth.sh
-ADD set_dashboard.sh /set_dashboard.sh
+COPY config.js.tmpl /opt/grafana/config.js.tmpl
+COPY kubernetes-dashboard.json /opt/grafana/app/dashboards/kubernetes.json
 
-ADD config.js /app/config.js
-RUN chmod +x /*.sh && chmod 0644 /app/config.js 
-ADD default /etc/nginx/sites-enabled/default
-ADD kubernetes-dashboard.json /app/app/dashboards/kubernetes.json
-
-CMD ["/run.sh"]
+WORKDIR /opt/grafana/
+USER nobody
