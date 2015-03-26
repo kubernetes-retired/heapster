@@ -4,13 +4,13 @@ function (Settings) {
     datasources: {
       'metrics': {
         type: 'influxdb',
-        url: "/db/{{ .Env.INFLUXDB_NAME }}",
+        url: "{{ .Env.INFLUXDB_EXTERNAL_URL }}{{ .Env.INFLUXDB_NAME }}",
         username: "{{ .Env.INFLUXDB_USER }}",
         password: "{{ .Env.INFLUXDB_PASSWORD }}"
       },
       'grafana': {
         type: 'influxdb',
-        url: "/db/{{ .Env.GRAFANA_DB_NAME }}",
+        url: "/{{ .Env.INFLUXDB_EXTERNAL_URL }}{{ .Env.GRAFANA_DB_NAME }}",
         username: "{{ .Env.INFLUXDB_USER }}",
         password: "{{ .Env.INFLUXDB_PASSWORD }}",
         grafanaDB: true

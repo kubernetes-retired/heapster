@@ -15,6 +15,7 @@ ENV INFLUXDB_HOST influxdb
 ENV INFLUXDB_PORT 8086
 ENV INFLUXDB_USER root
 ENV INFLUXDB_PASSWORD root
+ENV INFLUXDB_EXTERNAL_URL /db/
 
 RUN apk-install ca-certificates curl tar && \
     curl -L https://github.com/jimmidyson/kuisp/releases/download/v${KUISP_VERSION}/kuisp-${KUISP_VERSION}-linux-amd64.tar.gz | \
