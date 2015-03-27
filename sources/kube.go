@@ -214,20 +214,24 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 		*argMaster = "http://" + *argMaster
 	}
 
-	kubeConfig := &kube_client.Config{
+	kubeConfig := kube_client.Config{
 		Host:    *argMaster,
 		Version: kubeClientVersion,
 	}
 
 	if len(*argClientAuthFile) > 0 {
-		if clientAuth, err := clientauth.LoadFromFile(*argClientAuthFile); err != nil {
+		clientAuth, err := clientauth.LoadFromFile(*argClientAuthFile)
+		if err != nil {
 			return nil, err
-		} else {
-			clientAuth.MergeWithConfig(*kubeConfig)
+		}
+
+		kubeConfig, err = clientAuth.MergeWithConfig(kubeConfig)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	kubeClient := kube_client.NewOrDie(&kubeConfig)
 
 	nodesApi, err := nodes.NewKubeNodes(kubeClient)
 	if err != nil {
