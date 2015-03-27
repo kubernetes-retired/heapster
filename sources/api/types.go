@@ -14,7 +14,10 @@
 
 package api
 
-import cadvisor "github.com/google/cadvisor/info/v1"
+import (
+	kubeapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	cadvisor "github.com/google/cadvisor/info/v1"
+)
 
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
 type Pod struct {
@@ -35,6 +38,7 @@ type AggregateData struct {
 	Pods       []Pod
 	Containers []Container
 	Machine    []Container
+	Events     []kubeapi.Event
 }
 
 type Container struct {

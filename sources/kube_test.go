@@ -21,6 +21,7 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
+	kubeapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,6 +43,20 @@ type fakeKubeletApi struct {
 
 func (self *fakeKubeletApi) GetContainer(host datasource.Host, numStats int) (*api.Container, error) {
 	return self.container, nil
+}
+
+type fakeEventsApi struct {
+	eventList []kubeapi.Event
+}
+
+// Terminates existing watch loop, if any, and starts new instance
+func (eventSource *fakeEventsApi) RestartWatchLoop() {
+	// Noop
+}
+
+// GetEvents returns all new events since GetEvents was last called.
+func (eventSource *fakeEventsApi) GetEvents() ([]kubeapi.Event, EventError) {
+	return eventSource.eventList, nil
 }
 
 func TestKubeSourceBasic(t *testing.T) {
@@ -80,6 +95,15 @@ func TestKubeSourceDetail(t *testing.T) {
 	nodesApi := &fakeNodesApi{nodeList}
 	podsApi := &fakePodsApi{podList}
 	kubeletApi := &fakeKubeletApi{container}
+	eventsList := []kubeapi.Event{
+		{
+			Reason: "event 1",
+		},
+		{
+			Reason: "event 2",
+		},
+	}
+	eventsApi := &fakeEventsApi{eventsList}
 
 	kubeSource := &kubeSource{
 		lastQuery:   time.Now(),
@@ -87,6 +111,7 @@ func TestKubeSourceDetail(t *testing.T) {
 		nodesApi:    nodesApi,
 		podsApi:     podsApi,
 		kubeletApi:  kubeletApi,
+		eventsApi:   eventsApi,
 	}
 	data, err := kubeSource.GetInfo()
 	require.NoError(t, err)
