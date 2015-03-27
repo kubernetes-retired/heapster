@@ -142,12 +142,6 @@ const maxTimeseriesPerRequest = 200
 
 // Pushes the specified metric values in input. The metrics must already exist.
 func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
-	// Check we're not being asked to write more timeseries than we can.
-	// TODO: Why not split the input into multiple batches.
-	if len(input) > maxTimeseriesPerRequest {
-		return fmt.Errorf("unable to write more than %d metrics at once and %d were provided", maxTimeseriesPerRequest, len(input))
-	}
-
 	// Ensure the metrics exist.
 	for _, entry := range input {
 		metric := entry.Point
@@ -157,10 +151,11 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 		}
 	}
 
-	// Push the metrics.
-	var request metricWriteRequest
+	// Build a map of metrics by name.
+	metrics := make(map[string][]timeseries)
 	for _, entry := range input {
 		metric := entry.Point
+
 		// Use full label names.
 		labels := make(map[string]string, len(metric.Labels))
 		for key, value := range metric.Labels {
@@ -172,7 +167,7 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 		if _, ok := metric.Value.(int64); !ok {
 			return fmt.Errorf("non-int64 data not implemented. Seen for metric %q", metric.Name)
 		}
-		request.Timeseries = append(request.Timeseries, timeseries{
+		metrics[metric.Name] = append(metrics[metric.Name], timeseries{
 			TimeseriesDescriptor: timeseriesDescriptor{
 				Metric: fullMetricName(metric.Name),
 				Labels: labels,
@@ -183,6 +178,40 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 				Int64Value: metric.Value.(int64),
 			},
 		})
+	}
+
+	// Only send one metric of each type per request.
+	var lastErr error
+	for len(metrics) != 0 {
+		var request metricWriteRequest
+		for name, values := range metrics {
+			// Remove metrics with no more values.
+			if len(values) == 0 {
+				delete(metrics, name)
+				continue
+			}
+
+			m := values[0]
+			metrics[name] = values[1:]
+			request.Timeseries = append(request.Timeseries, m)
+		}
+
+		err := self.pushMetrics(&request)
+		if err != nil {
+			lastErr = err
+		}
+	}
+
+	return lastErr
+}
+
+func (self *gcmSink) pushMetrics(request *metricWriteRequest) error {
+	if len(request.Timeseries) == 0 {
+		return nil
+	}
+	// TODO(vmarmol): Split requests in this case.
+	if len(request.Timeseries) > maxTimeseriesPerRequest {
+		return fmt.Errorf("unable to write more than %d metrics at once and %d were provided", maxTimeseriesPerRequest, len(request.Timeseries))
 	}
 
 	// Refresh token.
@@ -204,7 +233,7 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 		prettyRequest, _ := json.MarshalIndent(request, "", "  ")
 		glog.Warningf("[GCM] Pushing %d metrics \n%s\n failed: %v", len(request.Timeseries), string(prettyRequest), err)
 	} else {
-		glog.Infof("[GCM] Pushing %d metrics: SUCCESS", len(request.Timeseries))
+		glog.V(2).Infof("[GCM] Pushing %d metrics: SUCCESS", len(request.Timeseries))
 	}
 	return err
 }
