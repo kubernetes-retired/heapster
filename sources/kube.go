@@ -26,6 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/clientauth"
 	"github.com/golang/glog"
 )
 
@@ -40,6 +41,8 @@ var (
 	argMaster         = flag.String("kubernetes_master", "", "Kubernetes master IP")
 	argMasterInsecure = flag.Bool("kubernetes_insecure", true, "Trust Kubernetes master certificate (if using https)")
 	argKubeletPort    = flag.String("kubelet_port", "10250", "Kubelet port")
+	// TODO: once known location for client auth is defined upstream, default this to that file
+	argClientAuthFile = flag.String("kubernetes_client_auth", "", "Kubernetes client authentication file")
 )
 
 type kubeSource struct {
@@ -211,11 +214,20 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 		*argMaster = "http://" + *argMaster
 	}
 
-	kubeClient := kube_client.NewOrDie(&kube_client.Config{
-		Host:     *argMaster,
-		Version:  kubeClientVersion,
-		Insecure: *argMasterInsecure,
-	})
+	kubeConfig := &kube_client.Config{
+		Host:    *argMaster,
+		Version: kubeClientVersion,
+	}
+
+	if len(*argClientAuthFile) > 0 {
+		if clientAuth, err := clientauth.LoadFromFile(*argClientAuthFile); err != nil {
+			return nil, err
+		} else {
+			clientAuth.MergeWithConfig(*kubeConfig)
+		}
+	}
+
+	kubeClient := kube_client.NewOrDie(kubeConfig)
 
 	nodesApi, err := nodes.NewKubeNodes(kubeClient)
 	if err != nil {
