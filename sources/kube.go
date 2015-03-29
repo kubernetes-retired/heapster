@@ -215,8 +215,9 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 	}
 
 	kubeConfig := kube_client.Config{
-		Host:    *argMaster,
-		Version: kubeClientVersion,
+		Host:     *argMaster,
+		Version:  kubeClientVersion,
+		Insecure: *argMasterInsecure,
 	}
 
 	if len(*argClientAuthFile) > 0 {
