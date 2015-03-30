@@ -62,6 +62,7 @@ func (self *externalSinkManager) Store(input interface{}) error {
 	if !ok {
 		return fmt.Errorf("unknown input type %T", input)
 	}
+	// TODO: Store data in cache.
 	timeseries, err := self.decoder.Timeseries(data)
 	if err != nil {
 		return err

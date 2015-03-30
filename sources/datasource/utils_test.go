@@ -22,7 +22,7 @@ import (
 	"time"
 
 	cadvisor "github.com/google/cadvisor/info/v1"
-	"github.com/google/gofuzz"
+	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"
 )
 
