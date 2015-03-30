@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.10.0 (3-30-2014)
+- Downsampling - Resolution of metrics is set to 5s by default.
+- Support for using Kube client auth.
+- Improved Influxdb sink - sequence numbers are generated for every metric.
+- Reliability improvements
+- Bug fixes.
+
 ## 0.9 (3-13-2014)
 - [Standardized metrics](sinks/api/supported_metrics.go)
 - New [common API](sinks/api/types.go) in place for all external storage drivers.

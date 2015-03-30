@@ -16,7 +16,7 @@ spec:
         kubernetes.io/cluster-service: "true"
     spec:
       containers:
-        - image: kubernetes/heapster:v0.9
+        - image: kubernetes/heapster:v0.10.0
           name: heapster
           env:
             - name: "INFLUXDB_HOST"

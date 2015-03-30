@@ -15,7 +15,8 @@
 package version
 
 // Heapster version. Update this whenever making a new release.
-// The version is of the format Major.Minor.
-// Increment minor number for bug fixes and performance enhancements.
+// The version is of the format Major.Minor.Patch
 // Increment major number for new feature additions and behavioral changes.
-const HeapsterVersion = "0.9"
+// Increment minor number for bug fixes and performance enhancements.
+// Increment patch number for critical fixes to existing releases.
+const HeapsterVersion = "0.10.0"

@@ -12,7 +12,7 @@ desiredState:
         id: "monitoring-heapster-controller"
         containers:
           - name: "heapster"
-            image: "kubernetes/heapster:v0.9"
+            image: "kubernetes/heapster:v0.10.0"
             env:
               - name: "INFLUXDB_HOST"
                 value: "monitoring-influxdb"
@@ -30,5 +30,6 @@ desiredState:
     labels:
       name: "heapster"
       uses: "monitoring-influxdb"
+      kubernetes.io/cluster-service: "true"
 labels:
   name: "heapster"
