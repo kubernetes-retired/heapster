@@ -3,7 +3,7 @@
 _Warning: Virtual machines need to have at least 2 cores for InfluxDB to perform optimally._
 
 ### Setup a Kubernetes cluster
-[Bring up a Kubernetes cluster](https://github.com/GoogleCloudPlatform/kubernetes), if you haven't already. Ensure that `kubecfg.sh` is exported. By default, [cAdvisor](https://github.com/google/cadvisor) runs on all nodes on port 4194.
+[Bring up a Kubernetes cluster](https://github.com/GoogleCloudPlatform/kubernetes), if you haven't already. Ensure that `kubecfg.sh` is exported.
 
 ### Start all of the pods and services
 ```shell
