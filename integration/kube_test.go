@@ -278,13 +278,17 @@ func buildAndPushImages(fm kubeFramework) error {
 	if err != nil {
 		return err
 	}
-	if err := buildAndPushHeapsterImage(nodes); err != nil {
+	hostnames := []string{}
+	for _, node := range nodes {
+		hostnames = append(hostnames, strings.Split(node, ".")[0])
+	}
+	if err := buildAndPushHeapsterImage(hostnames); err != nil {
 		return err
 	}
-	if err := buildAndPushInfluxdbImage(nodes); err != nil {
+	if err := buildAndPushInfluxdbImage(hostnames); err != nil {
 		return err
 	}
-	return buildAndPushGrafanaImage(nodes)
+	return buildAndPushGrafanaImage(hostnames)
 }
 
 func getInfluxdbData(c *influxdb.Client, query string) (map[string]bool, error) {
