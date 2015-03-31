@@ -31,10 +31,11 @@ import (
 )
 
 var (
-	argPollDuration = flag.Duration("poll_duration", 10*time.Second, "Polling duration")
-	argPort         = flag.Int("port", 8082, "port to listen")
-	argIp           = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
-	argMaxProcs     = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores).")
+	argPollDuration    = flag.Duration("poll_duration", 10*time.Second, "The frequency at which heapster will poll for stats")
+	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats. Acceptible values are [second, 'poll_duration')")
+	argPort            = flag.Int("port", 8082, "port to listen")
+	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
+	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores).")
 )
 
 func main() {
@@ -43,7 +44,6 @@ func main() {
 	setMaxProcs()
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", version.HeapsterVersion)
-	glog.Infof("Flags: %s", strings.Join(getFlags(), " "))
 	if err := validateFlags(); err != nil {
 		glog.Fatal(err)
 	}
@@ -59,18 +59,17 @@ func main() {
 	os.Exit(0)
 }
 
-func getFlags() []string {
-	flagData := []string{}
-	flag.VisitAll(func(flag *flag.Flag) {
-		flagData = append(flagData, fmt.Sprintf("%s='%v'", flag.Name, flag.Value))
-	})
-	return flagData
-}
-
 func validateFlags() error {
 	if *argPollDuration <= time.Second {
 		return fmt.Errorf("poll duration is invalid '%d'. Set it to a duration greater than a second", *argPollDuration)
 	}
+	if *argStatsResolution < time.Second {
+		return fmt.Errorf("stats resolution needs to be greater than a second - %d", *argStatsResolution)
+	}
+	if *argStatsResolution >= *argPollDuration {
+		return fmt.Errorf("stats resolution '%d' is not less than poll duration '%d'", *argStatsResolution, *argPollDuration)
+	}
+
 	return nil
 }
 func setupHandlers(source sources.Source, sink sinks.ExternalSinkManager) {
@@ -101,17 +100,19 @@ func doWork() (sources.Source, sinks.ExternalSinkManager, error) {
 
 func housekeep(source sources.Source, sink sinks.ExternalSinkManager) {
 	ticker := time.NewTicker(*argPollDuration)
+	lastGet := time.Now()
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			data, err := source.GetInfo()
+			data, err := source.GetInfo(lastGet, time.Now(), *argStatsResolution)
 			if err != nil {
 				glog.Errorf("failed to get information from source - %v", err)
 			}
 			if err := sink.Store(data); err != nil {
 				glog.Errorf("failed to push information to sink - %v", err)
 			}
+			lastGet = time.Now()
 		}
 	}
 

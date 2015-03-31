@@ -43,7 +43,7 @@ func TestBasicCadvisor(t *testing.T) {
 	cadvisorClient, err := client.NewClient(server.URL)
 	require.NoError(t, err)
 	cadvisorSource := &cadvisorSource{}
-	subcontainer, root, err := cadvisorSource.getAllContainers(cadvisorClient, 10)
+	subcontainer, root, err := cadvisorSource.getAllContainers(cadvisorClient, time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	assert.Len(t, subcontainer, 0)
 	assert.Nil(t, root)
@@ -123,7 +123,7 @@ func TestDetailedCadvisor(t *testing.T) {
 	cadvisorClient, err := client.NewClient(server.URL)
 	require.NoError(t, err)
 	cadvisorSource := &cadvisorSource{}
-	subcontainers, root, err := cadvisorSource.getAllContainers(cadvisorClient, 10)
+	subcontainers, root, err := cadvisorSource.getAllContainers(cadvisorClient, time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	assert.Len(t, subcontainers, len(subContainers))
 	assert.NotNil(t, root)

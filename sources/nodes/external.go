@@ -72,7 +72,7 @@ func (self *externalCadvisorNodes) List() (*NodeList, error) {
 	for _, node := range externalNodes.Items {
 		nodes.Items[Host(node.Name)] = Info{PublicIP: node.IP, InternalIP: node.IP}
 	}
-	glog.V(1).Infof("Using cAdvisor hosts %+v", nodes)
+	glog.V(5).Infof("Using cAdvisor hosts %+v", nodes)
 	self.nodes = nodes
 	return nodes, nil
 }

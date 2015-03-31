@@ -41,7 +41,7 @@ type fakeKubeletApi struct {
 	container *api.Container
 }
 
-func (self *fakeKubeletApi) GetContainer(host datasource.Host, numStats int) (*api.Container, error) {
+func (self *fakeKubeletApi) GetContainer(host datasource.Host, start, end time.Time, resolution time.Duration) (*api.Container, error) {
 	return self.container, nil
 }
 
@@ -63,13 +63,12 @@ func TestKubeSourceBasic(t *testing.T) {
 	nodesApi := &fakeNodesApi{nodes.NodeList{}}
 	podsApi := &fakePodsApi{[]api.Pod{}}
 	kubeSource := &kubeSource{
-		lastQuery:   time.Now(),
 		kubeletPort: "10250",
 		nodesApi:    nodesApi,
 		podsApi:     podsApi,
 		kubeletApi:  &fakeKubeletApi{nil},
 	}
-	_, err := kubeSource.GetInfo()
+	_, err := kubeSource.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	require.NotEmpty(t, kubeSource.DebugInfo())
 }
@@ -106,14 +105,13 @@ func TestKubeSourceDetail(t *testing.T) {
 	eventsApi := &fakeEventsApi{eventsList}
 
 	kubeSource := &kubeSource{
-		lastQuery:   time.Now(),
 		kubeletPort: "10250",
 		nodesApi:    nodesApi,
 		podsApi:     podsApi,
 		kubeletApi:  kubeletApi,
 		eventsApi:   eventsApi,
 	}
-	data, err := kubeSource.GetInfo()
+	data, err := kubeSource.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	require.NotEmpty(t, data)
 }
