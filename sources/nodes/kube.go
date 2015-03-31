@@ -80,8 +80,6 @@ func (self *kubeNodes) List() (*NodeList, error) {
 				nodeInfo.PublicIP = addr.Address
 			case api.NodeInternalIP:
 				nodeInfo.InternalIP = addr.Address
-			case api.NodeLegacyHostIP:
-				nodeInfo.InternalIP = addr.Address
 			case api.NodeHostName:
 				hostname = addr.Address
 			}
