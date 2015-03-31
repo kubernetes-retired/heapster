@@ -89,6 +89,14 @@ func (self *MetricUnitsType) String() string {
 	return ""
 }
 
+type TimePrecision string
+
+const (
+	Second      TimePrecision = "s"
+	Millisecond TimePrecision = "m"
+	Microsecond TimePrecision = "u"
+)
+
 type LabelDescriptor struct {
 	// Key to use for the label.
 	Key string `json:"key,omitempty"`
@@ -115,17 +123,14 @@ type MetricDescriptor struct {
 }
 
 type Point struct {
-	// The name of the metric. Must match an existing descriptor.
-	Name string
-
-	// The labels and values for the metric. The keys must match those in the descriptor.
+	// The label keys and values for the metric.
 	Labels map[string]string
 
-	// The start and end time for which this data is representative.
+	// The start and end time for which this data is representative and the precision of the timestamps.
 	Start time.Time
 	End   time.Time
 
-	// The value of the metric. Must match the type in the descriptor.
+	// The value of the metric.
 	Value interface{}
 }
 
@@ -148,10 +153,19 @@ type SupportedStatMetric struct {
 	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) []internalPoint
 }
 
-// Timeseries represents a single metric.
+// Timeseries represents a set of points for a series.
 type Timeseries struct {
-	Point            *Point
-	MetricDescriptor *MetricDescriptor
+	// The name of the series.
+	SeriesName string
+
+	// Precision of points timestamps.
+	TimePrecision TimePrecision
+
+	// The labels used by this series.
+	LabelKeys []string
+
+	// The points to add to this series.
+	Points []Point
 }
 
 // ExternalSink is the interface that needs to be implemented by all external storage backends.

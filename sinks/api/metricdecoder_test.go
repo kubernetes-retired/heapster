@@ -29,7 +29,7 @@ import (
 )
 
 func TestEmptyInput(t *testing.T) {
-	timeseries, err := NewDecoder().Timeseries(source_api.AggregateData{})
+	timeseries, err := NewMetricDecoder().Timeseries(source_api.AggregateData{})
 	assert.NoError(t, err)
 	assert.Empty(t, timeseries)
 }
@@ -48,7 +48,7 @@ func getLabelsAsString(labels map[string]string) string {
 func getContainer(name string) source_api.Container {
 	f := fuzz.New().NumElements(1, 1).NilChance(0)
 	containerSpec := cadvisor.ContainerSpec{
-		CreationTime:  time.Now(),
+		CreationTime:  time.Unix(12345, 0),
 		HasCpu:        true,
 		HasMemory:     true,
 		HasNetwork:    true,
@@ -101,7 +101,7 @@ func TestRealInput(t *testing.T) {
 		Containers: containers,
 		Machine:    containers,
 	}
-	timeseries, err := NewDecoder().Timeseries(input)
+	timeseries, err := NewMetricDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 
@@ -109,63 +109,67 @@ func TestRealInput(t *testing.T) {
 
 	metrics := make(map[string][]Timeseries)
 	for index := range timeseries {
-		series, ok := metrics[timeseries[index].Point.Name]
+		series, ok := metrics[timeseries[index].SeriesName]
 		if !ok {
 			series = make([]Timeseries, 0)
 		}
 		series = append(series, timeseries[index])
-		metrics[timeseries[index].Point.Name] = series
+		metrics[timeseries[index].SeriesName] = series
 	}
 
 	for index := range statMetrics {
 		series, ok := metrics[statMetrics[index].MetricDescriptor.Name]
 		require.True(t, ok)
 		for innerIndex, entry := range series {
-			assert.Equal(t, statMetrics[index].MetricDescriptor, *series[innerIndex].MetricDescriptor)
-			spec := containers[0].Spec
+			assert.Equal(t, statMetrics[index].MetricDescriptor.Name, series[innerIndex].SeriesName)
 			stats := containers[0].Stats[0]
-			switch entry.Point.Name {
+			switch entry.SeriesName {
 			case "uptime":
-				value, ok := entry.Point.Value.(int64)
+				_, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
-				expected := time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()
-				assert.Equal(t, value, expected)
+				// TODO(saadali):
+				// Do not test the value of uptime. It is the delta between the container creation time
+				// and the current time. Since both the creation time and the current time were not fixed,
+				// this check was flaky. The correct way to do the test is to set the creation time of the
+				// container to something fixed (modified the fuzzer to do that), and (todo) modify
+				// supported_metrics to use an interface for time.Since, so that it can be replaced at test
+				// time to compare to a fixed current time.
 			case "cpu/usage":
-				value, ok := entry.Point.Value.(int64)
+				value, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Cpu.Usage.Total)
+				assert.Equal(t, stats.Cpu.Usage.Total, value)
 			case "memory/usage":
-				value, ok := entry.Point.Value.(int64)
+				value, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Memory.Usage)
+				assert.Equal(t, stats.Memory.Usage, value)
 			case "memory/working_set":
-				value, ok := entry.Point.Value.(int64)
+				value, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Memory.WorkingSet)
+				assert.Equal(t, stats.Memory.WorkingSet, value)
 			case "memory/page_faults":
-				value, ok := entry.Point.Value.(int64)
+				value, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Memory.ContainerData.Pgfault)
+				assert.Equal(t, stats.Memory.ContainerData.Pgfault, value)
 			case "network/rx":
-				value, ok := entry.Point.Value.(int64)
+				value, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Network.RxBytes)
+				assert.Equal(t, stats.Network.RxBytes, value)
 			case "network/rx_errors":
-				value, ok := entry.Point.Value.(int64)
+				value, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Network.RxErrors)
+				assert.Equal(t, stats.Network.RxErrors, value)
 			case "network/tx":
-				value, ok := entry.Point.Value.(int64)
+				value, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Network.TxBytes)
+				assert.Equal(t, stats.Network.TxBytes, value)
 			case "network/tx_errors":
-				value, ok := entry.Point.Value.(int64)
+				value, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
 				assert.Equal(t, value, stats.Network.TxErrors)
 			case "filesystem/usage":
-				value, ok := entry.Point.Value.(int64)
+				value, ok := entry.Points[0].Value.(int64)
 				require.True(t, ok)
-				name, ok := entry.Point.Labels[labelResourceID]
+				name, ok := entry.Points[0].Labels[labelResourceID]
 				require.True(t, ok)
 				assert.Equal(t, value, expectedFsStats[name])
 			default:
@@ -178,7 +182,7 @@ func TestRealInput(t *testing.T) {
 func TestFuzzInput(t *testing.T) {
 	var input source_api.AggregateData
 	fuzz.New().Fuzz(&input)
-	timeseries, err := NewDecoder().Timeseries(input)
+	timeseries, err := NewMetricDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 }
@@ -198,6 +202,7 @@ func TestPodLabelsProcessing(t *testing.T) {
 
 	expectedLabels := map[string]string{
 		labelPodId:         "123",
+		labelPodName:       "pod1",
 		labelLabels:        getLabelsAsString(podLabels),
 		labelHostname:      "1.2.3.4",
 		labelContainerName: "blah",
@@ -205,13 +210,13 @@ func TestPodLabelsProcessing(t *testing.T) {
 	input := source_api.AggregateData{
 		Pods: pods,
 	}
-	timeseries, err := NewDecoder().Timeseries(input)
+	timeseries, err := NewMetricDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 	// ignore ResourceID label.
 	for _, entry := range timeseries {
 		for name, value := range expectedLabels {
-			assert.Equal(t, value, entry.Point.Labels[name])
+			assert.Equal(t, value, entry.Points[0].Labels[name])
 		}
 	}
 }
@@ -227,13 +232,13 @@ func TestContainerLabelsProcessing(t *testing.T) {
 	input := source_api.AggregateData{
 		Containers: []source_api.Container{container},
 	}
-	timeseries, err := NewDecoder().Timeseries(input)
+	timeseries, err := NewMetricDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 	// ignore ResourceID label.
 	for _, entry := range timeseries {
 		for name, value := range expectedLabels {
-			assert.Equal(t, value, entry.Point.Labels[name])
+			assert.Equal(t, value, entry.Points[0].Labels[name])
 		}
 	}
 }

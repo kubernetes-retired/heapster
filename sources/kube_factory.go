@@ -66,6 +66,7 @@ func CreateKubeSources(master, kubeVersion, clientAuthFile, kubeletPort string, 
 	kubeletApi := datasource.NewKubelet()
 	kubePodsSource := NewKubePodMetrics(kubeletPort, nodesApi, newPodsApi(kubeClient), kubeletApi)
 	kubeNodeSource := NewKubeNodeMetrics(kubeletPort, kubeletApi, nodesApi)
+	kubeEventSource := NewKubeEvents(kubeClient)
 
-	return []api.Source{kubePodsSource, kubeNodeSource}, nil
+	return []api.Source{kubePodsSource, kubeNodeSource, kubeEventSource}, nil
 }

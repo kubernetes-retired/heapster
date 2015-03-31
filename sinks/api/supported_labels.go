@@ -16,6 +16,7 @@ package api
 
 const (
 	labelPodId         = "pod_id"
+	labelPodName       = "pod_name"
 	labelContainerName = "container_name"
 	labelLabels        = "labels"
 	labelHostname      = "hostname"
@@ -29,6 +30,10 @@ var allLabels = []LabelDescriptor{
 	{
 		Key:         labelPodId,
 		Description: "The unique ID of the pod",
+	},
+	{
+		Key:         labelPodName,
+		Description: "The name of the pod",
 	},
 	{
 		Key:         labelContainerName,
@@ -50,4 +55,12 @@ var allLabels = []LabelDescriptor{
 
 func SupportedLabels() []LabelDescriptor {
 	return allLabels
+}
+
+func SupportedLabelKeys() []string {
+	keys := []string{}
+	for _, label := range allLabels {
+		keys = append(keys, label.Key)
+	}
+	return keys
 }
