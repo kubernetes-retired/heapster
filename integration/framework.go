@@ -29,6 +29,7 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 	"github.com/golang/glog"
 )
@@ -67,6 +68,9 @@ type kubeFramework interface {
 
 	// Returns the node hostnames.
 	GetNodes() ([]string, error)
+
+	// Returns pods in the cluster.
+	GetPods() ([]string, error)
 }
 
 type realKubeFramework struct {
@@ -417,8 +421,19 @@ func (self *realKubeFramework) GetNodes() ([]string, error) {
 	}
 
 	for _, node := range nodeList.Items {
-		name := strings.Split(node.Name, ".")[0]
-		nodes = append(nodes, name)
+		nodes = append(nodes, node.Name)
 	}
 	return nodes, nil
+}
+
+func (self *realKubeFramework) GetPods() ([]string, error) {
+	var pods []string
+	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything())
+	if err != nil {
+		return pods, err
+	}
+	for _, pod := range podList.Items {
+		pods = append(pods, string(pod.UID))
+	}
+	return pods, nil
 }

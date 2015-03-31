@@ -25,7 +25,6 @@ import (
 	"testing"
 	"time"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	kube_api_v1beta1 "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta1"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
@@ -36,9 +35,10 @@ import (
 )
 
 const (
-	heapsterPackage    = "github.com/GoogleCloudPlatform/heapster"
-	targetTags         = "kubernetes-minion"
-	maxInfluxdbRetries = 5
+	heapsterPackage      = "github.com/GoogleCloudPlatform/heapster"
+	targetTags           = "kubernetes-minion"
+	sleepBetweenAttempts = 5 * time.Second
+	testTimeout          = 5 * time.Minute
 )
 
 var (
@@ -53,6 +53,8 @@ var (
 	heapsterBuildDir              = "../deploy/docker"
 	influxdbBuildDir              = "../influxdb"
 	grafanaBuildDir               = "../grafana"
+	podlistQuery                  = "select distinct(pod_id) from /cpu.*/"
+	nodelistQuery                 = "select distinct(hostname) from /cpu.*/"
 )
 
 func buildAndPushHeapsterImage(hostnames []string) error {
@@ -204,7 +206,8 @@ func deleteAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []
 	var nodes []string
 	if nodes, err = fm.GetNodes(); err == nil {
 		for _, node := range nodes {
-			cleanupRemoteHost(node)
+			name := strings.Split(node, ".")[0]
+			cleanupRemoteHost(name)
 		}
 	} else {
 		glog.Errorf("failed to cleanup nodes - %v", err)
@@ -270,25 +273,6 @@ func createAndWaitForRunning(fm kubeFramework, ns string) error {
 	return waitUntilPodRunning(fm, ns, heapsterRC.Spec.Template.Labels, 1*time.Minute)
 }
 
-func queryInfluxDB(t *testing.T, client *influxdb.Client) {
-	var series []*influxdb.Series
-	var err error
-	success := false
-	for i := 0; i < maxInfluxdbRetries; i++ {
-		if series, err = client.Query("list series", influxdb.Second); err == nil {
-			glog.V(1).Infof("query:' list series' - output %+v from influxdb", series[0].Points)
-			if len(series[0].Points) >= (len(sink_api.SupportedStatMetrics()) - 1) {
-				success = true
-				break
-			}
-		}
-		glog.V(2).Infof("influxdb test case failed. Retrying")
-		time.Sleep(30 * time.Second)
-	}
-	require.NoError(t, err, "failed to list series in Influxdb")
-	require.True(t, success, "list series test case failed.")
-}
-
 func buildAndPushImages(fm kubeFramework) error {
 	nodes, err := fm.GetNodes()
 	if err != nil {
@@ -301,6 +285,66 @@ func buildAndPushImages(fm kubeFramework) error {
 		return err
 	}
 	return buildAndPushGrafanaImage(nodes)
+}
+
+func getInfluxdbData(c *influxdb.Client, query string) (map[string]bool, error) {
+	series, err := c.Query(query, influxdb.Second)
+	if err != nil {
+		return nil, err
+	}
+	if len(series) != 1 {
+		return nil, fmt.Errorf("expected only one series from Influxdb for query %q. Got %+v", query, series)
+	}
+	if len(series[0].GetColumns()) != 2 {
+		return nil, fmt.Errorf("Expected two columns for query %q. Found %v", query, series[0].GetColumns())
+	}
+	result := map[string]bool{}
+	for _, point := range series[0].GetPoints() {
+		if len(point) != 2 {
+			return nil, fmt.Errorf("Expected only two entries in a point for query %q. Got %v", query, point)
+		}
+		name, ok := point[1].(string)
+		if !ok {
+			return nil, fmt.Errorf("expected %v to be a string, but it is %T", point[1], point[1])
+		}
+		result[name] = false
+	}
+	return result, nil
+}
+
+func expectedItemsExist(expectedItems []string, actualItems map[string]bool) bool {
+	if len(actualItems) < len(expectedItems) {
+		return false
+	}
+	for _, item := range expectedItems {
+		if _, found := actualItems[item]; !found {
+			return false
+		}
+	}
+	return true
+}
+
+func validatePodsAndNodes(influxdbClient *influxdb.Client, expectedPods, expectedNodes []string) bool {
+	pods, err := getInfluxdbData(influxdbClient, podlistQuery)
+	if err != nil {
+		// We don't fail the test here because the influxdb service might still not be running.
+		glog.Errorf("failed to query list of pods from influxdb. Query: %q, Err: %v", podlistQuery, err)
+		return false
+	}
+	nodes, err := getInfluxdbData(influxdbClient, nodelistQuery)
+	if err != nil {
+		glog.Errorf("failed to query list of nodes from influxdb. Query: %q, Err: %v", nodelistQuery, err)
+		return false
+	}
+	if !expectedItemsExist(expectedPods, pods) {
+		glog.Errorf("failed to find all expected Pods.\nExpected: %v\nActual: %v", expectedPods, pods)
+		return false
+	}
+	if !expectedItemsExist(expectedNodes, nodes) {
+		glog.Errorf("failed to find all expected Nodes.\nExpected: %v\nActual: %v", expectedNodes, nodes)
+		return false
+	}
+	return true
 }
 
 func TestHeapsterInfluxDBWorks(t *testing.T) {
@@ -339,10 +383,25 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 		}
 		influxdbClient, err := influxdb.NewClient(config)
 		require.NoError(t, err, "failed to create influxdb client")
+		expectedNodes, err := fm.GetNodes()
+		require.NoError(t, err, "failed to get list of nodes")
+		expectedPods, err := fm.GetPods()
+		require.NoError(t, err, "failed to get list of pods")
 
-		queryInfluxDB(t, influxdbClient)
-
-		glog.Info("**HeapsterInfluxDB test passed**")
+		startTime := time.Now()
+		success := false
+		for {
+			if validatePodsAndNodes(influxdbClient, expectedPods, expectedNodes) {
+				success = true
+				break
+			}
+			if time.Since(startTime) >= testTimeout {
+				break
+			}
+			time.Sleep(sleepBetweenAttempts)
+		}
+		require.True(t, success, "HeapsterInfluxDB test failed with kube version %q", kubeVersion)
+		glog.Info("HeapsterInfluxDB test passed with kube version %q", kubeVersion)
 		deleteAll(fm, *namespace, services, replicationControllers)
 	}
 }
