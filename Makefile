@@ -9,7 +9,7 @@ test-unit: clean
 	godep go test -test.short ./...
 
 container: build
-	sudo docker build -t kubernetes/heapster:canary ./deploy/docker/
+	sudo docker build -t heapster:canary ./deploy/docker/
 
 clean:
 	rm -f heapster

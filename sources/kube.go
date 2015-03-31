@@ -33,16 +33,15 @@ import (
 const (
 	// Cadvisor port in kubernetes.
 	cadvisorPort = 4194
-
-	kubeClientVersion = "v1beta1"
 )
 
 var (
 	argMaster         = flag.String("kubernetes_master", "", "Kubernetes master IP")
 	argMasterInsecure = flag.Bool("kubernetes_insecure", true, "Trust Kubernetes master certificate (if using https)")
 	argKubeletPort    = flag.String("kubelet_port", "10250", "Kubelet port")
-	// TODO: once known location for client auth is defined upstream, default this to that file
+	// TODO: once known location for client auth is defined upstream, default this to that file.
 	argClientAuthFile = flag.String("kubernetes_client_auth", "", "Kubernetes client authentication file")
+	argKubeVersion    = flag.String("kubernetes_version", "v1beta1", "Kubernetes API version")
 )
 
 type kubeSource struct {
@@ -204,14 +203,16 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 	if len(*argMaster) == 0 {
 		return nil, fmt.Errorf("kubernetes_master flag not specified")
 	}
-
+	if *argKubeVersion == "" {
+		return nil, fmt.Errorf("kubernetes API version invalid")
+	}
 	if !(strings.HasPrefix(*argMaster, "http://") || strings.HasPrefix(*argMaster, "https://")) {
 		*argMaster = "http://" + *argMaster
 	}
 
 	kubeConfig := kube_client.Config{
 		Host:     *argMaster,
-		Version:  kubeClientVersion,
+		Version:  *argKubeVersion,
 		Insecure: *argMasterInsecure,
 	}
 
@@ -233,7 +234,7 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	glog.Infof("Using Kubernetes client with master %q and version %s\n", *argMaster, kubeClientVersion)
+	glog.Infof("Using Kubernetes client with master %q and version %s\n", *argMaster, *argKubeVersion)
 	glog.Infof("Using kubelet port %q", *argKubeletPort)
 	eventsSource := NewEventsSource(kubeClient)
 
@@ -250,7 +251,7 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 
 func (self *kubeSource) DebugInfo() string {
 	desc := "Source type: Kube\n"
-	desc += fmt.Sprintf("\tClient config: master ip %q, version %s\n", *argMaster, kubeClientVersion)
+	desc += fmt.Sprintf("\tClient config: master ip %q, version %s\n", *argMaster, *argKubeVersion)
 	desc += fmt.Sprintf("\tUsing kubelet port %q\n", self.kubeletPort)
 	desc += self.getState()
 	desc += "\n"
