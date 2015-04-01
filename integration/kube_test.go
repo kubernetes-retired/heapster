@@ -249,9 +249,9 @@ func createAndWaitForRunning(fm kubeFramework, ns string) error {
 		} else if strings.Contains(cont.Name, "influxdb") {
 			cont.Image = *influxdbImage
 		}
-		for idx := range cont.Ports {
-			cont.Ports[idx].HostPort = cont.Ports[idx].ContainerPort
-		}
+		// for idx := range cont.Ports {
+		// 	// cont.Ports[idx].HostPort = cont.Ports[idx].ContainerPort
+		// }
 	}
 	replicationControllers = append(replicationControllers, influxdbRC)
 
