@@ -10,7 +10,7 @@ Heapster exports the following metrics to its backends.
 | memory/page_faults | Number of major page faults                                                                        | Gauge      | Count       | v0.9            |
 | memory/working_set | Total working set usage. Working set is the memory being used and not easily dropped by the Kernel | Gauge      | Bytes       | v0.9            |
 | network/rx         | Cumulative number of bytes received over the network                                               | Cumulative | Bytes       | v0.9            |
-| network/rx_errors  | Cumulative number of bytes received over the network                                               | Cumulative | Count       | v0.9            |
+| network/rx_errors  | Cumulative number of errors while receiving over the network                                       | Cumulative | Count       | v0.9            |
 | network/tx         | Cumulative number of bytes sent over the network                                                   | Cumulative | Bytes       | v0.9            |
 | network/tx_errors  | Cumulative number of errors while sending over the network                                         | Cumulative | Count       | v0.9            |
 
