@@ -8,6 +8,7 @@ desiredState:
   podTemplate:
     labels:
       name: "influxGrafana"
+      kubernetes.io/cluster-service: "true"
     desiredState:
       manifest:
         version: "v1beta1"
@@ -19,7 +20,7 @@ desiredState:
               - containerPort: 8083
               - containerPort: 8086
           - name: "grafana"
-            image: "kubernetes/heapster_grafana:v0.5"
+            image: "kubernetes/heapster_grafana:v0.6"
             ports:
               - containerPort: 8080
             env:
@@ -31,3 +32,5 @@ desiredState:
                 value: '80'
 labels:
   name: "influxGrafana"
+  kubernetes.io/cluster-service: "true"
+
