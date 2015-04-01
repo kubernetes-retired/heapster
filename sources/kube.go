@@ -236,7 +236,8 @@ func newKubeSource(pollDuration time.Duration) (*kubeSource, error) {
 	}
 	glog.Infof("Using Kubernetes client with master %q and version %s\n", *argMaster, *argKubeVersion)
 	glog.Infof("Using kubelet port %q", *argKubeletPort)
-	eventsSource := NewEventsSource(kubeClient)
+	// TODO: Use real events source once events sink has been added.
+	eventsSource := NewFakeEventsSource()
 
 	return &kubeSource{
 		pollDuration: pollDuration,
