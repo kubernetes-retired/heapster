@@ -40,6 +40,3 @@ $ gcloud compute firewall-rules create monitoring-heapster --allow "tcp:8083" "t
 	```shell
 $ deploy/kube.sh restart
 	```
-
-## Hints
-* To enable memory and swap accounting on the minions, follow [these instructions](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting).
