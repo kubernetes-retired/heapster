@@ -43,9 +43,9 @@ const (
 
 var (
 	kubeVersions                  = flag.String("kube_versions", "", "Comma separated list of kube versions to test against")
-	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/kube-config/heapster-controller.yaml", "Path to heapster replication controller file.")
-	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/kube-config/influxdb-grafana-controller.yaml", "Path to Influxdb-Grafana replication controller file.")
-	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/kube-config/influxdb-service.yaml", "Path to Inlufxdb service file.")
+	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/kube-config/influxdb/heapster-controller.yaml", "Path to heapster replication controller file.")
+	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/kube-config/influxdb/influxdb-grafana-controller.yaml", "Path to Influxdb-Grafana replication controller file.")
+	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/kube-config/influxdb/influxdb-service.yaml", "Path to Inlufxdb service file.")
 	heapsterImage                 = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
 	influxdbImage                 = flag.String("influxdb_image", "heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
 	grafanaImage                  = flag.String("grafana_image", "heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")

@@ -6,7 +6,15 @@ Depending on the deployment setup, the issue could be either with heapster, cadv
 
 ### Heapster Core
 
+#### Common Problems
+
+* Some distros (including Debian) ship with memory accounting disabled by default. To enable memory and swap accounting on the nodes, follow [these instructions](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting).
+
+#### Validate
+
 Heapster exports a '/validate' endpoint that will provide some information about its current state.
+
+#### Extra Logging
 
 If the '/validate' endpoint does not provide enough information, additional logging can be enabled by setting an extra flag. This requires restarting heapster though.
 Add `--vmodule=*=4` flag to heapster. When using the docker image or when running in kubernetes, pass an extra environment variable `FLAGS="--vmodule=*=4`. 
