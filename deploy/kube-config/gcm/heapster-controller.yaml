@@ -27,5 +27,6 @@ desiredState:
                 path: /etc/ssl/certs
     labels:
       name: "heapster"
+      kubernetes.io/cluster-service: "true"
 labels:
   name: "heapster"
