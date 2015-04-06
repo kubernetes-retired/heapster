@@ -17,7 +17,9 @@ package sources
 import (
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	kubeapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	kubeclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	kubefields "github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
@@ -26,31 +28,7 @@ import (
 	"github.com/golang/glog"
 )
 
-// EventsSource objects are used to interact with the event source
-// which aggregates all events from a specified Kubernetes API server
-type EventsSource interface {
-	// Returns all new events since GetEvents was last called.
-	GetEvents() ([]kubeapi.Event, EventError)
-	// Terminates existing watch loop, if any, and starts new instance
-	RestartWatchLoop()
-}
-
-type EventError interface {
-	error
-	WatchLoopTerminated() bool // Returns true if the watch loop is terminated
-}
-
-// NewEventsSource initializes a new events source and starts a
-// goroutine to watch/fetch event updates.
-func NewEventsSource(client *kubeclient.Client) EventsSource {
-	// Buffered channel to send/receive events from
-	eventsChan := make(chan eventsUpdate, 1024)
-	errorChan := make(chan error)
-	glog.V(4).Infof("Starting event source")
-	go watchLoop(client.Events(kubeapi.NamespaceAll), eventsChan, errorChan)
-	glog.V(4).Infof("Finished starting event source")
-	return &eventsSourceImpl{client, eventsChan, errorChan}
-}
+const kubeEventsSource = "kube-events"
 
 // eventsUpdate is the wrapper object used to pass new events around
 type eventsUpdate struct {
@@ -62,21 +40,13 @@ type eventsSourceImpl struct {
 	*kubeclient.Client
 	eventsChannel chan eventsUpdate
 	errorChannel  chan error
-}
-
-type eventError struct {
-	error
-	watchLoopTerminated bool
-}
-
-func (e eventError) WatchLoopTerminated() bool {
-	return e.watchLoopTerminated
+	initialized   bool
 }
 
 // Terminates existing watch loop, if any, and starts new instance
 // Note that the current implementation will cause all events that
 // haven't been removed due TTL to be redelivered.
-func (eventSource *eventsSourceImpl) RestartWatchLoop() {
+func (eventSource *eventsSourceImpl) restartWatchLoop() {
 	eventSource.eventsChannel = make(chan eventsUpdate, 1024)
 	eventSource.errorChannel = make(chan error)
 	glog.V(4).Infof("Restarting event source")
@@ -84,8 +54,8 @@ func (eventSource *eventsSourceImpl) RestartWatchLoop() {
 	glog.V(4).Infof("Finished restarting event source")
 }
 
-// GetEvents returns all new events since GetEvents was last called.
-func (eventSource *eventsSourceImpl) GetEvents() ([]kubeapi.Event, EventError) {
+// getEvents returns all new events since getEvents was last called.
+func (eventSource *eventsSourceImpl) getEvents() ([]kubeapi.Event, bool, error) {
 	events := []kubeapi.Event{}
 UpdateLoop:
 	for {
@@ -93,13 +63,13 @@ UpdateLoop:
 		select {
 		case eventsUpdate, ok := <-eventSource.eventsChannel:
 			if !ok {
-				return nil, eventError{error: errors.New("eventsChannel was closed"), watchLoopTerminated: true}
+				return nil, true, fmt.Errorf("eventsChannel was closed")
 			}
 			if eventsUpdate.events == nil {
-				return nil, eventError{error: errors.New("Error: recieved a nil event list."), watchLoopTerminated: false}
+				return nil, false, fmt.Errorf("Error: recieved a nil event list.")
 			}
 			if eventsUpdate.events.Items == nil {
-				return nil, eventError{error: errors.New("Error: received an event list with nil Items."), watchLoopTerminated: false}
+				return nil, false, fmt.Errorf("Error: received an event list with nil Items.")
 			}
 			for _, event := range eventsUpdate.events.Items {
 				glog.V(3).Infof("Received new event: %#v\r\n", event)
@@ -107,14 +77,14 @@ UpdateLoop:
 			}
 		case err := <-eventSource.errorChannel:
 			if err != nil {
-				fmt.Errorf("Events watchLoop failed with error: %v", err)
-				return nil, eventError{error: err, watchLoopTerminated: true}
+				err = fmt.Errorf("Events watchLoop failed with error: %v", err)
+				return nil, true, err
 			}
 		default:
 			break UpdateLoop
 		}
 	}
-	return events, nil
+	return events, false, nil
 }
 
 // watchLoop loops forever looking for new events.  If an error occurs it will close the channel and return.
@@ -174,4 +144,40 @@ func watchLoop(eventClient kubeclient.EventInterface, eventsChan chan<- eventsUp
 			continue
 		}
 	}
+}
+
+func NewKubeEvents(client *kubeclient.Client) api.Source {
+	// Buffered channel to send/receive events from
+	eventsChan := make(chan eventsUpdate, 1024)
+	errorChan := make(chan error)
+	glog.V(4).Infof("Starting %q source", kubeEventsSource)
+	go watchLoop(client.Events(kubeapi.NamespaceAll), eventsChan, errorChan)
+	glog.V(4).Infof("Finished starting %q source", kubeEventsSource)
+
+	return &eventsSourceImpl{
+		Client:        client,
+		eventsChannel: eventsChan,
+		errorChannel:  errorChan,
+	}
+}
+
+func (eventSource *eventsSourceImpl) GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error) {
+	events, watchLoopTerminated, err := eventSource.getEvents()
+	if err != nil {
+		if watchLoopTerminated {
+			glog.Errorf("Event watch loop was terminated due to error. Will restart it. Error: %v", err)
+			eventSource.restartWatchLoop()
+		}
+		return api.AggregateData{}, err
+	}
+	glog.V(2).Info("Fetched list of events from the master")
+	glog.V(4).Infof("%v", events)
+
+	return api.AggregateData{Events: events}, nil
+}
+
+func (eventSource *eventsSourceImpl) DebugInfo() string {
+	desc := fmt.Sprintf("Source type: %s\n", kubeEventsSource)
+	// TODO: Add events specific debug information
+	return desc
 }

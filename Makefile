@@ -1,7 +1,8 @@
 all: build
 
 build: clean
-	godep go build -a heapster.go
+	godep go build -a ./...
+	godep go build -a
 	cp ./heapster ./deploy/docker/heapster
 
 test-unit: clean

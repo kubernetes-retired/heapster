@@ -15,6 +15,10 @@
 package sources
 
 import (
+	"time"
+
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 )
 
@@ -28,4 +32,12 @@ func (self *fakeNodesApi) List() (*nodes.NodeList, error) {
 
 func (self *fakeNodesApi) DebugInfo() string {
 	return "fake nodes plugin: no data"
+}
+
+type fakeKubeletApi struct {
+	container *api.Container
+}
+
+func (self *fakeKubeletApi) GetContainer(host datasource.Host, start, end time.Time, resolution time.Duration) (*api.Container, error) {
+	return self.container, nil
 }

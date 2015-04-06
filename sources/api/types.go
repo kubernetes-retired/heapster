@@ -15,6 +15,8 @@
 package api
 
 import (
+	"time"
+
 	kubeapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
@@ -64,4 +66,17 @@ type ExternalNode struct {
 // ExternalNodeList represents a list of all hosts that are running cadvisor which heapster will monitor.
 type ExternalNodeList struct {
 	Items []ExternalNode `json:"items,omitempty"`
+}
+
+// Source represents a plugin that generates data.
+// Each Source needs to implement a Register
+type Source interface {
+	// GetInfo Fetches information about pods or containers.
+	// start, end: Represents the time range for stats
+	// resolution: Represents the intervals at which samples are collected.
+	// Returns:
+	// AggregateData
+	GetInfo(start, end time.Time, resolution time.Duration) (AggregateData, error)
+	// Returns debug information for the source.
+	DebugInfo() string
 }

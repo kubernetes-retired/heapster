@@ -13,30 +13,3 @@
 // limitations under the License.
 
 package sources
-
-import (
-	"time"
-
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
-)
-
-type Source interface {
-	// Fetches containers or pod information from all the nodes in the cluster.
-	// start, end: Represents the time range for stats
-	// resolution: Represents the intervals at which samples are collected.
-	// Returns:
-	// AggregateData: A composite object that contains node, pod and container stats.
-	GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error)
-	// Returns debug information for the source.
-	DebugInfo() string
-}
-
-func NewSource(pollDuration time.Duration) (Source, error) {
-	if len(*argMaster) > 0 {
-		return newKubeSource(pollDuration)
-	} else if *argCoreOSMode {
-		return newCoreOSCadvisorSource(pollDuration)
-	} else {
-		return newExternalCadvisorSource(pollDuration)
-	}
-}

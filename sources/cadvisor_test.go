@@ -43,7 +43,6 @@ func TestBasicSuccess(t *testing.T) {
 
 	source := &cadvisorSource{
 		nodesApi:     &fakeNodesApi{nodes.NodeList{}},
-		pollDuration: 1 * time.Second,
 		cadvisorPort: "8080",
 		cadvisorApi:  cadvisorApi,
 	}
@@ -86,7 +85,6 @@ func TestWorkflowSuccess(t *testing.T) {
 	}
 	source := &cadvisorSource{
 		nodesApi:     &fakeNodesApi{nodeList},
-		pollDuration: 1 * time.Second,
 		cadvisorPort: "8080",
 		cadvisorApi:  cadvisorApi,
 	}
