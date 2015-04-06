@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All Rights Reserved.
+// Copyright 2015 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,9 +19,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
-	kubeapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,43 +35,16 @@ func (self *fakePodsApi) DebugInfo() string {
 	return ""
 }
 
-type fakeKubeletApi struct {
-	container *api.Container
-}
-
-func (self *fakeKubeletApi) GetContainer(host datasource.Host, start, end time.Time, resolution time.Duration) (*api.Container, error) {
-	return self.container, nil
-}
-
-type fakeEventsApi struct {
-	eventList []kubeapi.Event
-}
-
-// Terminates existing watch loop, if any, and starts new instance
-func (eventSource *fakeEventsApi) RestartWatchLoop() {
-	// Noop
-}
-
-// GetEvents returns all new events since GetEvents was last called.
-func (eventSource *fakeEventsApi) GetEvents() ([]kubeapi.Event, EventError) {
-	return eventSource.eventList, nil
-}
-
-func TestKubeSourceBasic(t *testing.T) {
+func TestKubePodMetricsBasic(t *testing.T) {
 	nodesApi := &fakeNodesApi{nodes.NodeList{}}
 	podsApi := &fakePodsApi{[]api.Pod{}}
-	kubeSource := &kubeSource{
-		kubeletPort: "10250",
-		nodesApi:    nodesApi,
-		podsApi:     podsApi,
-		kubeletApi:  &fakeKubeletApi{nil},
-	}
-	_, err := kubeSource.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
+	source := NewKubePodMetrics("10250", nodesApi, podsApi, &fakeKubeletApi{nil})
+	_, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
-	require.NotEmpty(t, kubeSource.DebugInfo())
+	require.NotEmpty(t, source.DebugInfo())
 }
 
-func TestKubeSourceDetail(t *testing.T) {
+func TestKubePodMetricsFull(t *testing.T) {
 	nodeList := nodes.NodeList{
 		Items: map[nodes.Host]nodes.Info{
 			nodes.Host("test-machine-b"): {InternalIP: "10.10.10.1"},
@@ -94,24 +65,8 @@ func TestKubeSourceDetail(t *testing.T) {
 	nodesApi := &fakeNodesApi{nodeList}
 	podsApi := &fakePodsApi{podList}
 	kubeletApi := &fakeKubeletApi{container}
-	eventsList := []kubeapi.Event{
-		{
-			Reason: "event 1",
-		},
-		{
-			Reason: "event 2",
-		},
-	}
-	eventsApi := &fakeEventsApi{eventsList}
-
-	kubeSource := &kubeSource{
-		kubeletPort: "10250",
-		nodesApi:    nodesApi,
-		podsApi:     podsApi,
-		kubeletApi:  kubeletApi,
-		eventsApi:   eventsApi,
-	}
-	data, err := kubeSource.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
+	source := NewKubePodMetrics("10250", nodesApi, podsApi, kubeletApi)
+	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	require.NotEmpty(t, data)
 }

@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks"
-	"github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/validate"
 	"github.com/GoogleCloudPlatform/heapster/version"
 	"github.com/golang/glog"
@@ -47,12 +47,12 @@ func main() {
 	if err := validateFlags(); err != nil {
 		glog.Fatal(err)
 	}
-	source, sink, err := doWork()
+	sources, sink, err := doWork()
 	if err != nil {
 		glog.Error(err)
 		os.Exit(1)
 	}
-	setupHandlers(source, sink)
+	setupHandlers(sources, sink)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
 	glog.Fatal(http.ListenAndServe(addr, nil))
@@ -72,10 +72,11 @@ func validateFlags() error {
 
 	return nil
 }
-func setupHandlers(source sources.Source, sink sinks.ExternalSinkManager) {
+
+func setupHandlers(sources []api.Source, sink sinks.ExternalSinkManager) {
 	// Validation/Debug handler.
 	http.HandleFunc(validate.ValidatePage, func(w http.ResponseWriter, r *http.Request) {
-		err := validate.HandleRequest(w, source, sink)
+		err := validate.HandleRequest(w, sources, sink)
 		if err != nil {
 			fmt.Fprintf(w, "%s", err)
 		}
@@ -85,8 +86,8 @@ func setupHandlers(source sources.Source, sink sinks.ExternalSinkManager) {
 	http.Handle("/", http.RedirectHandler(validate.ValidatePage, http.StatusTemporaryRedirect))
 }
 
-func doWork() (sources.Source, sinks.ExternalSinkManager, error) {
-	source, err := sources.NewSource(*argPollDuration)
+func doWork() ([]api.Source, sinks.ExternalSinkManager, error) {
+	sources, err := newSources()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -94,28 +95,29 @@ func doWork() (sources.Source, sinks.ExternalSinkManager, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	go housekeep(source, sink)
-	return source, sink, nil
+	go housekeep(sources, sink)
+	return sources, sink, nil
 }
 
-func housekeep(source sources.Source, sink sinks.ExternalSinkManager) {
+func housekeep(sources []api.Source, sink sinks.ExternalSinkManager) {
 	ticker := time.NewTicker(*argPollDuration)
 	lastGet := time.Now()
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			data, err := source.GetInfo(lastGet, time.Now(), *argStatsResolution)
-			if err != nil {
-				glog.Errorf("failed to get information from source - %v", err)
-			}
-			if err := sink.Store(data); err != nil {
-				glog.Errorf("failed to push information to sink - %v", err)
+			for _, source := range sources {
+				data, err := source.GetInfo(lastGet, time.Now(), *argStatsResolution)
+				if err != nil {
+					glog.Errorf("failed to get information from source - %v", err)
+				}
+				if err := sink.Store(data); err != nil {
+					glog.Errorf("failed to push information to sink - %v", err)
+				}
 			}
 			lastGet = time.Now()
 		}
 	}
-
 }
 
 func setMaxProcs() {

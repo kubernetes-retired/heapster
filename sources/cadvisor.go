@@ -19,7 +19,6 @@
 package sources
 
 import (
-	"flag"
 	"fmt"
 	"strconv"
 	"sync"
@@ -31,15 +30,9 @@ import (
 	"github.com/golang/glog"
 )
 
-var (
-	argCadvisorPort = flag.Int("cadvisor_port", 8080, "The port on which cadvisor binds to on all nodes.")
-	argCoreOSMode   = flag.Bool("coreos", false, "When true, heapster looks will connect with fleet servers to get the list of nodes to monitor. It is expected that cadvisor will be running on all the nodes at the port specified using flag '--cadvisor_port'. Use flag '--fleet_endpoints' to manage fleet endpoints to watch.")
-)
-
 type cadvisorSource struct {
 	cadvisorPort string
 	cadvisorApi  datasource.Cadvisor
-	pollDuration time.Duration
 	nodesApi     nodes.NodesApi
 }
 
@@ -101,34 +94,23 @@ func (self *cadvisorSource) DebugInfo() string {
 	return desc
 }
 
-func newExternalCadvisorSource(pollDuration time.Duration) (Source, error) {
-	if *argCadvisorPort <= 0 {
-		return nil, fmt.Errorf("invalid cadvisor port - %d", *argCadvisorPort)
+func NewOtherSources(cadvisorPort int, coreOS bool) ([]api.Source, error) {
+	var nodesApi nodes.NodesApi
+	var err error
+	if coreOS {
+		nodesApi, err = nodes.NewCoreOSNodes()
+	} else {
+		nodesApi, err = nodes.NewExternalNodes()
 	}
-	nodesApi, err := nodes.NewExternalNodes()
 	if err != nil {
 		return nil, err
 	}
-	return &cadvisorSource{
-		pollDuration: pollDuration,
-		cadvisorApi:  datasource.NewCadvisor(),
-		nodesApi:     nodesApi,
-		cadvisorPort: strconv.Itoa(*argCadvisorPort),
-	}, nil
-}
 
-func newCoreOSCadvisorSource(pollDuration time.Duration) (Source, error) {
-	if *argCadvisorPort <= 0 {
-		return nil, fmt.Errorf("invalid cadvisor port - %d", *argCadvisorPort)
-	}
-	nodesApi, err := nodes.NewCoreOSNodes()
-	if err != nil {
-		return nil, err
-	}
-	return &cadvisorSource{
-		pollDuration: pollDuration,
-		cadvisorApi:  datasource.NewCadvisor(),
-		nodesApi:     nodesApi,
-		cadvisorPort: strconv.Itoa(*argCadvisorPort),
+	return []api.Source{
+		&cadvisorSource{
+			cadvisorApi:  datasource.NewCadvisor(),
+			nodesApi:     nodesApi,
+			cadvisorPort: strconv.Itoa(cadvisorPort),
+		},
 	}, nil
 }

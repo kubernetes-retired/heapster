@@ -19,7 +19,7 @@ import (
 	"net/http"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks"
-	"github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/version"
 )
 
@@ -27,9 +27,11 @@ const (
 	ValidatePage = "/validate/"
 )
 
-func HandleRequest(w http.ResponseWriter, source sources.Source, sink sinks.ExternalSinkManager) error {
+func HandleRequest(w http.ResponseWriter, sources []api.Source, sink sinks.ExternalSinkManager) error {
 	out := fmt.Sprintf("Heapster Version: %v\n\n", version.HeapsterVersion)
-	out += source.DebugInfo()
+	for _, source := range sources {
+		out += source.DebugInfo()
+	}
 	out += sink.DebugInfo()
 	_, err := w.Write([]byte(out))
 	return err
