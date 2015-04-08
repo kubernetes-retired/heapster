@@ -129,6 +129,14 @@ type Point struct {
 	Value interface{}
 }
 
+// internalPoint is an internal object.
+type internalPoint struct {
+	// Overrides any default labels generated for every Point.
+	// This is typically used for metric specific labels like 'resource_id'.
+	labels map[string]string
+	value  interface{}
+}
+
 // SupportedStatMetric represents a resource usage stat metric.
 type SupportedStatMetric struct {
 	MetricDescriptor
@@ -136,8 +144,8 @@ type SupportedStatMetric struct {
 	// Returns whether this metric is present.
 	HasValue func(*cadvisor.ContainerSpec) bool
 
-	// Returns the desired data point for this metric from the stats.
-	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) interface{}
+	// Returns a slice of internal point objects that contain metric values and associated labels.
+	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) []internalPoint
 }
 
 // Timeseries represents a single metric.

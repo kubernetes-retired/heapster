@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.11.0 (Unreleased)
+- Export filesystem usage metrics for the node and containers.
+
 ## 0.10.0 (3-30-2014)
 - Downsampling - Resolution of metrics is set to 5s by default.
 - Support for using Kube client auth.

@@ -19,6 +19,7 @@ const (
 	labelContainerName = "container_name"
 	labelLabels        = "labels"
 	labelHostname      = "hostname"
+	labelResourceID    = "resource_id"
 )
 
 // TODO(vmarmol): Things we should consider adding (note that we only get 10 labels):
@@ -40,6 +41,10 @@ var allLabels = []LabelDescriptor{
 	{
 		Key:         labelHostname,
 		Description: "Hostname where the container ran",
+	},
+	{
+		Key:         labelResourceID,
+		Description: "Identifier(s) specific to a metric",
 	},
 }
 

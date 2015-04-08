@@ -64,6 +64,18 @@ func getContainer(name string) source_api.Container {
 	}
 }
 
+func getFsStats(input source_api.AggregateData) map[string]int64 {
+	expectedFsStats := map[string]int64{}
+	for _, cont := range input.Containers {
+		for _, stat := range cont.Stats {
+			for _, fs := range stat.Filesystem {
+				expectedFsStats[fs.Device] = int64(fs.Usage)
+			}
+		}
+	}
+	return expectedFsStats
+}
+
 func TestRealInput(t *testing.T) {
 	containers := []source_api.Container{
 		getContainer("container1"),
@@ -93,6 +105,8 @@ func TestRealInput(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 
+	expectedFsStats := getFsStats(input)
+
 	metrics := make(map[string][]Timeseries)
 	for index := range timeseries {
 		series, ok := metrics[timeseries[index].Point.Name]
@@ -102,6 +116,7 @@ func TestRealInput(t *testing.T) {
 		series = append(series, timeseries[index])
 		metrics[timeseries[index].Point.Name] = series
 	}
+
 	for index := range statMetrics {
 		series, ok := metrics[statMetrics[index].MetricDescriptor.Name]
 		require.True(t, ok)
@@ -147,6 +162,12 @@ func TestRealInput(t *testing.T) {
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
 				assert.Equal(t, value, stats.Network.TxErrors)
+			case "filesystem/usage":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				name, ok := entry.Point.Labels[labelResourceID]
+				require.True(t, ok)
+				assert.Equal(t, value, expectedFsStats[name])
 			default:
 				t.Errorf("unexpected metric type")
 			}
@@ -187,8 +208,11 @@ func TestPodLabelsProcessing(t *testing.T) {
 	timeseries, err := NewDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
+	// ignore ResourceID label.
 	for _, entry := range timeseries {
-		assert.Equal(t, expectedLabels, entry.Point.Labels)
+		for name, value := range expectedLabels {
+			assert.Equal(t, value, entry.Point.Labels[name])
+		}
 	}
 }
 
@@ -206,7 +230,10 @@ func TestContainerLabelsProcessing(t *testing.T) {
 	timeseries, err := NewDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
+	// ignore ResourceID label.
 	for _, entry := range timeseries {
-		assert.Equal(t, expectedLabels, entry.Point.Labels)
+		for name, value := range expectedLabels {
+			assert.Equal(t, value, entry.Point.Labels[name])
+		}
 	}
 }

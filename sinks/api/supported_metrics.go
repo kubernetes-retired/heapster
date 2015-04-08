@@ -32,8 +32,8 @@ var statMetrics = []SupportedStatMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return !spec.CreationTime.IsZero()
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
-			return time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}}
 		},
 	},
 	{
@@ -47,8 +47,8 @@ var statMetrics = []SupportedStatMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasCpu
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Cpu.Usage.Total)
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(stat.Cpu.Usage.Total)}}
 		},
 	},
 	{
@@ -62,8 +62,8 @@ var statMetrics = []SupportedStatMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasMemory
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Memory.Usage)
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(stat.Memory.Usage)}}
 		},
 	},
 	{
@@ -77,8 +77,8 @@ var statMetrics = []SupportedStatMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasMemory
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Memory.WorkingSet)
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(stat.Memory.WorkingSet)}}
 		},
 	},
 	{
@@ -92,8 +92,8 @@ var statMetrics = []SupportedStatMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasMemory
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Memory.ContainerData.Pgfault)
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(stat.Memory.ContainerData.Pgfault)}}
 		},
 	},
 	{
@@ -107,8 +107,8 @@ var statMetrics = []SupportedStatMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasNetwork
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Network.RxBytes)
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(stat.Network.RxBytes)}}
 		},
 	},
 	{
@@ -122,8 +122,8 @@ var statMetrics = []SupportedStatMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasNetwork
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Network.RxErrors)
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(stat.Network.RxErrors)}}
 		},
 	},
 	{
@@ -137,8 +137,8 @@ var statMetrics = []SupportedStatMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasNetwork
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Network.TxBytes)
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(stat.Network.TxBytes)}}
 		},
 	},
 	{
@@ -152,12 +152,36 @@ var statMetrics = []SupportedStatMetric{
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasNetwork
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) interface{} {
-			return int64(stat.Network.TxErrors)
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(stat.Network.TxErrors)}}
 		},
 	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "filesystem/usage",
+			Description: "Total number of bytes consumed on a filesystem",
+			Type:        MetricGauge,
+			ValueType:   ValueInt64,
+			Units:       UnitsCount,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasFilesystem
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			result := make([]internalPoint, 0, len(stat.Filesystem))
+			for _, fs := range stat.Filesystem {
+				result = append(result, internalPoint{
+					value: int64(fs.Usage),
+					labels: map[string]string{
+						labelResourceID: fs.Device,
+					},
+				})
+			}
+			return result
+		},
+	},
+
 	// TODO(vmarmol): DiskIO stats if we find those useful and know how to export them in a user-friendly way.
-	// TODO(vmarmol): FS usage. That requires more labels that the rest here so we will need a new function.
 }
 
 // TODO: Add Status metrics - restarts, OOMs, etc.

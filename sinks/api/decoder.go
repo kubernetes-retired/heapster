@@ -121,18 +121,26 @@ func (self *defaultDecoder) getContainerMetrics(container *source_api.Container,
 				} else {
 					startTime = stat.Timestamp
 				}
-				result = append(result, Timeseries{
-					Point: &Point{
-						Name:   supported.Name,
-						Labels: labels,
-						Start:  startTime.Round(time.Second),
-						End:    stat.Timestamp,
-						Value:  supported.GetValue(&container.Spec, stat),
-					},
-					MetricDescriptor: &self.supportedStatMetrics[index].MetricDescriptor,
-				})
-				self.lastExported[key] = stat.Timestamp
+				points := supported.GetValue(&container.Spec, stat)
+				for _, point := range points {
+					labels := copyLabels(labels)
+					for name, value := range point.labels {
+						labels[name] = value
+					}
+					timeseries := Timeseries{
+						MetricDescriptor: &self.supportedStatMetrics[index].MetricDescriptor,
+						Point: &Point{
+							Name:   supported.Name,
+							Labels: labels,
+							Start:  startTime.Round(time.Second),
+							End:    stat.Timestamp,
+							Value:  point.value,
+						},
+					}
+					result = append(result, timeseries)
+				}
 			}
+			self.lastExported[key] = stat.Timestamp
 		}
 	}
 
