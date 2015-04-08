@@ -35,7 +35,8 @@ var (
 )
 
 type externalSinkManager struct {
-	decoder       sink_api.Decoder
+	metricDecoder sink_api.Decoder
+	eventDecoder  sink_api.Decoder
 	externalSinks []sink_api.ExternalSink
 }
 
@@ -58,10 +59,12 @@ func newExternalSinkManager(externalSinks []sink_api.ExternalSink) (ExternalSink
 			return nil, err
 		}
 	}
-	decoder := sink_api.NewDecoder()
+	metricDecoder := sink_api.NewMetricDecoder()
+	eventDecoder := sink_api.NewEventDecoder()
 	return &externalSinkManager{
 		externalSinks: externalSinks,
-		decoder:       decoder,
+		metricDecoder: metricDecoder,
+		eventDecoder:  eventDecoder,
 	}, nil
 }
 
@@ -71,14 +74,25 @@ func (self *externalSinkManager) Store(input interface{}) error {
 	if !ok {
 		return fmt.Errorf("unknown input type %T", input)
 	}
-	timeseries, err := self.decoder.Timeseries(data)
+	metricTimeseries, err := self.metricDecoder.Timeseries(data)
+	if err != nil {
+		return err
+	}
+	eventTimeseries, err := self.eventDecoder.Timeseries(data)
 	if err != nil {
 		return err
 	}
 	// Format metrics and push them.
 	var errors []error
 	for _, externalSink := range self.externalSinks {
-		if err := externalSink.StoreTimeseries(timeseries); err != nil {
+		timeseriesLists := []*[]sink_api.Timeseries{}
+		if externalSink.SupportsMetrics() {
+			timeseriesLists = append(timeseriesLists, &metricTimeseries)
+		}
+		if externalSink.SupportsEvents() {
+			timeseriesLists = append(timeseriesLists, &eventTimeseries)
+		}
+		if err := externalSink.StoreTimeseries(timeseriesLists); err != nil {
 			errors = append(errors, err)
 		}
 	}

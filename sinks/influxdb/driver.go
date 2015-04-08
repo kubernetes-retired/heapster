@@ -37,72 +37,130 @@ type influxdbSink struct {
 	seqNum        metricSequenceNum
 }
 
-func (self *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
+func (sink *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
 	// Create tags once influxDB v0.9.0 is released.
 	return nil
 }
 
-func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influxdb.Series {
-	columns := []string{}
-	values := []interface{}{}
-	// TODO: move labels to tags once v0.9.0 is released.
-	seriesName := timeseries.Point.Name
-	if timeseries.MetricDescriptor.Units.String() != "" {
-		seriesName = fmt.Sprintf("%s_%s", seriesName, timeseries.MetricDescriptor.Units.String())
-	}
-	if timeseries.MetricDescriptor.Type.String() != "" {
-		seriesName = fmt.Sprintf("%s_%s", seriesName, timeseries.MetricDescriptor.Type.String())
-	}
-
-	// Add the real metric value.
-	columns = append(columns, "value")
-	values = append(values, timeseries.Point.Value)
-	// Append labels.
-	if !self.avoidColumns {
-		for key, value := range timeseries.Point.Labels {
-			columns = append(columns, key)
-			values = append(values, value)
-		}
-	} else {
-		seriesName = strings.Replace(seriesName, "/", "_", -1)
-		seriesName = fmt.Sprintf("%s_%s", sink_api.LabelsToString(timeseries.Point.Labels, "_"), seriesName)
-	}
-	// Add timestamp.
-	columns = append(columns, "time")
-	values = append(values, timeseries.Point.End.Unix())
-	// Ass sequence number
-	columns = append(columns, "sequence_number")
-	values = append(values, self.seqNum.Get(seriesName))
-
-	return self.newSeries(seriesName, columns, values)
+// Returns true if this sink supports metrics
+func (sink *influxdbSink) SupportsMetrics() bool {
+	return true
 }
 
-func (self *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) error {
-	dataPoints := []*influxdb.Series{}
-	for index := range timeseries {
-		dataPoints = append(dataPoints, self.metricToSeries(&timeseries[index]))
+// Returns true if this sink supports events
+func (sink *influxdbSink) SupportsEvents() bool {
+	return true
+}
+
+func (sink *influxdbSink) StoreTimeseries(timeseriesLists []*[]sink_api.Timeseries) error {
+	precisions := []sink_api.TimePrecision{sink_api.Second, sink_api.Millisecond, sink_api.Microsecond}
+	for _, precision := range precisions {
+		err := sink.storeTimeseriesWithPrecision(timeseriesLists, precision)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func (sink *influxdbSink) storeTimeseriesWithPrecision(timeseriesLists []*[]sink_api.Timeseries, precision sink_api.TimePrecision) error {
+	dataPoints := []*influxdb.Series{}
+	for _, timeseriesList := range timeseriesLists {
+		if timeseriesList != nil {
+			for _, timeseries := range *timeseriesList {
+				if timeseries.TimePrecision == precision {
+					if !sink.avoidColumns {
+						dataPoints = append(dataPoints, sink.timeSeriesToInfluxdbSeries(&timeseries))
+					} else {
+						for _, point := range timeseries.Points {
+							dataPoints = append(dataPoints, sink.pointToInfluxdbSeriesNoColumn(timeseries.SeriesName, point))
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// TODO: Group all datapoints belonging to a metric into a single series.
 	// TODO: Record the average time taken to flush data.
-	err := self.client.WriteSeriesWithTimePrecision(dataPoints, influxdb.Second)
-	if err != nil {
-		glog.Errorf("failed to write stats to influxDB - %s", err)
-		self.recordWriteFailure()
+	if len(dataPoints) > 0 {
+		err := sink.client.WriteSeriesWithTimePrecision(dataPoints, getInfluxdbPrecision(precision))
+		if err != nil {
+			glog.Errorf("failed to write time series to influxDB - %s", err)
+			for _, dataPoint := range dataPoints {
+				glog.Errorf("  detail: failed to write time series (%s) to influxDB with columns (%s)", dataPoint.Name, dataPoint.Columns)
+			}
+			sink.recordWriteFailure()
+			return err
+		}
+		glog.V(1).Info("Succesfully wrote %q timeseries to influxDB", precision)
 	}
-	glog.V(1).Info("flushed stats to influxDB")
-	return err
+	return nil
 }
 
-// Returns a new influxdb series.
-func (self *influxdbSink) newSeries(seriesName string, columns []string, points []interface{}) *influxdb.Series {
-	out := &influxdb.Series{
+func getInfluxdbPrecision(precision sink_api.TimePrecision) influxdb.TimePrecision {
+	switch precision {
+	case sink_api.Second:
+		return influxdb.Second
+	case sink_api.Millisecond:
+		return influxdb.Millisecond
+	case sink_api.Microsecond:
+		return influxdb.Microsecond
+	}
+	return influxdb.Second
+}
+
+func (sink *influxdbSink) timeSeriesToInfluxdbSeries(timeseries *sink_api.Timeseries) *influxdb.Series {
+	seriesName := timeseries.SeriesName
+
+	columns := []string{}
+	columns = append(columns, "time")            // Column 0 header
+	columns = append(columns, "value")           // Column 1 header
+	columns = append(columns, "sequence_number") // Column 2 header
+	for _, extraColumnName := range timeseries.LabelKeys {
+		columns = append(columns, extraColumnName) // Column 3+ header
+	}
+
+	points := make([][]interface{}, len(timeseries.Points))
+	for i, point := range timeseries.Points {
+		points[i] = make([]interface{}, len(columns))
+		points[i][0] = point.End.Unix()            // Column 0 Value
+		points[i][1] = point.Value                 // Column 1 Value
+		points[i][2] = sink.seqNum.Get(seriesName) // Column 2 Value
+		for j := 0; j < len(timeseries.LabelKeys); j++ {
+			points[i][j+3] = point.Labels[timeseries.LabelKeys[j]] // Column 3+ value
+		}
+	}
+
+	return &influxdb.Series{
 		Name:    seriesName,
 		Columns: columns,
-		// There's only one point for each stats
-		Points: make([][]interface{}, 1),
+		Points:  points,
 	}
-	out.Points[0] = points
-	return out
+}
+
+func (sink *influxdbSink) pointToInfluxdbSeriesNoColumn(seriesName string, point sink_api.Point) *influxdb.Series {
+	// Append labels to seriesName instead of adding extra columns
+	seriesName = strings.Replace(seriesName, "/", "_", -1)
+	seriesName = fmt.Sprintf("%s_%s", sink_api.LabelsToString(point.Labels, "_"), seriesName)
+
+	columns := []string{}
+	columns = append(columns, "time")            // Column 0 header
+	columns = append(columns, "value")           // Column 1 header
+	columns = append(columns, "sequence_number") // Column 2 header
+
+	// There's only one point per series for no columns
+	points := make([][]interface{}, 1)
+	points[0] = make([]interface{}, len(columns))
+	points[0][0] = point.End.Unix()            // Column 0 Value
+	points[0][1] = point.Value                 // Column 1 Value
+	points[0][2] = sink.seqNum.Get(seriesName) // Column 2 Value
+
+	return &influxdb.Series{
+		Name:    seriesName,
+		Columns: columns,
+		Points:  points,
+	}
 }
 
 func (self *influxdbSink) recordWriteFailure() {

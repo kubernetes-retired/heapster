@@ -115,6 +115,16 @@ func (self *gcmSink) Register(metrics []sink_api.MetricDescriptor) error {
 	return nil
 }
 
+// Returns true if this sink supports metrics
+func (sink *gcmSink) SupportsMetrics() bool {
+	return true
+}
+
+// Returns true if this sink supports events
+func (sink *gcmSink) SupportsEvents() bool {
+	return false
+}
+
 // GCM request structures for writing time-series data.
 type timeseriesDescriptor struct {
 	Project string            `json:"project,omitempty"`
@@ -141,43 +151,52 @@ type metricWriteRequest struct {
 const maxTimeseriesPerRequest = 200
 
 // Pushes the specified metric values in input. The metrics must already exist.
-func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
+func (self *gcmSink) StoreTimeseries(inputTimeseriesLists []*[]sink_api.Timeseries) error {
 	// Ensure the metrics exist.
-	for _, entry := range input {
-		metric := entry.Point
-		// TODO: Remove this check if possible.
-		if _, ok := self.exportedMetrics[metric.Name]; !ok {
-			return fmt.Errorf("unable to push unknown metric %q", metric.Name)
+	for _, inputTimeseriesList := range inputTimeseriesLists {
+		if inputTimeseriesList != nil {
+			for _, inputTimeseries := range *inputTimeseriesList {
+				// TODO: Remove this check if possible.
+				if _, ok := self.exportedMetrics[inputTimeseries.SeriesName]; !ok {
+					return fmt.Errorf("unable to push unknown metric %q", inputTimeseries.SeriesName)
+				}
+			}
 		}
 	}
 
 	// Build a map of metrics by name.
 	metrics := make(map[string][]timeseries)
-	for _, entry := range input {
-		metric := entry.Point
+	for _, inputTimeseriesList := range inputTimeseriesLists {
+		if inputTimeseriesList != nil {
+			for _, inputTimeseries := range *inputTimeseriesList {
+				// Ideally we should put multiple points in a single timeseries, but since GCM requires all points in a time series
+				// to share a single set of labels, we can't do this.
+				for _, inputPoint := range inputTimeseries.Points {
+					// Use full label names.
+					labels := make(map[string]string, len(inputPoint.Labels))
+					for key, value := range inputPoint.Labels {
+						labels[fullLabelName(key)] = value
+					}
 
-		// Use full label names.
-		labels := make(map[string]string, len(metric.Labels))
-		for key, value := range metric.Labels {
-			labels[fullLabelName(key)] = value
+					// TODO(vmarmol): Validation and cleanup of data.
+					// TODO(vmarmol): Handle non-int64 data types. There is an issue with using omitempty since 0 is a valid value for us.
+					if _, ok := inputPoint.Value.(int64); !ok {
+						return fmt.Errorf("non-int64 data not implemented. Seen for metric %q", inputTimeseries.SeriesName)
+					}
+					metrics[inputTimeseries.SeriesName] = append(metrics[inputTimeseries.SeriesName], timeseries{
+						TimeseriesDescriptor: timeseriesDescriptor{
+							Metric: fullMetricName(inputTimeseries.SeriesName),
+							Labels: labels,
+						},
+						Point: point{
+							Start:      inputPoint.Start,
+							End:        inputPoint.End,
+							Int64Value: inputPoint.Value.(int64),
+						},
+					})
+				}
+			}
 		}
-
-		// TODO(vmarmol): Validation and cleanup of data.
-		// TODO(vmarmol): Handle non-int64 data types. There is an issue with using omitempty since 0 is a valid value for us.
-		if _, ok := metric.Value.(int64); !ok {
-			return fmt.Errorf("non-int64 data not implemented. Seen for metric %q", metric.Name)
-		}
-		metrics[metric.Name] = append(metrics[metric.Name], timeseries{
-			TimeseriesDescriptor: timeseriesDescriptor{
-				Metric: fullMetricName(metric.Name),
-				Labels: labels,
-			},
-			Point: point{
-				Start:      metric.Start,
-				End:        metric.End,
-				Int64Value: metric.Value.(int64),
-			},
-		})
 	}
 
 	// Only send one metric of each type per request.
