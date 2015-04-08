@@ -168,7 +168,7 @@ var statMetrics = []SupportedStatMetric{
 			return spec.HasFilesystem
 		},
 		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
-			result := make([]internalPoint, 0, len(stats.Filesystem))
+			result := make([]internalPoint, 0, len(stat.Filesystem))
 			for _, fs := range stat.Filesystem {
 				result = append(result, internalPoint{
 					value: int64(fs.Usage),
