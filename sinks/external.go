@@ -74,7 +74,7 @@ func (self *externalSinkManager) Store(input interface{}) error {
 	if !ok {
 		return fmt.Errorf("unknown input type %T", input)
 	}
-	timeseries, err := self.metricDecoder.Timeseries(data)
+	metricTimeseries, err := self.metricDecoder.Timeseries(data)
 	if err != nil {
 		return err
 	}
@@ -82,11 +82,17 @@ func (self *externalSinkManager) Store(input interface{}) error {
 	if err != nil {
 		return err
 	}
-	timeseries = append(timeseries, eventTimeseries...)
 	// Format metrics and push them.
 	var errors []error
 	for _, externalSink := range self.externalSinks {
-		if err := externalSink.StoreTimeseries(timeseries); err != nil {
+		timeseriesLists := []*[]sink_api.Timeseries{}
+		if externalSink.SupportsMetrics() {
+			timeseriesLists = append(timeseriesLists, &metricTimeseries)
+		}
+		if externalSink.SupportsEvents() {
+			timeseriesLists = append(timeseriesLists, &eventTimeseries)
+		}
+		if err := externalSink.StoreTimeseries(timeseriesLists); err != nil {
 			errors = append(errors, err)
 		}
 	}

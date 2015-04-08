@@ -42,10 +42,20 @@ func (sink *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
 	return nil
 }
 
-func (sink *influxdbSink) StoreTimeseries(timeseriesList []sink_api.Timeseries) error {
+// Returns true if this sink supports metrics
+func (sink *influxdbSink) SupportsMetrics() bool {
+	return true
+}
+
+// Returns true if this sink supports events
+func (sink *influxdbSink) SupportsEvents() bool {
+	return true
+}
+
+func (sink *influxdbSink) StoreTimeseries(timeseriesLists []*[]sink_api.Timeseries) error {
 	precisions := []sink_api.TimePrecision{sink_api.Second, sink_api.Millisecond, sink_api.Microsecond}
 	for _, precision := range precisions {
-		err := sink.storeTimeseriesWithPrecision(timeseriesList, precision)
+		err := sink.storeTimeseriesWithPrecision(timeseriesLists, precision)
 		if err != nil {
 			return err
 		}
@@ -53,15 +63,19 @@ func (sink *influxdbSink) StoreTimeseries(timeseriesList []sink_api.Timeseries) 
 	return nil
 }
 
-func (sink *influxdbSink) storeTimeseriesWithPrecision(timeseriesList []sink_api.Timeseries, precision sink_api.TimePrecision) error {
+func (sink *influxdbSink) storeTimeseriesWithPrecision(timeseriesLists []*[]sink_api.Timeseries, precision sink_api.TimePrecision) error {
 	dataPoints := []*influxdb.Series{}
-	for _, timeseries := range timeseriesList {
-		if timeseries.TimePrecision == precision {
-			if !sink.avoidColumns {
-				dataPoints = append(dataPoints, sink.timeSeriesToInfluxdbSeries(&timeseries))
-			} else {
-				for _, point := range timeseries.Points {
-					dataPoints = append(dataPoints, sink.pointToInfluxdbSeriesNoColumn(timeseries.SeriesName, point))
+	for _, timeseriesList := range timeseriesLists {
+		if timeseriesList != nil {
+			for _, timeseries := range *timeseriesList {
+				if timeseries.TimePrecision == precision {
+					if !sink.avoidColumns {
+						dataPoints = append(dataPoints, sink.timeSeriesToInfluxdbSeries(&timeseries))
+					} else {
+						for _, point := range timeseries.Points {
+							dataPoints = append(dataPoints, sink.pointToInfluxdbSeriesNoColumn(timeseries.SeriesName, point))
+						}
+					}
 				}
 			}
 		}

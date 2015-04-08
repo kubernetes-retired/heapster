@@ -172,14 +172,16 @@ type Timeseries struct {
 type ExternalSink interface {
 	// Registers a metric with the backend.
 	Register([]MetricDescriptor) error
-	// Stores input data into the backend.
-	// Support input types are as follows:
-	// 1. []Timeseries
-	// TODO: Add map[string]string to support storing raw data like node or pod status, spec, etc.
-	// TODO: Add events.
-	StoreTimeseries([]Timeseries) error
+	// Stores input data into the backend. This is an array of Timeseries array pointers so
+	// that Timeseries arrays from multiple decoders can be combined with append without being
+	// copied.
+	StoreTimeseries([]*[]Timeseries) error
 	// Returns debug information specific to the sink.
 	DebugInfo() string
+	// Returns true if this sink supports metrics
+	SupportsMetrics() bool
+	// Returns true if this sink supports events
+	SupportsEvents() bool
 }
 
 // Codec represents an engine that translated from sources.api to sink.api objects.
