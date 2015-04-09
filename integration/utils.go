@@ -22,8 +22,8 @@ import (
 	"path"
 )
 
-func buildGoBinary(packageName string) error {
-	out, err := exec.Command("godep", "go", "build", "-a", packageName).CombinedOutput()
+func make(command, makefile string) error {
+	out, err := exec.Command("make", "-f", makefile, command).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to build go binary (%q) - %q", err, out)
 	}

@@ -2,8 +2,6 @@ language: go
 go:
  - 1.4
 install:
- - true
-before_script:
  - go get golang.org/x/tools/cmd/vet
  - go get github.com/kr/godep
  - go get github.com/axw/gocov/gocov
@@ -11,8 +9,4 @@ before_script:
  - go get github.com/mattn/goveralls
 script:
  - export PATH=$PATH:$HOME/gopath/bin
- - ./hooks/check_boilerplate.sh
- - formatted="$(go fmt ./...)" && ( ( [[ -n $formatted ]] && echo "gofmt failed on the following files:" && echo -ne $formatted && exit 1) || (( [[ -z $formatted ]] && echo "gofmt passed") ) )
- - go vet github.com/GoogleCloudPlatform/heapster/...
- - godep go build -a github.com/GoogleCloudPlatform/heapster/...
- - ./hooks/coverage.sh
+ - make test-unit-cov

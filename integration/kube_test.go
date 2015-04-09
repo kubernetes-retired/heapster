@@ -35,10 +35,15 @@ import (
 )
 
 const (
-	heapsterPackage      = "github.com/GoogleCloudPlatform/heapster"
 	targetTags           = "kubernetes-minion"
 	sleepBetweenAttempts = 5 * time.Second
 	testTimeout          = 5 * time.Minute
+	heapsterBuildDir     = "../deploy/docker"
+	influxdbBuildDir     = "../influxdb"
+	grafanaBuildDir      = "../grafana"
+	makefile             = "../Makefile"
+	podlistQuery         = "select distinct(pod_id) from /cpu.*/"
+	nodelistQuery        = "select distinct(hostname) from /cpu.*/"
 )
 
 var (
@@ -50,11 +55,6 @@ var (
 	influxdbImage                 = flag.String("influxdb_image", "heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
 	grafanaImage                  = flag.String("grafana_image", "heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
 	namespace                     = flag.String("namespace", "default", "namespace to be used for testing")
-	heapsterBuildDir              = "../deploy/docker"
-	influxdbBuildDir              = "../influxdb"
-	grafanaBuildDir               = "../grafana"
-	podlistQuery                  = "select distinct(pod_id) from /cpu.*/"
-	nodelistQuery                 = "select distinct(hostname) from /cpu.*/"
 )
 
 func buildAndPushHeapsterImage(hostnames []string) error {
@@ -65,7 +65,7 @@ func buildAndPushHeapsterImage(hostnames []string) error {
 	if err := os.Chdir(heapsterBuildDir); err != nil {
 		return err
 	}
-	if err := buildGoBinary(heapsterPackage); err != nil {
+	if err := make("build", path.Join(curwd, makefile)); err != nil {
 		return err
 	}
 	if err := buildDockerImage(*heapsterImage); err != nil {
