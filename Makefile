@@ -1,15 +1,22 @@
 all: build
 
-build: clean
-	godep go build -a ./...
-	godep go build -a
-	cp ./heapster ./deploy/docker/heapster
+build: 	
+	go generate github.com/GoogleCloudPlatform/heapster
+	godep go build -a github.com/GoogleCloudPlatform/heapster
 
-test-unit: clean
-	godep go build -a ./...
-	godep go test -test.short ./...
+sanitize:
+	hooks/check_boilerplate.sh
+	hooks/check_gofmt.sh
+	hooks/run_vet.sh
+
+test-unit: clean sanitize build 
+	godep go test --test.short github.com/GoogleCloudPlatform/heapster/...
+
+test-unit-cov: clean sanitize build
+	hooks/coverage.sh	
 
 container: build
+	cp ./heapster ./deploy/docker/heapster
 	sudo docker build -t heapster:canary ./deploy/docker/
 
 clean:
