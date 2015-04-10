@@ -43,7 +43,7 @@ func TestBasicSuccess(t *testing.T) {
 
 	source := &cadvisorSource{
 		nodesApi:     &fakeNodesApi{nodes.NodeList{}},
-		cadvisorPort: "8080",
+		cadvisorPort: 8080,
 		cadvisorApi:  cadvisorApi,
 	}
 	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
@@ -56,8 +56,8 @@ func TestWorkflowSuccess(t *testing.T) {
 		subcontainers []*api.Container
 		root          *api.Container
 	}
-	hostA := datasource.Host{IP: "1.1.1.1", Port: "8080", Resource: ""}
-	hostB := datasource.Host{IP: "1.1.1.2", Port: "8080", Resource: ""}
+	hostA := datasource.Host{IP: "1.1.1.1", Port: 8080, Resource: ""}
+	hostB := datasource.Host{IP: "1.1.1.2", Port: 8080, Resource: ""}
 	expectedData := map[datasource.Host]cadvisorData{
 		hostA: {
 			subcontainers: []*api.Container{{Name: "/a"}},
@@ -85,7 +85,7 @@ func TestWorkflowSuccess(t *testing.T) {
 	}
 	source := &cadvisorSource{
 		nodesApi:     &fakeNodesApi{nodeList},
-		cadvisorPort: "8080",
+		cadvisorPort: 8080,
 		cadvisorApi:  cadvisorApi,
 	}
 	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)

@@ -15,11 +15,9 @@
 package nodes
 
 import (
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	fleetClient "github.com/coreos/fleet/client"
@@ -28,8 +26,6 @@ import (
 	"github.com/coreos/fleet/registry"
 	"github.com/golang/glog"
 )
-
-var argFleetEndpoints = flag.String("fleet_endpoints", "http://127.0.0.1:4001", "Comma separated list of fleet server endpoints")
 
 const etcdRegistry = "/_coreos.com/fleet/"
 
@@ -89,11 +85,8 @@ func getFleetRegistryClient(fleetEndpoints []string) (fleetClient.API, error) {
 	return &fleetClient.RegistryClient{Registry: reg}, nil
 }
 
-func NewCoreOSNodes() (NodesApi, error) {
-	if *argFleetEndpoints == "" {
-		return nil, fmt.Errorf("fleet_endpoint flag invalid.")
-	}
-	client, err := getFleetRegistryClient(strings.Split(*argFleetEndpoints, ","))
+func NewCoreOSNodes(fleetEndpoints []string) (NodesApi, error) {
+	client, err := getFleetRegistryClient(fleetEndpoints)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get fleet client - %q", err)
 	}

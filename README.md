@@ -6,6 +6,8 @@ Internally, heapster uses [cAdvisor](https://github.com/google/cadvisor) for com
 Heapster currently supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) and CoreOS natively. It can be extended to support other cluster management solutions easily.
 While running in a Kube cluster, heapster collects compute resource usage of all pods and nodes.
 
+Source configuration is documented [here](docs/source-configuration.md).
+
 ### Running Heapster on Kubernetes
 Heapster supports a pluggable storage backend. It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb) and [Google Cloud Monitoring](https://cloud.google.com/monitoring/). We welcome patches that add additional storage backends.
 

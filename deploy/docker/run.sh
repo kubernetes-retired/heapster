@@ -8,7 +8,7 @@ fi
 
 # If in Kubernetes, target the master.
 if [ ! -z $KUBERNETES_RO_SERVICE_HOST ]; then
-  EXTRA_ARGS="--kubernetes_master ${KUBERNETES_RO_SERVICE_HOST}:${KUBERNETES_RO_SERVICE_PORT} $EXTRA_ARGS"
+  EXTRA_ARGS="--source=kubernetes:http://${KUBERNETES_RO_SERVICE_HOST}:${KUBERNETES_RO_SERVICE_PORT} $EXTRA_ARGS"
 fi
 
 HEAPSTER="/usr/bin/heapster"

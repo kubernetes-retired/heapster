@@ -27,7 +27,7 @@ import (
 )
 
 type kubePodsSource struct {
-	kubeletPort string
+	kubeletPort int
 	nodesApi    nodes.NodesApi
 	podsApi     podsApi
 	kubeletApi  datasource.Kubelet
@@ -35,7 +35,7 @@ type kubePodsSource struct {
 	podErrors   map[podInstance]int // guarded by stateLock
 }
 
-func NewKubePodMetrics(kubeletPort string, nodesApi nodes.NodesApi, podsApi podsApi, kubeletApi datasource.Kubelet) api.Source {
+func NewKubePodMetrics(kubeletPort int, nodesApi nodes.NodesApi, podsApi podsApi, kubeletApi datasource.Kubelet) api.Source {
 	return &kubePodsSource{
 		kubeletPort: kubeletPort,
 		kubeletApi:  kubeletApi,

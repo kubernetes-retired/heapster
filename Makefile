@@ -1,6 +1,9 @@
 all: build
 
-build: 	
+deps:
+	go get github.com/progrium/go-extpoints
+
+build: clean deps
 	go generate github.com/GoogleCloudPlatform/heapster
 	godep go build -a github.com/GoogleCloudPlatform/heapster
 
@@ -9,11 +12,11 @@ sanitize:
 	hooks/check_gofmt.sh
 	hooks/run_vet.sh
 
-test-unit: clean sanitize build 
+test-unit: clean sanitize build
 	godep go test --test.short github.com/GoogleCloudPlatform/heapster/...
 
 test-unit-cov: clean sanitize build
-	hooks/coverage.sh	
+	hooks/coverage.sh
 
 container: build
 	cp ./heapster ./deploy/docker/heapster

@@ -90,7 +90,7 @@ func (self *kubeletSource) getContainer(url string, start, end time.Time, resolu
 }
 
 func (self *kubeletSource) GetContainer(host Host, start, end time.Time, resolution time.Duration) (container *api.Container, err error) {
-	url := fmt.Sprintf("http://%s:%s/%s", host.IP, host.Port, host.Resource)
+	url := fmt.Sprintf("http://%s:%d/%s", host.IP, host.Port, host.Resource)
 	glog.V(3).Infof("about to query kubelet using url: %q", url)
 
 	return self.getContainer(url, start, end, resolution)
