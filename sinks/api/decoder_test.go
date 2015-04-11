@@ -28,6 +28,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	fakeContainerCreationTime = 12345
+	fakeCurrentTime           = 12350
+)
+
 func TestEmptyInput(t *testing.T) {
 	timeseries, err := NewDecoder().Timeseries(source_api.AggregateData{})
 	assert.NoError(t, err)
@@ -48,7 +53,7 @@ func getLabelsAsString(labels map[string]string) string {
 func getContainer(name string) source_api.Container {
 	f := fuzz.New().NumElements(1, 1).NilChance(0)
 	containerSpec := cadvisor.ContainerSpec{
-		CreationTime:  time.Now(),
+		CreationTime:  time.Unix(fakeContainerCreationTime, 0),
 		HasCpu:        true,
 		HasMemory:     true,
 		HasNetwork:    true,
@@ -77,6 +82,11 @@ func getFsStats(input source_api.AggregateData) map[string]int64 {
 }
 
 func TestRealInput(t *testing.T) {
+	timeSince = func(t time.Time) time.Duration {
+		return time.Unix(fakeCurrentTime, 0).Sub(t)
+	}
+	defer func() { timeSince = time.Since }()
+
 	containers := []source_api.Container{
 		getContainer("container1"),
 	}
@@ -128,46 +138,46 @@ func TestRealInput(t *testing.T) {
 			case "uptime":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				expected := time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()
-				assert.Equal(t, value, expected)
+				expected := timeSince(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()
+				assert.Equal(t, expected, value)
 			case "cpu/usage":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Cpu.Usage.Total)
+				assert.Equal(t, stats.Cpu.Usage.Total, value)
 			case "memory/usage":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Memory.Usage)
+				assert.Equal(t, stats.Memory.Usage, value)
 			case "memory/working_set":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Memory.WorkingSet)
+				assert.Equal(t, stats.Memory.WorkingSet, value)
 			case "memory/page_faults":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Memory.ContainerData.Pgfault)
+				assert.Equal(t, stats.Memory.ContainerData.Pgfault, value)
 			case "network/rx":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Network.RxBytes)
+				assert.Equal(t, stats.Network.RxBytes, value)
 			case "network/rx_errors":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Network.RxErrors)
+				assert.Equal(t, stats.Network.RxErrors, value)
 			case "network/tx":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Network.TxBytes)
+				assert.Equal(t, stats.Network.TxBytes, value)
 			case "network/tx_errors":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, value, stats.Network.TxErrors)
+				assert.Equal(t, stats.Network.TxErrors, value)
 			case "filesystem/usage":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
 				name, ok := entry.Point.Labels[labelResourceID]
 				require.True(t, ok)
-				assert.Equal(t, value, expectedFsStats[name])
+				assert.Equal(t, expectedFsStats[name], value)
 			default:
 				t.Errorf("unexpected metric type")
 			}
@@ -211,7 +221,7 @@ func TestPodLabelsProcessing(t *testing.T) {
 	// ignore ResourceID label.
 	for _, entry := range timeseries {
 		for name, value := range expectedLabels {
-			assert.Equal(t, value, entry.Point.Labels[name])
+			assert.Equal(t, entry.Point.Labels[name], value)
 		}
 	}
 }
@@ -233,7 +243,7 @@ func TestContainerLabelsProcessing(t *testing.T) {
 	// ignore ResourceID label.
 	for _, entry := range timeseries {
 		for name, value := range expectedLabels {
-			assert.Equal(t, value, entry.Point.Labels[name])
+			assert.Equal(t, entry.Point.Labels[name], value)
 		}
 	}
 }
