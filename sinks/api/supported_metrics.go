@@ -20,6 +20,9 @@ import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
+// Stub out for testing
+var timeSince = time.Since
+
 var statMetrics = []SupportedStatMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
@@ -33,7 +36,7 @@ var statMetrics = []SupportedStatMetric{
 			return !spec.CreationTime.IsZero()
 		},
 		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
-			return []internalPoint{{value: time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}}
+			return []internalPoint{{value: timeSince(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}}
 		},
 	},
 	{
