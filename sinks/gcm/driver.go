@@ -25,6 +25,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	"github.com/GoogleCloudPlatform/heapster/util/gcstore"
 	"github.com/golang/glog"
 )
 
@@ -42,6 +43,9 @@ type gcmSink struct {
 	// TODO(vmarmol): Also store labels?
 	// Map of metrics we currently export.
 	exportedMetrics map[string]sink_api.MetricDescriptor
+
+	// The last value we have pushed for every cumulative metric.
+	lastValue gcstore.GCStore
 }
 
 func (self *gcmSink) refreshToken() error {
@@ -78,6 +82,51 @@ type metricDescriptor struct {
 
 const maxNumLabels = 10
 
+// Substitutes any generic description with GCM-specific descriptions
+func getDescription(metric sink_api.MetricDescriptor) string {
+	descriptions := []struct {
+		// Metric names for this description.
+		name string
+
+		// Description to use
+		description string
+	}{
+		{
+			name:        "uptime",
+			description: "Rate of change of time since start in milliseconds per second",
+		},
+		{
+			name:        "cpu/usage",
+			description: "Rate of total CPU usage in billionths of a core per second",
+		},
+		{
+			name:        "network/rx",
+			description: "Rate of bytes received over the network in bytes per second",
+		},
+		{
+			name:        "network/rx_errors",
+			description: "Rate of errors sending over the network in errors per second",
+		},
+		{
+			name:        "network/tx",
+			description: "Rate of bytes transmitted over the network in bytes per second",
+		},
+		{
+			name:        "network/tx_errors",
+			description: "Rate of errors transmitting over the network in errors per second",
+		},
+	}
+
+	// Replac the description if we have an alternate one.
+	for _, desc := range descriptions {
+		if metric.Name == desc.name {
+			return desc.description
+		}
+	}
+
+	return metric.Description
+}
+
 // Adds the specified metrics or updates them if they already exist.
 func (self *gcmSink) Register(metrics []sink_api.MetricDescriptor) error {
 	for _, metric := range metrics {
@@ -92,12 +141,12 @@ func (self *gcmSink) Register(metrics []sink_api.MetricDescriptor) error {
 		}
 
 		request := metricDescriptor{
-			Name:        fullMetricName(metric.Name),
+			Name:        fullMetricName(metric.Name, metric.Type),
 			Project:     self.project,
-			Description: metric.Description,
+			Description: getDescription(metric),
 			Labels:      metric.Labels,
 			TypeDescriptor: typeDescriptor{
-				MetricType: metric.Type.String(),
+				MetricType: sink_api.MetricGauge.String(),
 				ValueType:  metric.ValueType.String(),
 			},
 		}
@@ -137,6 +186,16 @@ type metricWriteRequest struct {
 	Timeseries []timeseries `json:"timeseries,omitempty"`
 }
 
+type lastValueKey struct {
+	metricName string
+	labels     string
+}
+
+type lastValueData struct {
+	value     int64
+	timestamp time.Time
+}
+
 // The largest number of timeseries we can write to per request.
 const maxTimeseriesPerRequest = 200
 
@@ -164,18 +223,47 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 
 		// TODO(vmarmol): Validation and cleanup of data.
 		// TODO(vmarmol): Handle non-int64 data types. There is an issue with using omitempty since 0 is a valid value for us.
-		if _, ok := metric.Value.(int64); !ok {
+		value, ok := metric.Value.(int64)
+		if !ok {
 			return fmt.Errorf("non-int64 data not implemented. Seen for metric %q", metric.Name)
 		}
+		fullName := fullMetricName(metric.Name, entry.MetricDescriptor.Type)
+
+		// TODO(vmarmol): Stop doing this when GCM supports graphing cumulative metrics.
+		// Translate cumulative to gauge by taking the delta over the time period.
+		if entry.MetricDescriptor.Type == sink_api.MetricCumulative {
+			key := lastValueKey{
+				metricName: fullName,
+				labels:     sink_api.LabelsToString(labels, ","),
+			}
+			lastValueRaw := self.lastValue.Get(key)
+			self.lastValue.Put(key, lastValueData{
+				value:     value,
+				timestamp: metric.End,
+			})
+
+			// We need two metrics to do a delta, skip first value.
+			if lastValueRaw == nil {
+				continue
+			}
+			lastValue, ok := lastValueRaw.(lastValueData)
+			if !ok {
+				continue
+			}
+
+			value = int64(float64(value-lastValue.value) / float64(metric.End.UnixNano()-lastValue.timestamp.UnixNano()) * float64(time.Second))
+			metric.Start = metric.End
+		}
+
 		metrics[metric.Name] = append(metrics[metric.Name], timeseries{
 			TimeseriesDescriptor: timeseriesDescriptor{
-				Metric: fullMetricName(metric.Name),
+				Metric: fullName,
 				Labels: labels,
 			},
 			Point: point{
 				Start:      metric.Start,
 				End:        metric.End,
-				Int64Value: metric.Value.(int64),
+				Int64Value: value,
 			},
 		})
 	}
@@ -248,9 +336,16 @@ func fullLabelName(name string) string {
 	return name
 }
 
-func fullMetricName(name string) string {
+func fullMetricName(name string, metricType sink_api.MetricType) string {
+	// Suffix cumulative metrics with "_delta" since we're changing them to gauges.
+	// This will ease the transition to cumulative metrics when those come.
+	suffix := ""
+	if metricType == sink_api.MetricCumulative {
+		suffix = "_delta"
+	}
+
 	if !strings.Contains(name, "custom.cloudmonitoring.googleapis.com/") {
-		return fmt.Sprintf("custom.cloudmonitoring.googleapis.com/%s/%s", metricDomain, name)
+		return fmt.Sprintf("custom.cloudmonitoring.googleapis.com/%s/%s%s", metricDomain, name, suffix)
 	}
 	return name
 }
@@ -314,6 +409,7 @@ func NewSink() (sink_api.ExternalSink, error) {
 	impl := &gcmSink{
 		project:         project,
 		exportedMetrics: make(map[string]sink_api.MetricDescriptor),
+		lastValue:       gcstore.New(time.Hour),
 	}
 
 	// Get an initial token.
