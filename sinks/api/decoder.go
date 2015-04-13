@@ -51,9 +51,10 @@ func (self *defaultDecoder) Timeseries(input source_api.AggregateData) ([]Timese
 // Generate the labels.
 func (self *defaultDecoder) getPodLabels(pod *source_api.Pod) map[string]string {
 	labels := make(map[string]string)
-	labels[labelPodId] = pod.ID
-	labels[labelLabels] = LabelsToString(pod.Labels, ",")
-	labels[labelHostname] = pod.Hostname
+	labels[LabelPodId] = pod.ID
+	labels[LabelPodName] = pod.Name
+	labels[LabelLabels] = LabelsToString(pod.Labels, ",")
+	labels[LabelHostname] = pod.Hostname
 
 	return labels
 }
@@ -73,7 +74,7 @@ func (self *defaultDecoder) getContainerSliceMetrics(containers []source_api.Con
 	labels := make(map[string]string)
 	var result []Timeseries
 	for index := range containers {
-		labels[labelHostname] = containers[index].Hostname
+		labels[LabelHostname] = containers[index].Hostname
 		result = append(result, self.getContainerMetrics(&containers[index], copyLabels(labels))...)
 	}
 
@@ -92,7 +93,7 @@ func (self *defaultDecoder) getContainerMetrics(container *source_api.Container,
 	if container == nil {
 		return nil
 	}
-	labels[labelContainerName] = container.Name
+	labels[LabelContainerName] = container.Name
 	// One metric value per data point.
 	var result []Timeseries
 	labelsAsString := LabelsToString(labels, ",")

@@ -15,20 +15,29 @@
 package influxdb
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/golang/glog"
 	influxdb "github.com/influxdb/influxdb/client"
 )
 
+type influxDBClient interface {
+	WriteSeriesWithTimePrecision(series []*influxdb.Series, timePrecision influxdb.TimePrecision) error
+	GetDatabaseList() ([]map[string]interface{}, error)
+	CreateDatabase(name string) error
+	DisableCompression()
+}
+
 type influxdbSink struct {
 	hostname  string
 	database  string
-	client    *influxdb.Client
+	client    influxDBClient
 	dbName    string
 	stateLock sync.RWMutex
 	// TODO(rjnagal): switch to atomic if writeFailures is the only protected data.
@@ -36,6 +45,10 @@ type influxdbSink struct {
 	avoidColumns  bool
 	seqNum        metricSequenceNum
 }
+
+const (
+	EventsSeriesName = "log/events"
+)
 
 func (self *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
 	// Create tags once influxDB v0.9.0 is released.
@@ -77,6 +90,114 @@ func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influ
 	return self.newSeries(seriesName, columns, values)
 }
 
+var eventColumns = []string{
+	"time",                 // Column 0
+	"sequence_number",      // Column 1
+	sink_api.LabelPodId,    // Column 2
+	sink_api.LabelPodName,  // Column 3
+	sink_api.LabelHostname, // Column 4
+	"value",                // Column 5
+}
+
+// Stores events into the backend.
+func (sink *influxdbSink) StoreEvents(events []kube_api.Event) error {
+	dataPoints := []*influxdb.Series{}
+	if events == nil || len(events) <= 0 {
+		return nil
+	}
+	if !sink.avoidColumns {
+		dataPoint, err := sink.storeEventsColumns(events)
+		if err != nil {
+			glog.Errorf("failed to parse events: %v", err)
+			return err
+		}
+		dataPoints = append(dataPoints, dataPoint)
+	} else {
+		for _, event := range events {
+			dataPoint, err := sink.storeEventNoColumns(event)
+			if err != nil {
+				glog.Errorf("failed to parse events: %v", err)
+				return err
+			}
+			dataPoints = append(dataPoints, dataPoint)
+		}
+	}
+	err := sink.client.WriteSeriesWithTimePrecision(dataPoints, influxdb.Millisecond)
+	if err != nil {
+		glog.Errorf("failed to write events to influxDB - %s", err)
+		sink.recordWriteFailure()
+	} else {
+		glog.V(1).Info("Successfully flushed events to influxDB")
+	}
+	return err
+
+}
+
+func (sink *influxdbSink) storeEventsColumns(events []kube_api.Event) (*influxdb.Series, error) {
+	if events == nil || len(events) <= 0 {
+		return nil, nil
+	}
+	points := make([][]interface{}, len(events))
+	for i, event := range events {
+		points[i] = make([]interface{}, len(eventColumns))
+		points[i][0] = event.LastTimestamp.Time.Round(time.Millisecond).Unix() // Column 0 - time
+		points[i][1] = sink.seqNum.Get(EventsSeriesName)                       // Column 1 - sequence_number
+		if event.InvolvedObject.Kind == "Pod" {
+			points[i][2] = event.InvolvedObject.UID  // Column 2 - pod_id
+			points[i][3] = event.InvolvedObject.Name // Column 3 - pod_name
+		} else {
+			points[i][2] = "" // Column 2 - pod_id
+			points[i][3] = "" // Column 3 - pod_name
+		}
+		value, err := getEventValue(&event)
+		if err != nil {
+			return nil, err
+		}
+		points[i][4] = event.Source.Host // Column 4 - hostname
+		points[i][5] = value             // Column 5 - value
+	}
+	return &influxdb.Series{
+		Name:    EventsSeriesName,
+		Columns: eventColumns,
+		Points:  points,
+	}, nil
+}
+
+func (sink *influxdbSink) storeEventNoColumns(event kube_api.Event) (*influxdb.Series, error) {
+	// Append labels to seriesName instead of adding extra columns
+	seriesName := strings.Replace(EventsSeriesName, "/", "_", -1)
+	labels := make(map[string]string)
+	if event.InvolvedObject.Kind == "Pod" {
+		labels[sink_api.LabelPodId] = string(event.InvolvedObject.UID)
+		labels[sink_api.LabelPodName] = event.InvolvedObject.Name
+	}
+	labels[sink_api.LabelHostname] = event.Source.Host
+	seriesName = fmt.Sprintf("%s_%s", sink_api.LabelsToString(labels, "_"), seriesName)
+
+	columns := []string{}
+	columns = append(columns, "time")            // Column 0
+	columns = append(columns, "value")           // Column 1
+	columns = append(columns, "sequence_number") // Column 2
+
+	value, err := getEventValue(&event)
+	if err != nil {
+		return nil, err
+	}
+
+	// There's only one point per series for no columns
+	points := make([][]interface{}, 1)
+	points[0] = make([]interface{}, len(columns))
+	points[0][0] = event.LastTimestamp.Time.Round(time.Millisecond).Unix() // Column 0 - time
+	points[0][1] = sink.seqNum.Get(EventsSeriesName)                       // Column 1 - sequence_number
+	points[0][2] = value                                                   // Column 2 - value
+	return &influxdb.Series{
+		Name:    seriesName,
+		Columns: eventColumns,
+		Points:  points,
+	}, nil
+
+}
+
 func (self *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) error {
 	dataPoints := []*influxdb.Series{}
 	for index := range timeseries {
@@ -91,6 +212,15 @@ func (self *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) erro
 	}
 	glog.V(1).Info("flushed stats to influxDB")
 	return err
+}
+
+// Generate point value for event
+func getEventValue(event *kube_api.Event) (string, error) {
+	bytes, err := json.MarshalIndent(event, "", " ")
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }
 
 // Returns a new influxdb series.

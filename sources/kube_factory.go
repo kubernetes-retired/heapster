@@ -99,6 +99,7 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 	kubeletApi := datasource.NewKubelet()
 	kubePodsSource := NewKubePodMetrics(kubeletPort, nodesApi, newPodsApi(kubeClient), kubeletApi)
 	kubeNodeSource := NewKubeNodeMetrics(kubeletPort, kubeletApi, nodesApi)
+	kubeEventsSource := NewKubeEvents(kubeClient)
 
-	return []api.Source{kubePodsSource, kubeNodeSource}, nil
+	return []api.Source{kubePodsSource, kubeNodeSource, kubeEventsSource}, nil
 }

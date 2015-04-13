@@ -26,6 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
 	"github.com/GoogleCloudPlatform/heapster/util/gcstore"
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/golang/glog"
 )
 
@@ -198,6 +199,12 @@ type lastValueData struct {
 
 // The largest number of timeseries we can write to per request.
 const maxTimeseriesPerRequest = 200
+
+// Stores events into the backend.
+func (self *gcmSink) StoreEvents([]kube_api.Event) error {
+	// No-op, Google Cloud Metrics doesn't store events
+	return nil
+}
 
 // Pushes the specified metric values in input. The metrics must already exist.
 func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {

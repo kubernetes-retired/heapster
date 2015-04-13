@@ -81,6 +81,11 @@ func (self *externalSinkManager) Store(input interface{}) error {
 		if err := externalSink.StoreTimeseries(timeseries); err != nil {
 			errors = append(errors, err)
 		}
+		if data.Events != nil && len(data.Events) > 0 {
+			if err := externalSink.StoreEvents(data.Events); err != nil {
+				errors = append(errors, err)
+			}
+		}
 	}
 	err = nil
 	if len(errors) > 0 {
