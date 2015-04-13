@@ -4,7 +4,12 @@ metadata:
   labels:
   name: monitoring-influxdb-ui
 spec:
-  targetPort: 8083
-  port: 80
+  ports:
+    - name: http
+      port: 8083
+      targetPort: 8083
+    - name: api
+      port: 8086
+      targetPort: 8086
   selector:
     name: influxGrafana
