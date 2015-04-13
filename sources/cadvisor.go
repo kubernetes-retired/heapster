@@ -24,16 +24,29 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/extpoints"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	"github.com/golang/glog"
 )
 
+const (
+	defaultCadvisorPort = 8080
+	defaultStandalone   = false
+	defaultHostsFile    = "/var/run/heapster/hosts"
+)
+
+var defaultFleetEndpoints = []string{"http://127.0.0.1:4001"}
+
 type cadvisorSource struct {
-	cadvisorPort string
+	cadvisorPort int
 	cadvisorApi  datasource.Cadvisor
 	nodesApi     nodes.NodesApi
+}
+
+func init() {
+	extpoints.SourceFactories.Register(NewCadvisorSources, "cadvisor")
 }
 
 func (self *cadvisorSource) GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error) {
@@ -94,23 +107,76 @@ func (self *cadvisorSource) DebugInfo() string {
 	return desc
 }
 
-func NewOtherSources(cadvisorPort int, coreOS bool) ([]api.Source, error) {
-	var nodesApi nodes.NodesApi
-	var err error
-	if coreOS {
-		nodesApi, err = nodes.NewCoreOSNodes()
-	} else {
-		nodesApi, err = nodes.NewExternalNodes()
+func NewCadvisorSources(cadvisorType string, options map[string][]string) ([]api.Source, error) {
+	if cadvisorType == "coreos" || cadvisorType == "fleet" {
+		return newCoreosSources(options)
 	}
+	if cadvisorType == "external" {
+		return newExternalSources(options)
+	}
+	return nil, fmt.Errorf("Unknown cadvisor source: %s", cadvisorType)
+}
+
+func newExternalSources(options map[string][]string) ([]api.Source, error) {
+	hostsFile := defaultHostsFile
+	if len(options["hostsFile"]) > 0 {
+		hostsFile = options["hostsFile"][0]
+	}
+	standalone := defaultStandalone
+	if len(options["standalone"]) > 0 {
+		standaloneOption, err := strconv.ParseBool(options["standalone"][0])
+		if err != nil {
+			return nil, err
+		}
+		standalone = standaloneOption
+	}
+
+	nodesApi, err := nodes.NewExternalNodes(standalone, hostsFile)
 	if err != nil {
 		return nil, err
+	}
+
+	cadvisorPort := defaultCadvisorPort
+	if len(options["cadvisorPort"]) > 0 {
+		cadvisorPort, err = strconv.Atoi(options["cadvisorPort"][0])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return []api.Source{
 		&cadvisorSource{
 			cadvisorApi:  datasource.NewCadvisor(),
 			nodesApi:     nodesApi,
-			cadvisorPort: strconv.Itoa(cadvisorPort),
+			cadvisorPort: cadvisorPort,
+		},
+	}, nil
+}
+
+func newCoreosSources(options map[string][]string) ([]api.Source, error) {
+	fleetEndpoints := defaultFleetEndpoints
+	if len(options["fleetEndpoint"]) > 0 {
+		fleetEndpoints = options["fleetEndpoint"]
+	}
+
+	nodesApi, err := nodes.NewCoreOSNodes(fleetEndpoints)
+	if err != nil {
+		return nil, err
+	}
+
+	cadvisorPort := defaultCadvisorPort
+	if len(options["cadvisorPort"]) > 0 {
+		cadvisorPort, err = strconv.Atoi(options["cadvisorPort"][0])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return []api.Source{
+		&cadvisorSource{
+			cadvisorApi:  datasource.NewCadvisor(),
+			nodesApi:     nodesApi,
+			cadvisorPort: cadvisorPort,
 		},
 	}, nil
 }

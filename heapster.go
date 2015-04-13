@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate go-extpoints
 package main
 
 import (
@@ -36,10 +37,12 @@ var (
 	argPort            = flag.Int("port", 8082, "port to listen")
 	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores).")
+	argSources         Uris
 )
 
 func main() {
 	defer glog.Flush()
+	flag.Var(&argSources, "source", "source(s) to watch")
 	flag.Parse()
 	setMaxProcs()
 	glog.Infof(strings.Join(os.Args, " "))

@@ -1,5 +1,6 @@
 heapster
 .cover
+extpoints/extpoints.go
 
 # Vim-related files
 [._]*.s[a-w][a-z]

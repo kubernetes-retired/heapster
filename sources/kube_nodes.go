@@ -27,11 +27,11 @@ import (
 
 type kubeNodeMetrics struct {
 	kubeletApi  datasource.Kubelet
-	kubeletPort string
+	kubeletPort int
 	nodesApi    nodes.NodesApi
 }
 
-func NewKubeNodeMetrics(kubeletPort string, kubeletApi datasource.Kubelet, nodesApi nodes.NodesApi) api.Source {
+func NewKubeNodeMetrics(kubeletPort int, kubeletApi datasource.Kubelet, nodesApi nodes.NodesApi) api.Source {
 	return &kubeNodeMetrics{
 		kubeletApi:  kubeletApi,
 		kubeletPort: kubeletPort,

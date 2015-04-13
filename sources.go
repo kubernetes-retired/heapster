@@ -16,8 +16,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"net/url"
 
-	"github.com/GoogleCloudPlatform/heapster/sources"
+	"github.com/GoogleCloudPlatform/heapster/extpoints"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
@@ -33,9 +35,25 @@ var (
 )
 
 func newSources() ([]api.Source, error) {
-	if len(*argMaster) > 0 {
-		return sources.CreateKubeSources(*argMaster, *argKubeVersion, *argClientAuthFile, *argKubeletPort, *argMasterInsecure)
-	}
+	var sources []api.Source
+	for _, sourceFlag := range argSources {
+		uri, err := url.Parse(sourceFlag)
+		if err != nil {
+			return nil, err
+		}
+		if len(uri.Scheme) == 0 || len(uri.Opaque) == 0 {
+			return nil, fmt.Errorf("Invalid source definition: %s", sourceFlag)
+		}
+		factory := extpoints.SourceFactories.Lookup(uri.Scheme)
+		if factory == nil {
+			return nil, fmt.Errorf("Unknown source: %s", uri.Scheme)
+		}
 
-	return sources.NewOtherSources(*argCadvisorPort, *argCoreOSMode)
+		createdSources, err := factory(uri.Opaque, uri.Query())
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, createdSources...)
+	}
+	return sources, nil
 }

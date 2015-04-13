@@ -16,8 +16,11 @@ package sources
 
 import (
 	"fmt"
-	"strings"
+	"net/url"
+	"os"
+	"strconv"
 
+	"github.com/GoogleCloudPlatform/heapster/extpoints"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
@@ -26,25 +29,48 @@ import (
 	"github.com/golang/glog"
 )
 
-func CreateKubeSources(master, kubeVersion, clientAuthFile, kubeletPort string, masterInsecure bool) ([]api.Source, error) {
-	if len(master) == 0 {
-		return nil, fmt.Errorf("kubernetes_master flag not specified")
+const (
+	defaultApiVersion  = "v1beta1"
+	defaultInsecure    = false
+	defaultKubeletPort = 10250
+)
+
+func init() {
+	extpoints.SourceFactories.Register(CreateKubeSources, "kubernetes")
+}
+
+func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, error) {
+	parsedUrl, err := url.Parse(os.ExpandEnv(uri))
+	if err != nil {
+		return nil, err
 	}
-	if kubeVersion == "" {
-		return nil, fmt.Errorf("kubernetes API version invalid")
+
+	if len(parsedUrl.Scheme) == 0 {
+		return nil, fmt.Errorf("Missing scheme in Kubernetes source: %v", uri)
 	}
-	if !(strings.HasPrefix(master, "http://") || strings.HasPrefix(master, "https://")) {
-		master = "http://" + master
+	if len(parsedUrl.Host) == 0 {
+		return nil, fmt.Errorf("Missing host in Kubernetes source: %v", uri)
 	}
 
 	kubeConfig := kube_client.Config{
-		Host:     master,
-		Version:  kubeVersion,
-		Insecure: masterInsecure,
+		Host:     fmt.Sprintf("%s://%s", parsedUrl.Scheme, parsedUrl.Host),
+		Version:  defaultApiVersion,
+		Insecure: defaultInsecure,
+	}
+	if len(options["apiVersion"]) >= 1 {
+		kubeConfig.Version = options["apiVersion"][0]
 	}
 
-	if len(clientAuthFile) > 0 {
-		clientAuth, err := clientauth.LoadFromFile(clientAuthFile)
+	if len(options["insecure"]) > 0 {
+		insecure, err := strconv.ParseBool(options["insecure"][0])
+		if err != nil {
+			return nil, err
+		}
+		kubeConfig.Insecure = insecure
+	}
+
+	if len(options["auth"]) > 0 {
+		clientAuth, err := clientauth.LoadFromFile(options["auth"][0])
 		if err != nil {
 			return nil, err
 		}
@@ -61,8 +87,15 @@ func CreateKubeSources(master, kubeVersion, clientAuthFile, kubeletPort string, 
 	if err != nil {
 		return nil, err
 	}
-	glog.Infof("Using Kubernetes client with master %q and version %s\n", master, kubeVersion)
-	glog.Infof("Using kubelet port %q", kubeletPort)
+	kubeletPort := defaultKubeletPort
+	if len(options["kubeletPort"]) >= 1 {
+		kubeletPort, err = strconv.Atoi(options["kubeletPort"][0])
+		if err != nil {
+			return nil, err
+		}
+	}
+	glog.Infof("Using Kubernetes client with master %q and version %s\n", kubeConfig.Host, kubeConfig.Version)
+	glog.Infof("Using kubelet port %d", kubeletPort)
 	kubeletApi := datasource.NewKubelet()
 	kubePodsSource := NewKubePodMetrics(kubeletPort, nodesApi, newPodsApi(kubeClient), kubeletApi)
 	kubeNodeSource := NewKubeNodeMetrics(kubeletPort, kubeletApi, nodesApi)

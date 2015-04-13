@@ -22,7 +22,7 @@ import (
 
 type Host struct {
 	IP       string
-	Port     string
+	Port     int
 	Resource string
 }
 

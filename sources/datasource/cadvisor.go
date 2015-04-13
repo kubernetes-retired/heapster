@@ -63,7 +63,7 @@ func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, star
 }
 
 func (self *cadvisorSource) GetAllContainers(host Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error) {
-	url := fmt.Sprintf("http://%s:%s/", host.IP, host.Port)
+	url := fmt.Sprintf("http://%s:%d/", host.IP, host.Port)
 	client, err := cadvisorClient.NewClient(url)
 	if err != nil {
 		return

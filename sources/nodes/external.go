@@ -16,7 +16,6 @@ package nodes
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -35,10 +34,6 @@ type externalCadvisorNodes struct {
 
 	nodes *NodeList
 }
-
-// While updating this, also update deploy/docker/Dockerfile.
-var hostsFile = flag.String("external_hosts_file", "/var/run/heapster/hosts", "A file that heapster refers to get a list of nodes to monitor.")
-var standaloneMode = flag.Bool("standalone", false, "Whether to run Heapster in \"standalone\" mode where it only targets the current node.")
 
 func (self *externalCadvisorNodes) List() (*NodeList, error) {
 	// Standalone means only localhost.
@@ -88,19 +83,19 @@ func (self *externalCadvisorNodes) DebugInfo() string {
 	return output
 }
 
-func NewExternalNodes() (NodesApi, error) {
-	if *standaloneMode {
+func NewExternalNodes(standaloneMode bool, hostsFile string) (NodesApi, error) {
+	if standaloneMode {
 		glog.Infof("Running in standalone mode, external nodes source will only use localhost")
 	} else {
-		_, err := os.Stat(*hostsFile)
+		_, err := os.Stat(hostsFile)
 		if err != nil {
-			return nil, fmt.Errorf("cannot stat file %q: %s", *hostsFile, err)
+			return nil, fmt.Errorf("cannot stat file %q: %s", hostsFile, err)
 		}
 	}
 
 	return &externalCadvisorNodes{
-		hostsFile:  *hostsFile,
-		standalone: *standaloneMode,
+		hostsFile:  hostsFile,
+		standalone: standaloneMode,
 		nodes:      nil,
 	}, nil
 }
