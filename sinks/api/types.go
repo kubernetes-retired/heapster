@@ -18,6 +18,7 @@ import (
 	"time"
 
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
@@ -162,8 +163,9 @@ type ExternalSink interface {
 	// Support input types are as follows:
 	// 1. []Timeseries
 	// TODO: Add map[string]string to support storing raw data like node or pod status, spec, etc.
-	// TODO: Add events.
 	StoreTimeseries([]Timeseries) error
+	// Stores events into the backend.
+	StoreEvents([]kube_api.Event) error
 	// Returns debug information specific to the sink.
 	DebugInfo() string
 }

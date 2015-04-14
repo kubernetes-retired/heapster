@@ -175,7 +175,7 @@ func TestRealInput(t *testing.T) {
 			case "filesystem/usage":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				name, ok := entry.Point.Labels[labelResourceID]
+				name, ok := entry.Point.Labels[LabelResourceID]
 				require.True(t, ok)
 				assert.Equal(t, expectedFsStats[name], value)
 			default:
@@ -207,10 +207,10 @@ func TestPodLabelsProcessing(t *testing.T) {
 	}
 
 	expectedLabels := map[string]string{
-		labelPodId:         "123",
-		labelLabels:        getLabelsAsString(podLabels),
-		labelHostname:      "1.2.3.4",
-		labelContainerName: "blah",
+		LabelPodId:         "123",
+		LabelLabels:        getLabelsAsString(podLabels),
+		LabelHostname:      "1.2.3.4",
+		LabelContainerName: "blah",
 	}
 	input := source_api.AggregateData{
 		Pods: pods,
@@ -228,8 +228,8 @@ func TestPodLabelsProcessing(t *testing.T) {
 
 func TestContainerLabelsProcessing(t *testing.T) {
 	expectedLabels := map[string]string{
-		labelHostname:      "1.2.3.4",
-		labelContainerName: "blah",
+		LabelHostname:      "1.2.3.4",
+		LabelContainerName: "blah",
 	}
 	container := getContainer("blah")
 	container.Hostname = "1.2.3.4"

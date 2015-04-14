@@ -15,11 +15,12 @@
 package api
 
 const (
-	labelPodId         = "pod_id"
-	labelContainerName = "container_name"
-	labelLabels        = "labels"
-	labelHostname      = "hostname"
-	labelResourceID    = "resource_id"
+	LabelPodId         = "pod_id"
+	LabelPodName       = "pod_name"
+	LabelContainerName = "container_name"
+	LabelLabels        = "labels"
+	LabelHostname      = "hostname"
+	LabelResourceID    = "resource_id"
 )
 
 // TODO(vmarmol): Things we should consider adding (note that we only get 10 labels):
@@ -27,23 +28,27 @@ const (
 // - Namespace: Are IDs unique only per namespace? If so, mangle it into the ID.
 var allLabels = []LabelDescriptor{
 	{
-		Key:         labelPodId,
+		Key:         LabelPodId,
 		Description: "The unique ID of the pod",
 	},
 	{
-		Key:         labelContainerName,
+		Key:         LabelPodName,
+		Description: "The name of the pod",
+	},
+	{
+		Key:         LabelContainerName,
 		Description: "User-provided name of the container or full container name for system containers",
 	},
 	{
-		Key:         labelLabels,
+		Key:         LabelLabels,
 		Description: "Comma-separated list of user-provided labels",
 	},
 	{
-		Key:         labelHostname,
+		Key:         LabelHostname,
 		Description: "Hostname where the container ran",
 	},
 	{
-		Key:         labelResourceID,
+		Key:         LabelResourceID,
 		Description: "Identifier(s) specific to a metric",
 	},
 }

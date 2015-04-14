@@ -44,6 +44,7 @@ const (
 	makefile             = "../Makefile"
 	podlistQuery         = "select distinct(pod_id) from /cpu.*/"
 	nodelistQuery        = "select distinct(hostname) from /cpu.*/"
+	eventsQuery          = "select distinct(value) from \"log/events\""
 )
 
 var (
@@ -328,6 +329,20 @@ func expectedItemsExist(expectedItems []string, actualItems map[string]bool) boo
 	return true
 }
 
+func validateEvents(influxdbClient *influxdb.Client) bool {
+	events, err := getInfluxdbData(influxdbClient, eventsQuery)
+	if err != nil {
+		// We don't fail the test here because the influxdb service might still not be running.
+		glog.Errorf("failed to query list of events from influxdb. Query: %q, Err: %v", eventsQuery, err)
+		return false
+	}
+	if len(events) <= 0 {
+		glog.Errorf("Query (%q) returned no events. Expected at least 1 event.")
+		return false
+	}
+	return true
+}
+
 func validatePodsAndNodes(influxdbClient *influxdb.Client, expectedPods, expectedNodes []string) bool {
 	pods, err := getInfluxdbData(influxdbClient, podlistQuery)
 	if err != nil {
@@ -395,7 +410,7 @@ func TestHeapsterInfluxDBWorks(t *testing.T) {
 		startTime := time.Now()
 		success := false
 		for {
-			if validatePodsAndNodes(influxdbClient, expectedPods, expectedNodes) {
+			if validatePodsAndNodes(influxdbClient, expectedPods, expectedNodes) && validateEvents(influxdbClient) {
 				success = true
 				break
 			}

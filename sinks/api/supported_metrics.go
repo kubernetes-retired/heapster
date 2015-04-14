@@ -176,7 +176,7 @@ var statMetrics = []SupportedStatMetric{
 				result = append(result, internalPoint{
 					value: int64(fs.Usage),
 					labels: map[string]string{
-						labelResourceID: fs.Device,
+						LabelResourceID: fs.Device,
 					},
 				})
 			}
