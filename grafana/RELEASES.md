@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.7 (Unreleased)
+- Updated kubernetes dashboard to have a grouping time of 5s.
+
 ## 0.6 (3-30-2014)
 - Switch to kuisp for serving files & proxying to services
 - Configurable reverse proxy directly to InfluxDB service rather than using
