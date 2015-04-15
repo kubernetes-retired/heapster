@@ -26,7 +26,7 @@ import (
 var (
 	argMaster         = flag.String("kubernetes_master", "", "Kubernetes master IP")
 	argMasterInsecure = flag.Bool("kubernetes_insecure", true, "Trust Kubernetes master certificate (if using https)")
-	argKubeletPort    = flag.String("kubelet_port", "10250", "Kubelet port")
+	argKubeletPort    = flag.String("kubelet_port", "10255", "Kubelet port")
 	// TODO: once known location for client auth is defined upstream, default this to that file.
 	argClientAuthFile = flag.String("kubernetes_client_auth", "", "Kubernetes client authentication file")
 	argKubeVersion    = flag.String("kubernetes_version", "v1beta1", "Kubernetes API version")
