@@ -18,8 +18,8 @@ test-unit: clean deps sanitize build
 test-unit-cov: clean deps sanitize build
 	hooks/coverage.sh
 
-test-integration: clean deps build
-	godep go test -v --timeout=30m ./... --vmodule=*=2 
+test-integration: clean deps
+	godep go test -v --timeout=30m github.com/GoogleCloudPlatform/heapster/integration/... --vmodule=*=2 
 
 container: build
 	cp ./heapster ./deploy/docker/heapster

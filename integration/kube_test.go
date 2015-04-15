@@ -49,13 +49,14 @@ const (
 
 var (
 	kubeVersions                  = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
-	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/kube-config/influxdb/heapster-controller.js", "Path to heapster replication controller file.")
-	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/kube-config/influxdb/influxdb-grafana-controller.js", "Path to Influxdb-Grafana replication controller file.")
-	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/kube-config/influxdb/influxdb-service.js", "Path to Inlufxdb service file.")
+	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/kube-config/influxdb/v1beta3/heapster-controller.js", "Path to heapster replication controller file.")
+	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/kube-config/influxdb/v1beta3/influxdb-grafana-controller.js", "Path to Influxdb-Grafana replication controller file.")
+	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/kube-config/influxdb/v1beta3/influxdb-service.js", "Path to Inlufxdb service file.")
 	heapsterImage                 = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
 	influxdbImage                 = flag.String("influxdb_image", "heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
 	grafanaImage                  = flag.String("grafana_image", "heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
 	namespace                     = flag.String("namespace", "default", "namespace to be used for testing")
+	avoidBuild                    = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
 )
 
 func buildAndPushHeapsterImage(hostnames []string) error {
@@ -195,6 +196,9 @@ func deleteAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []
 			glog.Error(err)
 		}
 	}
+	if *avoidBuild {
+		return
+	}
 	if err = removeDockerImage(*heapsterImage); err != nil {
 		glog.Error(err)
 	}
@@ -217,7 +221,6 @@ func deleteAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []
 
 var replicationControllers = []*kube_api.ReplicationController{}
 var services = []*kube_api.Service{}
-var influxdbService = ""
 
 func createAndWaitForRunning(fm kubeFramework, ns string) error {
 	// Add test docker image
@@ -275,6 +278,9 @@ func createAndWaitForRunning(fm kubeFramework, ns string) error {
 }
 
 func buildAndPushImages(fm kubeFramework) error {
+	if *avoidBuild {
+		return nil
+	}
 	nodes, err := fm.GetNodes()
 	if err != nil {
 		return err
