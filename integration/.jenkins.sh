@@ -10,7 +10,7 @@ if ! git diff --name-only origin/master | grep -c -E "*.go|*.sh|.*yaml" &> /dev/
   exit 0
 fi
 
-SUPPORTED_KUBE_VERSIONS="0.14.1"
+SUPPORTED_KUBE_VERSIONS="0.15.0"
 TEST_NAMESPACE="default"
 
 go get github.com/progrium/go-extpoints
