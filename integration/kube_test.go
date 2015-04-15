@@ -48,7 +48,7 @@ const (
 )
 
 var (
-	kubeVersions                  = flag.String("kube_versions", "", "Comma separated list of kube versions to test against")
+	kubeVersions                  = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
 	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/kube-config/influxdb/heapster-controller.yaml", "Path to heapster replication controller file.")
 	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/kube-config/influxdb/influxdb-grafana-controller.yaml", "Path to Influxdb-Grafana replication controller file.")
 	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/kube-config/influxdb/influxdb-service.yaml", "Path to Inlufxdb service file.")
@@ -337,7 +337,7 @@ func validateEvents(influxdbClient *influxdb.Client) bool {
 		return false
 	}
 	if len(events) <= 0 {
-		glog.Errorf("Query (%q) returned no events. Expected at least 1 event.")
+		glog.Errorf("Query (%q) returned no events. Expected at least 1 event.", eventsQuery)
 		return false
 	}
 	return true
@@ -366,61 +366,67 @@ func validatePodsAndNodes(influxdbClient *influxdb.Client, expectedPods, expecte
 	return true
 }
 
+func runTest(kubeVersion string, t *testing.T) {
+	fm, err := newKubeFramework(t, kubeVersion)
+	require.NoError(t, err, "failed to create kube framework")
+
+	require.NoError(t, buildAndPushImages(fm), "failed to build and push images")
+
+	// create pods and wait for them to run.
+	require.NoError(t, createAndWaitForRunning(fm, *namespace))
+
+	kubeMasterHttpClient, ok := fm.Client().Client.(*http.Client)
+	require.True(t, ok, "failed to get http client to kube master.")
+
+	glog.V(2).Infof("checking if data exists in influxdb using apiserver proxy url %q", fm.GetProxyUrlForService(services[0].Name))
+	config := &influxdb.ClientConfig{
+		Host: fm.GetProxyUrlForService(services[0].Name),
+		// TODO(vishh): Infer username and pw from the Pod spec.
+		Username:   "root",
+		Password:   "root",
+		Database:   "k8s",
+		HttpClient: kubeMasterHttpClient,
+		IsSecure:   true,
+	}
+	influxdbClient, err := influxdb.NewClient(config)
+	require.NoError(t, err, "failed to create influxdb client")
+	expectedNodes, err := fm.GetNodes()
+	require.NoError(t, err, "failed to get list of nodes")
+	expectedPods, err := fm.GetPods()
+	require.NoError(t, err, "failed to get list of pods")
+
+	startTime := time.Now()
+	success := false
+	for {
+		if validatePodsAndNodes(influxdbClient, expectedPods, expectedNodes) && validateEvents(influxdbClient) {
+			success = true
+			break
+		}
+		if time.Since(startTime) >= testTimeout {
+			break
+		}
+		time.Sleep(sleepBetweenAttempts)
+	}
+	require.True(t, success, "HeapsterInfluxDB test failed with kube version %q", kubeVersion)
+	glog.Infof("HeapsterInfluxDB test passed with kube version %q", kubeVersion)
+	deleteAll(fm, *namespace, services, replicationControllers)
+
+}
+
 func TestHeapsterInfluxDBWorks(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping kubernetes integration test.")
 	}
-	var fm kubeFramework
-	var err error
-
 	tempDir, err := ioutil.TempDir("", "deploy")
 	require.NoError(t, err, "failed to create temporary directory")
 	defer os.RemoveAll(tempDir)
 
+	if *kubeVersions == "" {
+		runTest("", t)
+		return
+	}
 	kubeVersionsList := strings.Split(*kubeVersions, ",")
 	for _, kubeVersion := range kubeVersionsList {
-		fm, err = newKubeFramework(t, kubeVersion)
-		require.NoError(t, err, "failed to create kube framework")
-
-		require.NoError(t, buildAndPushImages(fm), "failed to build and push images")
-
-		// create pods and wait for them to run.
-		require.NoError(t, createAndWaitForRunning(fm, *namespace))
-
-		kubeMasterHttpClient, ok := fm.Client().Client.(*http.Client)
-		require.True(t, ok, "failed to get http client to kube master.")
-
-		glog.V(2).Infof("checking if data exists in influxdb using apiserver proxy url %q", fm.GetProxyUrlForService(services[0].Name))
-		config := &influxdb.ClientConfig{
-			Host: fm.GetProxyUrlForService(services[0].Name),
-			// TODO(vishh): Infer username and pw from the Pod spec.
-			Username:   "root",
-			Password:   "root",
-			Database:   "k8s",
-			HttpClient: kubeMasterHttpClient,
-			IsSecure:   true,
-		}
-		influxdbClient, err := influxdb.NewClient(config)
-		require.NoError(t, err, "failed to create influxdb client")
-		expectedNodes, err := fm.GetNodes()
-		require.NoError(t, err, "failed to get list of nodes")
-		expectedPods, err := fm.GetPods()
-		require.NoError(t, err, "failed to get list of pods")
-
-		startTime := time.Now()
-		success := false
-		for {
-			if validatePodsAndNodes(influxdbClient, expectedPods, expectedNodes) && validateEvents(influxdbClient) {
-				success = true
-				break
-			}
-			if time.Since(startTime) >= testTimeout {
-				break
-			}
-			time.Sleep(sleepBetweenAttempts)
-		}
-		require.True(t, success, "HeapsterInfluxDB test failed with kube version %q", kubeVersion)
-		glog.Info("HeapsterInfluxDB test passed with kube version %q", kubeVersion)
-		deleteAll(fm, *namespace, services, replicationControllers)
+		runTest(kubeVersion, t)
 	}
 }

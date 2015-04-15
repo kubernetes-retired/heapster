@@ -90,12 +90,14 @@ type realKubeFramework struct {
 	t *testing.T
 }
 
-const imageUrlTemplate = "https://github.com/GoogleCloudPlatform/kubernetes/releases/download/v%s/kubernetes.tar.gz"
+const (
+	imageUrlTemplate = "https://github.com/GoogleCloudPlatform/kubernetes/releases/download/v%s/kubernetes.tar.gz"
+	kubectl          = "kubectl.sh"
+)
 
 var (
-	kubeConfig         = flag.String("kube_config", os.Getenv("HOME")+"/.kube/.kubeconfig", "Path to cluster info file.")
-	useExistingCluster = flag.Bool("use_existing_cluster", false, "when true uses an existing kube cluster. A cluster needs to exist.")
-	workDir            = flag.String("work_dir", "/tmp/heapster_test", "Filesystem path where test files will be stored. Files will persist across runs to speed up tests.")
+	kubeConfig = flag.String("kube_config", os.Getenv("HOME")+"/.kube/.kubeconfig", "Path to cluster info file.")
+	workDir    = flag.String("work_dir", "/tmp/heapster_test", "Filesystem path where test files will be stored. Files will persist across runs to speed up tests.")
 )
 
 func exists(path string) bool {
@@ -146,6 +148,10 @@ func setupNewCluster(kubeBaseDir string) error {
 }
 
 func destroyCluster(kubeBaseDir string) error {
+	if kubeBaseDir == "" {
+		glog.Infof("Skipping cluster tear down since kubernetes repo base path is not set.")
+		return nil
+	}
 	glog.V(1).Info("Bringing down any existing kube cluster")
 	out, err := runKubeClusterCommand(kubeBaseDir, "kube-down.sh")
 	if err != nil {
@@ -302,8 +308,8 @@ func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
 	if testing.Short() {
 		t.Skip("Skipping framework test in short mode")
 	}
-	if !*useExistingCluster {
-		if version == "" || len(strings.Split(version, ".")) != 3 {
+	if version != "" {
+		if len(strings.Split(version, ".")) != 3 {
 			return nil, fmt.Errorf("invalid kubernetes version specified - %q", version)
 		}
 		kubeBaseDir, err = downloadAndSetupCluster(version)
@@ -322,6 +328,7 @@ func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
 		kubeClient: kubeClient,
 		t:          t,
 		baseDir:    kubeBaseDir,
+		version:    version,
 		masterIP:   masterIP,
 	}, nil
 }
@@ -404,9 +411,7 @@ func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationContr
 }
 
 func (self *realKubeFramework) DestroyCluster() {
-	if !*useExistingCluster {
-		destroyCluster(self.baseDir)
-	}
+	destroyCluster(self.baseDir)
 }
 
 func (self *realKubeFramework) GetProxyUrlForService(serviceName string) string {
@@ -433,7 +438,9 @@ func (self *realKubeFramework) GetPods() ([]string, error) {
 		return pods, err
 	}
 	for _, pod := range podList.Items {
-		pods = append(pods, string(pod.UID))
+		if !strings.Contains(pod.Spec.Host, "kubernetes-master") {
+			pods = append(pods, string(pod.UID))
+		}
 	}
 	return pods, nil
 }
