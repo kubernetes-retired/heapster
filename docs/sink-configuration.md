@@ -30,10 +30,10 @@ The following options are available:
 
 
 ### Google Cloud Monitoring
-This sink supports both monitoring metrics only.
+This sink supports monitoring metrics only.
 To use the InfluxDB sink add the following flag:
 ```
---sink=influxdb:gcm
+--sink=gcm
 ```
 
 *Note: This sink works only on a Google Compute Enginer VM as of now*
@@ -45,14 +45,23 @@ This sink does not export any options!
 This sink supports events only.
 To use the InfluxDB sink add the following flag:
 ```
---sink=influxdb:gcl
+--sink=gcl
 ```
 
 *Note: This sink works only on a Google Compute Enginer VM as of now*
 
 This sink does not export any options!
 
+### Hawkular-Metrics
+This sink supports monitoring metrics only.
+To use the Hawkular-Metrics sink add the following flag:
 
+```
+--sink=hawkular:<HAWKULAR_SERVER_URL>[?<OPTIONS>]
+```
 
+If `HAWKULAR_SERVER_URL` includes any path, the default `hawkular/metrics` is overridden.
 
+The following options are available:
 
+* `tenant` - Hawkular-Metrics tenantId (default: `heapster`)
