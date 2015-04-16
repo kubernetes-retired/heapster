@@ -32,7 +32,7 @@ import (
 const (
 	defaultApiVersion  = "v1beta1"
 	defaultInsecure    = false
-	defaultKubeletPort = 10250
+	defaultKubeletPort = 10255
 )
 
 func init() {
