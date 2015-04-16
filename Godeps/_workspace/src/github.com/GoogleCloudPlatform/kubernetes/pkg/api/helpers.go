@@ -21,6 +21,8 @@ import (
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/resource"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/conversion"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 
 	"github.com/davecgh/go-spew/spew"
@@ -63,6 +65,12 @@ var Semantic = conversion.EqualitiesOrDie(
 	func(a, b util.Time) bool {
 		return a.UTC() == b.UTC()
 	},
+	func(a, b labels.Selector) bool {
+		return a.String() == b.String()
+	},
+	func(a, b fields.Selector) bool {
+		return a.String() == b.String()
+	},
 )
 
 var standardResources = util.NewStringSet(
@@ -71,7 +79,8 @@ var standardResources = util.NewStringSet(
 	string(ResourcePods),
 	string(ResourceQuotas),
 	string(ResourceServices),
-	string(ResourceReplicationControllers))
+	string(ResourceReplicationControllers),
+	string(ResourceStorage))
 
 func IsStandardResourceName(str string) bool {
 	return standardResources.Has(str)
@@ -94,4 +103,11 @@ func IsServiceIPSet(service *Service) bool {
 // this function aims to check if the service portal IP is requested or not
 func IsServiceIPRequested(service *Service) bool {
 	return service.Spec.PortalIP == ""
+}
+
+var standardFinalizers = util.NewStringSet(
+	string(FinalizerKubernetes))
+
+func IsStandardFinalizerName(str string) bool {
+	return standardFinalizers.Has(str)
 }

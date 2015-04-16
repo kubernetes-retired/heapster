@@ -17,7 +17,6 @@ limitations under the License.
 package client
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
@@ -64,7 +63,7 @@ func (c *endpoints) List(selector labels.Selector) (result *api.EndpointsList, e
 	err = c.r.Get().
 		Namespace(c.ns).
 		Resource("endpoints").
-		LabelsSelectorParam(api.LabelSelectorQueryParam(c.r.APIVersion()), selector).
+		LabelsSelectorParam(selector).
 		Do().
 		Into(result)
 	return
@@ -72,10 +71,6 @@ func (c *endpoints) List(selector labels.Selector) (result *api.EndpointsList, e
 
 // Get returns information about the endpoints for a particular service.
 func (c *endpoints) Get(name string) (result *api.Endpoints, err error) {
-	if len(name) == 0 {
-		return nil, errors.New("name is required parameter to Get")
-	}
-
 	result = &api.Endpoints{}
 	err = c.r.Get().Namespace(c.ns).Resource("endpoints").Name(name).Do().Into(result)
 	return
@@ -88,8 +83,8 @@ func (c *endpoints) Watch(label labels.Selector, field fields.Selector, resource
 		Namespace(c.ns).
 		Resource("endpoints").
 		Param("resourceVersion", resourceVersion).
-		LabelsSelectorParam(api.LabelSelectorQueryParam(c.r.APIVersion()), label).
-		FieldsSelectorParam(api.FieldSelectorQueryParam(c.r.APIVersion()), field).
+		LabelsSelectorParam(label).
+		FieldsSelectorParam(field).
 		Watch()
 }
 

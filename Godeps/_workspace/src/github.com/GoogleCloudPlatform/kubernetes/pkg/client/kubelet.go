@@ -39,7 +39,7 @@ var ErrPodInfoNotAvailable = errors.New("no pod info available")
 type KubeletClient interface {
 	KubeletHealthChecker
 	PodInfoGetter
-	NodeInfoGetter
+	ConnectionInfoGetter
 }
 
 // KubeletHealthchecker is an interface for healthchecking kubelets
@@ -55,8 +55,8 @@ type PodInfoGetter interface {
 	GetPodStatus(host, podNamespace, podID string) (api.PodStatusResult, error)
 }
 
-type NodeInfoGetter interface {
-	GetNodeInfo(host string) (api.NodeInfo, error)
+type ConnectionInfoGetter interface {
+	GetConnectionInfo(host string) (scheme string, port uint, transport http.RoundTripper, error error)
 }
 
 // HTTPKubeletClient is the default implementation of PodInfoGetter and KubeletHealthchecker, accesses the kubelet over HTTP.
@@ -70,9 +70,14 @@ type HTTPKubeletClient struct {
 func NewKubeletClient(config *KubeletConfig) (KubeletClient, error) {
 	transport := http.DefaultTransport
 
-	tlsConfig, err := TLSConfigFor(&Config{
-		TLSClientConfig: config.TLSClientConfig,
-	})
+	cfg := &Config{TLSClientConfig: config.TLSClientConfig}
+	if config.EnableHttps {
+		hasCA := len(config.CAFile) > 0 || len(config.CAData) > 0
+		if !hasCA {
+			cfg.Insecure = true
+		}
+	}
+	tlsConfig, err := TLSConfigFor(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -84,12 +89,21 @@ func NewKubeletClient(config *KubeletConfig) (KubeletClient, error) {
 
 	c := &http.Client{
 		Transport: transport,
+		Timeout:   config.HTTPTimeout,
 	}
 	return &HTTPKubeletClient{
 		Client:      c,
 		Port:        config.Port,
 		EnableHttps: config.EnableHttps,
 	}, nil
+}
+
+func (c *HTTPKubeletClient) GetConnectionInfo(host string) (string, uint, http.RoundTripper, error) {
+	scheme := "http"
+	if c.EnableHttps {
+		scheme = "https"
+	}
+	return scheme, c.Port, c.Client.Transport, nil
 }
 
 func (c *HTTPKubeletClient) url(host, path, query string) string {
@@ -115,13 +129,6 @@ func (c *HTTPKubeletClient) GetPodStatus(host, podNamespace, podID string) (api.
 		return status, ErrPodInfoNotAvailable
 	}
 	return status, err
-}
-
-// GetNodeInfo gets information about the specified node.
-func (c *HTTPKubeletClient) GetNodeInfo(host string) (api.NodeInfo, error) {
-	info := api.NodeInfo{}
-	_, err := c.getEntity(host, "/api/v1beta1/nodeInfo", "", &info)
-	return info, err
 }
 
 // getEntity might return a nil response.
@@ -160,11 +167,10 @@ func (c FakeKubeletClient) GetPodStatus(host, podNamespace string, podID string)
 	return api.PodStatusResult{}, errors.New("Not Implemented")
 }
 
-// GetNodeInfo is a fake implementation of PodInfoGetter.GetNodeInfo
-func (c FakeKubeletClient) GetNodeInfo(host string) (api.NodeInfo, error) {
-	return api.NodeInfo{}, errors.New("Not Implemented")
-}
-
 func (c FakeKubeletClient) HealthCheck(host string) (probe.Result, error) {
 	return probe.Unknown, errors.New("Not Implemented")
+}
+
+func (c FakeKubeletClient) GetConnectionInfo(host string) (string, uint, http.RoundTripper, error) {
+	return "", 0, nil, errors.New("Not Implemented")
 }

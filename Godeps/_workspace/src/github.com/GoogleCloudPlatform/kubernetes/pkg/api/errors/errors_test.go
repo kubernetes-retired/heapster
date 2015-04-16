@@ -24,6 +24,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util/fielderrors"
 )
 
 func TestErrorNew(t *testing.T) {
@@ -68,8 +69,17 @@ func TestErrorNew(t *testing.T) {
 	if !IsForbidden(NewForbidden("test", "2", errors.New("reason"))) {
 		t.Errorf("expected to be %s", api.StatusReasonForbidden)
 	}
-	if !IsServerTimeout(NewServerTimeout("test", "reason")) {
+	if !IsUnauthorized(NewUnauthorized("reason")) {
+		t.Errorf("expected to be %s", api.StatusReasonUnauthorized)
+	}
+	if !IsServerTimeout(NewServerTimeout("test", "reason", 0)) {
 		t.Errorf("expected to be %s", api.StatusReasonServerTimeout)
+	}
+	if time, ok := SuggestsClientDelay(NewServerTimeout("test", "doing something", 10)); time != 10 || !ok {
+		t.Errorf("expected to be %s", api.StatusReasonServerTimeout)
+	}
+	if time, ok := SuggestsClientDelay(NewTimeoutError("test reason", 10)); time != 10 || !ok {
+		t.Errorf("expected to be %s", api.StatusReasonTimeout)
 	}
 	if !IsMethodNotSupported(NewMethodNotSupported("foo", "delete")) {
 		t.Errorf("expected to be %s", api.StatusReasonMethodNotAllowed)
@@ -78,11 +88,11 @@ func TestErrorNew(t *testing.T) {
 
 func TestNewInvalid(t *testing.T) {
 	testCases := []struct {
-		Err     *ValidationError
+		Err     *fielderrors.ValidationError
 		Details *api.StatusDetails
 	}{
 		{
-			NewFieldDuplicate("field[0].name", "bar"),
+			fielderrors.NewFieldDuplicate("field[0].name", "bar"),
 			&api.StatusDetails{
 				Kind: "kind",
 				ID:   "name",
@@ -93,7 +103,7 @@ func TestNewInvalid(t *testing.T) {
 			},
 		},
 		{
-			NewFieldInvalid("field[0].name", "bar", "detail"),
+			fielderrors.NewFieldInvalid("field[0].name", "bar", "detail"),
 			&api.StatusDetails{
 				Kind: "kind",
 				ID:   "name",
@@ -104,7 +114,7 @@ func TestNewInvalid(t *testing.T) {
 			},
 		},
 		{
-			NewFieldNotFound("field[0].name", "bar"),
+			fielderrors.NewFieldNotFound("field[0].name", "bar"),
 			&api.StatusDetails{
 				Kind: "kind",
 				ID:   "name",
@@ -115,7 +125,7 @@ func TestNewInvalid(t *testing.T) {
 			},
 		},
 		{
-			NewFieldNotSupported("field[0].name", "bar"),
+			fielderrors.NewFieldNotSupported("field[0].name", "bar"),
 			&api.StatusDetails{
 				Kind: "kind",
 				ID:   "name",
@@ -126,7 +136,7 @@ func TestNewInvalid(t *testing.T) {
 			},
 		},
 		{
-			NewFieldRequired("field[0].name"),
+			fielderrors.NewFieldRequired("field[0].name"),
 			&api.StatusDetails{
 				Kind: "kind",
 				ID:   "name",
@@ -140,7 +150,7 @@ func TestNewInvalid(t *testing.T) {
 	for i, testCase := range testCases {
 		vErr, expected := testCase.Err, testCase.Details
 		expected.Causes[0].Message = vErr.Error()
-		err := NewInvalid("kind", "name", ValidationErrorList{vErr})
+		err := NewInvalid("kind", "name", fielderrors.ValidationErrorList{vErr})
 		status := err.(*StatusError).ErrStatus
 		if status.Code != 422 || status.Reason != api.StatusReasonInvalid {
 			t.Errorf("%d: unexpected status: %#v", i, status)

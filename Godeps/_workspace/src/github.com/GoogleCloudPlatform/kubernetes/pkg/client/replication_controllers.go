@@ -17,9 +17,6 @@ limitations under the License.
 package client
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
@@ -55,16 +52,12 @@ func newReplicationControllers(c *Client, namespace string) *replicationControll
 // List takes a selector, and returns the list of replication controllers that match that selector.
 func (c *replicationControllers) List(selector labels.Selector) (result *api.ReplicationControllerList, err error) {
 	result = &api.ReplicationControllerList{}
-	err = c.r.Get().Namespace(c.ns).Resource("replicationControllers").LabelsSelectorParam(api.LabelSelectorQueryParam(c.r.APIVersion()), selector).Do().Into(result)
+	err = c.r.Get().Namespace(c.ns).Resource("replicationControllers").LabelsSelectorParam(selector).Do().Into(result)
 	return
 }
 
 // Get returns information about a particular replication controller.
 func (c *replicationControllers) Get(name string) (result *api.ReplicationController, err error) {
-	if len(name) == 0 {
-		return nil, errors.New("name is required parameter to Get")
-	}
-
 	result = &api.ReplicationController{}
 	err = c.r.Get().Namespace(c.ns).Resource("replicationControllers").Name(name).Do().Into(result)
 	return
@@ -80,10 +73,6 @@ func (c *replicationControllers) Create(controller *api.ReplicationController) (
 // Update updates an existing replication controller.
 func (c *replicationControllers) Update(controller *api.ReplicationController) (result *api.ReplicationController, err error) {
 	result = &api.ReplicationController{}
-	if len(controller.ResourceVersion) == 0 {
-		err = fmt.Errorf("invalid update object, missing resource version: %v", controller)
-		return
-	}
 	err = c.r.Put().Namespace(c.ns).Resource("replicationControllers").Name(controller.Name).Body(controller).Do().Into(result)
 	return
 }
@@ -100,7 +89,7 @@ func (c *replicationControllers) Watch(label labels.Selector, field fields.Selec
 		Namespace(c.ns).
 		Resource("replicationControllers").
 		Param("resourceVersion", resourceVersion).
-		LabelsSelectorParam(api.LabelSelectorQueryParam(c.r.APIVersion()), label).
-		FieldsSelectorParam(api.FieldSelectorQueryParam(c.r.APIVersion()), field).
+		LabelsSelectorParam(label).
+		FieldsSelectorParam(field).
 		Watch()
 }

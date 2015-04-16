@@ -51,6 +51,10 @@ type Reflector struct {
 	// the beginning of the next one.
 	period       time.Duration
 	resyncPeriod time.Duration
+	// lastSyncResourceVersion is the resource version token last
+	// observed when doing a sync with the underlying store
+	// it is not thread safe as it is not synchronized with access to the store
+	lastSyncResourceVersion string
 }
 
 // NewNamespaceKeyedIndexerAndReflector creates an Indexer and a Reflector
@@ -81,13 +85,13 @@ func NewReflector(lw ListerWatcher, expectedType interface{}, store Store, resyn
 // Run starts a watch and handles watch events. Will restart the watch if it is closed.
 // Run starts a goroutine and returns immediately.
 func (r *Reflector) Run() {
-	go util.Forever(func() { r.listAndWatch() }, r.period)
+	go util.Forever(func() { r.listAndWatch(util.NeverStop) }, r.period)
 }
 
 // RunUntil starts a watch and handles watch events. Will restart the watch if it is closed.
 // RunUntil starts a goroutine and returns immediately. It will exit when stopCh is closed.
 func (r *Reflector) RunUntil(stopCh <-chan struct{}) {
-	go util.Until(func() { r.listAndWatch() }, r.period, stopCh)
+	go util.Until(func() { r.listAndWatch(stopCh) }, r.period, stopCh)
 }
 
 var (
@@ -96,6 +100,10 @@ var (
 
 	// Used to indicate that watching stopped so that a resync could happen.
 	errorResyncRequested = errors.New("resync channel fired")
+
+	// Used to indicate that watching stopped because of a signal from the stop
+	// channel passed in from a client of the reflector.
+	errorStopRequested = errors.New("Stop requested")
 )
 
 // resyncChan returns a channel which will receive something when a resync is required.
@@ -106,9 +114,9 @@ func (r *Reflector) resyncChan() <-chan time.Time {
 	return time.After(r.resyncPeriod)
 }
 
-func (r *Reflector) listAndWatch() {
+func (r *Reflector) listAndWatch(stopCh <-chan struct{}) {
 	var resourceVersion string
-	exitWatch := r.resyncChan()
+	resyncCh := r.resyncChan()
 
 	list, err := r.listerWatcher.List()
 	if err != nil {
@@ -130,6 +138,7 @@ func (r *Reflector) listAndWatch() {
 		glog.Errorf("Unable to sync list result: %v", err)
 		return
 	}
+	r.lastSyncResourceVersion = resourceVersion
 
 	for {
 		w, err := r.listerWatcher.Watch(resourceVersion)
@@ -144,9 +153,9 @@ func (r *Reflector) listAndWatch() {
 			}
 			return
 		}
-		if err := r.watchHandler(w, &resourceVersion, exitWatch); err != nil {
+		if err := r.watchHandler(w, &resourceVersion, resyncCh, stopCh); err != nil {
 			if err != errorResyncRequested {
-				glog.Errorf("watch of %v ended with error: %v", r.expectedType, err)
+				glog.Errorf("watch of %v ended with: %v", r.expectedType, err)
 			}
 			return
 		}
@@ -164,14 +173,20 @@ func (r *Reflector) syncWith(items []runtime.Object) error {
 }
 
 // watchHandler watches w and keeps *resourceVersion up to date.
-func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string, exitWatch <-chan time.Time) error {
+func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string, resyncCh <-chan time.Time, stopCh <-chan struct{}) error {
 	start := time.Now()
 	eventCount := 0
+
+	// Stopping the watcher should be idempotent and if we return from this function there's no way
+	// we're coming back in with the same watch interface.
+	defer w.Stop()
+
 loop:
 	for {
 		select {
-		case <-exitWatch:
-			w.Stop()
+		case <-stopCh:
+			return errorStopRequested
+		case <-resyncCh:
 			return errorResyncRequested
 		case event, ok := <-w.ResultChan():
 			if !ok {
@@ -203,6 +218,7 @@ loop:
 				glog.Errorf("unable to understand watch event %#v", event)
 			}
 			*resourceVersion = meta.ResourceVersion()
+			r.lastSyncResourceVersion = *resourceVersion
 			eventCount++
 		}
 	}
@@ -214,4 +230,10 @@ loop:
 	}
 	glog.V(4).Infof("Watch close - %v total %v items received", r.expectedType, eventCount)
 	return nil
+}
+
+// LastSyncResourceVersion is the resource version observed when last sync with the underlying store
+// The value returned is not synchronized with access to the underlying store and is not thread-safe
+func (r *Reflector) LastSyncResourceVersion() string {
+	return r.lastSyncResourceVersion
 }
