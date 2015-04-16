@@ -94,11 +94,11 @@ func getDescription(metric sink_api.MetricDescriptor) string {
 	}{
 		{
 			name:        "uptime",
-			description: "Rate of change of time since start in milliseconds per second",
+			description: "Rate of change of time since start in seconds per second",
 		},
 		{
 			name:        "cpu/usage",
-			description: "Rate of total CPU usage in billionths of a core per second",
+			description: "Rate of total CPU usage in millicores per second",
 		},
 		{
 			name:        "network/rx",
@@ -128,6 +128,18 @@ func getDescription(metric sink_api.MetricDescriptor) string {
 	return metric.Description
 }
 
+// Map of metric name to translation function.
+var translationFuncs = map[string]func(float64) float64{
+	"uptime": func(value float64) float64 {
+		// Convert from milliseconds to seconds.
+		return value / 1000
+	},
+	"cpu/usage": func(value float64) float64 {
+		// Convert from billionths of a core to millicores.
+		return value / 1000000
+	},
+}
+
 // Adds the specified metrics or updates them if they already exist.
 func (self *gcmSink) Register(metrics []sink_api.MetricDescriptor) error {
 	for _, metric := range metrics {
@@ -148,7 +160,7 @@ func (self *gcmSink) Register(metrics []sink_api.MetricDescriptor) error {
 			Labels:      metric.Labels,
 			TypeDescriptor: typeDescriptor{
 				MetricType: sink_api.MetricGauge.String(),
-				ValueType:  metric.ValueType.String(),
+				ValueType:  sink_api.ValueDouble.String(),
 			},
 		}
 
@@ -173,9 +185,9 @@ type timeseriesDescriptor struct {
 }
 
 type point struct {
-	Start      time.Time `json:"start,omitempty"`
-	End        time.Time `json:"end,omitempty"`
-	Int64Value int64     `json:"int64Value"`
+	Start       time.Time `json:"start,omitempty"`
+	End         time.Time `json:"end,omitempty"`
+	DoubleValue float64   `json:"doubleValue"`
 }
 
 type timeseries struct {
@@ -238,6 +250,7 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 
 		// TODO(vmarmol): Stop doing this when GCM supports graphing cumulative metrics.
 		// Translate cumulative to gauge by taking the delta over the time period.
+		doubleValue := float64(value)
 		if entry.MetricDescriptor.Type == sink_api.MetricCumulative {
 			key := lastValueKey{
 				metricName: fullName,
@@ -258,8 +271,13 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 				continue
 			}
 
-			value = int64(float64(value-lastValue.value) / float64(metric.End.UnixNano()-lastValue.timestamp.UnixNano()) * float64(time.Second))
+			doubleValue = float64(value-lastValue.value) / float64(metric.End.UnixNano()-lastValue.timestamp.UnixNano()) * float64(time.Second)
 			metric.Start = metric.End
+		}
+
+		// Translate to a float using the custom translation function.
+		if transFunc, ok := translationFuncs[metric.Name]; ok {
+			doubleValue = transFunc(doubleValue)
 		}
 
 		metrics[metric.Name] = append(metrics[metric.Name], timeseries{
@@ -268,9 +286,9 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 				Labels: labels,
 			},
 			Point: point{
-				Start:      metric.Start,
-				End:        metric.End,
-				Int64Value: value,
+				Start:       metric.Start,
+				End:         metric.End,
+				DoubleValue: doubleValue,
 			},
 		})
 	}
