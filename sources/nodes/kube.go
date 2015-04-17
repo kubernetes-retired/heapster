@@ -54,7 +54,7 @@ func (self *kubeNodes) recordGoodNodes(nodes []string) {
 }
 
 func parseSelectorOrDie(s string) labels.Selector {
-	selector, err := labels.ParseSelector(s)
+	selector, err := labels.Parse(s)
 	if err != nil {
 		panic(err)
 	}
