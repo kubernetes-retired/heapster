@@ -138,7 +138,10 @@ func (c *fakeUpgradeConnection) CreateStream(headers http.Header) (httpstream.St
 
 	stream := &fakeUpgradeStream{}
 	c.streams[headers.Get(api.PortHeader)] = stream
-	stream.data = c.portData[headers.Get(api.PortHeader)]
+	// only simulate data on the data stream for now, not the error stream
+	if headers.Get(api.StreamType) == api.StreamTypeData {
+		stream.data = c.portData[headers.Get(api.PortHeader)]
+	}
 
 	return stream, nil
 }
@@ -299,11 +302,11 @@ func TestForwardPorts(t *testing.T) {
 		// wait for r.ForwardPorts to actually return
 		err = <-doneChan
 		if err != nil {
-			t.Fatalf("%d: unexpected error: %s", err)
+			t.Fatalf("%d: unexpected error: %s", i, err)
 		}
 
 		if e, a := len(testCase.Send), len(conn.streams); e != a {
-			t.Fatalf("%d: expected %d streams to be created, got %d", e, a)
+			t.Fatalf("%d: expected %d streams to be created, got %d", i, e, a)
 		}
 
 		if !conn.closeCalled {

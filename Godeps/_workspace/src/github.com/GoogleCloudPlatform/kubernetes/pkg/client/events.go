@@ -17,7 +17,6 @@ limitations under the License.
 package client
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
@@ -105,8 +104,8 @@ func (e *events) List(label labels.Selector, field fields.Selector) (*api.EventL
 	err := e.client.Get().
 		NamespaceIfScoped(e.namespace, len(e.namespace) > 0).
 		Resource("events").
-		LabelsSelectorParam(api.LabelSelectorQueryParam(e.client.APIVersion()), label).
-		FieldsSelectorParam(api.FieldSelectorQueryParam(e.client.APIVersion()), field).
+		LabelsSelectorParam(label).
+		FieldsSelectorParam(field).
 		Do().
 		Into(result)
 	return result, err
@@ -114,10 +113,6 @@ func (e *events) List(label labels.Selector, field fields.Selector) (*api.EventL
 
 // Get returns the given event, or an error.
 func (e *events) Get(name string) (*api.Event, error) {
-	if len(name) == 0 {
-		return nil, errors.New("name is required parameter to Get")
-	}
-
 	result := &api.Event{}
 	err := e.client.Get().
 		NamespaceIfScoped(e.namespace, len(e.namespace) > 0).
@@ -135,8 +130,8 @@ func (e *events) Watch(label labels.Selector, field fields.Selector, resourceVer
 		NamespaceIfScoped(e.namespace, len(e.namespace) > 0).
 		Resource("events").
 		Param("resourceVersion", resourceVersion).
-		LabelsSelectorParam(api.LabelSelectorQueryParam(e.client.APIVersion()), label).
-		FieldsSelectorParam(api.FieldSelectorQueryParam(e.client.APIVersion()), field).
+		LabelsSelectorParam(label).
+		FieldsSelectorParam(field).
 		Watch()
 }
 
@@ -151,12 +146,17 @@ func (e *events) Search(objOrRef runtime.Object) (*api.EventList, error) {
 	if e.namespace != "" && ref.Namespace != e.namespace {
 		return nil, fmt.Errorf("won't be able to find any events of namespace '%v' in namespace '%v'", ref.Namespace, e.namespace)
 	}
+	stringRefKind := string(ref.Kind)
+	var refKind *string
+	if stringRefKind != "" {
+		refKind = &stringRefKind
+	}
 	stringRefUID := string(ref.UID)
 	var refUID *string
 	if stringRefUID != "" {
 		refUID = &stringRefUID
 	}
-	fieldSelector := e.GetFieldSelector(&ref.Name, &ref.Namespace, &ref.Kind, refUID)
+	fieldSelector := e.GetFieldSelector(&ref.Name, &ref.Namespace, refKind, refUID)
 	return e.List(labels.Everything(), fieldSelector)
 }
 

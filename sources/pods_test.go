@@ -61,7 +61,6 @@ func TestPodsParsing(t *testing.T) {
 				Status: kube_api.PodStatus{
 					Phase:  kube_api.PodRunning,
 					PodIP:  "1.2.3.4",
-					Host:   "test-machine-a",
 					HostIP: "10.10.10.0",
 				},
 				ObjectMeta: kube_api.ObjectMeta{
@@ -74,6 +73,7 @@ func TestPodsParsing(t *testing.T) {
 					},
 				},
 				Spec: kube_api.PodSpec{
+					Host: "test-machine-a",
 					Containers: []kube_api.Container{
 						{Name: "test1"},
 						{Name: "test2"},
@@ -84,7 +84,6 @@ func TestPodsParsing(t *testing.T) {
 				Status: kube_api.PodStatus{
 					Phase:  kube_api.PodRunning,
 					PodIP:  "1.2.3.5",
-					Host:   "test-machine-b",
 					HostIP: "10.10.10.1",
 				},
 				ObjectMeta: kube_api.ObjectMeta{
@@ -97,6 +96,7 @@ func TestPodsParsing(t *testing.T) {
 					},
 				},
 				Spec: kube_api.PodSpec{
+					Host: "test-machine-b",
 					Containers: []kube_api.Container{
 						{Name: "test1"},
 						{Name: "test2"},
@@ -127,7 +127,7 @@ func TestPodsParsing(t *testing.T) {
 		assert.Equal(t, pod.Name, podList.Items[i].Name)
 		assert.Equal(t, pod.Namespace, podList.Items[i].Namespace)
 		assert.Equal(t, pod.ID, podList.Items[i].UID)
-		assert.Equal(t, pod.Hostname, podList.Items[i].Status.Host)
+		assert.Equal(t, pod.Hostname, podList.Items[i].Spec.Host)
 		assert.Equal(t, pod.PodIP, podList.Items[i].Status.PodIP)
 		assert.Equal(t, pod.Status, podList.Items[i].Status.Phase)
 		assert.Equal(t, pod.Labels, podList.Items[i].Labels)

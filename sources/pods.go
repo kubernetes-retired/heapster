@@ -59,7 +59,7 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 		Name:           pod.Name,
 		Namespace:      pod.Namespace,
 		ID:             string(pod.UID),
-		Hostname:       pod.Status.Host,
+		Hostname:       pod.Spec.Host,
 		HostPublicIP:   pod.Status.HostIP,
 		HostInternalIP: node.InternalIP,
 		Status:         string(pod.Status.Phase),
@@ -96,7 +96,7 @@ func (self *realPodsApi) getNodeSelector(nodeList *nodes.NodeList) (labels.Selec
 		nodeLabels = append(nodeLabels, fmt.Sprintf("DesiredState.Host==%s", host))
 	}
 	glog.V(2).Infof("using labels %v to find pods", nodeLabels)
-	return labels.ParseSelector(strings.Join(nodeLabels, ","))
+	return labels.Parse(strings.Join(nodeLabels, ","))
 }
 
 // Returns a map of minion hostnames to the Pods running in them.
@@ -109,10 +109,10 @@ func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	selectedPods := []podNodePair{}
 	// TODO(vishh): Avoid this loop by setting a node selector on the watcher.
 	for i, pod := range pods {
-		if nodeInfo, ok := nodeList.Items[nodes.Host(pod.Status.Host)]; ok {
+		if nodeInfo, ok := nodeList.Items[nodes.Host(pod.Spec.Host)]; ok {
 			selectedPods = append(selectedPods, podNodePair{&pods[i], &nodeInfo})
 		} else {
-			glog.V(2).Infof("pod %q with host %q and hostip %q not found in nodeList", pod.Name, pod.Status.Host, pod.Status.HostIP)
+			glog.V(2).Infof("pod %q with host %q and hostip %q not found in nodeList", pod.Name, pod.Spec.Host, pod.Status.HostIP)
 		}
 	}
 	glog.V(4).Infof("selected pods from api server %+v", selectedPods)

@@ -38,7 +38,6 @@ func init() {
 		&Endpoints{},
 		&EndpointsList{},
 		&Node{},
-		&NodeInfo{},
 		&NodeList{},
 		&Binding{},
 		&Status{},
@@ -53,7 +52,13 @@ func init() {
 		&NamespaceList{},
 		&Secret{},
 		&SecretList{},
+		&PersistentVolume{},
+		&PersistentVolumeList{},
+		&PersistentVolumeClaim{},
+		&PersistentVolumeClaimList{},
 		&DeleteOptions{},
+		&ListOptions{},
+		&PodLogOptions{},
 	)
 	// Legacy names are supported
 	api.Scheme.AddKnownTypeWithName("v1beta3", "Minion", &Node{})
@@ -72,7 +77,6 @@ func (*ServiceList) IsAnAPIObject()               {}
 func (*Endpoints) IsAnAPIObject()                 {}
 func (*EndpointsList) IsAnAPIObject()             {}
 func (*Node) IsAnAPIObject()                      {}
-func (*NodeInfo) IsAnAPIObject()                  {}
 func (*NodeList) IsAnAPIObject()                  {}
 func (*Binding) IsAnAPIObject()                   {}
 func (*Status) IsAnAPIObject()                    {}
@@ -87,4 +91,10 @@ func (*Namespace) IsAnAPIObject()                 {}
 func (*NamespaceList) IsAnAPIObject()             {}
 func (*Secret) IsAnAPIObject()                    {}
 func (*SecretList) IsAnAPIObject()                {}
+func (*PersistentVolume) IsAnAPIObject()          {}
+func (*PersistentVolumeList) IsAnAPIObject()      {}
+func (*PersistentVolumeClaim) IsAnAPIObject()     {}
+func (*PersistentVolumeClaimList) IsAnAPIObject() {}
 func (*DeleteOptions) IsAnAPIObject()             {}
+func (*ListOptions) IsAnAPIObject()               {}
+func (*PodLogOptions) IsAnAPIObject()             {}

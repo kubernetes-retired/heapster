@@ -17,9 +17,6 @@ limitations under the License.
 package client
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
@@ -38,7 +35,7 @@ type ResourceQuotaInterface interface {
 	Delete(name string) error
 	Create(resourceQuota *api.ResourceQuota) (*api.ResourceQuota, error)
 	Update(resourceQuota *api.ResourceQuota) (*api.ResourceQuota, error)
-	Status(resourceQuota *api.ResourceQuota) (*api.ResourceQuota, error)
+	UpdateStatus(resourceQuota *api.ResourceQuota) (*api.ResourceQuota, error)
 	Watch(label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error)
 }
 
@@ -59,16 +56,12 @@ func newResourceQuotas(c *Client, namespace string) *resourceQuotas {
 // List takes a selector, and returns the list of resourceQuotas that match that selector.
 func (c *resourceQuotas) List(selector labels.Selector) (result *api.ResourceQuotaList, err error) {
 	result = &api.ResourceQuotaList{}
-	err = c.r.Get().Namespace(c.ns).Resource("resourceQuotas").LabelsSelectorParam(api.LabelSelectorQueryParam(c.r.APIVersion()), selector).Do().Into(result)
+	err = c.r.Get().Namespace(c.ns).Resource("resourceQuotas").LabelsSelectorParam(selector).Do().Into(result)
 	return
 }
 
 // Get takes the name of the resourceQuota, and returns the corresponding ResourceQuota object, and an error if it occurs
 func (c *resourceQuotas) Get(name string) (result *api.ResourceQuota, err error) {
-	if len(name) == 0 {
-		return nil, errors.New("name is required parameter to Get")
-	}
-
 	result = &api.ResourceQuota{}
 	err = c.r.Get().Namespace(c.ns).Resource("resourceQuotas").Name(name).Do().Into(result)
 	return
@@ -89,21 +82,13 @@ func (c *resourceQuotas) Create(resourceQuota *api.ResourceQuota) (result *api.R
 // Update takes the representation of a resourceQuota to update spec.  Returns the server's representation of the resourceQuota, and an error, if it occurs.
 func (c *resourceQuotas) Update(resourceQuota *api.ResourceQuota) (result *api.ResourceQuota, err error) {
 	result = &api.ResourceQuota{}
-	if len(resourceQuota.ResourceVersion) == 0 {
-		err = fmt.Errorf("invalid update object, missing resource version: %v", resourceQuota)
-		return
-	}
 	err = c.r.Put().Namespace(c.ns).Resource("resourceQuotas").Name(resourceQuota.Name).Body(resourceQuota).Do().Into(result)
 	return
 }
 
 // Status takes the representation of a resourceQuota to update status.  Returns the server's representation of the resourceQuota, and an error, if it occurs.
-func (c *resourceQuotas) Status(resourceQuota *api.ResourceQuota) (result *api.ResourceQuota, err error) {
+func (c *resourceQuotas) UpdateStatus(resourceQuota *api.ResourceQuota) (result *api.ResourceQuota, err error) {
 	result = &api.ResourceQuota{}
-	if len(resourceQuota.ResourceVersion) == 0 {
-		err = fmt.Errorf("invalid update object, missing resource version: %v", resourceQuota)
-		return
-	}
 	err = c.r.Put().Namespace(c.ns).Resource("resourceQuotas").Name(resourceQuota.Name).SubResource("status").Body(resourceQuota).Do().Into(result)
 	return
 }
@@ -115,7 +100,7 @@ func (c *resourceQuotas) Watch(label labels.Selector, field fields.Selector, res
 		Namespace(c.ns).
 		Resource("resourceQuotas").
 		Param("resourceVersion", resourceVersion).
-		LabelsSelectorParam(api.LabelSelectorQueryParam(c.r.APIVersion()), label).
-		FieldsSelectorParam(api.FieldSelectorQueryParam(c.r.APIVersion()), field).
+		LabelsSelectorParam(label).
+		FieldsSelectorParam(field).
 		Watch()
 }

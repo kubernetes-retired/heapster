@@ -26,9 +26,10 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta2"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 	"github.com/golang/glog"
@@ -346,7 +347,7 @@ func (self *realKubeFramework) loadObject(filePath string) (runtime.Object, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to read object: %v", err)
 	}
-	return latest.Codec.Decode(data)
+	return v1beta2.Codec.Decode(data)
 }
 
 func (self *realKubeFramework) ParseRC(filePath string) (*api.ReplicationController, error) {
@@ -420,7 +421,7 @@ func (self *realKubeFramework) GetProxyUrlForService(serviceName string) string 
 
 func (self *realKubeFramework) GetNodes() ([]string, error) {
 	var nodes []string
-	nodeList, err := self.kubeClient.Nodes().List()
+	nodeList, err := self.kubeClient.Nodes().List(labels.Everything(), fields.Everything())
 	if err != nil {
 		return nodes, err
 	}
