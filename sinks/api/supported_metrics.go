@@ -88,7 +88,7 @@ var statMetrics = []SupportedStatMetric{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "memory/page_faults",
 			Description: "Number of major page faults",
-			Type:        MetricGauge,
+			Type:        MetricCumulative,
 			ValueType:   ValueInt64,
 			Units:       UnitsCount,
 		},

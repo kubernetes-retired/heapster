@@ -4,10 +4,10 @@ Heapster exports the following metrics to its backends.
 
 | Metric Name        | Description                                                                                        | Type       | Units       | Supported Since |
 |--------------------|----------------------------------------------------------------------------------------------------|------------|-------------|-----------------|
-| uptime             | Number of milliseconds since the container was started                                             | Cumulative | Nanoseconds | v0.9            |
-| cpu/usage          | Cumulative CPU usage on all cores                                                                  | Cumulative | Bytes       | v0.9            |
+| uptime             | Number of millisecond since the container was started                                             | Cumulative | Milliseconds | v0.9            |
+| cpu/usage          | Cumulative CPU usage on all cores                                                                  | Cumulative | Nanoseconds       | v0.9            |
 | memory/usage       | Total memory usage                                                                                 | Gauge      | Bytes       | v0.9            |
-| memory/page_faults | Number of major page faults                                                                        | Gauge      | Count       | v0.9            |
+| memory/page_faults | Number of major page faults                                                                        | Cumulative      | Count       | v0.9            |
 | memory/working_set | Total working set usage. Working set is the memory being used and not easily dropped by the Kernel | Gauge      | Bytes       | v0.9            |
 | network/rx         | Cumulative number of bytes received over the network                                               | Cumulative | Bytes       | v0.9            |
 | network/rx_errors  | Cumulative number of errors while receiving over the network                                       | Cumulative | Count       | v0.9            |
