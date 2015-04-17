@@ -13,7 +13,5 @@ fi
 SUPPORTED_KUBE_VERSIONS="0.15.0"
 TEST_NAMESPACE="default"
 
-go get github.com/progrium/go-extpoints
-go generate
-cd integration
-godep go test -a -v --vmodule=*=1 --timeout=30m --namespace=$TEST_NAMESPACE --kube_versions=$SUPPORTED_KUBE_VERSIONS github.com/GoogleCloudPlatform/heapster/...
+make test-unit
+godep go test -a -v --timeout=30m github.com/GoogleCloudPlatform/heapster/integration/... --vmodule=*=1 --namespace=$TEST_NAMESPACE --kube_versions=$SUPPORTED_KUBE_VERSIONS 
