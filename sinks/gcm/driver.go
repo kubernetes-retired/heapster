@@ -101,6 +101,10 @@ func getDescription(metric sink_api.MetricDescriptor) string {
 			description: "Rate of total CPU usage in millicores per second",
 		},
 		{
+			name:        "memory/page_faults",
+			description: "Rate of major page faults in counts per second",
+		},
+		{
 			name:        "network/rx",
 			description: "Rate of bytes received over the network in bytes per second",
 		},
@@ -250,6 +254,7 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 
 		// TODO(vmarmol): Stop doing this when GCM supports graphing cumulative metrics.
 		// Translate cumulative to gauge by taking the delta over the time period.
+		// TODO: Push instantaneous metrics as separate metrics.
 		doubleValue := float64(value)
 		if entry.MetricDescriptor.Type == sink_api.MetricCumulative {
 			key := lastValueKey{
