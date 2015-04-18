@@ -83,65 +83,28 @@ type metricDescriptor struct {
 
 const maxNumLabels = 10
 
-// Substitutes any generic description with GCM-specific descriptions
-func getDescription(metric sink_api.MetricDescriptor) string {
-	descriptions := []struct {
-		// Metric names for this description.
-		name string
-
-		// Description to use
-		description string
-	}{
-		{
-			name:        "uptime",
-			description: "Rate of change of time since start in seconds per second",
-		},
-		{
-			name:        "cpu/usage",
-			description: "Rate of total CPU usage in millicores per second",
-		},
-		{
-			name:        "memory/page_faults",
-			description: "Rate of major page faults in counts per second",
-		},
-		{
-			name:        "network/rx",
-			description: "Rate of bytes received over the network in bytes per second",
-		},
-		{
-			name:        "network/rx_errors",
-			description: "Rate of errors sending over the network in errors per second",
-		},
-		{
-			name:        "network/tx",
-			description: "Rate of bytes transmitted over the network in bytes per second",
-		},
-		{
-			name:        "network/tx_errors",
-			description: "Rate of errors transmitting over the network in errors per second",
-		},
-	}
-
-	// Replac the description if we have an alternate one.
-	for _, desc := range descriptions {
-		if metric.Name == desc.name {
-			return desc.description
-		}
-	}
-
-	return metric.Description
-}
-
 // Map of metric name to translation function.
 var translationFuncs = map[string]func(float64) float64{
-	"uptime": func(value float64) float64 {
+	"uptime_rate": func(value float64) float64 {
 		// Convert from milliseconds to seconds.
 		return value / 1000
 	},
-	"cpu/usage": func(value float64) float64 {
+	"cpu/usage_rate": func(value float64) float64 {
 		// Convert from billionths of a core to millicores.
 		return value / 1000000
 	},
+}
+
+func (self *gcmSink) addMetric(metric sink_api.MetricDescriptor, request metricDescriptor) error {
+	err := sendRequest(fmt.Sprintf("https://www.googleapis.com/cloudmonitoring/v2beta2/projects/%s/metricDescriptors", self.project), self.token, request)
+	glog.Infof("[GCM] Adding metric %q: %v", metric.Name, err)
+	if err != nil {
+		return err
+	}
+
+	// Add metric to exportedMetrics.
+	self.exportedMetrics[metric.Name] = metric
+	return nil
 }
 
 // Adds the specified metrics or updates them if they already exist.
@@ -158,24 +121,31 @@ func (self *gcmSink) Register(metrics []sink_api.MetricDescriptor) error {
 		}
 
 		request := metricDescriptor{
-			Name:        fullMetricName(metric.Name, metric.Type),
+			Name:        fullMetricName(metric.Name),
 			Project:     self.project,
-			Description: getDescription(metric),
+			Description: metric.Description,
 			Labels:      metric.Labels,
 			TypeDescriptor: typeDescriptor{
-				MetricType: sink_api.MetricGauge.String(),
-				ValueType:  sink_api.ValueDouble.String(),
+				MetricType: metric.Type.String(),
+				ValueType:  metric.ValueType.String(),
 			},
 		}
-
-		err := sendRequest(fmt.Sprintf("https://www.googleapis.com/cloudmonitoring/v2beta2/projects/%s/metricDescriptors", self.project), self.token, request)
-		glog.Infof("[GCM] Adding metric %q: %v", metric.Name, err)
-		if err != nil {
+		if err := self.addMetric(metric, request); err != nil {
 			return err
 		}
 
-		// Add metric to exportedMetrics.
-		self.exportedMetrics[metric.Name] = metric
+		if rateMetric, ok := getRateMetric(metric.Name); ok {
+			request.Name = fullMetricName(rateMetric.name)
+			request.Description = rateMetric.description
+			request.TypeDescriptor.MetricType = sink_api.MetricGauge.String()
+			originalMetric := metric
+			originalMetric.Name = rateMetric.name
+			originalMetric.Description = rateMetric.description
+			if err := self.addMetric(originalMetric, request); err != nil {
+				return err
+			}
+		}
+
 	}
 
 	return nil
@@ -191,6 +161,7 @@ type timeseriesDescriptor struct {
 type point struct {
 	Start       time.Time `json:"start,omitempty"`
 	End         time.Time `json:"end,omitempty"`
+	Int64Value  int64     `json:"int64Value"`
 	DoubleValue float64   `json:"doubleValue"`
 }
 
@@ -250,40 +221,7 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 		if !ok {
 			return fmt.Errorf("non-int64 data not implemented. Seen for metric %q", metric.Name)
 		}
-		fullName := fullMetricName(metric.Name, entry.MetricDescriptor.Type)
-
-		// TODO(vmarmol): Stop doing this when GCM supports graphing cumulative metrics.
-		// Translate cumulative to gauge by taking the delta over the time period.
-		// TODO: Push instantaneous metrics as separate metrics.
-		doubleValue := float64(value)
-		if entry.MetricDescriptor.Type == sink_api.MetricCumulative {
-			key := lastValueKey{
-				metricName: fullName,
-				labels:     sink_api.LabelsToString(labels, ","),
-			}
-			lastValueRaw := self.lastValue.Get(key)
-			self.lastValue.Put(key, lastValueData{
-				value:     value,
-				timestamp: metric.End,
-			})
-
-			// We need two metrics to do a delta, skip first value.
-			if lastValueRaw == nil {
-				continue
-			}
-			lastValue, ok := lastValueRaw.(lastValueData)
-			if !ok {
-				continue
-			}
-
-			doubleValue = float64(value-lastValue.value) / float64(metric.End.UnixNano()-lastValue.timestamp.UnixNano()) * float64(time.Second)
-			metric.Start = metric.End
-		}
-
-		// Translate to a float using the custom translation function.
-		if transFunc, ok := translationFuncs[metric.Name]; ok {
-			doubleValue = transFunc(doubleValue)
-		}
+		fullName := fullMetricName(metric.Name)
 
 		metrics[metric.Name] = append(metrics[metric.Name], timeseries{
 			TimeseriesDescriptor: timeseriesDescriptor{
@@ -291,11 +229,19 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 				Labels: labels,
 			},
 			Point: point{
-				Start:       metric.Start,
-				End:         metric.End,
-				DoubleValue: doubleValue,
+				Start:      metric.Start,
+				End:        metric.End,
+				Int64Value: value,
 			},
 		})
+		// TODO(vmarmol): Stop doing this when GCM supports graphing cumulative metrics.
+		// Translate cumulative to gauge by taking the delta over the time period.
+		rateMetricTimeseries := self.getEquivalentRateMetric(labels, value, metric)
+		if rateMetricTimeseries == nil {
+			continue
+		}
+		rateMetricName := rateMetricTimeseries.TimeseriesDescriptor.Metric
+		metrics[rateMetricName] = append(metrics[rateMetricName], *rateMetricTimeseries)
 	}
 
 	// Only send one metric of each type per request.
@@ -321,6 +267,50 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 	}
 
 	return lastErr
+}
+
+func (self *gcmSink) getEquivalentRateMetric(labels map[string]string, value int64, metric *sink_api.Point) *timeseries {
+	rateMetric, ok := getRateMetric(metric.Name)
+	if !ok {
+		return nil
+	}
+	key := lastValueKey{
+		metricName: fullMetricName(rateMetric.name),
+		labels:     sink_api.LabelsToString(labels, ","),
+	}
+	lastValueRaw := self.lastValue.Get(key)
+	self.lastValue.Put(key, lastValueData{
+		value:     value,
+		timestamp: metric.End,
+	})
+
+	// We need two metrics to do a delta, skip first value.
+	if lastValueRaw == nil {
+		return nil
+	}
+	lastValue, ok := lastValueRaw.(lastValueData)
+	if !ok {
+		return nil
+	}
+	doubleValue := float64(value)
+
+	doubleValue = float64(value-lastValue.value) / float64(metric.End.UnixNano()-lastValue.timestamp.UnixNano()) * float64(time.Second)
+
+	// Translate to a float using the custom translation function.
+	if transFunc, ok := translationFuncs[rateMetric.name]; ok {
+		doubleValue = transFunc(doubleValue)
+	}
+	return &timeseries{
+		TimeseriesDescriptor: timeseriesDescriptor{
+			Metric: fullMetricName(rateMetric.name),
+			Labels: labels,
+		},
+		Point: point{
+			Start:       metric.End,
+			End:         metric.End,
+			DoubleValue: doubleValue,
+		},
+	}
 }
 
 func (self *gcmSink) pushMetrics(request *metricWriteRequest) error {
@@ -366,16 +356,9 @@ func fullLabelName(name string) string {
 	return name
 }
 
-func fullMetricName(name string, metricType sink_api.MetricType) string {
-	// Suffix cumulative metrics with "_delta" since we're changing them to gauges.
-	// This will ease the transition to cumulative metrics when those come.
-	suffix := ""
-	if metricType == sink_api.MetricCumulative {
-		suffix = "_delta"
-	}
-
+func fullMetricName(name string) string {
 	if !strings.Contains(name, "custom.cloudmonitoring.googleapis.com/") {
-		return fmt.Sprintf("custom.cloudmonitoring.googleapis.com/%s/%s%s", metricDomain, name, suffix)
+		return fmt.Sprintf("custom.cloudmonitoring.googleapis.com/%s/%s", metricDomain, name)
 	}
 	return name
 }
