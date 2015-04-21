@@ -18,8 +18,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -43,7 +45,7 @@ type gcmSink struct {
 
 	// TODO(vmarmol): Also store labels?
 	// Map of metrics we currently export.
-	exportedMetrics map[string]sink_api.MetricDescriptor
+	exportedMetrics map[string]metricDescriptor
 
 	// The last value we have pushed for every cumulative metric.
 	lastValue gcstore.GCStore
@@ -81,8 +83,6 @@ type metricDescriptor struct {
 	TypeDescriptor typeDescriptor             `json:"typeDescriptor,omitempty"`
 }
 
-const maxNumLabels = 10
-
 // Map of metric name to translation function.
 var translationFuncs = map[string]func(float64) float64{
 	"uptime_rate": func(value float64) float64 {
@@ -95,16 +95,67 @@ var translationFuncs = map[string]func(float64) float64{
 	},
 }
 
-func (self *gcmSink) addMetric(metric sink_api.MetricDescriptor, request metricDescriptor) error {
-	err := sendRequest(fmt.Sprintf("https://www.googleapis.com/cloudmonitoring/v2beta2/projects/%s/metricDescriptors", self.project), self.token, request)
-	glog.Infof("[GCM] Adding metric %q: %v", metric.Name, err)
+type listMetricsResponse struct {
+	Metrics []metricDescriptor `json:"metrics,omitempty"`
+}
+
+func (self *gcmSink) defaultUrlPath() string {
+	return fmt.Sprintf("https://www.googleapis.com/cloudmonitoring/v2beta2/projects/%s", self.project)
+}
+
+func (self *gcmSink) listMetrics() error {
+	response := listMetricsResponse{}
+	url, err := url.Parse(self.defaultUrlPath() + "/metricDescriptors")
 	if err != nil {
 		return err
 	}
+	err = sendRequest("GET", self.token, url, nil, &response)
+	if err != nil {
+		glog.Errorf("[GCM] list metrics failed %v", err)
+		return err
+	}
+	apiPrefix := fmt.Sprintf("%s/%s", customApiPrefix, metricDomain)
+	for idx, m := range response.Metrics {
+		if strings.HasPrefix(m.Name, apiPrefix) {
+			self.exportedMetrics[m.Name] = response.Metrics[idx]
+		}
+	}
 
-	// Add metric to exportedMetrics.
-	self.exportedMetrics[metric.Name] = metric
 	return nil
+}
+
+func (self *gcmSink) deleteMetric(metricName string) error {
+	url := &url.URL{
+		Scheme: "https",
+		Host:   "www.googleapis.com",
+		Opaque: fmt.Sprintf("%s/metricDescriptors/%s", self.defaultUrlPath(), url.QueryEscape(metricName)),
+	}
+
+	err := sendRequest("DELETE", self.token, url, nil, nil)
+	if err != nil {
+		glog.V(2).Infof("[GCM] Deleting metric %q failed: %v", metricName, err)
+	}
+	return err
+}
+
+func (self *gcmSink) addMetric(request metricDescriptor) error {
+	if existingMetric, found := self.exportedMetrics[request.Name]; found {
+		if existingMetric.TypeDescriptor != request.TypeDescriptor {
+			if err := self.deleteMetric(request.Name); err != nil {
+				return err
+			}
+		}
+	}
+	url, err := url.Parse(self.defaultUrlPath() + "/metricDescriptors")
+	if err != nil {
+		return err
+	}
+	if err = sendRequest("POST", self.token, url, request, nil); err == nil {
+		glog.V(3).Infof("[GCM] Added metric %q", request.Name)
+		// Add metric to exportedMetrics.
+		self.exportedMetrics[request.Name] = request
+	}
+	return err
 }
 
 // Adds the specified metrics or updates them if they already exist.
@@ -130,18 +181,16 @@ func (self *gcmSink) Register(metrics []sink_api.MetricDescriptor) error {
 				ValueType:  metric.ValueType.String(),
 			},
 		}
-		if err := self.addMetric(metric, request); err != nil {
+		if err := self.addMetric(request); err != nil {
 			return err
 		}
 
-		if rateMetric, ok := getRateMetric(metric.Name); ok {
+		if rateMetric, exists := gcmRateMetrics[metric.Name]; exists {
 			request.Name = fullMetricName(rateMetric.name)
 			request.Description = rateMetric.description
 			request.TypeDescriptor.MetricType = sink_api.MetricGauge.String()
-			originalMetric := metric
-			originalMetric.Name = rateMetric.name
-			originalMetric.Description = rateMetric.description
-			if err := self.addMetric(originalMetric, request); err != nil {
+			request.TypeDescriptor.ValueType = sink_api.ValueDouble.String()
+			if err := self.addMetric(request); err != nil {
 				return err
 			}
 		}
@@ -161,8 +210,8 @@ type timeseriesDescriptor struct {
 type point struct {
 	Start       time.Time `json:"start,omitempty"`
 	End         time.Time `json:"end,omitempty"`
-	Int64Value  int64     `json:"int64Value"`
-	DoubleValue float64   `json:"doubleValue"`
+	DoubleValue *float64  `json:"doubleValue,omitempty"`
+	Int64Value  *int64    `json:"int64Value,omitempty"`
 }
 
 type timeseries struct {
@@ -184,9 +233,6 @@ type lastValueData struct {
 	timestamp time.Time
 }
 
-// The largest number of timeseries we can write to per request.
-const maxTimeseriesPerRequest = 200
-
 // Stores events into the backend.
 func (self *gcmSink) StoreEvents([]kube_api.Event) error {
 	// No-op, Google Cloud Metrics doesn't store events
@@ -199,7 +245,7 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 	for _, entry := range input {
 		metric := entry.Point
 		// TODO: Remove this check if possible.
-		if _, ok := self.exportedMetrics[metric.Name]; !ok {
+		if _, ok := self.exportedMetrics[fullMetricName(metric.Name)]; !ok {
 			return fmt.Errorf("unable to push unknown metric %q", metric.Name)
 		}
 	}
@@ -222,7 +268,6 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 			return fmt.Errorf("non-int64 data not implemented. Seen for metric %q", metric.Name)
 		}
 		fullName := fullMetricName(metric.Name)
-
 		metrics[metric.Name] = append(metrics[metric.Name], timeseries{
 			TimeseriesDescriptor: timeseriesDescriptor{
 				Metric: fullName,
@@ -231,7 +276,7 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 			Point: point{
 				Start:      metric.Start,
 				End:        metric.End,
-				Int64Value: value,
+				Int64Value: &value,
 			},
 		})
 		// TODO(vmarmol): Stop doing this when GCM supports graphing cumulative metrics.
@@ -270,8 +315,8 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 }
 
 func (self *gcmSink) getEquivalentRateMetric(labels map[string]string, value int64, metric *sink_api.Point) *timeseries {
-	rateMetric, ok := getRateMetric(metric.Name)
-	if !ok {
+	rateMetric, exists := gcmRateMetrics[metric.Name]
+	if !exists {
 		return nil
 	}
 	key := lastValueKey{
@@ -293,7 +338,6 @@ func (self *gcmSink) getEquivalentRateMetric(labels map[string]string, value int
 		return nil
 	}
 	doubleValue := float64(value)
-
 	doubleValue = float64(value-lastValue.value) / float64(metric.End.UnixNano()-lastValue.timestamp.UnixNano()) * float64(time.Second)
 
 	// Translate to a float using the custom translation function.
@@ -308,7 +352,7 @@ func (self *gcmSink) getEquivalentRateMetric(labels map[string]string, value int
 		Point: point{
 			Start:       metric.End,
 			End:         metric.End,
-			DoubleValue: doubleValue,
+			DoubleValue: &doubleValue,
 		},
 	}
 }
@@ -328,9 +372,13 @@ func (self *gcmSink) pushMetrics(request *metricWriteRequest) error {
 		return err
 	}
 
+	url, err := url.Parse(fmt.Sprintf("%s/timeseries:write", self.defaultUrlPath()))
+	if err != nil {
+		return err
+	}
 	const requestAttempts = 3
-	for i := 0; i < requestAttempts; i++ {
-		err = sendRequest(fmt.Sprintf("https://www.googleapis.com/cloudmonitoring/v2beta2/projects/%s/timeseries:write", self.project), self.token, request)
+	for i := 1; i <= requestAttempts; i++ {
+		err = sendRequest("POST", self.token, url, request, nil)
 		if err != nil {
 			glog.Warningf("[GCM] Push attempt %d failed: %v", i, err)
 		} else {
@@ -346,8 +394,17 @@ func (self *gcmSink) pushMetrics(request *metricWriteRequest) error {
 	return err
 }
 
-// Domain for the metrics.
-const metricDomain = "kubernetes.io"
+const (
+	// Domain for the metrics.
+	metricDomain = "kubernetes.io"
+
+	customApiPrefix = "custom.cloudmonitoring.googleapis.com"
+
+	maxNumLabels = 10
+
+	// The largest number of timeseries we can write to per request.
+	maxTimeseriesPerRequest = 200
+)
 
 func fullLabelName(name string) string {
 	if !strings.Contains(name, "custom.cloudmonitoring.googleapis.com/") {
@@ -357,22 +414,26 @@ func fullLabelName(name string) string {
 }
 
 func fullMetricName(name string) string {
-	if !strings.Contains(name, "custom.cloudmonitoring.googleapis.com/") {
-		return fmt.Sprintf("custom.cloudmonitoring.googleapis.com/%s/%s", metricDomain, name)
+	if !strings.HasPrefix(name, customApiPrefix) {
+		return fmt.Sprintf("%s/%s/%s", customApiPrefix, metricDomain, name)
 	}
 	return name
 }
 
-func sendRequest(url string, token string, request interface{}) error {
-	rawRequest, err := json.Marshal(request)
+func sendRequest(method, token string, url *url.URL, request interface{}, value interface{}) error {
+	var rawRequest io.Reader = nil
+	if request != nil {
+		jsonRequest, err := json.Marshal(request)
+		if err != nil {
+			return err
+		}
+		rawRequest = bytes.NewReader(jsonRequest)
+	}
+	req, err := http.NewRequest(method, url.String(), rawRequest)
 	if err != nil {
 		return err
 	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewReader(rawRequest))
-	if err != nil {
-		return err
-	}
+	req.URL = url
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 
@@ -382,13 +443,19 @@ func sendRequest(url string, token string, request interface{}) error {
 	}
 
 	defer resp.Body.Close()
-	out, err := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("request to %q failed with status %q and response: %q", url, resp.Status, string(out))
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("request %+v failed with status %q and response: %+v, Body: %q", req, resp.Status, resp, string(body))
+	}
+	if value != nil {
+		err = json.Unmarshal(body, value)
+		if err != nil {
+			return fmt.Errorf("failed to parse output. Response: %q. Error: %v", string(body), err)
+		}
 	}
 
 	return nil
@@ -421,13 +488,17 @@ func NewSink() (sink_api.ExternalSink, error) {
 
 	impl := &gcmSink{
 		project:         project,
-		exportedMetrics: make(map[string]sink_api.MetricDescriptor),
+		exportedMetrics: make(map[string]metricDescriptor),
 		lastValue:       gcstore.New(time.Hour),
 	}
 
 	// Get an initial token.
 	err = impl.refreshToken()
 	if err != nil {
+		return nil, err
+	}
+
+	if err := impl.listMetrics(); err != nil {
 		return nil, err
 	}
 

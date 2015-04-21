@@ -50,8 +50,3 @@ var gcmRateMetrics = map[string]rateMetric{
 		description: "Rate of errors transmitting over the network in errors per second",
 	},
 }
-
-func getRateMetric(baseMetric string) (rateMetric, bool) {
-	metric, exists := gcmRateMetrics[baseMetric]
-	return metric, exists
-}
