@@ -208,6 +208,7 @@ func TestPodLabelsProcessing(t *testing.T) {
 
 	expectedLabels := map[string]string{
 		LabelPodId:         "123",
+		LabelPodNamespace:  "test",
 		LabelLabels:        getLabelsAsString(podLabels),
 		LabelHostname:      "1.2.3.4",
 		LabelContainerName: "blah",

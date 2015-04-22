@@ -52,6 +52,7 @@ func (self *defaultDecoder) Timeseries(input source_api.AggregateData) ([]Timese
 func (self *defaultDecoder) getPodLabels(pod *source_api.Pod) map[string]string {
 	labels := make(map[string]string)
 	labels[LabelPodId] = pod.ID
+	labels[LabelPodNamespace] = pod.Namespace
 	labels[LabelPodName] = pod.Name
 	labels[LabelLabels] = LabelsToString(pod.Labels, ",")
 	labels[LabelHostname] = pod.Hostname

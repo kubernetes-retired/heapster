@@ -17,6 +17,7 @@ package api
 const (
 	LabelPodId         = "pod_id"
 	LabelPodName       = "pod_name"
+	LabelPodNamespace  = "pod_namespace"
 	LabelContainerName = "container_name"
 	LabelLabels        = "labels"
 	LabelHostname      = "hostname"
@@ -46,6 +47,10 @@ var allLabels = []LabelDescriptor{
 	{
 		Key:         LabelHostname,
 		Description: "Hostname where the container ran",
+	},
+	{
+		Key:         LabelPodNamespace,
+		Description: "The namespace of the pod",
 	},
 	{
 		Key:         LabelResourceID,
