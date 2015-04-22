@@ -1,0 +1,260 @@
+// Copyright 2015 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package gcl
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"time"
+
+	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
+	"github.com/GoogleCloudPlatform/heapster/util/gce"
+	"github.com/golang/glog"
+
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+)
+
+const (
+	GCLAuthScope             = "https://www.googleapis.com/auth/logging.admin"
+	EventLoggingSeverity     = "NOTICE"
+	EventLoggingServiceName  = "custom.googleapis.com"
+	EventLoggingLogName      = "KubernetesEventsLog"
+	LogEntriesWriteURLFormat = "https://logging.googleapis.com/v1beta3/projects/%s/logs/%s/entries:write"
+)
+
+// Returns an implementation of a Google Cloud Logging (GCL) sink.
+func NewSink() (sink_api.ExternalSink, error) {
+	// TODO: Retry OnGCE call for ~15 seconds before declaring failure.
+	time.Sleep(3 * time.Second)
+	// Only support GCE for now.
+	if !metadata.OnGCE() {
+		return nil, fmt.Errorf("The Google Cloud Logging (GCL) sink failed to start: this process must be running on Google Compute Engine (GCE)")
+	}
+
+	// Detect project ID
+	projectId, err := metadata.ProjectID()
+	if err != nil {
+		return nil, err
+	}
+	glog.Infof("Project ID for GCL sink is: %q\r\n", projectId)
+
+	// Check for required auth scopes
+	err = gce.VerifyAuthScope(GCLAuthScope)
+	if err != nil {
+		return nil, err
+	}
+
+	impl := &gclSink{
+		projectId:  projectId,
+		httpClient: &http.Client{},
+	}
+
+	// Get an initial token.
+	err = impl.refreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return impl, nil
+}
+
+func (sink *gclSink) DebugInfo() string {
+	return fmt.Sprintf("Sink Type: Google Cloud Logging (GCL). Http Error Count: %v\r\n", sink.httpErrorCount)
+}
+
+func (sink *gclSink) Register(metrics []sink_api.MetricDescriptor) error {
+	// No-op
+	return nil
+}
+
+// Stores metrics into the backend
+func (sink *gclSink) StoreTimeseries(input []sink_api.Timeseries) error {
+	// No-op, Google Cloud Logging (GCL) doesn't store metrics
+	return nil
+}
+
+// Stores events into the backend.
+func (sink *gclSink) StoreEvents(events []kube_api.Event) error {
+	if events == nil || len(events) <= 0 {
+		return nil
+	}
+
+	request := sink.createLogsEntriesRequest(events)
+	return sink.sendLogsEntriesRequest(request)
+}
+
+type httpClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+type gclSink struct {
+	// Token to use for authentication.
+	token string
+
+	// When the token expires.
+	tokenExpiration time.Time
+
+	// GCE Project ID
+	projectId string
+
+	// HTTP Client
+	httpClient httpClient
+
+	// Number of times an Http Error was encountered (for debugging)
+	httpErrorCount uint
+}
+
+func (sink *gclSink) refreshToken() error {
+	if time.Now().After(sink.tokenExpiration) {
+		token, err := gce.GetAuthToken()
+		if err != nil {
+			return err
+		}
+
+		// Expire the token a bit early.
+		const earlyRefreshSeconds = 60
+		if token.ExpiresIn > earlyRefreshSeconds {
+			token.ExpiresIn -= earlyRefreshSeconds
+		}
+		sink.token = token.AccessToken
+		sink.tokenExpiration = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+	}
+	return nil
+}
+
+type LogsEntriesWriteRequest struct {
+	// Metadata labels that apply to all log entries in this request, so they don't have to be
+	// repeated in each log entry's metadata.labels field. If any of the log entries contain
+	// a (key, value) with the same key that is in commonLabels, then the entry's (key, value)
+	// overrides the one in commonLabels.
+	CommonLabels map[string]string `json:"commonLabels,omitempty"`
+
+	// Entries: Log entries to insert.
+	Entries []*LogEntry `json:"entries,omitempty"`
+}
+
+type LogEntry struct {
+	// Information about the log entry.
+	Metadata *LogEntryMetadata `json:"metadata,omitempty"`
+
+	// A unique ID for the log entry. If this field is provided and is identical to a previously
+	// created entry, then the previous instance of this entry is replaced with this one.
+	InsertId string `json:"insertId,omitempty"`
+
+	// The log to which this entry belongs. When a log entry is ingested, the value of this field
+	// is set by the logging system.
+	Log string `json:"log,omitempty"`
+
+	// The log entry payload, represented by "JSON-like" structured data, in our case, the event.
+	Payload kube_api.Event `json:"structPayload,omitempty"`
+}
+
+type LogEntryMetadata struct {
+	// The time the event described by the log entry occurred. Timestamps must be later than
+	// January 1, 1970. Timestamp must be a string following RFC 3339, it must be Z-normalized and
+	// use 3, 6, or 9 fractional digits depending on required precision.
+	Timestamp string `json:"timestamp,omitempty"`
+
+	// The severity of the log entry. Acceptable values:
+	// DEFAULT - The log entry has no assigned severity level.
+	// DEBUG - Debug or trace information.
+	// INFO - Routine information, such as ongoing status or performance.
+	// NOTICE - Normal but significant events, such as start up, shut down, or configuration.
+	// WARNING - Warning events might cause problems.
+	// ERROR - Error events are likely to cause problems.
+	// CRITICAL - Critical events cause more severe problems or brief outages.
+	// ALERT - A person must take an action immediately.
+	// EMERGENCY - One or more systems are unusable.
+	Severity string `json:"severity,omitempty"`
+
+	// The project ID of the Google Cloud Platform service that created the log entry.
+	ProjectId string `json:"projectId,omitempty"`
+
+	// The API name of the Google Cloud Platform service that created the log entry.
+	// For example, "compute.googleapis.com" or "custom.googleapis.com".
+	ServiceName string `json:"serviceName,omitempty"`
+
+	// The region name of the Google Cloud Platform service that created the log entry.
+	// For example, `"us-central1"`.
+	Region string `json:"region,omitempty"`
+
+	// The zone of the Google Cloud Platform service that created the log entry.
+	// For example, `"us-central1-a"`.
+	Zone string `json:"zone,omitempty"`
+
+	// The fully-qualified email address of the authenticated user that performed or requested
+	// the action represented by the log entry. If the log entry does not apply to an action
+	// taken by an authenticated user, then the field should be empty.
+	UserId string `json:"userId,omitempty"`
+
+	// A set of (key, value) data that provides additional information about the log entry.
+	Labels map[string]string `json:"labels,omitempty"`
+}
+
+func (sink *gclSink) createLogsEntriesRequest(events []kube_api.Event) LogsEntriesWriteRequest {
+	logEntries := make([]*LogEntry, len(events))
+	for i, event := range events {
+		logEntries[i] = &LogEntry{
+			Metadata: &LogEntryMetadata{
+				Timestamp:   event.LastTimestamp.Time.UTC().Format(time.RFC3339),
+				Severity:    EventLoggingSeverity,
+				ProjectId:   sink.projectId,
+				ServiceName: EventLoggingServiceName,
+			},
+			InsertId: string(event.UID),
+			Payload:  event,
+		}
+	}
+	return LogsEntriesWriteRequest{Entries: logEntries}
+}
+
+func (sink *gclSink) sendLogsEntriesRequest(request LogsEntriesWriteRequest) error {
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	url := fmt.Sprintf(LogEntriesWriteURLFormat, sink.projectId, EventLoggingLogName)
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(requestBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", sink.token))
+
+	resp, err := sink.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	out, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		sink.httpErrorCount++
+		return fmt.Errorf("request to %q failed with status %q and response: %q", url, resp.Status, string(out))
+	} else {
+	}
+
+	return nil
+}

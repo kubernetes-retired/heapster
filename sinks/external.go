@@ -19,13 +19,14 @@ import (
 	"fmt"
 
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	"github.com/GoogleCloudPlatform/heapster/sinks/gcl"
 	"github.com/GoogleCloudPlatform/heapster/sinks/gcm"
 	"github.com/GoogleCloudPlatform/heapster/sinks/influxdb"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
 var (
-	argSink = flag.String("sink", "memory", "Backend storage. Options are [memory | influxdb | bigquery | gcm ]")
+	argSink = flag.String("sink", "memory", "Backend storage. Options are [memory | influxdb | bigquery | gcm | gcl ]")
 	// TODO: Take in auth via some other secure mechanism.
 	argDbUsername   = flag.String("sink_influxdb_username", "root", "InfluxDB username")
 	argDbPassword   = flag.String("sink_influxdb_password", "root", "InfluxDB password")
@@ -140,6 +141,12 @@ func NewSink() (ExternalSinkManager, error) {
 		return newExternalSinkManager([]sink_api.ExternalSink{externalSink})
 	case "gcm":
 		externalSink, err := gcm.NewSink()
+		if err != nil {
+			return nil, err
+		}
+		return newExternalSinkManager([]sink_api.ExternalSink{externalSink})
+	case "gcl":
+		externalSink, err := gcl.NewSink()
 		if err != nil {
 			return nil, err
 		}

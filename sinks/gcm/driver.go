@@ -26,11 +26,15 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	"github.com/GoogleCloudPlatform/heapster/util/gce"
 	"github.com/GoogleCloudPlatform/heapster/util/gcstore"
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/golang/glog"
+
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 )
+
+const GCLAuthScope = "https://www.googleapis.com/auth/monitoring"
 
 type gcmSink struct {
 	// Token to use for authentication.
@@ -53,9 +57,9 @@ type gcmSink struct {
 
 func (self *gcmSink) refreshToken() error {
 	if time.Now().After(self.tokenExpiration) {
-		token, err := getToken()
+		token, err := gce.GetAuthToken()
 		if err != nil {
-			return nil
+			return err
 		}
 
 		// Expire the token a bit early.
@@ -481,7 +485,7 @@ func NewSink() (sink_api.ExternalSink, error) {
 	}
 
 	// Check required service accounts
-	err = checkServiceAccounts()
+	err = gce.VerifyAuthScope(GCLAuthScope)
 	if err != nil {
 		return nil, err
 	}
