@@ -59,6 +59,14 @@ Heapster adds timestamp and sequence number to every metric.
 
 ### Google Cloud Monitoring
 
-Metrics mentioned above are stored along with corresponding labels as custom metrics in Google Cloud Monitoring.
-Each metric is pushed with an additonal namespace prefix `kubernetes.io`.
-TODO: Add more information about GCM support.
+Metrics mentioned above are stored along with corresponding labels as [custom metrics](https://cloud.google.com/monitoring/custom-metrics/) in Google Cloud Monitoring.
+1. Metrics are collected every 2 minutes by default and pushed with a 1 minute precision.
+2. Each metric has a custom metric prefix - `custom.cloudmonitoring.googleapis.com`
+3. Each metric is pushed with an additonal namespace prefix - `kubernetes.io`.
+4. GCM does not support visualizing cumulative metrics yet. To work around that, heapster exports an equivalent gauge metric for all cumulative metrics mentioned above.
+   The gauge metrics use their parent cumulative metric name as the prefix, followed by a "_rate" suffix. 
+   E.x.: "cpu/usage", which is cumulative, will have a corresponding gauge metric "cpu/usage_rate"
+   NOTE: The gauge metrics will be deprecated as soon as GCM supports visualizing cumulative metrics.
+
+TODO: Add a snapshot of all the metrics stored in GCM.
+
