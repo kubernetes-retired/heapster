@@ -46,6 +46,12 @@ The following options are available:
 * `hostsFile` - file containing list of hosts to gather cadvisor metrics from (default: `/var/run/heapster/hosts`)
 * `cadvisorPort` - cadvisor port to use (default: `8080`)
 
+Here is an example: 
+```shell
+./heapster --source="cadvisor:external?cadvisorPort=4194"
+```
+
+
 #### CoreOS
 CoreOS cadvisor source discovers nodes from the specified fleet endpoints. Use it like this:
 
