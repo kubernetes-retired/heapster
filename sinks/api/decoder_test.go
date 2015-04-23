@@ -94,7 +94,7 @@ func TestRealInput(t *testing.T) {
 		{
 			Name:       "pod1",
 			ID:         "123",
-			Namespace:	"test",
+			Namespace:  "test",
 			Hostname:   "1.2.3.4",
 			Status:     "Running",
 			Containers: containers,
@@ -102,7 +102,7 @@ func TestRealInput(t *testing.T) {
 		{
 			Name:       "pod2",
 			ID:         "123",
-			Namespace:	"test",
+			Namespace:  "test",
 			Hostname:   "1.2.3.5",
 			Status:     "Running",
 			Containers: containers,
@@ -201,7 +201,7 @@ func TestPodLabelsProcessing(t *testing.T) {
 		{
 			Name:       "pod1",
 			ID:         "123",
-			Namespace:	"test",
+			Namespace:  "test",
 			Hostname:   "1.2.3.4",
 			Status:     "Running",
 			Labels:     podLabels,
