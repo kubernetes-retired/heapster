@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gcm
+// This package provides authentication utilities for Google Compute Engine (GCE)
+package gce
 
 import (
 	"encoding/json"
@@ -22,7 +23,7 @@ import (
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
 )
 
-type authToken struct {
+type AuthToken struct {
 	// The actual token.
 	AccessToken string `json:"access_token"`
 
@@ -33,35 +34,34 @@ type authToken struct {
 	TokenType string `json:"token_type"`
 }
 
-// Get a token for performing GCM requests.
-func getToken() (authToken, error) {
-	rawToken, err := metadata.Get("instance/service-accounts/default/token")
-	if err != nil {
-		return authToken{}, err
-	}
-
-	var token authToken
-	err = json.Unmarshal([]byte(rawToken), &token)
-	if err != nil {
-		return authToken{}, fmt.Errorf("failed to unmarshal service account token with output %q: %v", rawToken, err)
-	}
-
-	return token, err
-}
-
-// Checks that we have the required service scopes.
-func checkServiceAccounts() error {
+// Checks that the required auth scope is present.
+func VerifyAuthScope(expectedScope string) error {
 	scopes, err := metadata.Get("instance/service-accounts/default/scopes")
 	if err != nil {
 		return err
 	}
 
-	// Ensure it has the monitoring R/W scope.
 	for _, scope := range strings.Fields(scopes) {
-		if scope == "https://www.googleapis.com/auth/monitoring" {
+		if scope == expectedScope {
 			return nil
 		}
 	}
 
-	return fmt.Errorf("current instance does not have the monitoring read-write scope")
+	return fmt.Errorf("Current instance does not have the expected scope (%q). Actual scopes: %v", expectedScope, scopes)
+}
+
+// Get a token for performing GCE requests.
+func GetAuthToken() (AuthToken, error) {
+	rawToken, err := metadata.Get("instance/service-accounts/default/token")
+	if err != nil {
+		return AuthToken{}, err
+	}
+
+	var token AuthToken
+	err = json.Unmarshal([]byte(rawToken), &token)
+	if err != nil {
+		return AuthToken{}, fmt.Errorf("failed to unmarshal service account token with output %q: %v", rawToken, err)
+	}
+
+	return token, err
 }
