@@ -1,6 +1,6 @@
 ## Metrics
 
-Heapster exports the following metrics to its backends. 
+Heapster exports the following metrics to its backends.
 
 | Metric Name        | Description                                                                                        | Type       | Units       | Supported Since |
 |--------------------|----------------------------------------------------------------------------------------------------|------------|-------------|-----------------|
@@ -24,6 +24,7 @@ Heapster tags each metric with the following labels.
 | Label Name     | Description                                                                   | Supported Since | Kubernetes specific |
 |----------------|-------------------------------------------------------------------------------|-----------------|---------------------|
 | pod_id         | Unique ID of a Pod                                                            | v0.9            | Yes                 |
+| pod_namespace  | The namespace of a Pod                                                        | v0.10           | Yes               |
 | container_name | User-provided name of the container or full cgroup name for system containers | v0.9            | No                  |
 | labels         | Comma-separated list of user-provided labels. Format is 'key:value'           | v0.9            | Yes                 |
 | hostname       | Hostname where the container ran                                              | v0.9            | No                  |
