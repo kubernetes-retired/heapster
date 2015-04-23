@@ -17,6 +17,7 @@ package influxdb
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"strings"
 	"sync"
 	"time"
@@ -140,8 +141,8 @@ func (sink *influxdbSink) storeEventsColumns(events []kube_api.Event) (*influxdb
 	points := make([][]interface{}, len(events))
 	for i, event := range events {
 		points[i] = make([]interface{}, len(eventColumns))
-		points[i][0] = event.LastTimestamp.Time.Round(time.Millisecond).Unix() // Column 0 - time
-		points[i][1] = sink.seqNum.Get(EventsSeriesName)                       // Column 1 - sequence_number
+		points[i][0] = event.LastTimestamp.Time.UTC().Round(time.Millisecond).Unix() // Column 0 - time
+		points[i][1] = hashUID(string(event.UID))                                    // Column 1 - sequence_number
 		if event.InvolvedObject.Kind == "Pod" {
 			points[i][2] = event.InvolvedObject.UID  // Column 2 - pod_id
 			points[i][3] = event.InvolvedObject.Name // Column 3 - pod_name
@@ -161,6 +162,12 @@ func (sink *influxdbSink) storeEventsColumns(events []kube_api.Event) (*influxdb
 		Columns: eventColumns,
 		Points:  points,
 	}, nil
+}
+
+func hashUID(s string) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(s))
+	return h.Sum64()
 }
 
 func (sink *influxdbSink) storeEventNoColumns(event kube_api.Event) (*influxdb.Series, error) {

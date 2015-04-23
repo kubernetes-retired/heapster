@@ -128,12 +128,12 @@ func TestStoreEventsSingleEventInput(t *testing.T) {
 	assert.Equal(t, EventsSeriesName /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Name /* actual */)
 	assert.Equal(t, 6 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series[0].Columns) /* actual */)
 	assert.Equal(t, 1 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points) /* actual */)
-	assert.Equal(t, eventTime.Unix() /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][0] /* actual */)    // Column 0 - time
-	assert.Equal(t, 0 /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][1] /* actual */)                   // Column 1 - sequence_number
-	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][2] /* actual */)                  // Column 2 - pod_id
-	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][3] /* actual */)                  // Column 3 - pod_id
-	assert.Equal(t, eventSourceHostname /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][4] /* actual */) // Column 4 - pod_id
-	assert.Contains(t, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][5], eventReason)                                  // Column 5 - value
+	assert.Equal(t, eventTime.Unix() /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][0] /* actual */)           // Column 0 - time
+	assert.Equal(t, uint64(0xcbf29ce484222325) /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][1] /* actual */) // Column 1 - sequence_number
+	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][2] /* actual */)                         // Column 2 - pod_id
+	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][3] /* actual */)                         // Column 3 - pod_id
+	assert.Equal(t, eventSourceHostname /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][4] /* actual */)        // Column 4 - pod_id
+	assert.Contains(t, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][5], eventReason)                                         // Column 5 - value
 }
 
 func TestStoreEventsMultipleEventsInput(t *testing.T) {
@@ -173,17 +173,17 @@ func TestStoreEventsMultipleEventsInput(t *testing.T) {
 	assert.Equal(t, EventsSeriesName /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Name /* actual */)
 	assert.Equal(t, 6 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series[0].Columns) /* actual */)
 	assert.Equal(t, 2 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points) /* actual */)
-	assert.Equal(t, event1Time.Unix() /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][0] /* actual */)    // Column 0 - time
-	assert.Equal(t, 0 /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][1] /* actual */)                    // Column 1 - sequence_number
-	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][2] /* actual */)                   // Column 2 - pod_id
-	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][3] /* actual */)                   // Column 3 - pod_id
-	assert.Equal(t, event1SourceHostname /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][4] /* actual */) // Column 4 - pod_id
-	assert.Contains(t, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][5], event1Reason)                                  // Column 5 - value
-	assert.Equal(t, event2Time.Unix() /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][0] /* actual */)    // Column 0 - time
-	assert.Equal(t, 1 /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][1] /* actual */)                    // Column 1 - sequence_number
-	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][2] /* actual */)                   // Column 2 - pod_id
-	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][3] /* actual */)                   // Column 3 - pod_id
-	assert.Equal(t, event2SourceHostname /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][4] /* actual */) // Column 4 - pod_id
-	assert.Contains(t, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][5], event2Reason)                                  // Column 5 - value
+	assert.Equal(t, event1Time.Unix() /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][0] /* actual */)          // Column 0 - time
+	assert.Equal(t, uint64(0xcbf29ce484222325) /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][1] /* actual */) // Column 1 - sequence_number
+	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][2] /* actual */)                         // Column 2 - pod_id
+	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][3] /* actual */)                         // Column 3 - pod_id
+	assert.Equal(t, event1SourceHostname /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][4] /* actual */)       // Column 4 - pod_id
+	assert.Contains(t, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][5], event1Reason)                                        // Column 5 - value
+	assert.Equal(t, event2Time.Unix() /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][0] /* actual */)          // Column 0 - time
+	assert.Equal(t, uint64(0xcbf29ce484222325) /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][1] /* actual */) // Column 1 - sequence_number
+	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][2] /* actual */)                         // Column 2 - pod_id
+	assert.Equal(t, "" /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][3] /* actual */)                         // Column 3 - pod_id
+	assert.Equal(t, event2SourceHostname /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][4] /* actual */)       // Column 4 - pod_id
+	assert.Contains(t, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[1][5], event2Reason)                                        // Column 5 - value
 
 }
