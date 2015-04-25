@@ -38,11 +38,13 @@ var (
 	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores).")
 	argSources         Uris
+	argSinks           Uris
 )
 
 func main() {
 	defer glog.Flush()
 	flag.Var(&argSources, "source", "source(s) to watch")
+	flag.Var(&argSinks, "sink", "external sink(s) that receive data")
 	flag.Parse()
 	setMaxProcs()
 	glog.Infof(strings.Join(os.Args, " "))
@@ -94,15 +96,19 @@ func doWork() ([]api.Source, sinks.ExternalSinkManager, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	sink, err := sinks.NewSink()
+	externalSinks, err := newSinks()
 	if err != nil {
 		return nil, nil, err
 	}
-	go housekeep(sources, sink)
-	return sources, sink, nil
+	sinkManager, err := sinks.NewExternalSinkManager(externalSinks)
+	if err != nil {
+		return nil, nil, err
+	}
+	go housekeep(sources, sinkManager)
+	return sources, sinkManager, nil
 }
 
-func housekeep(sources []api.Source, sink sinks.ExternalSinkManager) {
+func housekeep(sources []api.Source, sinkManager sinks.ExternalSinkManager) {
 	ticker := time.NewTicker(*argPollDuration)
 	lastGet := time.Now()
 	defer ticker.Stop()
@@ -114,7 +120,7 @@ func housekeep(sources []api.Source, sink sinks.ExternalSinkManager) {
 				if err != nil {
 					glog.Errorf("failed to get information from source - %v", err)
 				}
-				if err := sink.Store(data); err != nil {
+				if err := sinkManager.Store(data); err != nil {
 					glog.Errorf("failed to push information to sink - %v", err)
 				}
 			}

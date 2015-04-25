@@ -15,22 +15,21 @@ HEAPSTER="/usr/bin/heapster"
 
 case $SINK in
   'influxdb') 
-    HEAPSTER="$HEAPSTER --sink influxdb"    
     # Check if in Kubernetes.
     if [ ! -z $KUBERNETES_RO_SERVICE_HOST ]; then
     # TODO(vishh): add support for passing in user name and password.
       INFLUXDB_ADDRESS=""
       if [ ! -z $MONITORING_INFLUXDB_SERVICE_HOST ]; then
-	INFLUXDB_ADDRESS="${MONITORING_INFLUXDB_SERVICE_HOST}:${MONITORING_INFLUXDB_SERVICE_PORT}"
+	INFLUXDB_ADDRESS="http://${MONITORING_INFLUXDB_SERVICE_HOST}:${MONITORING_INFLUXDB_SERVICE_PORT}"
       elif [ ! -z $INFLUXDB_HOST ]; then
 	INFLUXDB_ADDRESS=${INFLUXDB_HOST}
       else
 	echo "InfluxDB service address not specified. Exiting."
 	exit 1
       fi
-      $HEAPSTER --sink_influxdb_host $INFLUXDB_ADDRESS $EXTRA_ARGS
+      $HEAPSTER --sink influxdb:$INFLUXDB_ADDRESS $EXTRA_ARGS
     elif [ ! -z $INFLUXDB_HOST ]; then
-      $HEAPSTER --sink_influxdb_host ${INFLUXDB_HOST} $EXTRA_ARGS
+      $HEAPSTER --sink influxdb:${INFLUXDB_HOST} $EXTRA_ARGS
     else
       echo "Influxdb host invalid."
       exit 1

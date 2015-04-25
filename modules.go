@@ -15,5 +15,6 @@
 package main
 
 import (
+	_ "github.com/GoogleCloudPlatform/heapster/sinks"
 	_ "github.com/GoogleCloudPlatform/heapster/sources"
 )

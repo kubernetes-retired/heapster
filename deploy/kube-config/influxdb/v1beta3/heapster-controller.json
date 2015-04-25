@@ -28,7 +28,7 @@
             "env": [
               {
                 "name": "INFLUXDB_HOST",
-                "value": "monitoring-influxdb"
+                "value": "http://monitoring-influxdb:80"
               },
               {
                 "name": "SINK",

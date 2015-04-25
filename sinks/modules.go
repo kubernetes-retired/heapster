@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All Rights Reserved.
+// Copyright 2015 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package extpoints
+package sinks
 
 import (
-	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api"
-	sourceApi "github.com/GoogleCloudPlatform/heapster/sources/api"
+	_ "github.com/GoogleCloudPlatform/heapster/sinks/gcl"
+	_ "github.com/GoogleCloudPlatform/heapster/sinks/gcm"
+	_ "github.com/GoogleCloudPlatform/heapster/sinks/influxdb"
 )
-
-type SourceFactory func(string, map[string][]string) ([]sourceApi.Source, error)
-
-type SinkFactory func(string, map[string][]string) ([]sinksApi.ExternalSink, error)
