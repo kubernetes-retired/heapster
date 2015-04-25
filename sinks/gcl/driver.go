@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
@@ -31,11 +32,13 @@ import (
 )
 
 const (
-	GCLAuthScope             = "https://www.googleapis.com/auth/logging.admin"
-	EventLoggingSeverity     = "NOTICE"
-	EventLoggingServiceName  = "custom.googleapis.com"
-	EventLoggingLogName      = "KubernetesEventsLog"
-	LogEntriesWriteURLFormat = "https://logging.googleapis.com/v1beta3/projects/%s/logs/%s/entries:write"
+	GCLAuthScope             = "https://www.googleapis.com/auth/logging.write"
+	eventLoggingSeverity     = "NOTICE"
+	eventLoggingServiceName  = "custom.googleapis.com"
+	eventLoggingLogName      = "kubernetes.io/events"
+	logEntriesWriteURLScheme = "https"
+	logEntriesWriteURLHost   = "logging.googleapis.com"
+	logEntriesWriteURLFormat = "/v1beta3/projects/%s/logs/%s/entries:write"
 )
 
 // Returns an implementation of a Google Cloud Logging (GCL) sink.
@@ -213,9 +216,9 @@ func (sink *gclSink) createLogsEntriesRequest(events []kube_api.Event) LogsEntri
 		logEntries[i] = &LogEntry{
 			Metadata: &LogEntryMetadata{
 				Timestamp:   event.LastTimestamp.Time.UTC().Format(time.RFC3339),
-				Severity:    EventLoggingSeverity,
+				Severity:    eventLoggingSeverity,
 				ProjectId:   sink.projectId,
-				ServiceName: EventLoggingServiceName,
+				ServiceName: eventLoggingServiceName,
 			},
 			InsertId: string(event.UID),
 			Payload:  event,
@@ -224,18 +227,24 @@ func (sink *gclSink) createLogsEntriesRequest(events []kube_api.Event) LogsEntri
 	return LogsEntriesWriteRequest{Entries: logEntries}
 }
 
+// TODO: Move this to a common lib and share it with GCM implementation.
 func (sink *gclSink) sendLogsEntriesRequest(request LogsEntriesWriteRequest) error {
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		return err
 	}
 
-	url := fmt.Sprintf(LogEntriesWriteURLFormat, sink.projectId, EventLoggingLogName)
+	url := &url.URL{
+		Scheme: logEntriesWriteURLScheme,
+		Host:   logEntriesWriteURLHost,
+		Opaque: fmt.Sprintf(logEntriesWriteURLFormat, sink.projectId, url.QueryEscape(eventLoggingLogName)),
+	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewReader(requestBody))
+	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(requestBody))
 	if err != nil {
 		return err
 	}
+	req.URL = url
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", sink.token))
 
