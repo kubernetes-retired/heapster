@@ -18,10 +18,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"net/url"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/extpoints"
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/golang/glog"
@@ -36,19 +40,28 @@ type influxDBClient interface {
 }
 
 type influxdbSink struct {
-	hostname  string
-	database  string
 	client    influxDBClient
-	dbName    string
 	stateLock sync.RWMutex
 	// TODO(rjnagal): switch to atomic if writeFailures is the only protected data.
 	writeFailures int // guarded by stateLock
-	avoidColumns  bool
 	seqNum        metricSequenceNum
+	c             config
+}
+
+type config struct {
+	user         string
+	password     string
+	host         string
+	dbName       string
+	avoidColumns bool
 }
 
 const (
-	EventsSeriesName = "log/events"
+	eventsSeriesName = "log/events"
+	// Attempt database creation maxRetries times before quitting.
+	maxRetries = 20
+	// Sleep for waitDuration between database creation retries.
+	waitDuration = 30 * time.Second
 )
 
 func (self *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
@@ -72,7 +85,7 @@ func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influ
 	columns = append(columns, "value")
 	values = append(values, timeseries.Point.Value)
 	// Append labels.
-	if !self.avoidColumns {
+	if !self.c.avoidColumns {
 		for key, value := range timeseries.Point.Labels {
 			columns = append(columns, key)
 			values = append(values, value)
@@ -106,7 +119,7 @@ func (sink *influxdbSink) StoreEvents(events []kube_api.Event) error {
 	if events == nil || len(events) <= 0 {
 		return nil
 	}
-	if !sink.avoidColumns {
+	if !sink.c.avoidColumns {
 		dataPoint, err := sink.storeEventsColumns(events)
 		if err != nil {
 			glog.Errorf("failed to parse events: %v", err)
@@ -158,7 +171,7 @@ func (sink *influxdbSink) storeEventsColumns(events []kube_api.Event) (*influxdb
 		points[i][5] = value             // Column 5 - value
 	}
 	return &influxdb.Series{
-		Name:    EventsSeriesName,
+		Name:    eventsSeriesName,
 		Columns: eventColumns,
 		Points:  points,
 	}, nil
@@ -172,7 +185,7 @@ func hashUID(s string) uint64 {
 
 func (sink *influxdbSink) storeEventNoColumns(event kube_api.Event) (*influxdb.Series, error) {
 	// Append labels to seriesName instead of adding extra columns
-	seriesName := strings.Replace(EventsSeriesName, "/", "_", -1)
+	seriesName := strings.Replace(eventsSeriesName, "/", "_", -1)
 	labels := make(map[string]string)
 	if event.InvolvedObject.Kind == "Pod" {
 		labels[sink_api.LabelPodId] = string(event.InvolvedObject.UID)
@@ -195,7 +208,7 @@ func (sink *influxdbSink) storeEventNoColumns(event kube_api.Event) (*influxdb.S
 	points := make([][]interface{}, 1)
 	points[0] = make([]interface{}, len(columns))
 	points[0][0] = event.LastTimestamp.Time.Round(time.Millisecond).Unix() // Column 0 - time
-	points[0][1] = sink.seqNum.Get(EventsSeriesName)                       // Column 1 - sequence_number
+	points[0][1] = sink.seqNum.Get(eventsSeriesName)                       // Column 1 - sequence_number
 	points[0][2] = value                                                   // Column 2 - value
 	return &influxdb.Series{
 		Name:    seriesName,
@@ -256,7 +269,7 @@ func (self *influxdbSink) getState() string {
 
 func (self *influxdbSink) DebugInfo() string {
 	desc := "Sink Type: InfluxDB\n"
-	desc += fmt.Sprintf("\tclient: Host %q, Database %q\n", self.hostname, self.database)
+	desc += fmt.Sprintf("\tclient: Host %q, Database %q\n", self.c.host, self.c.dbName)
 	desc += self.getState()
 	desc += "\n"
 	return desc
@@ -281,31 +294,23 @@ func createDatabase(databaseName string, client *influxdb.Client) error {
 	return nil
 }
 
-const (
-	// Attempt database creation maxRetries times before quitting.
-	maxRetries = 20
-	// Sleep for waitDuration between database creation retries.
-	waitDuration = 30 * time.Second
-)
-
 // Returns a thread-compatible implementation of influxdb interactions.
-func NewSink(hostname, username, password, databaseName string, avoidColumns bool) (sink_api.ExternalSink, error) {
+func new(c config) (sink_api.ExternalSink, error) {
 	var err error
-	config := &influxdb.ClientConfig{
-		Host:     hostname,
-		Username: username,
-		Password: password,
-		Database: databaseName,
+	iConfig := &influxdb.ClientConfig{
+		Host:     c.host,
+		Username: c.user,
+		Password: c.password,
+		Database: c.dbName,
 		IsSecure: false,
 	}
-	glog.Infof("Using influxdb on host %q with database %q", hostname, databaseName)
-	client, err := influxdb.NewClient(config)
+	client, err := influxdb.NewClient(iConfig)
 	if err != nil {
 		return nil, err
 	}
 	client.DisableCompression()
 	for i := 0; i < maxRetries; i++ {
-		err = createDatabase(databaseName, client)
+		err = createDatabase(c.dbName, client)
 		if err == nil {
 			break
 		}
@@ -316,11 +321,54 @@ func NewSink(hostname, username, password, databaseName string, avoidColumns boo
 		return nil, err
 	}
 	return &influxdbSink{
-		hostname:     hostname,
-		database:     databaseName,
-		client:       client,
-		dbName:       databaseName,
-		avoidColumns: avoidColumns,
-		seqNum:       newMetricSequenceNum(),
+		client: client,
+		seqNum: newMetricSequenceNum(),
+		c:      c,
 	}, nil
+}
+
+func init() {
+	extpoints.SinkFactories.Register(CreateInfluxdbSink, "influxdb")
+}
+
+func CreateInfluxdbSink(uri string, options map[string][]string) ([]sink_api.ExternalSink, error) {
+	defaultConfig := config{
+		user:         "root",
+		password:     "root",
+		host:         "localhost:8086",
+		dbName:       "k8s",
+		avoidColumns: false,
+	}
+
+	parsedUrl, err := url.Parse(os.ExpandEnv(uri))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(parsedUrl.Host) > 0 {
+		defaultConfig.host = parsedUrl.Host
+	}
+	if len(options["user"]) >= 1 {
+		defaultConfig.user = options["user"][0]
+	}
+	if len(options["pw"]) >= 1 {
+		defaultConfig.password = options["pw"][0]
+	}
+	if len(options["db"]) >= 1 {
+		defaultConfig.dbName = options["db"][0]
+	}
+	if len(options["avoidColumns"]) >= 1 {
+		val, err := strconv.ParseBool(options["avoidColumns"][0])
+		if err != nil {
+			return nil, fmt.Errorf("invalid value %q for option 'avoidColumns' passed to influxdb sink", options["avoidColumns"][0])
+		}
+		defaultConfig.avoidColumns = val
+	}
+	sink, err := new(defaultConfig)
+	if err != nil {
+		return nil, err
+	}
+	glog.Infof("created influxdb sink with options: %v", defaultConfig)
+
+	return []sink_api.ExternalSink{sink}, nil
 }

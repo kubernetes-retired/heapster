@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
+	"github.com/GoogleCloudPlatform/heapster/extpoints"
 	"github.com/GoogleCloudPlatform/heapster/util/gce"
 	"github.com/golang/glog"
 
@@ -40,42 +41,6 @@ const (
 	logEntriesWriteURLHost   = "logging.googleapis.com"
 	logEntriesWriteURLFormat = "/v1beta3/projects/%s/logs/%s/entries:write"
 )
-
-// Returns an implementation of a Google Cloud Logging (GCL) sink.
-func NewSink() (sink_api.ExternalSink, error) {
-	// TODO: Retry OnGCE call for ~15 seconds before declaring failure.
-	time.Sleep(3 * time.Second)
-	// Only support GCE for now.
-	if !metadata.OnGCE() {
-		return nil, fmt.Errorf("The Google Cloud Logging (GCL) sink failed to start: this process must be running on Google Compute Engine (GCE)")
-	}
-
-	// Detect project ID
-	projectId, err := metadata.ProjectID()
-	if err != nil {
-		return nil, err
-	}
-	glog.Infof("Project ID for GCL sink is: %q\r\n", projectId)
-
-	// Check for required auth scopes
-	err = gce.VerifyAuthScope(GCLAuthScope)
-	if err != nil {
-		return nil, err
-	}
-
-	impl := &gclSink{
-		projectId:  projectId,
-		httpClient: &http.Client{},
-	}
-
-	// Get an initial token.
-	err = impl.refreshToken()
-	if err != nil {
-		return nil, err
-	}
-
-	return impl, nil
-}
 
 func (sink *gclSink) DebugInfo() string {
 	return fmt.Sprintf("Sink Type: Google Cloud Logging (GCL). Http Error Count: %v\r\n", sink.httpErrorCount)
@@ -266,4 +231,50 @@ func (sink *gclSink) sendLogsEntriesRequest(request LogsEntriesWriteRequest) err
 	}
 
 	return nil
+}
+
+// Returns an implementation of a Google Cloud Logging (GCL) sink.
+func new() (sink_api.ExternalSink, error) {
+	// TODO: Retry OnGCE call for ~15 seconds before declaring failure.
+	time.Sleep(3 * time.Second)
+	// Only support GCE for now.
+	if !metadata.OnGCE() {
+		return nil, fmt.Errorf("The Google Cloud Logging (GCL) sink failed to start: this process must be running on Google Compute Engine (GCE)")
+	}
+
+	// Detect project ID
+	projectId, err := metadata.ProjectID()
+	if err != nil {
+		return nil, err
+	}
+	glog.Infof("Project ID for GCL sink is: %q\r\n", projectId)
+
+	// Check for required auth scopes
+	err = gce.VerifyAuthScope(GCLAuthScope)
+	if err != nil {
+		return nil, err
+	}
+
+	impl := &gclSink{
+		projectId:  projectId,
+		httpClient: &http.Client{},
+	}
+
+	// Get an initial token.
+	err = impl.refreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return impl, nil
+}
+
+func init() {
+	extpoints.SinkFactories.Register(CreateGCLSink, "gcl")
+}
+
+func CreateGCLSink(_ string, _ map[string][]string) ([]sink_api.ExternalSink, error) {
+	sink, err := new()
+	glog.Infof("creating GCL sink")
+	return []sink_api.ExternalSink{sink}, err
 }

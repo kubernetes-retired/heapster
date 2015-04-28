@@ -15,24 +15,10 @@
 package sinks
 
 import (
-	"flag"
 	"fmt"
 
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
-	"github.com/GoogleCloudPlatform/heapster/sinks/gcl"
-	"github.com/GoogleCloudPlatform/heapster/sinks/gcm"
-	"github.com/GoogleCloudPlatform/heapster/sinks/influxdb"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
-)
-
-var (
-	argSink = flag.String("sink", "memory", "Backend storage. Options are [memory | influxdb | bigquery | gcm | gcl ]")
-	// TODO: Take in auth via some other secure mechanism.
-	argDbUsername   = flag.String("sink_influxdb_username", "root", "InfluxDB username")
-	argDbPassword   = flag.String("sink_influxdb_password", "root", "InfluxDB password")
-	argDbHost       = flag.String("sink_influxdb_host", "localhost:8086", "InfluxDB host:port")
-	argDbName       = flag.String("sink_influxdb_name", "k8s", "Influxdb database name")
-	argAvoidColumns = flag.Bool("sink_influxdb_no_columns", false, "When true, prefixes metric series names with metadata instead of storing metadata in additional columns. Metadata includes hostname, container name, etc. ")
 )
 
 type externalSinkManager struct {
@@ -40,7 +26,7 @@ type externalSinkManager struct {
 	externalSinks []sink_api.ExternalSink
 }
 
-func newExternalSinkManager(externalSinks []sink_api.ExternalSink) (ExternalSinkManager, error) {
+func NewExternalSinkManager(externalSinks []sink_api.ExternalSink) (ExternalSinkManager, error) {
 	// Get supported metrics.
 	supportedMetrics := sink_api.SupportedStatMetrics()
 	for i := range supportedMetrics {
@@ -120,40 +106,4 @@ func (self *externalSinkManager) DebugInfo() string {
 	}
 
 	return desc
-}
-
-func NewSink() (ExternalSinkManager, error) {
-	switch *argSink {
-	case "memory":
-		return NewMemorySink(), nil
-	case "influxdb":
-		if *argDbHost == "" {
-			return nil, fmt.Errorf("flag '-sink_influxdb_host' invalid")
-		}
-		if *argDbName == "" {
-			return nil, fmt.Errorf("flag '-sink_influxdb_name' invalid")
-		}
-
-		externalSink, err := influxdb.NewSink(*argDbHost, *argDbUsername, *argDbPassword, *argDbName, *argAvoidColumns)
-		if err != nil {
-			return nil, err
-		}
-		return newExternalSinkManager([]sink_api.ExternalSink{externalSink})
-	case "gcm":
-		externalSink, err := gcm.NewSink()
-		if err != nil {
-			return nil, err
-		}
-		return newExternalSinkManager([]sink_api.ExternalSink{externalSink})
-	case "gcl":
-		externalSink, err := gcl.NewSink()
-		if err != nil {
-			return nil, err
-		}
-		return newExternalSinkManager([]sink_api.ExternalSink{externalSink})
-	case "bigquery":
-		return NewBigQuerySink()
-	default:
-		return nil, fmt.Errorf("invalid sink specified - %s", *argSink)
-	}
 }

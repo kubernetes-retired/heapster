@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
+	"github.com/GoogleCloudPlatform/heapster/extpoints"
 	"github.com/GoogleCloudPlatform/heapster/util/gce"
 	"github.com/GoogleCloudPlatform/heapster/util/gcstore"
 	"github.com/golang/glog"
@@ -470,7 +471,7 @@ func (self *gcmSink) DebugInfo() string {
 }
 
 // Returns a thread-compatible implementation of GCM interactions.
-func NewSink() (sink_api.ExternalSink, error) {
+func new() (sink_api.ExternalSink, error) {
 	// TODO: Retry OnGCE call for ~15 seconds before declaring failure.
 	time.Sleep(3 * time.Second)
 	// Only support GCE for now.
@@ -507,4 +508,14 @@ func NewSink() (sink_api.ExternalSink, error) {
 	}
 
 	return impl, nil
+}
+
+func init() {
+	extpoints.SinkFactories.Register(CreateGCMSink, "gcm")
+}
+
+func CreateGCMSink(_ string, _ map[string][]string) ([]sink_api.ExternalSink, error) {
+	sink, err := new()
+	glog.Infof("created GCM sink")
+	return []sink_api.ExternalSink{sink}, err
 }

@@ -66,12 +66,13 @@ func NewFakeSink(avoidColumns bool) fakeInfluxDBSink {
 	client := NewFakeInfluxDBClient()
 	return fakeInfluxDBSink{
 		&influxdbSink{
-			hostname:     "hostname",
-			database:     "databaseName",
-			client:       client,
-			dbName:       "databaseName",
-			avoidColumns: avoidColumns,
-			seqNum:       newMetricSequenceNum(),
+			client: client,
+			seqNum: newMetricSequenceNum(),
+			c: config{
+				host:         "hostname",
+				dbName:       "databaseName",
+				avoidColumns: avoidColumns,
+			},
 		},
 		client,
 	}
@@ -125,7 +126,7 @@ func TestStoreEventsSingleEventInput(t *testing.T) {
 	assert.Equal(t, 1 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls) /* actual */)
 	assert.Equal(t, influxdb.Millisecond /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].timePrecision /* actual */)
 	assert.Equal(t, 1 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series) /* actual */)
-	assert.Equal(t, EventsSeriesName /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Name /* actual */)
+	assert.Equal(t, eventsSeriesName /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Name /* actual */)
 	assert.Equal(t, 6 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series[0].Columns) /* actual */)
 	assert.Equal(t, 1 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points) /* actual */)
 	assert.Equal(t, eventTime.Unix() /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][0] /* actual */)           // Column 0 - time
@@ -170,7 +171,7 @@ func TestStoreEventsMultipleEventsInput(t *testing.T) {
 	assert.Equal(t, 1 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls) /* actual */)
 	assert.Equal(t, influxdb.Millisecond /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].timePrecision /* actual */)
 	assert.Equal(t, 1 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series) /* actual */)
-	assert.Equal(t, EventsSeriesName /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Name /* actual */)
+	assert.Equal(t, eventsSeriesName /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Name /* actual */)
 	assert.Equal(t, 6 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series[0].Columns) /* actual */)
 	assert.Equal(t, 2 /* expected */, len(fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points) /* actual */)
 	assert.Equal(t, event1Time.Unix() /* expected */, fakeSink.fakeClient.capturedWriteCalls[0].series[0].Points[0][0] /* actual */)          // Column 0 - time

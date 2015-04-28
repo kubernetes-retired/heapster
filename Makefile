@@ -5,6 +5,7 @@ deps:
 
 build: clean deps
 	go generate github.com/GoogleCloudPlatform/heapster
+	godep go build -a github.com/GoogleCloudPlatform/heapster/...
 	godep go build -a github.com/GoogleCloudPlatform/heapster
 
 sanitize:
