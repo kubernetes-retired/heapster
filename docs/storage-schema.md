@@ -13,7 +13,7 @@ Heapster exports the following metrics to its backends.
 | network/rx_errors  | Cumulative number of errors while receiving over the network                                       | Cumulative | Count       | v0.9            |
 | network/tx         | Cumulative number of bytes sent over the network                                                   | Cumulative | Bytes       | v0.9            |
 | network/tx_errors  | Cumulative number of errors while sending over the network                                         | Cumulative | Count       | v0.9            |
-| filesystem/usage   | Total number of bytes used on a filesystem identified by label 'resource_id'                       | Gauge      | Bytes       | HEAD            |
+| filesystem/usage   | Total number of bytes used on a filesystem identified by label 'resource_id'                       | Gauge      | Bytes       | v0.11.0            |
 
 *Note: Gauge refers to instantaneous metrics*
 
@@ -29,7 +29,7 @@ Heapster tags each metric with the following labels.
 | container_name | User-provided name of the container or full cgroup name for system containers | v0.9            | No                  |
 | labels         | Comma-separated list of user-provided labels. Format is 'key:value'           | v0.9            | Yes                 |
 | hostname       | Hostname where the container ran                                              | v0.9            | No                  |
-| resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | HEAD | No |
+| resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | v0.11.0 | No |
 
 
 ## Storage Schema

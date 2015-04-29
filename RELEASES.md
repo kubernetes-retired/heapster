@@ -1,25 +1,30 @@
 # Release Notes
 
-## 0.11.0 (Unreleased)
+## 0.11.0 (4-28-2015)
 - Export filesystem usage metrics for the node and containers.
+- Support for Kubernetes events
+- New Sink - Google Cloud Logging. Supports events only.
+- New Sink - Google Cloud Monitoring. Supports metrics only.
+- New metric labels - 'pod_name' and 'resource_id'.
+- Extensible source and sinks configuration. It is now possible to export metrics and events to multiple sinks simultaneously.
 
-## 0.10.0 (3-30-2014)
+## 0.10.0 (3-30-2015)
 - Downsampling - Resolution of metrics is set to 5s by default.
 - Support for using Kube client auth.
 - Improved Influxdb sink - sequence numbers are generated for every metric.
 - Reliability improvements
 - Bug fixes.
 
-## 0.9 (3-13-2014)
+## 0.9 (3-13-2015)
 - [Standardized metrics](sinks/api/supported_metrics.go)
 - New [common API](sinks/api/types.go) in place for all external storage drivers.
 - Simplified heapster deployment scripts.
 - Bug fixes and misc enhancements.
 
-## 0.8 (2-22-2014)
+## 0.8 (2-22-2015)
 - Avoid expecting HostIP of Pod to match node's HostIP. 
 
-## 0.7 (2-18-2014)
+## 0.7 (2-18-2015)
 - Support for Google Cloud Monitoring Backend
 - Watch kubernetes api-server instead of polling for pods and nodes info.
 - Fetch stats in parallel.
@@ -27,7 +32,7 @@
 - Miscellaneous bug fixes.
 - Native support for CoreOS.
 
-## 0.6 (1-21-2014)
+## 0.6 (1-21-2015)
 - New /validate REST endpoint to probe heapster.
 - Heapster supports kube namespaces.
 - Heapster uses InfluxDB service DNS name while running in kube mode.
