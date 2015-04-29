@@ -37,7 +37,7 @@ type kubePodsSource struct {
 
 const name = "kube-pods-source"
 
-func NewKubePodMetrics(kubeletPort int, nodesApi nodes.NodesApi, podsApi podsApi, kubeletApi datasource.Kubelet) api.Source {
+func NewKubePodMetrics(kubeletPort int, kubeletApi datasource.Kubelet, nodesApi nodes.NodesApi, podsApi podsApi) api.Source {
 	return &kubePodsSource{
 		kubeletPort: kubeletPort,
 		kubeletApi:  kubeletApi,

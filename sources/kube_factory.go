@@ -116,7 +116,7 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 	glog.Infof("Using Kubernetes client with master %q and version %q\n", kubeConfig.Host, kubeConfig.Version)
 	glog.Infof("Using kubelet port %d", kubeletPort)
 	kubeletApi := datasource.NewKubelet()
-	kubePodsSource := NewKubePodMetrics(kubeletPort, nodesApi, newPodsApi(kubeClient), kubeletApi)
+	kubePodsSource := NewKubePodMetrics(kubeletPort, kubeletApi, nodesApi, newPodsApi(kubeClient))
 	kubeNodeSource := NewKubeNodeMetrics(kubeletPort, kubeletApi, nodesApi)
 	kubeEventsSource := NewKubeEvents(kubeClient)
 
