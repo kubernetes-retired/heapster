@@ -24,10 +24,22 @@ test-integration: clean deps
 
 container: build
 	cp ./heapster ./deploy/docker/heapster
-	sudo docker build -t heapster:canary ./deploy/docker/
+	docker build -t kubernetes/heapster:canary ./deploy/docker/
+	docker build -t gcr.io/google_containers/heapster:canary ./deploy/docker/	
+
+.PHONY: grafana
+grafana:
+	docker build -t kubernetes/heapster_grafana:canary ./grafana/
+	docker build -t gcr.io/google_containers/heapster_grafana:canary ./grafana/
+
+.PHONY: influxdb
+influxdb:
+	docker build -t kubernetes/heapster_grafana:canary ./influxdb/
+	docker build -t gcr.io/google_containers/heapster_grafana:canary ./influxdb/
 
 clean:
 	rm -f heapster
 	rm -f ./extpoints/extpoints.go
 	rm -f ./deploy/docker/heapster
+
 
