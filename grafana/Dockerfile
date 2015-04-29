@@ -29,6 +29,8 @@ RUN apk-install ca-certificates curl tar && \
 
 COPY config.js.tmpl /opt/grafana/config.js.tmpl
 COPY kubernetes-dashboard.json /opt/grafana/app/dashboards/kubernetes.json
+RUN chmod a+r /opt/grafana/config.js.tmpl && \
+    chmod a+r /opt/grafana/app/dashboards/kubernetes.json
 
 WORKDIR /opt/grafana/
 USER nobody
