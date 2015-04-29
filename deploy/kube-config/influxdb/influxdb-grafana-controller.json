@@ -31,7 +31,7 @@
             },
             {
               "name": "grafana",
-              "image": "kubernetes/heapster_grafana:v0.6",
+              "image": "kubernetes/heapster_grafana:v0.7",
               "ports": [
                 {
                   "containerPort": 8080

@@ -15,7 +15,7 @@
           "containers": [
             {
               "name": "heapster",
-              "image": "kubernetes/heapster:v0.10.0",
+              "image": "kubernetes/heapster:v0.11.0",
               "env": [
                 {
                   "name": "INFLUXDB_HOST",
