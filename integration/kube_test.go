@@ -27,7 +27,7 @@ import (
 	"time"
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	kube_api_v1beta1 "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta1"
+	kube_api_v1beta3 "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/golang/glog"
 	influxdb "github.com/influxdb/influxdb/client"
@@ -49,9 +49,9 @@ const (
 
 var (
 	kubeVersions                  = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
-	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/kube-config/influxdb/v1beta3/heapster-controller.json", "Path to heapster replication controller file.")
-	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/kube-config/influxdb/v1beta3/influxdb-grafana-controller.json", "Path to Influxdb-Grafana replication controller file.")
-	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/kube-config/influxdb/v1beta3/influxdb-service.json", "Path to Inlufxdb service file.")
+	heapsterControllerFile        = flag.String("heapster_controller", "../deploy/kube-config/influxdb/heapster-controller.json", "Path to heapster replication controller file.")
+	influxdbGrafanaControllerFile = flag.String("influxdb_grafana_controller", "../deploy/kube-config/influxdb/influxdb-grafana-controller.json", "Path to Influxdb-Grafana replication controller file.")
+	influxdbServiceFile           = flag.String("influxdb_service", "../deploy/kube-config/influxdb/influxdb-service.json", "Path to Inlufxdb service file.")
 	heapsterImage                 = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
 	influxdbImage                 = flag.String("influxdb_image", "heapster_influxdb:e2e_test", "influxdb docker image that needs to be tested.")
 	grafanaImage                  = flag.String("grafana_image", "heapster_grafana:e2e_test", "grafana docker image that needs to be tested.")
@@ -128,13 +128,13 @@ func replaceImages(inputFile, outputBaseDir string, containerNameImageMap map[st
 		return "", err
 	}
 
-	rc := kube_api_v1beta1.ReplicationController{}
+	rc := kube_api_v1beta3.ReplicationController{}
 	if err := json.Unmarshal(input, &rc); err != nil {
 		return "", err
 	}
-	for i, container := range rc.DesiredState.PodTemplate.DesiredState.Manifest.Containers {
+	for i, container := range rc.Spec.Template.Spec.Containers {
 		if newImage, ok := containerNameImageMap[container.Name]; ok {
-			rc.DesiredState.PodTemplate.DesiredState.Manifest.Containers[i].Image = newImage
+			rc.Spec.Template.Spec.Containers[i].Image = newImage
 		}
 	}
 

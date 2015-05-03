@@ -1,14 +1,22 @@
 {
-  "apiVersion": "v1beta1",
+  "apiVersion": "v1beta3",
   "kind": "Service",
-  "id": "monitoring-grafana",
-  "port": 80,
-  "containerPort": 8080,
-  "labels": {
-    "name": "monitoring-grafana",
-    "kubernetes.io/cluster-service": "true"
+  "metadata": {
+    "labels": {
+      "name": "monitoring-grafana",
+      "kubernetes.io/cluster-service": "true"
+    },
+    "name": "monitoring-grafana"
   },
-  "selector": {
-    "name": "influxGrafana"
+  "spec": {
+    "ports": [
+      {
+        "port": 80,
+        "targetPort": 8080
+      }
+    ],
+    "selector": {
+      "name": "influxGrafana"
+    }
   }
 }

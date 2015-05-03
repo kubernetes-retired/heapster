@@ -1,13 +1,23 @@
 {
-  "apiVersion": "v1beta1",
+  "apiVersion": "v1beta3",
   "kind": "Service",
-  "id": "monitoring-heapster",
-  "port": 80,
-  "containerPort": 8082,
-  "labels": {
+  "metadata": {
+    "labels": {
+      "name": "heapster",
+      "kubernetes.io/cluster-service": "true"
+    },
     "name": "monitoring-heapster"
   },
-  "selector": {
-    "name": "heapster"
+  "spec": {
+    "ports": [
+      {
+        "port": 80,
+        "targetPort": 8082
+      }
+    ],
+    "selector": {
+      "name": "heapster",
+      "kubernetes.io/cluster-service": "true"
+    }
   }
 }
