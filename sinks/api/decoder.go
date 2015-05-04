@@ -54,7 +54,10 @@ func (self *defaultDecoder) getPodLabels(pod *source_api.Pod) map[string]string 
 	labels[LabelPodId] = pod.ID
 	labels[LabelPodNamespace] = pod.Namespace
 	labels[LabelPodName] = pod.Name
-	labels[LabelLabels] = LabelsToString(pod.Labels, ",")
+	labelString := LabelsToString(pod.Labels, ",")
+	if labelString != "" {
+		labels[LabelLabels] = labelString
+	}
 	labels[LabelHostname] = pod.Hostname
 
 	return labels
