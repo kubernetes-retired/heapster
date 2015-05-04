@@ -9,11 +9,11 @@ While running in a Kube cluster, heapster collects compute resource usage of all
 Source configuration is documented [here](docs/source-configuration.md).
 
 ### Running Heapster on Kubernetes
-Heapster supports a pluggable storage backend. It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb) and [Google Cloud Monitoring](https://cloud.google.com/monitoring/). We welcome patches that add additional storage backends.
+Heapster supports a pluggable storage backend. It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/) and [Google Cloud Logging](https://cloud.google.com/logging/). We welcome patches that add additional storage backends.
 
 To run Heapster on a Kubernetes cluster with,
 - InfluxDB use [this guide](docs/influxdb.md). 
-- Google Cloud Monitoring use [this guide](docs/gcm.md).
+- Google Cloud Monitoring and Google Cloud Logging use [this guide](docs/google.md).
 
 Take a look at the storage schema [here](docs/storage-schema.md).
 

@@ -1,0 +1,54 @@
+{
+  "kind": "ReplicationController",
+  "apiVersion": "v1beta3",
+  "metadata": {
+    "name": "monitoring-heapster-controller",
+    "labels": {
+      "name": "heapster"
+    }
+  },
+  "spec": {
+    "replicas": 1,
+    "selector": {
+      "name": "heapster"
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "kubernetes.io/cluster-service": "true",
+          "name": "heapster"
+        }
+      },
+      "spec": {
+        "volumes": [
+          {
+            "name": "ssl-certs",
+            "hostPath": {
+              "path": "/etc/ssl/certs"
+            }
+          }
+        ],
+        "containers": [
+          {
+            "name": "heapster",
+            "image": "kubernetes/heapster:v0.11.0",
+            "env": [
+              {
+                "name": "FLAGS",
+                "value": "--poll_duration=2m --stats_resolution=1m --sink gcm --sink gcl"
+              }
+            ],
+            "resources": {},
+            "volumeMounts": [
+              {
+                "name": "ssl-certs",
+                "readOnly": true,
+                "mountPath": "/etc/ssl/certs"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
