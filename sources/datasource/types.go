@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 )
 
 type Host struct {
@@ -45,6 +46,14 @@ type Kubelet interface {
 	GetAllRawContainers(host Host, start, end time.Time, resolution time.Duration) ([]api.Container, error)
 }
 
-func NewKubelet() Kubelet {
-	return &kubeletSource{}
+func NewKubelet(kubeletConfig *kube_client.KubeletConfig) (Kubelet, error) {
+	kubeletHttpClient, err := kube_client.NewKubeletHttpClient(kubeletConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kubeletSource{
+		config: kubeletConfig,
+		client: kubeletHttpClient,
+	}, nil
 }

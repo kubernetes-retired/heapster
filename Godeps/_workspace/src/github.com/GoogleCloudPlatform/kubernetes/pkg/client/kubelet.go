@@ -67,7 +67,7 @@ type HTTPKubeletClient struct {
 }
 
 // TODO: this structure is questionable, it should be using client.Config and overriding defaults.
-func NewKubeletClient(config *KubeletConfig) (KubeletClient, error) {
+func NewKubeletHttpClient(config *KubeletConfig) (*http.Client, error) {
 	transport := http.DefaultTransport
 
 	cfg := &Config{TLSClientConfig: config.TLSClientConfig}
@@ -87,9 +87,16 @@ func NewKubeletClient(config *KubeletConfig) (KubeletClient, error) {
 		}
 	}
 
-	c := &http.Client{
+	return &http.Client{
 		Transport: transport,
 		Timeout:   config.HTTPTimeout,
+	}, nil
+}
+
+func NewKubeletClient(config *KubeletConfig) (KubeletClient, error) {
+	c, err := NewKubeletHttpClient(config)
+	if err != nil {
+		return nil, err
 	}
 	return &HTTPKubeletClient{
 		Client:      c,
