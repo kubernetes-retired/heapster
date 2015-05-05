@@ -25,40 +25,41 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/clientauth"
+	kubeClientCmd "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
+	kubeClientCmdApi "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
 	"github.com/golang/glog"
 )
 
 const (
-	defaultApiVersion  = "v1beta1"
-	defaultInsecure    = false
-	defaultKubeletPort = 10255
+	defaultApiVersion     = "v1beta1"
+	defaultInsecure       = false
+	defaultKubeletPort    = 10255
+	defaultKubeConfigFile = "/etc/kubernetes/kubeconfig/kubeconfig"
 )
 
 func init() {
 	extpoints.SourceFactories.Register(CreateKubeSources, "kubernetes")
 }
 
-func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, error) {
-	parsedUrl, err := url.Parse(os.ExpandEnv(uri))
-	if err != nil {
-		return nil, err
+func getConfigOverrides(uri string, options map[string][]string) (*kubeClientCmd.ConfigOverrides, error) {
+	kubeConfigOverride := kubeClientCmd.ConfigOverrides{
+		ClusterInfo: kubeClientCmdApi.Cluster{
+			APIVersion: defaultApiVersion,
+		},
+	}
+	if uri != "" {
+		parsedUrl, err := url.Parse(os.ExpandEnv(uri))
+		if err != nil {
+			return nil, err
+		}
+
+		if len(parsedUrl.Scheme) == 0 && len(parsedUrl.Host) == 0 {
+			kubeConfigOverride.ClusterInfo.Server = fmt.Sprintf("%s://%s", parsedUrl.Scheme, parsedUrl.Host)
+		}
 	}
 
-	if len(parsedUrl.Scheme) == 0 {
-		return nil, fmt.Errorf("Missing scheme in Kubernetes source: %v", uri)
-	}
-	if len(parsedUrl.Host) == 0 {
-		return nil, fmt.Errorf("Missing host in Kubernetes source: %v", uri)
-	}
-
-	kubeConfig := kube_client.Config{
-		Host:     fmt.Sprintf("%s://%s", parsedUrl.Scheme, parsedUrl.Host),
-		Version:  defaultApiVersion,
-		Insecure: defaultInsecure,
-	}
 	if len(options["apiVersion"]) >= 1 {
-		kubeConfig.Version = options["apiVersion"][0]
+		kubeConfigOverride.ClusterInfo.APIVersion = options["apiVersion"][0]
 	}
 
 	if len(options["insecure"]) > 0 {
@@ -66,22 +67,35 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 		if err != nil {
 			return nil, err
 		}
-		kubeConfig.Insecure = insecure
+		kubeConfigOverride.ClusterInfo.InsecureSkipTLSVerify = insecure
 	}
 
+	return &kubeConfigOverride, nil
+}
+
+func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, error) {
+	configOverrides, err := getConfigOverrides(uri, options)
+
+	authFile := defaultKubeConfigFile
 	if len(options["auth"]) > 0 {
-		clientAuth, err := clientauth.LoadFromFile(options["auth"][0])
-		if err != nil {
-			return nil, err
-		}
-
-		kubeConfig, err = clientAuth.MergeWithConfig(kubeConfig)
-		if err != nil {
-			return nil, err
-		}
+		authFile = options["auth"][0]
 	}
 
-	kubeClient := kube_client.NewOrDie(&kubeConfig)
+	var kubeConfig *kube_client.Config
+	if authFile != "" {
+		if kubeConfig, err = kubeClientCmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&kubeClientCmd.ClientConfigLoadingRules{ExplicitPath: authFile},
+			configOverrides).ClientConfig(); err != nil {
+			return nil, err
+		}
+	} else {
+		kubeConfig = &kube_client.Config{
+			Host:     configOverrides.ClusterInfo.Server,
+			Version:  configOverrides.ClusterInfo.APIVersion,
+			Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
+		}
+	}
+	kubeClient := kube_client.NewOrDie(kubeConfig)
 
 	nodesApi, err := nodes.NewKubeNodes(kubeClient)
 	if err != nil {
