@@ -2,7 +2,7 @@ Heapster Overview
 ===================
 
 ## Sources
-Heapster can pull data from multiple sources. See [source-configuration.md](docs/source-configuration.md) for information on how to configure heapster sources. Heapster currently supports the following sources:
+Heapster can pull data from multiple sources. See [source-configuration.md](source-configuration.md) for information on how to configure heapster sources. Heapster currently supports the following sources:
 * Kubernetes
   * Pod Metrics
     * Metrics for each Kubernetes pod.
@@ -22,11 +22,11 @@ Heapster can pull data from multiple sources. See [source-configuration.md](docs
 Heapster can push data to multiple sinks. Heapster currently supports the following sinks:
 * InfluxDB
   * Sinks metrics and events.
-  * See [influxdb.md](docs/influxdb.md) for information on accessing InfluxDB UI.
+  * See [influxdb.md](influxdb.md) for information on accessing InfluxDB UI.
 * Google Cloud Metrics (GCM)
   * Only sinks metrics.
   * Only supported when heapster is running on Google Compute Engine (GCE).
-  * See [gcm.md](docs/gcm.md) for information on accessing data collected by GCM.
+  * See [gcm.md](gcm.md) for information on accessing data collected by GCM.
 * Google Cloud Logging (GCL)
   * Only sinks events.
   * Only supported when heapster is running on Google Compute Engine (GCE).
