@@ -98,7 +98,7 @@ const (
 )
 
 var (
-	kubeConfig = flag.String("kube_config", os.Getenv("HOME")+"/.kube/.kubeconfig", "Path to cluster info file.")
+	kubeConfig = flag.String("kube_config", os.Getenv("HOME")+"/.kube/config", "Path to cluster info file.")
 	workDir    = flag.String("work_dir", "/tmp/heapster_test", "Filesystem path where test files will be stored. Files will persist across runs to speed up tests.")
 )
 
