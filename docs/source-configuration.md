@@ -33,6 +33,7 @@ The following options are available:
 * `apiVersion` - API version to use to talk to Kubernetes (default: `v1beta1`)
 * `insecure` - whether to trust kubernetes certificates (default: `false`)
 * `kubeletPort` - kubelet port to use (default: `10255`)
+* `kubeletHttps` - whether to use https to connect to kubelets (default: `false`)
 * `auth` - client auth file to use (default: /etc/kubernetes/kubeConfig/kubeConfig)
 
 ### Cadvisor
