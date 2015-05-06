@@ -26,7 +26,7 @@ Heapster can push data to multiple sinks. Heapster currently supports the follow
 * Google Cloud Metrics (GCM)
   * Only sinks metrics.
   * Only supported when heapster is running on Google Compute Engine (GCE).
-  * See [gcm.md](gcm.md) for information on accessing data collected by GCM.
+  * See [google.md](google.md) for information on accessing data collected by GCM.
 * Google Cloud Logging (GCL)
   * Only sinks events.
   * Only supported when heapster is running on Google Compute Engine (GCE).
