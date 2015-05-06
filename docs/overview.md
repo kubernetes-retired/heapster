@@ -23,7 +23,7 @@ Heapster can push data to multiple sinks. Heapster currently supports the follow
 * InfluxDB
   * Sinks metrics and events.
   * See [influxdb.md](influxdb.md) for information on accessing InfluxDB UI.
-* Google Cloud Metrics (GCM)
+* Google Cloud Monitoring (GCM)
   * Only sinks metrics.
   * Only supported when heapster is running on Google Compute Engine (GCE).
   * See [google.md](google.md) for information on accessing data collected by GCM.

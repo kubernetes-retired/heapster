@@ -240,7 +240,7 @@ type lastValueData struct {
 
 // Stores events into the backend.
 func (self *gcmSink) StoreEvents([]kube_api.Event) error {
-	// No-op, Google Cloud Metrics doesn't store events
+	// No-op, Google Cloud Monitoring doesn't store events
 	return nil
 }
 
