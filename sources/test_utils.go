@@ -35,9 +35,14 @@ func (self *fakeNodesApi) DebugInfo() string {
 }
 
 type fakeKubeletApi struct {
-	container *api.Container
+	container  *api.Container
+	containers []api.Container
 }
 
 func (self *fakeKubeletApi) GetContainer(host datasource.Host, start, end time.Time, resolution time.Duration) (*api.Container, error) {
 	return self.container, nil
+}
+
+func (self *fakeKubeletApi) GetAllRawContainers(host datasource.Host, start, end time.Time, resolution time.Duration) ([]api.Container, error) {
+	return self.containers, nil
 }

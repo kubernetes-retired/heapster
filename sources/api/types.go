@@ -47,7 +47,7 @@ type Container struct {
 	Hostname string
 	Name     string
 	// TODO(vishh): Consider defining an internal Spec and Stats API to guard against
-	// changed to cadvisor API.
+	// changes to cadvisor API.
 	Spec  cadvisor.ContainerSpec
 	Stats []*cadvisor.ContainerStats
 }

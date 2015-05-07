@@ -27,6 +27,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func checkContainer(t *testing.T, expected api.Container, actual api.Container) {
+	assert.True(t, actual.Spec.Eq(&expected.Spec))
+	for i, stat := range actual.Stats {
+		assert.True(t, stat.Eq(expected.Stats[i]))
+	}
+}
+
 func TestBasicKubelet(t *testing.T) {
 	response := cadvisor_api.ContainerInfo{}
 	data, err := json.Marshal(&response)
@@ -79,8 +86,66 @@ func TestDetailedKubelet(t *testing.T) {
 	kubeletSource := kubeletSource{}
 	container, err := kubeletSource.getContainer(server.URL, time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
-	assert.True(t, container.Spec.Eq(&rootContainer.Spec))
-	for i, stat := range container.Stats {
-		assert.True(t, stat.Eq(rootContainer.Stats[i]))
+	checkContainer(t, rootContainer, *container)
+}
+
+func TestAllContainers(t *testing.T) {
+	rootContainer := api.Container{
+		Name: "/",
+		Spec: cadvisor_api.ContainerSpec{
+			CreationTime: time.Now(),
+			HasCpu:       true,
+			HasMemory:    true,
+		},
+		Stats: []*cadvisor_api.ContainerStats{
+			{
+				Timestamp: time.Now(),
+			},
+		},
 	}
+	subcontainer := api.Container{
+		Name: "/sub",
+		Spec: cadvisor_api.ContainerSpec{
+			CreationTime: time.Now(),
+			HasCpu:       true,
+			HasMemory:    true,
+		},
+		Stats: []*cadvisor_api.ContainerStats{
+			{
+				Timestamp: time.Now(),
+			},
+		},
+	}
+	response := map[string]cadvisor_api.ContainerInfo{
+		rootContainer.Name: {
+			ContainerReference: cadvisor_api.ContainerReference{
+				Name: rootContainer.Name,
+			},
+			Spec:  rootContainer.Spec,
+			Stats: rootContainer.Stats,
+		},
+		subcontainer.Name: {
+			ContainerReference: cadvisor_api.ContainerReference{
+				Name: subcontainer.Name,
+			},
+			Spec:  subcontainer.Spec,
+			Stats: subcontainer.Stats,
+		},
+	}
+	data, err := json.Marshal(&response)
+	require.NoError(t, err)
+	handler := util.FakeHandler{
+		StatusCode:   200,
+		RequestBody:  "",
+		ResponseBody: string(data),
+		T:            t,
+	}
+	server := httptest.NewServer(&handler)
+	defer server.Close()
+	kubeletSource := kubeletSource{}
+	containers, err := kubeletSource.getAllContainers(server.URL, time.Now(), time.Now().Add(time.Minute), time.Second)
+	require.NoError(t, err)
+	require.Len(t, containers, 2)
+	checkContainer(t, rootContainer, containers[0])
+	checkContainer(t, subcontainer, containers[1])
 }
