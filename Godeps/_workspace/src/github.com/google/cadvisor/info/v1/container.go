@@ -43,6 +43,9 @@ type ContainerSpec struct {
 	// Time at which the container was created.
 	CreationTime time.Time `json:"creation_time,omitempty"`
 
+	// Metadata labels associated with this container.
+	Labels map[string]string `json:"labels,omitempty"`
+
 	HasCpu bool    `json:"has_cpu"`
 	Cpu    CpuSpec `json:"cpu,omitempty"`
 
@@ -81,7 +84,9 @@ func (self ContainerReferenceSlice) Less(i, j int) bool { return self[i].Name < 
 // ContainerInfoQuery is used when users check a container info from the REST api.
 // It specifies how much data users want to get about a container
 type ContainerInfoRequest struct {
-	// Max number of stats to return.
+	// Max number of stats to return. Specify -1 for all stats currently available.
+	// If start and end time are specified this limit is ignored.
+	// Default: 60
 	NumStats int `json:"num_stats,omitempty"`
 
 	// Start time for which to query information.
@@ -91,6 +96,13 @@ type ContainerInfoRequest struct {
 	// End time for which to query information.
 	// If ommitted, current time is assumed.
 	End time.Time `json:"end,omitempty"`
+}
+
+// Returns a ContainerInfoRequest with all default values specified.
+func DefaultContainerInfoRequest() ContainerInfoRequest {
+	return ContainerInfoRequest{
+		NumStats: 60,
+	}
 }
 
 func (self *ContainerInfoRequest) Equals(other ContainerInfoRequest) bool {
@@ -463,4 +475,48 @@ func calculateCpuUsage(prev, cur uint64) uint64 {
 		return 0
 	}
 	return cur - prev
+}
+
+// Event contains information general to events such as the time at which they
+// occurred, their specific type, and the actual event. Event types are
+// differentiated by the EventType field of Event.
+type Event struct {
+	// the absolute container name for which the event occurred
+	ContainerName string `json:"container_name"`
+
+	// the time at which the event occurred
+	Timestamp time.Time `json:"timestamp"`
+
+	// the type of event. EventType is an enumerated type
+	EventType EventType `json:"event_type"`
+
+	// the original event object and all of its extraneous data, ex. an
+	// OomInstance
+	EventData EventData `json:"event_data,omitempty"`
+}
+
+// EventType is an enumerated type which lists the categories under which
+// events may fall. The Event field EventType is populated by this enum.
+type EventType string
+
+const (
+	EventOom               EventType = "oom"
+	EventOomKill                     = "oomKill"
+	EventContainerCreation           = "containerCreation"
+	EventContainerDeletion           = "containerDeletion"
+)
+
+// Extra information about an event. Only one type will be set.
+type EventData struct {
+	// Information about an OOM kill event.
+	OomKill *OomKillEventData `json:"oom,omitempty"`
+}
+
+// Information related to an OOM kill instance
+type OomKillEventData struct {
+	// process id of the killed process
+	Pid int `json:"pid"`
+
+	// The name of the killed process
+	ProcessName string `json:"process_name"`
 }
