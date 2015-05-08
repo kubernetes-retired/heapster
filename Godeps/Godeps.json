@@ -16,11 +16,6 @@
 			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
 		},
 		{
-			"ImportPath": "code.google.com/p/goauth2/oauth",
-			"Comment": "weekly-56",
-			"Rev": "afe77d958c701557ec5dc56f6936fcc194d15520"
-		},
-		{
 			"ImportPath": "code.google.com/p/google-api-go-client/bigquery/v2",
 			"Comment": "release-101",
 			"Rev": "e1c259484b495133836706f46319f5897f1e9bf6"
@@ -259,6 +254,10 @@
 		{
 			"ImportPath": "golang.org/x/net/context",
 			"Rev": "67f25490433376b5f7da086c0b9283fcdeca3a7b"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "2e66694fea36dc820636630792a55cdc6987e05b"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
