@@ -27,8 +27,9 @@ import (
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta2"
-	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
+	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
+	kclientcmd "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
+	kclientcmdapi "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
@@ -40,7 +41,7 @@ type kubeFramework interface {
 	T() *testing.T
 
 	// Kube client
-	Client() *kube_client.Client
+	Client() *kclient.Client
 
 	// Parses and Returns a replication Controller object contained in 'filePath'
 	ParseRC(filePath string) (*api.ReplicationController, error)
@@ -76,7 +77,7 @@ type kubeFramework interface {
 
 type realKubeFramework struct {
 	// Kube client.
-	kubeClient *kube_client.Client
+	kubeClient *kclient.Client
 
 	// The version of the kube cluster
 	version string
@@ -198,23 +199,29 @@ func downloadRelease(workDir, version string) error {
 	return nil
 }
 
-func getKubeClient() (string, *kube_client.Client, error) {
+func getKubeClient() (string, *kclient.Client, error) {
 	masterIP, err := getMasterIP()
 	if err != nil {
 		return "", nil, err
 	}
 	glog.V(1).Infof("Kubernetes master IP is %s", masterIP)
 
-	c, err := clientcmd.LoadFromFile(*kubeConfig)
+	c, err := kclientcmd.LoadFromFile(*kubeConfig)
 	if err != nil {
 		return "", nil, fmt.Errorf("error loading kubeConfig: %v", err.Error())
 	}
-	config, err := clientcmd.NewDefaultClientConfig(*c, &clientcmd.ConfigOverrides{}).ClientConfig()
+	config, err := kclientcmd.NewDefaultClientConfig(
+		*c,
+		&kclientcmd.ConfigOverrides{
+			ClusterInfo: kclientcmdapi.Cluster{
+				APIVersion: "v1beta1",
+			},
+		}).ClientConfig()
 	if err != nil {
 		return "", nil, fmt.Errorf("error parsing kubeConfig: %v", err.Error())
 	}
 
-	kubeClient, err := kube_client.New(config)
+	kubeClient, err := kclient.New(config)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating client - %q", err)
 	}
@@ -338,7 +345,7 @@ func (self *realKubeFramework) T() *testing.T {
 	return self.t
 }
 
-func (self *realKubeFramework) Client() *kube_client.Client {
+func (self *realKubeFramework) Client() *kclient.Client {
 	return self.kubeClient
 }
 

@@ -39,7 +39,7 @@ func buildDockerImage(imageName string) error {
 	return nil
 }
 
-func copyDockerImage(imageName, hostname string) error {
+func copyDockerImage(imageName, hostname, zone string) error {
 	tempfile, err := ioutil.TempFile("", hostname)
 	if err != nil {
 		return err
@@ -50,15 +50,15 @@ func copyDockerImage(imageName, hostname string) error {
 		return fmt.Errorf("failed to save docker binary (%q) - %q", err, out)
 	}
 	remoteFile := path.Join("/tmp", path.Base(tempfile.Name()))
-	out, err = exec.Command("gcutil", "push", hostname, tempfile.Name(), remoteFile).CombinedOutput()
+	out, err = exec.Command("gcloud", "compute", "copy-files", "--zone", zone, tempfile.Name(), fmt.Sprintf("%s:%s", hostname, remoteFile)).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to push docker binary to %q (%q) - %q", hostname, err, out)
 	}
-	out, err = exec.Command("gcutil", "ssh", hostname, "sudo", "docker", "load", "-i", remoteFile).CombinedOutput()
+	out, err = exec.Command("gcloud", "compute", "ssh", "--zone", zone, hostname, "--command", fmt.Sprintf("sudo docker load -i %s", remoteFile)).CombinedOutput()
 	if err != nil {
 		err = fmt.Errorf("failed to load docker image %q using temp file %q on host %q (%q) - %q", imageName, remoteFile, hostname, err, out)
 	}
-	out, rmErr := exec.Command("gcutil", "ssh", hostname, "sudo", "rm", "-f", remoteFile).CombinedOutput()
+	out, rmErr := exec.Command("gcloud", "compute", "ssh", "--zone", zone, hostname, "--command", fmt.Sprintf("sudo rm -f %s", remoteFile)).CombinedOutput()
 	if rmErr != nil {
 		if err != nil {
 			rmErr = fmt.Errorf("%v\nfailed to remove tempfile on host %q (%q) - %q", err, hostname, err, out)
@@ -76,7 +76,7 @@ func removeDockerImage(imageName string) error {
 	return nil
 }
 
-func cleanupRemoteHost(hostname string) {
-	_ = exec.Command("gcutil", "ssh", hostname, "sudo", "docker", "rm", "`docker ps -a -q`").Run()
-	_ = exec.Command("gcutil", "ssh", hostname, "sudo", "docker", "rmi", "`docker images -a -q`").Run()
+func cleanupRemoteHost(hostname, zone string) {
+	_ = exec.Command("gcloud", "compute", "ssh", "--zone", zone, hostname, "--command", "\"sudo docker rm `docker ps -a -q`\"")
+	_ = exec.Command("gcloud", "compute", "ssh", "--zone", zone, hostname, "--command", "\"sudo docker rmi `docker images -a -q`\"")
 }

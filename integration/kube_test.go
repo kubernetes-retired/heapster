@@ -35,6 +35,7 @@ import (
 )
 
 const (
+	kTestZone            = "us-central1-b"
 	targetTags           = "kubernetes-minion"
 	sleepBetweenAttempts = 5 * time.Second
 	testTimeout          = 5 * time.Minute
@@ -74,7 +75,7 @@ func buildAndPushHeapsterImage(hostnames []string) error {
 		return err
 	}
 	for _, host := range hostnames {
-		if err := copyDockerImage(*heapsterImage, host); err != nil {
+		if err := copyDockerImage(*heapsterImage, host, kTestZone); err != nil {
 			return err
 		}
 	}
@@ -94,7 +95,7 @@ func buildAndPushInfluxdbImage(hostnames []string) error {
 		return err
 	}
 	for _, host := range hostnames {
-		if err := copyDockerImage(*influxdbImage, host); err != nil {
+		if err := copyDockerImage(*influxdbImage, host, kTestZone); err != nil {
 			return err
 		}
 	}
@@ -114,7 +115,7 @@ func buildAndPushGrafanaImage(hostnames []string) error {
 		return err
 	}
 	for _, host := range hostnames {
-		if err := copyDockerImage(*grafanaImage, host); err != nil {
+		if err := copyDockerImage(*grafanaImage, host, kTestZone); err != nil {
 			return err
 		}
 	}
@@ -211,8 +212,8 @@ func deleteAll(fm kubeFramework, ns string, services []*kube_api.Service, rcs []
 	var nodes []string
 	if nodes, err = fm.GetNodes(); err == nil {
 		for _, node := range nodes {
-			name := strings.Split(node, ".")[0]
-			cleanupRemoteHost(name)
+			host := strings.Split(node, ".")[0]
+			cleanupRemoteHost(host, kTestZone)
 		}
 	} else {
 		glog.Errorf("failed to cleanup nodes - %v", err)
