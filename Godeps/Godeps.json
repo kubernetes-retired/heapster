@@ -11,6 +11,26 @@
 			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 		},
 		{
+			"ImportPath": "bosun.org/metadata",
+			"Comment": "20150428222252-13-gfab31df",
+			"Rev": "fab31df2f087bfba0ee6d2a0784d5ebbe8b80401"
+		},
+		{
+			"ImportPath": "bosun.org/opentsdb",
+			"Comment": "20150428222252-13-gfab31df",
+			"Rev": "fab31df2f087bfba0ee6d2a0784d5ebbe8b80401"
+		},
+		{
+			"ImportPath": "bosun.org/slog",
+			"Comment": "20150428222252-13-gfab31df",
+			"Rev": "fab31df2f087bfba0ee6d2a0784d5ebbe8b80401"
+		},
+		{
+			"ImportPath": "bosun.org/util",
+			"Comment": "20150428222252-13-gfab31df",
+			"Rev": "fab31df2f087bfba0ee6d2a0784d5ebbe8b80401"
+		},
+		{
 			"ImportPath": "code.google.com/p/go-uuid/uuid",
 			"Comment": "null-12",
 			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
