@@ -30,6 +30,9 @@ import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
+// TODO(vmarmol): Use Kubernetes' if we export it as an API.
+const kubernetesPodNameLabel = "io.kubernetes.pod.name"
+
 type kubeletSource struct{}
 
 func (self *kubeletSource) postRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
@@ -94,4 +97,75 @@ func (self *kubeletSource) GetContainer(host Host, start, end time.Time, resolut
 	glog.V(3).Infof("about to query kubelet using url: %q", url)
 
 	return self.getContainer(url, start, end, resolution)
+}
+
+// TODO(vmarmol): Use Kubernetes' if we export it as an API.
+type statsRequest struct {
+	// The name of the container for which to request stats.
+	// Default: /
+	ContainerName string `json:"containerName,omitempty"`
+
+	// Max number of stats to return.
+	// If start and end time are specified this limit is ignored.
+	// Default: 60
+	NumStats int `json:"num_stats,omitempty"`
+
+	// Start time for which to query information.
+	// If ommitted, the beginning of time is assumed.
+	Start time.Time `json:"start,omitempty"`
+
+	// End time for which to query information.
+	// If ommitted, current time is assumed.
+	End time.Time `json:"end,omitempty"`
+
+	// Whether to also include information from subcontainers.
+	// Default: false.
+	Subcontainers bool `json:"subcontainers,omitempty"`
+}
+
+// Get stats for all non-Kubernetes containers.
+func (self *kubeletSource) GetAllRawContainers(host Host, start, end time.Time, resolution time.Duration) ([]api.Container, error) {
+	url := fmt.Sprintf("http://%s:%d/stats/container/", host.IP, host.Port)
+	return self.getAllContainers(url, start, end, resolution)
+}
+
+func (self *kubeletSource) getAllContainers(url string, start, end time.Time, resolution time.Duration) ([]api.Container, error) {
+	// Request data from all subcontainers.
+	request := statsRequest{
+		ContainerName: "/",
+		Start:         start,
+		End:           end,
+		Subcontainers: true,
+	}
+	body, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	var containers map[string]cadvisor.ContainerInfo
+	err = self.postRequestAndGetValue(http.DefaultClient, req, &containers)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all container stats from Kubeler URL %q: %v", url, err)
+	}
+
+	// TODO(vmarmol): Use this for all stats gathering.
+	// Don't include the Kubernetes containers, those are included elsewhere.
+	result := make([]api.Container, 0, len(containers))
+	for _, containerInfo := range containers {
+		if _, ok := containerInfo.Spec.Labels[kubernetesPodNameLabel]; ok {
+			continue
+		}
+
+		cont := self.parseStat(&containerInfo, resolution)
+		if cont != nil {
+			result = append(result, *cont)
+		}
+	}
+
+	return result, nil
 }

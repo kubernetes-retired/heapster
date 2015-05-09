@@ -39,41 +39,63 @@ func NewKubeNodeMetrics(kubeletPort int, kubeletApi datasource.Kubelet, nodesApi
 	}
 }
 
-func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start, end time.Time, resolution time.Duration) (api.Container, error) {
-	container, err := self.kubeletApi.GetContainer(datasource.Host{IP: info.InternalIP, Port: self.kubeletPort, Resource: "stats/"}, start, end, resolution)
+// Returns the host container, non-Kubernetes containers, and an error (if any).
+func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start, end time.Time, resolution time.Duration) (*api.Container, []api.Container, error) {
+	// Get information for all containers.
+	containers, err := self.kubeletApi.GetAllRawContainers(datasource.Host{IP: info.InternalIP, Port: self.kubeletPort}, start, end, resolution)
 	if err != nil {
-		glog.V(1).Infof("Failed to get machine stats from kubelet for node %s", host)
-		return api.Container{}, err
+		glog.V(1).Infof("Failed to get container stats from kubelet for node %q", host)
+		return nil, []api.Container{}, fmt.Errorf("failed to get container stats from Kubeler node %q: %v", host, err)
 	}
-	if container == nil {
+	if len(containers) == 0 {
 		// no stats found.
-		glog.V(1).Infof("no machine stats from kubelet on node %s", host)
-		return api.Container{}, fmt.Errorf("no machine stats from kubelet on node %s", host)
+		glog.V(1).Infof("No container stats from Kubelet on node %q", host)
+		return nil, []api.Container{}, fmt.Errorf("no container stats from Kubelet on node %q", host)
 	}
-	container.Hostname = string(host)
-	return *container, nil
+
+	// Find host container.
+	hostIndex := -1
+	hostString := string(host)
+	for i := range containers {
+		if containers[i].Name == "/" {
+			hostIndex = i
+		}
+		containers[i].Hostname = hostString
+	}
+	var hostContainer *api.Container = nil
+	if hostIndex >= 0 {
+		hostCopy := containers[hostIndex]
+		hostContainer = &hostCopy
+		containers = append(containers[:hostIndex], containers[hostIndex+1:]...)
+	}
+	return hostContainer, containers, nil
 }
 
-func (self *kubeNodeMetrics) getNodesInfo(nodeList *nodes.NodeList, start, end time.Time, resolution time.Duration) ([]api.Container, error) {
+// Returns the host containers, non-Kubernetes containers, and an error (if any).
+func (self *kubeNodeMetrics) getNodesInfo(nodeList *nodes.NodeList, start, end time.Time, resolution time.Duration) ([]api.Container, []api.Container, error) {
 	var (
 		lock sync.Mutex
 		wg   sync.WaitGroup
 	)
-	nodesInfo := []api.Container{}
+	hostContainers := make([]api.Container, 0, len(nodeList.Items))
+	rawContainers := make([]api.Container, 0, len(nodeList.Items))
 	for host, info := range nodeList.Items {
 		wg.Add(1)
 		go func(host nodes.Host, info nodes.Info) {
 			defer wg.Done()
-			if container, err := self.updateStats(host, info, start, end, resolution); err == nil {
+			if hostContainer, containers, err := self.updateStats(host, info, start, end, resolution); err == nil {
 				lock.Lock()
 				defer lock.Unlock()
-				nodesInfo = append(nodesInfo, container)
+				if hostContainers != nil {
+					hostContainers = append(hostContainers, *hostContainer)
+				}
+				rawContainers = append(rawContainers, containers...)
 			}
 		}(host, info)
 	}
 	wg.Wait()
 
-	return nodesInfo, nil
+	return hostContainers, rawContainers, nil
 }
 
 func (self *kubeNodeMetrics) GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error) {
@@ -82,12 +104,15 @@ func (self *kubeNodeMetrics) GetInfo(start, end time.Time, resolution time.Durat
 		return api.AggregateData{}, err
 	}
 	glog.V(3).Info("Fetched list of nodes from the master")
-	nodesInfo, err := self.getNodesInfo(kubeNodes, start, end, resolution)
+	hostContainers, rawContainers, err := self.getNodesInfo(kubeNodes, start, end, resolution)
 	if err != nil {
 		return api.AggregateData{}, err
 	}
 
-	return api.AggregateData{Machine: nodesInfo}, nil
+	return api.AggregateData{
+		Machine:    hostContainers,
+		Containers: rawContainers,
+	}, nil
 }
 
 func (self *kubeNodeMetrics) DebugInfo() string {

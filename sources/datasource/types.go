@@ -40,6 +40,9 @@ type Kubelet interface {
 	// GetContainer returns container spec and stats for the container pointed to by 'host.Resource', running on the kubelet specified in 'host.IP'.
 	// TODO(vishh): Once kubelet exposes a get all stats API, modify this API to return stats for all Pods.
 	GetContainer(host Host, start, end time.Time, resolution time.Duration) (containers *api.Container, err error)
+
+	// Get stats for all non-Kubernetes containers.
+	GetAllRawContainers(host Host, start, end time.Time, resolution time.Duration) ([]api.Container, error)
 }
 
 func NewKubelet() Kubelet {

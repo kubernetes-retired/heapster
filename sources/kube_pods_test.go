@@ -38,7 +38,7 @@ func (self *fakePodsApi) DebugInfo() string {
 func TestKubePodMetricsBasic(t *testing.T) {
 	nodesApi := &fakeNodesApi{nodes.NodeList{}}
 	podsApi := &fakePodsApi{[]api.Pod{}}
-	source := NewKubePodMetrics(10250, nodesApi, podsApi, &fakeKubeletApi{nil})
+	source := NewKubePodMetrics(10250, nodesApi, podsApi, &fakeKubeletApi{})
 	_, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	require.NotEmpty(t, source.DebugInfo())
@@ -64,7 +64,7 @@ func TestKubePodMetricsFull(t *testing.T) {
 	}
 	nodesApi := &fakeNodesApi{nodeList}
 	podsApi := &fakePodsApi{podList}
-	kubeletApi := &fakeKubeletApi{container}
+	kubeletApi := &fakeKubeletApi{container: container}
 	source := NewKubePodMetrics(10250, nodesApi, podsApi, kubeletApi)
 	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
