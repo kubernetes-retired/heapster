@@ -4,9 +4,9 @@ deps:
 	go get github.com/progrium/go-extpoints
 
 build: clean deps
-	go generate github.com/GoogleCloudPlatform/heapster
-	godep go build -a github.com/GoogleCloudPlatform/heapster/...
-	godep go build -a github.com/GoogleCloudPlatform/heapster
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go generate github.com/GoogleCloudPlatform/heapster
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -a github.com/GoogleCloudPlatform/heapster/...
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -a github.com/GoogleCloudPlatform/heapster
 
 sanitize:
 	hooks/check_boilerplate.sh
@@ -14,7 +14,7 @@ sanitize:
 	hooks/run_vet.sh
 
 test-unit: clean deps sanitize build
-	godep go test --test.short github.com/GoogleCloudPlatform/heapster/...
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go test --test.short github.com/GoogleCloudPlatform/heapster/...
 
 test-unit-cov: clean deps sanitize build
 	hooks/coverage.sh

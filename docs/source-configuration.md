@@ -20,7 +20,12 @@ To use the kubernetes source add the following flag:
 If you're running Heapster in a Kubernetes pod you can use the following flag:
 
 ```
---source=kubernetes:https://kubernetes-ro
+--source=kubernetes
+```
+Heapster requires access to `token-system-monitoring` secret to connect with the master securely.
+To run without auth file, use the following config:
+```
+--source=kubernetes:http://kubernetes-ro?auth=""
 ```
 
 The following options are available:
@@ -28,7 +33,7 @@ The following options are available:
 * `apiVersion` - API version to use to talk to Kubernetes (default: `v1beta1`)
 * `insecure` - whether to trust kubernetes certificates (default: `false`)
 * `kubeletPort` - kubelet port to use (default: `10255`)
-* `auth` - client auth file to use (no default)
+* `auth` - client auth file to use (default: /etc/kubernetes/kubeConfig/kubeConfig)
 
 ### Cadvisor
 Cadvisor source comes in two types: standalone & CoreOS:
