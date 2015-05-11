@@ -165,7 +165,7 @@ func (eventSource *eventsSourceImpl) GetInfo(start, end time.Time, resolution ti
 	events, watchLoopTerminated, err := eventSource.getEvents()
 	if err != nil {
 		if watchLoopTerminated {
-			glog.Errorf("Event watch loop was terminated due to error. Will restart it. Error: %v", err)
+			glog.V(1).Infof("Event watch loop was terminated due to error. Will restart it. Error: %v", err)
 			eventSource.restartWatchLoop()
 		}
 		return api.AggregateData{}, err

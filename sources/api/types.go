@@ -43,6 +43,13 @@ type AggregateData struct {
 	Events     []kubeapi.Event
 }
 
+func (a *AggregateData) Merge(b *AggregateData) {
+	a.Pods = append(a.Pods, b.Pods...)
+	a.Containers = append(a.Containers, b.Containers...)
+	a.Machine = append(a.Machine, b.Machine...)
+	a.Events = append(a.Events, b.Events...)
+}
+
 type Container struct {
 	Hostname string
 	Name     string

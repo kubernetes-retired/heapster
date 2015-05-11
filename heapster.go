@@ -24,10 +24,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/manager"
 	"github.com/GoogleCloudPlatform/heapster/sinks"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/validate"
 	"github.com/GoogleCloudPlatform/heapster/version"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/golang/glog"
 )
 
@@ -104,30 +106,12 @@ func doWork() ([]api.Source, sinks.ExternalSinkManager, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	go housekeep(sources, sinkManager)
-	return sources, sinkManager, nil
-}
-
-func housekeep(sources []api.Source, sinkManager sinks.ExternalSinkManager) {
-	ticker := time.NewTicker(*argPollDuration)
-	lastGet := time.Now()
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			for _, source := range sources {
-				glog.V(2).Infof("attempting to get data from source %q", source.Name())
-				data, err := source.GetInfo(lastGet, time.Now(), *argStatsResolution)
-				if err != nil {
-					glog.Errorf("failed to get information from source %q - %v", source.Name(), err)
-				}
-				if err := sinkManager.Store(data); err != nil {
-					glog.Errorf("failed to push information to sink - %v", err)
-				}
-			}
-			lastGet = time.Now()
-		}
+	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution)
+	if err != nil {
+		return nil, nil, err
 	}
+	go util.Until(manager.Housekeep, *argPollDuration, util.NeverStop)
+	return sources, sinkManager, nil
 }
 
 func setMaxProcs() {
