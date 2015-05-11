@@ -7,8 +7,8 @@ if [ ! -z "$FLAGS" ]; then
 fi
 
 # If in Kubernetes, target the master.
-if [ ! -z $KUBERNETES_RO_SERVICE_HOST ]; then
-  EXTRA_ARGS="--source=kubernetes:http://${KUBERNETES_RO_SERVICE_HOST}:${KUBERNETES_RO_SERVICE_PORT} $EXTRA_ARGS"
+if [ ! -z $KUBERNETES_SERVICE_HOST ]; then
+  EXTRA_ARGS="--source=kubernetes:https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT} $EXTRA_ARGS"
 fi
 
 HEAPSTER="/usr/bin/heapster"
@@ -16,7 +16,7 @@ HEAPSTER="/usr/bin/heapster"
 case $SINK in
   'influxdb') 
     # Check if in Kubernetes.
-    if [ ! -z $KUBERNETES_RO_SERVICE_HOST ]; then
+    if [ ! -z $KUBERNETES_SERVICE_HOST ]; then
     # TODO(vishh): add support for passing in user name and password.
       INFLUXDB_ADDRESS=""
       if [ ! -z $MONITORING_INFLUXDB_SERVICE_HOST ]; then
