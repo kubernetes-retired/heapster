@@ -121,3 +121,7 @@ func (self *kubeNodeMetrics) DebugInfo() string {
 
 	return desc
 }
+
+func (kns *kubeNodeMetrics) Name() string {
+	return "Kube Node Metrics Source"
+}

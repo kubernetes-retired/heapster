@@ -168,6 +168,8 @@ type ExternalSink interface {
 	StoreEvents([]kube_api.Event) error
 	// Returns debug information specific to the sink.
 	DebugInfo() string
+	// Returns an user friendly string that describes the External Sink.
+	Name() string
 }
 
 // Codec represents an engine that translated from sources.api to sink.api objects.

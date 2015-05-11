@@ -79,4 +79,6 @@ type Source interface {
 	GetInfo(start, end time.Time, resolution time.Duration) (AggregateData, error)
 	// Returns debug information for the source.
 	DebugInfo() string
+	// Returns a user friendly string that describes the source.
+	Name() string
 }

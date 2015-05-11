@@ -107,6 +107,10 @@ func (self *cadvisorSource) DebugInfo() string {
 	return desc
 }
 
+func (cs *cadvisorSource) Name() string {
+	return "Cadvisor Source"
+}
+
 func NewCadvisorSources(cadvisorType string, options map[string][]string) ([]api.Source, error) {
 	if cadvisorType == "coreos" || cadvisorType == "fleet" {
 		return newCoreosSources(options)

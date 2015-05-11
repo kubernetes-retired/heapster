@@ -35,6 +35,8 @@ type kubePodsSource struct {
 	podErrors   map[podInstance]int // guarded by stateLock
 }
 
+const name = "kube-pods-source"
+
 func NewKubePodMetrics(kubeletPort int, nodesApi nodes.NodesApi, podsApi podsApi, kubeletApi datasource.Kubelet) api.Source {
 	return &kubePodsSource{
 		kubeletPort: kubeletPort,
@@ -141,4 +143,8 @@ func (self *kubePodsSource) DebugInfo() string {
 	desc += "\n"
 
 	return desc
+}
+
+func (kps *kubePodsSource) Name() string {
+	return "Kube Pods Source"
 }

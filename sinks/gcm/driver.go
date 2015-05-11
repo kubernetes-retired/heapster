@@ -399,6 +399,10 @@ func (self *gcmSink) pushMetrics(request *metricWriteRequest) error {
 	return err
 }
 
+func (self *gcmSink) Name() string {
+	return "Google Cloud Monitoring Sink"
+}
+
 const (
 	// Domain for the metrics.
 	metricDomain = "kubernetes.io"

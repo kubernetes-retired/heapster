@@ -181,3 +181,7 @@ func (eventSource *eventsSourceImpl) DebugInfo() string {
 	// TODO: Add events specific debug information
 	return desc
 }
+
+func (eventsSource *eventsSourceImpl) Name() string {
+	return kubeEventsSource
+}
