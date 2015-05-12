@@ -275,6 +275,10 @@ func (self *influxdbSink) DebugInfo() string {
 	return desc
 }
 
+func (self *influxdbSink) Name() string {
+	return "InfluxDB Sink"
+}
+
 func createDatabase(databaseName string, client *influxdb.Client) error {
 	createDatabase := true
 	if databases, err := client.GetDatabaseList(); err == nil {

@@ -16,9 +16,11 @@ package sinks
 
 import (
 	"fmt"
+	"strings"
 
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
+	"github.com/golang/glog"
 )
 
 type externalSinkManager struct {
@@ -26,6 +28,8 @@ type externalSinkManager struct {
 	externalSinks []sink_api.ExternalSink
 }
 
+// NewExternalSinkManager returns an external sink manager that will manage pushing data to all
+// the sinks in 'externalSinks', which is a map of sink name to ExternalSink object.
 func NewExternalSinkManager(externalSinks []sink_api.ExternalSink) (ExternalSinkManager, error) {
 	// Get supported metrics.
 	supportedMetrics := sink_api.SupportedStatMetrics()
@@ -63,24 +67,27 @@ func (self *externalSinkManager) Store(input interface{}) error {
 		return err
 	}
 	// Format metrics and push them.
-	var errors []error
-	for _, externalSink := range self.externalSinks {
-		if err := externalSink.StoreTimeseries(timeseries); err != nil {
-			errors = append(errors, err)
-		}
-		if data.Events != nil && len(data.Events) > 0 {
-			if err := externalSink.StoreEvents(data.Events); err != nil {
-				errors = append(errors, err)
-			}
+	errorsChan := make(chan error, len(self.externalSinks))
+	for idx := range self.externalSinks {
+		sink := self.externalSinks[idx]
+		go func(sink sink_api.ExternalSink) {
+			glog.V(2).Infof("Storing Timeseries to %q", sink.Name())
+			errorsChan <- sink.StoreTimeseries(timeseries)
+		}(sink)
+		go func(sink sink_api.ExternalSink) {
+			glog.V(2).Infof("Storing Events to %q", sink.Name())
+			errorsChan <- sink.StoreEvents(data.Events)
+		}(sink)
+	}
+	var errors []string
+	for i := 1; i <= len(errorsChan); i++ {
+		if err := <-errorsChan; err != nil {
+			errors = append(errors, fmt.Sprintf("%v ", err))
 		}
 	}
 	err = nil
 	if len(errors) > 0 {
-		errStr := ""
-		for _, err := range errors {
-			errStr = fmt.Sprintf("%v ", err)
-		}
-		err = fmt.Errorf("encountered the following errors: %s", errStr)
+		err = fmt.Errorf("encountered the following errors: %s", strings.Join(errors, ";\n"))
 	}
 
 	return err
@@ -90,17 +97,17 @@ func (self *externalSinkManager) DebugInfo() string {
 	desc := "External Sinks\n"
 
 	// Add metrics being exported.
-	desc += "\tExported metrics:"
+	desc += "\tExported metrics:\n"
 	for _, supported := range sink_api.SupportedStatMetrics() {
 		desc += fmt.Sprintf("\t\t%s: %s", supported.Name, supported.Description)
 	}
 
 	// Add labels being used.
-	desc += "\tExported labels:"
+	desc += "\n\tExported labels:\n"
 	for _, label := range sink_api.SupportedLabels() {
 		desc += fmt.Sprintf("\t\t%s: %s", label.Key, label.Description)
 	}
-	desc += "\n\tExternal Sinks:"
+	desc += "\n\tExternal Sinks:\n"
 	for _, externalSink := range self.externalSinks {
 		desc += fmt.Sprintf("\n\t\t%s", externalSink.DebugInfo())
 	}

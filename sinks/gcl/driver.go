@@ -62,9 +62,11 @@ func (sink *gclSink) StoreEvents(events []kube_api.Event) error {
 	if events == nil || len(events) <= 0 {
 		return nil
 	}
-
+	glog.V(3).Infof("storing events into GCL sink")
 	request := sink.createLogsEntriesRequest(events)
-	return sink.sendLogsEntriesRequest(request)
+	err := sink.sendLogsEntriesRequest(request)
+	glog.V(3).Infof("stored events into GCL sink - %v", err)
+	return err
 }
 
 type httpClient interface {
@@ -231,6 +233,10 @@ func (sink *gclSink) sendLogsEntriesRequest(request LogsEntriesWriteRequest) err
 	}
 
 	return nil
+}
+
+func (self *gclSink) Name() string {
+	return "Google Cloud Logging Sink"
 }
 
 // Returns an implementation of a Google Cloud Logging (GCL) sink.

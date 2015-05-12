@@ -35,6 +35,8 @@ type kubePodsSource struct {
 	podErrors   map[podInstance]int // guarded by stateLock
 }
 
+const name = "kube-pods-source"
+
 func NewKubePodMetrics(kubeletPort int, nodesApi nodes.NodesApi, podsApi podsApi, kubeletApi datasource.Kubelet) api.Source {
 	return &kubePodsSource{
 		kubeletPort: kubeletPort,
@@ -103,7 +105,7 @@ func (self *kubePodsSource) getPodInfo(nodeList *nodes.NodeList, start, end time
 				rawContainer, err := self.getStatsFromKubelet(pod, container.Name, start, end, resolution)
 				if err != nil {
 					// Containers could be in the process of being setup or restarting while the pod is alive.
-					glog.Errorf("failed to get stats for container %q in pod %q/%q", container.Name, pod.Namespace, pod.Name)
+					glog.V(2).Infof("failed to get stats for container %q in pod %q/%q", container.Name, pod.Namespace, pod.Name)
 					self.recordPodError(*pod)
 					continue
 				}
@@ -141,4 +143,8 @@ func (self *kubePodsSource) DebugInfo() string {
 	desc += "\n"
 
 	return desc
+}
+
+func (kps *kubePodsSource) Name() string {
+	return "Kube Pods Source"
 }

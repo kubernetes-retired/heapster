@@ -43,6 +43,13 @@ type AggregateData struct {
 	Events     []kubeapi.Event
 }
 
+func (a *AggregateData) Merge(b *AggregateData) {
+	a.Pods = append(a.Pods, b.Pods...)
+	a.Containers = append(a.Containers, b.Containers...)
+	a.Machine = append(a.Machine, b.Machine...)
+	a.Events = append(a.Events, b.Events...)
+}
+
 type Container struct {
 	Hostname string
 	Name     string
@@ -79,4 +86,6 @@ type Source interface {
 	GetInfo(start, end time.Time, resolution time.Duration) (AggregateData, error)
 	// Returns debug information for the source.
 	DebugInfo() string
+	// Returns a user friendly string that describes the source.
+	Name() string
 }
