@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.12.0 (5-12-2015)
+- Fixes issues related to supporting multiple sinks.
+- Resource usage of kubernetes system daemons are exported.
+- Support for kubernetes specific auth (secrets).
+- Scalability improvements.
+
 ## 0.11.0 (4-28-2015)
 - Export filesystem usage metrics for the node and containers.
 - Support for Kubernetes events
