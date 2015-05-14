@@ -3,8 +3,7 @@
     "kind": "ReplicationController",
     "metadata": {
 	"labels": {
-	    "name": "heapster",
-	    "kubernetes.io/cluster-service": "true"
+	    "name": "heapster"
 	},
 	"name": "monitoring-heapster-controller"
     },
@@ -16,8 +15,7 @@
 	"template": {
 	    "metadata": {
 		"labels": {
-		    "name": "heapster",
-		    "kubernetes.io/cluster-service": "true"
+		    "name": "heapster"
 		}
 	    },
 	    "spec": {
@@ -25,15 +23,10 @@
 		    {
 			"image": "kubernetes/heapster:v0.12.0",
 			"name": "heapster",
-			"env": [
-			    {
-				"name": "INFLUXDB_HOST",
-				"value": "http://monitoring-influxdb:80"
-			    },
-			    {
-				"name": "SINK",
-				"value": "influxdb"
-			    }
+			"command": [
+			    "/heapster",
+			    "--source=kubernetes:http://kubernetes-ro",
+			    "--sink=influxdb:http://monitoring-influxdb:80"
 			],
 			"volumeMounts": [
 			    {

@@ -52,8 +52,7 @@ func getConfigOverrides(uri string, options map[string][]string) (*kubeClientCmd
 		if err != nil {
 			return nil, err
 		}
-
-		if len(parsedUrl.Scheme) == 0 && len(parsedUrl.Host) == 0 {
+		if len(parsedUrl.Scheme) != 0 && len(parsedUrl.Host) != 0 {
 			kubeConfigOverride.ClusterInfo.Server = fmt.Sprintf("%s://%s", parsedUrl.Scheme, parsedUrl.Host)
 		}
 	}
@@ -95,6 +94,12 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 			Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
 		}
 	}
+	if len(kubeConfig.Host) == 0 {
+		return nil, fmt.Errorf("invalid kubernetes master url specified")
+	}
+	if len(kubeConfig.Version) == 0 {
+		return nil, fmt.Errorf("invalid kubernetes API version specified")
+	}
 	kubeClient := kube_client.NewOrDie(kubeConfig)
 
 	nodesApi, err := nodes.NewKubeNodes(kubeClient)
@@ -108,7 +113,7 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 			return nil, err
 		}
 	}
-	glog.Infof("Using Kubernetes client with master %q and version %s\n", kubeConfig.Host, kubeConfig.Version)
+	glog.Infof("Using Kubernetes client with master %q and version %q\n", kubeConfig.Host, kubeConfig.Version)
 	glog.Infof("Using kubelet port %d", kubeletPort)
 	kubeletApi := datasource.NewKubelet()
 	kubePodsSource := NewKubePodMetrics(kubeletPort, nodesApi, newPodsApi(kubeClient), kubeletApi)
