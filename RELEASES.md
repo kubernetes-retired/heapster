@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.12.1 (5-13-2015)
+- Fixes kube master url handling via --source flag.
+
 ## 0.12.0 (5-12-2015)
 - Fixes issues related to supporting multiple sinks.
 - Resource usage of kubernetes system daemons are exported.
