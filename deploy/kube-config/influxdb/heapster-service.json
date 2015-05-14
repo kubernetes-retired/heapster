@@ -3,8 +3,8 @@
   "kind": "Service",
   "metadata": {
     "labels": {
-      "name": "heapster",
-      "kubernetes.io/cluster-service": "true"
+      "kubernetes.io/cluster-service": "true",
+      "name": "monitoring-heapster"
     },
     "name": "monitoring-heapster"
   },
@@ -17,7 +17,6 @@
     ],
     "selector": {
       "name": "heapster",
-      "kubernetes.io/cluster-service": "true"
     }
   }
 }

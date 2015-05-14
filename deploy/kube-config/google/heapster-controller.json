@@ -15,7 +15,6 @@
 	"template": {
 	    "metadata": {
 		"labels": {
-		    "kubernetes.io/cluster-service": "true",
 		    "name": "heapster"
 		}
 	    },
@@ -29,19 +28,22 @@
 		    },
 		    {
 			"name": "monitoring-token",
-			"mountPath": "/etc/kubernetes/kubeconfig",
-			"readOnly": true
+			"secret": {
+			    "secretName": "token-system-monitoring"
+			}
 		    }
 		],
 		"containers": [
 		    {
 			"name": "heapster",
 			"image": "kubernetes/heapster:v0.12.0",
-			"env": [
-			    {
-				"name": "FLAGS",
-				"value": "--poll_duration=2m --stats_resolution=1m --sink gcm --sink gcl"
-			    }
+			"command": [
+			    "/heapster",
+			    "--source=kubernetes:http://kubernetes-ro:80",
+			    "--sink=gcm",
+			    "--sink=gcl",
+			    "--poll_duration=2m",
+			    "--stats_resolution=1m"
 			],
 			"resources": {},
 			"volumeMounts": [
@@ -52,9 +54,8 @@
 			    },
 			    {
 				"name": "monitoring-token",
-				"secret": {
-				    "secretName": "token-system-monitoring"
-				}
+				"mountPath": "/etc/kubernetes/kubeconfig",
+				"readOnly": true
 			    }
 			]
 		    }
