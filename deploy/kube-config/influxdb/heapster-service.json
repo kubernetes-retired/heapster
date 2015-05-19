@@ -16,7 +16,7 @@
       }
     ],
     "selector": {
-      "name": "heapster",
+      "name": "heapster"
     }
   }
 }
