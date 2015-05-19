@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2014 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sinks
+package riemann_test
 
 import (
-	_ "k8s.io/heapster/sinks/gcl"
-	_ "k8s.io/heapster/sinks/gcm"
-	_ "k8s.io/heapster/sinks/gcmautoscaling"
-	_ "k8s.io/heapster/sinks/hawkular"
-	_ "k8s.io/heapster/sinks/influxdb"
-	_ "k8s.io/heapster/sinks/riemann"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	"testing"
 )
+
+func TestRiemann(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Riemann Suite")
+}

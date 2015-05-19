@@ -13,6 +13,8 @@ install:
  - go get github.com/axw/gocov/gocov
  - go get golang.org/x/tools/cmd/cover
  - go get github.com/mattn/goveralls
+ - go get github.com/onsi/ginkgo
+ - go get github.com/onsi/gomega
 
 script:
  - export PATH=$PATH:$HOME/gopath/bin
