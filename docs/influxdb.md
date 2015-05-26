@@ -10,7 +10,7 @@ _Warning: Virtual machines need to have at least 2 cores for InfluxDB to perform
 $ kubectl.sh create -f deploy/kube-config/influxdb/
 ```
 
-Grafana will be accessible at `https://<masterIP>/api/v1beta3/proxy/services/monitoring-grafana/`. Use the master auth to access Grafana.
+Grafana will be accessible at `https://<masterIP>/api/v1beta3/proxy/namespaces/default/services/monitoring-grafana/`. Use the master auth to access Grafana.
 
 ## Production setup for InfluxDB and Grafana
 
