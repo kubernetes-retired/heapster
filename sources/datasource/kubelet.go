@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
@@ -33,7 +34,10 @@ import (
 // TODO(vmarmol): Use Kubernetes' if we export it as an API.
 const kubernetesPodNameLabel = "io.kubernetes.pod.name"
 
-type kubeletSource struct{}
+type kubeletSource struct {
+	config *kube_client.KubeletConfig
+	client *http.Client
+}
 
 func (self *kubeletSource) postRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
 	response, err := client.Do(req)
@@ -83,7 +87,11 @@ func (self *kubeletSource) getContainer(url string, start, end time.Time, resolu
 	}
 	req.Header.Set("Content-Type", "application/json")
 	var containerInfo cadvisor.ContainerInfo
-	err = self.postRequestAndGetValue(http.DefaultClient, req, &containerInfo)
+	client := self.client
+	if client == nil {
+		client = http.DefaultClient
+	}
+	err = self.postRequestAndGetValue(client, req, &containerInfo)
 	if err != nil {
 		glog.V(2).Infof("failed to get stats from kubelet url: %s - %s\n", url, err)
 		return nil, err
@@ -93,7 +101,14 @@ func (self *kubeletSource) getContainer(url string, start, end time.Time, resolu
 }
 
 func (self *kubeletSource) GetContainer(host Host, start, end time.Time, resolution time.Duration) (container *api.Container, err error) {
-	url := fmt.Sprintf("http://%s:%d/%s", host.IP, host.Port, host.Resource)
+	var schema string
+	if self.config != nil && self.config.EnableHttps {
+		schema = "https"
+	} else {
+		schema = "http"
+	}
+
+	url := fmt.Sprintf("%s://%s:%d/%s", schema, host.IP, host.Port, host.Resource)
 	glog.V(3).Infof("about to query kubelet using url: %q", url)
 
 	return self.getContainer(url, start, end, resolution)

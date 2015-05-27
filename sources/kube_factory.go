@@ -35,6 +35,7 @@ const (
 	defaultInsecure       = false
 	defaultKubeletPort    = 10255
 	defaultKubeConfigFile = "/etc/kubernetes/kubeconfig/kubeconfig"
+	defaultKubeletHttps   = false
 )
 
 func init() {
@@ -113,10 +114,29 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 			return nil, err
 		}
 	}
+
+	kubeletHttps := defaultKubeletHttps
+	if len(options["kubeletHttps"]) >= 1 {
+		kubeletHttps, err = strconv.ParseBool(options["kubeletHttps"][0])
+		if err != nil {
+			return nil, err
+		}
+	}
 	glog.Infof("Using Kubernetes client with master %q and version %q\n", kubeConfig.Host, kubeConfig.Version)
 	glog.Infof("Using kubelet port %d", kubeletPort)
-	kubeletApi := datasource.NewKubelet()
-	kubePodsSource := NewKubePodMetrics(kubeletPort, nodesApi, newPodsApi(kubeClient), kubeletApi)
+
+	kubeletConfig := &kube_client.KubeletConfig{
+		Port:            uint(kubeletPort),
+		EnableHttps:     kubeletHttps,
+		TLSClientConfig: kubeConfig.TLSClientConfig,
+	}
+
+	kubeletApi, err := datasource.NewKubelet(kubeletConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	kubePodsSource := NewKubePodMetrics(kubeletPort, kubeletApi, nodesApi, newPodsApi(kubeClient))
 	kubeNodeSource := NewKubeNodeMetrics(kubeletPort, kubeletApi, nodesApi)
 	kubeEventsSource := NewKubeEvents(kubeClient)
 
