@@ -30,7 +30,7 @@ To run without auth file, use the following config:
 
 The following options are available:
 
-* `apiVersion` - API version to use to talk to Kubernetes (default: `v1beta1`)
+* `apiVersion` - API version to use to talk to Kubernetes (default: `v1beta3`)
 * `insecure` - whether to trust kubernetes certificates (default: `false`)
 * `kubeletPort` - kubelet port to use (default: `10255`)
 * `kubeletHttps` - whether to use https to connect to kubelets (default: `false`)

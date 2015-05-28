@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	defaultApiVersion     = "v1beta1"
+	defaultApiVersion     = "v1beta3"
 	defaultInsecure       = false
 	defaultKubeletPort    = 10255
 	defaultKubeConfigFile = "/etc/kubernetes/kubeconfig/kubeconfig"

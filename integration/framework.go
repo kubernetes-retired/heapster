@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta2"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
 	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	kclientcmd "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
 	kclientcmdapi "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
@@ -214,7 +214,7 @@ func getKubeClient() (string, *kclient.Client, error) {
 		*c,
 		&kclientcmd.ConfigOverrides{
 			ClusterInfo: kclientcmdapi.Cluster{
-				APIVersion: "v1beta1",
+				APIVersion: "v1beta3",
 			},
 		}).ClientConfig()
 	if err != nil {
@@ -354,7 +354,7 @@ func (self *realKubeFramework) loadObject(filePath string) (runtime.Object, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to read object: %v", err)
 	}
-	return v1beta2.Codec.Decode(data)
+	return v1beta3.Codec.Decode(data)
 }
 
 func (self *realKubeFramework) ParseRC(filePath string) (*api.ReplicationController, error) {
@@ -423,7 +423,7 @@ func (self *realKubeFramework) DestroyCluster() {
 }
 
 func (self *realKubeFramework) GetProxyUrlForService(serviceName string) string {
-	return fmt.Sprintf("%s/api/v1beta1/proxy/services/%s/", self.masterIP, serviceName)
+	return fmt.Sprintf("%s/api/v1beta3/proxy/namespaces/default/services/%s/", self.masterIP, serviceName)
 }
 
 func (self *realKubeFramework) GetNodes() ([]string, error) {
