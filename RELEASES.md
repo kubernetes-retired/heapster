@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.13.0 (5-29-2015)
+- Switch use of Kubernetes API to v1beta3.
+- Add option to connect to Kubelets through HTTPS.
+
 ## 0.12.1 (5-13-2015)
 - Fixes kube master url handling via --source flag.
 
