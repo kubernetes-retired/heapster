@@ -165,7 +165,7 @@ func (self *kubeletSource) getAllContainers(url string, start, end time.Time, re
 	var containers map[string]cadvisor.ContainerInfo
 	err = self.postRequestAndGetValue(http.DefaultClient, req, &containers)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all container stats from Kubeler URL %q: %v", url, err)
+		return nil, fmt.Errorf("failed to get all container stats from Kubelet URL %q: %v", url, err)
 	}
 
 	// TODO(vmarmol): Use this for all stats gathering.
