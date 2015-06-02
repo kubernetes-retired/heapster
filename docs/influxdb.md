@@ -52,7 +52,7 @@ $ gcloud compute firewall-rules create monitoring-heapster --allow "tcp:8083" "t
 
 	_Note: We are working on exposing the InfluxDB UI using the proxy service on the Kubernetes master._
 
-4. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](deploy/kube-config/influxdb/influxdb-grafana-controller.yaml) and relaunch the controllers:
+4. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](../deploy/kube-config/influxdb/influxdb-grafana-controller.json) and relaunch the controllers:
 
 	```shell
 $ deploy/kube.sh restart
