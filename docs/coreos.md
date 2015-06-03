@@ -133,7 +133,7 @@ KillMode=none
 
 ExecStartPre=-/usr/bin/docker kill grafana
 ExecStartPre=-/usr/bin/docker rm grafana
-ExecStart=/usr/bin/docker run --name=grafana --link influxdb:influxdb -p 80:80 -e INFLUXDB_HOST=influxdb kubernetes/heapster_grafana:v0.7
+ExecStart=/usr/bin/docker run --name=grafana --link influxdb:influxdb -p 80:8080 -e INFLUXDB_HOST=influxdb kubernetes/heapster_grafana:v0.7
 
 Restart=always
 RestartSec=5
