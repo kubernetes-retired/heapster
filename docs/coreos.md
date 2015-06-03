@@ -3,53 +3,150 @@ Runnning Heapster on CoreOS
 
 Heapster enables cluster monitoring in a CoreOS cluster using [cAdvisor](https://github.com/google/cadvisor). 
 
-NOTE: Some of the following steps should be handled using fleet and unit files.
+The assumptions here are that influxdb and heapster will run on the same machine, which is easily accomplished via fleet files.
 
 **Step 1: Start cAdvisor on all hosts by default**
 
-gce-cloud-config-with-cadvisor.yml contains 'cadvisor.service' which can be specified as part of your cloud config to bring up cAdvisor by default on all hosts.
+This can be accomplished with either a cloud config entry:
+```
+    - name: cadvisor.service
+      runtime: true
+      command: start
+      content: |
+        [Unit]
+        Description=Analyzes resource usage and performance characteristics of running containers.
+        After=docker.service
+        Requires=docker.service
+
+        [Service]
+        Restart=always
+        ExecStartPre=/usr/bin/docker pull google/cadvisor:latest
+        ExecStartPre=-/bin/bash -c "docker inspect cadvisor >/dev/null 2>&1 && docker rm -f cadvisor || true"
+        ExecStart=/usr/bin/docker run --volume=/var/run:/var/run:rw --volume=/sys/fs/cgroup/:/sys/fs/cgroup:ro --volume=/var/lib/docker/:/var/lib/docker:ro --publish=8080:8080 --name=cadvisor google/cadvisor:latest
+        ExecStop=/usr/bin/docker rm -f cadvisor
+```
+
+or with a global fleet file:
+```
+[Unit]
+Description=Analyzes resource usage and performance characteristics of running containers.
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+ExecStartPre=/usr/bin/docker pull google/cadvisor:latest
+ExecStartPre=-/bin/bash -c "docker inspect cadvisor >/dev/null 2>&1 && docker rm -f cadvisor || true"
+ExecStart=/usr/bin/docker run --volume=/var/run:/var/run:rw --volume=/sys/fs/cgroup/:/sys/fs/cgroup:ro --volume=/var/lib/docker/:/var/lib/docker:ro --publish=8080:8080 --name=cadvisor google/cadvisor:latest
+ExecStop=/usr/bin/docker rm -f cadvisor
+
+[X-Fleet]
+Global=true
+```
 
 **Step 2: Start InfluxDB**
 
-On a CoreOS machine start InfluxDB and grafana
+You can use a fleet file like this named heapster_influxdb.service:
 
-```shell
-$ docker run -d -p 8083:8083 -p 8086:8086 --name influxdb kubernetes/heapster_influxdb:v0.3
 ```
+[Unit]
+Description=influxdb
+
+After=docker.service
+Requires=docker_configs.mount
+
+[Service]
+TimeoutStartSec=0
+
+# Change killmode from "control-group" to "none" to let Docker remove
+# work correctly.
+KillMode=none
+
+ExecStartPre=-/usr/bin/docker kill influxdb
+ExecStartPre=-/usr/bin/docker rm influxdb
+ExecStart=/usr/bin/docker run -p 8083:8083 -p 8086:8086 -v /path/to/data:/data --hostname="influxdb" --name influxdb kubernetes/heapster_influxdb:v0.3
+
+Restart=always
+RestartSec=5
+
+# Stop
+ExecStop=/usr/bin/docker stop influxdb
+```
+
+Notice that this fleet file is using a volume for data. In order to retain your database, you will need to store it somewhere accessible by all machines in your cluster. Be sure to change /path/to/data to the actual path to your data.
 
 **Step 3: Start heapster**
 
-Pass the host where heapster is running via the 'INFLUXDB_HOST' environment variable.
+Since we are keeping heapster running on the same machine as influxdb, we can use a link here in our fleet file named heapster.service.
 
-```shell
-$ docker run --name heapster -d -e INFLUXDB_HOST=<ip>:8086 -e COREOS=true --net=host kubernetes/heapster:v0.7
+```
+[Unit]
+Description=heapster
+
+After=docker.service
+After=heapster_influxdb.service
+
+Requires=docker.service
+Requires=heapster_influxdb.service
+
+[Service]
+TimeoutStartSec=0
+
+# Change killmode from "control-group" to "none" to let Docker remove
+# work correctly.
+KillMode=none
+
+ExecStartPre=-/usr/bin/docker kill heapster
+ExecStartPre=-/usr/bin/docker rm heapster
+ExecStart=/bin/bash -c "HOST_IP=`getent hosts %H|/usr/bin/cut -d\" \" -f1`; /usr/bin/docker run --name heapster --link influxdb:influxdb -e COREOS=true kubernetes/heapster:v0.13.0 --source=\"cadvisor:coreos?fleetEndpoint=http://$HOST_IP:4001&cadvisorPort=8080\" --sink='influxdb:http://influxdb:8086'"
+
+Restart=always
+RestartSec=5
+
+# Stop
+ExecStop=/usr/bin/docker stop heapster
+
+[X-Fleet]
+X-ConditionMachineOf=heapster_influxdb.service
 ```
 Note: If you are running cadvisor on a port other than 8080, pass the cadvisor port number as an additional environment variable while starting heapster - `-e CADVISOR_PORT=<port>`. Do not run cadvisor on different ports on individual machines.
 
 **Step 4: Start Grafana**
 
-```
-docker run -d -p 80:80 -e INFLUXDB_HOST=<host_ip> kubernetes/heapster_grafana:v0.4
-```
+Grafana's fleet file is named heapster_grafana.service and we are also keeping it on the same system as influxdb for simplicity:
 
-### Unit files for the various components.
-cadvisor (globally deployed)
 ```
 [Unit]
-Description=cAdvisor Service
+Description=grafana
+
 After=docker.service
+After=heapster_influxdb.service
+
 Requires=docker.service
+Requires=heapster_influxdb.service
 
 [Service]
-TimeoutStartSec=10m
+TimeoutStartSec=0
+
+# Change killmode from "control-group" to "none" to let Docker remove
+# work correctly.
+KillMode=none
+
+ExecStartPre=-/usr/bin/docker kill grafana
+ExecStartPre=-/usr/bin/docker rm grafana
+ExecStart=/usr/bin/docker run --name=grafana --link influxdb:influxdb -p 80:80 -e INFLUXDB_HOST=influxdb kubernetes/heapster_grafana:v0.7
+
 Restart=always
-ExecStartPre=-/usr/bin/docker kill cadvisor
-ExecStartPre=-/usr/bin/docker rm -f cadvisor
-ExecStartPre=/usr/bin/docker pull google/cadvisor
-ExecStart=/usr/bin/docker run --volume=/:/rootfs:ro --volume=/var/run:/var/run:rw --volume=/sys:/sys:ro --volume=/var/lib/docker/:/var/lib/docker:ro --publish=4194:4194 --name=cadvisor --net=host google/cadvisor:latest --logtostderr --port=4194
-ExecStop=/usr/bin/docker stop -t 2 cadvisor
+RestartSec=5
+
+# Stop
+ExecStop=/usr/bin/docker stop grafana
 
 [X-Fleet]
-Global=true
-MachineMetadata=role=kubernetes
+X-ConditionMachineOf=heapster_influxdb.service
 ```
+
+**Notes**
+* We are using --net=host on the heapster container simply to avoid having to find the IP of a fleet node. If this information is available, we can remove this requirement.
+
+* Grafana will be available on whatever machine fleet decides to run influxdb. This means that it will jump around your cluster. It is best to use some sort of proxy setup to get to your service. This can be handled with something like haproxy or nginx, but is something that is left to the reader to find the best way to handle it for their situation.
