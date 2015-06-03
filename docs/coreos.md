@@ -3,7 +3,7 @@ Runnning Heapster on CoreOS
 
 Heapster enables cluster monitoring in a CoreOS cluster using [cAdvisor](https://github.com/google/cadvisor). 
 
-The assumptions here are that influxdb and heapster will run on the same machine, which is easily accomplished via fleet files.
+The assumptions here are that influxdb, heapster, and grafana will run on the same machine, which is easily accomplished via fleet files.
 
 **Step 1: Start cAdvisor on all hosts by default**
 
@@ -109,7 +109,6 @@ ExecStop=/usr/bin/docker stop heapster
 [X-Fleet]
 X-ConditionMachineOf=heapster_influxdb.service
 ```
-Note: If you are running cadvisor on a port other than 8080, pass the cadvisor port number as an additional environment variable while starting heapster - `-e CADVISOR_PORT=<port>`. Do not run cadvisor on different ports on individual machines.
 
 **Step 4: Start Grafana**
 
