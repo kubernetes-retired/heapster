@@ -61,9 +61,10 @@ func parseSelectorOrDie(s string) labels.Selector {
 	return selector
 }
 
-func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string) {
+func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string, error) {
 	nodeInfo := Info{}
 	hostname := ""
+	var nodeErr error
 	for _, addr := range node.Status.Addresses {
 		switch addr.Type {
 		case api.NodeExternalIP:
@@ -84,9 +85,10 @@ func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string) {
 		} else {
 			glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
 			self.recordNodeError(node.Name)
+			nodeErr = err
 		}
 	}
-	return nodeInfo, hostname
+	return nodeInfo, hostname, nodeErr
 }
 
 func (self *kubeNodes) List() (*NodeList, error) {
@@ -100,10 +102,12 @@ func (self *kubeNodes) List() (*NodeList, error) {
 
 	goodNodes := []string{}
 	for _, node := range allNodes.Items {
-		nodeInfo, hostname := self.getNodeInfoAndHostname(node)
+		nodeInfo, hostname, err := self.getNodeInfoAndHostname(node)
 
 		nodeList.Items[Host(hostname)] = nodeInfo
-		goodNodes = append(goodNodes, node.Name)
+		if err == nil {
+			goodNodes = append(goodNodes, node.Name)
+		}
 	}
 	self.recordGoodNodes(goodNodes)
 	glog.V(5).Infof("kube nodes found: %+v", nodeList)
