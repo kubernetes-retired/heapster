@@ -61,6 +61,34 @@ func parseSelectorOrDie(s string) labels.Selector {
 	return selector
 }
 
+func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string) {
+	nodeInfo := Info{}
+	hostname := ""
+	for _, addr := range node.Status.Addresses {
+		switch addr.Type {
+		case api.NodeExternalIP:
+			nodeInfo.PublicIP = addr.Address
+		case api.NodeInternalIP:
+			nodeInfo.InternalIP = addr.Address
+		case api.NodeHostName:
+			hostname = addr.Address
+		}
+	}
+	if hostname == "" {
+		hostname = node.Name
+	}
+	if nodeInfo.InternalIP == "" {
+		addrs, err := net.LookupIP(hostname)
+		if err == nil {
+			nodeInfo.InternalIP = addrs[0].String()
+		} else {
+			glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
+			self.recordNodeError(node.Name)
+		}
+	}
+	return nodeInfo, hostname
+}
+
 func (self *kubeNodes) List() (*NodeList, error) {
 	nodeList := newNodeList()
 	allNodes, err := self.nodeLister.List()
@@ -72,30 +100,7 @@ func (self *kubeNodes) List() (*NodeList, error) {
 
 	goodNodes := []string{}
 	for _, node := range allNodes.Items {
-		nodeInfo := Info{}
-		hostname := ""
-		for _, addr := range node.Status.Addresses {
-			switch addr.Type {
-			case api.NodeExternalIP:
-				nodeInfo.PublicIP = addr.Address
-			case api.NodeInternalIP:
-				nodeInfo.InternalIP = addr.Address
-			case api.NodeHostName:
-				hostname = addr.Address
-			}
-		}
-		if hostname == "" {
-			hostname = node.Name
-		}
-		if nodeInfo.InternalIP == "" {
-			addrs, err := net.LookupIP(hostname)
-			if err == nil {
-				nodeInfo.InternalIP = addrs[0].String()
-			} else {
-				glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
-				self.recordNodeError(node.Name)
-			}
-		}
+		nodeInfo, hostname := self.getNodeInfoAndHostname(node)
 
 		nodeList.Items[Host(hostname)] = nodeInfo
 		goodNodes = append(goodNodes, node.Name)
