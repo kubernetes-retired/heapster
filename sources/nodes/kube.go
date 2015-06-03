@@ -79,13 +79,20 @@ func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string, erro
 		hostname = node.Name
 	}
 	if nodeInfo.InternalIP == "" {
-		addrs, err := net.LookupIP(hostname)
-		if err == nil {
-			nodeInfo.InternalIP = addrs[0].String()
+		if hostname == nodeInfo.PublicIP {
+			// If the only identifier we have for the node is a public IP, then use it;
+			// don't force a DNS lookup
+			nodeInfo.InternalIP = nodeInfo.PublicIP
+
 		} else {
-			glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
-			self.recordNodeError(node.Name)
-			nodeErr = err
+			addrs, err := net.LookupIP(hostname)
+			if err == nil {
+				nodeInfo.InternalIP = addrs[0].String()
+			} else {
+				glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
+				self.recordNodeError(node.Name)
+				nodeErr = err
+			}
 		}
 	}
 	return nodeInfo, hostname, nodeErr
