@@ -15,6 +15,8 @@
 package cache
 
 import (
+	"time"
+
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 )
@@ -40,11 +42,29 @@ type ContainerElement struct {
 type PodElement struct {
 	Metadata
 	// map of container name to container element.
-	Containers map[string]*ContainerElement
+	Containers []*ContainerElement
 	// TODO: Cache history of Spec and Status.
 }
 
 type Cache interface {
 	StorePods([]source_api.Pod) error
 	StoreContainers([]source_api.Container) error
+
+	// GetPods returns a list of pod elements in the cache between 'start' and 'end'.
+	// If 'start' is null, it returns all the elements up until 'end'.
+	// If 'end' is null, it returns all the elements from 'start'.
+	// If both 'start' and 'end' are null, it returns all the elements in the cache.
+	GetPods(start, end time.Time) []*PodElement
+
+	// GetNodes returns a list of pod elements in the cache between 'start' and 'end'.
+	// If 'start' is null, it returns all the elements up until 'end'.
+	// If 'end' is null, it returns all the elements from 'start'.
+	// If both 'start' and 'end' are null, it returns all the elements in the cache.
+	GetNodes(start, end time.Time) []*ContainerElement
+
+	// GetFreeContainers returns a list of pod elements in the cache between 'start' and 'end'.
+	// If 'start' is null, it returns all the elements up until 'end'.
+	// If 'end' is null, it returns all the elements from 'start'.
+	// If both 'start' and 'end' are null, it returns all the elements in the cache.
+	GetFreeContainers(start, end time.Time) []*ContainerElement
 }

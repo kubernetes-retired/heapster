@@ -68,34 +68,25 @@ func (ts *timeStore) GetAll() []interface{} {
 	return result
 }
 
-func (ts *timeStore) Get(start, end time.Time) ([]interface{}, error) {
-	ts.rwLock.RLock()
-	defer ts.rwLock.RUnlock()
-	if ts.buffer.Len() == 0 {
-		return nil, nil
-	}
-	if !end.After(start) {
-		return nil, fmt.Errorf("End time %v is not after Start time %v", end, start)
-	}
-	result := []interface{}{}
-	for elem := ts.buffer.Back(); elem != nil; elem = elem.Prev() {
-		entry := elem.Value.(entry)
-		if entry.timestamp.Before(start) || entry.timestamp.After(end) {
-			break
-		}
-		result = append(result, entry.data)
-	}
-	return result, nil
-}
-
-func (ts *timeStore) Last() interface{} {
+func (ts *timeStore) Get(start, end time.Time) []interface{} {
 	ts.rwLock.RLock()
 	defer ts.rwLock.RUnlock()
 	if ts.buffer.Len() == 0 {
 		return nil
 	}
-	elem := ts.buffer.Front()
-	return elem.Value.(entry).data
+	nullTime := time.Time{}
+	if start == nullTime {
+		start = time.Unix(0, 0)
+	}
+	result := []interface{}{}
+	for elem := ts.buffer.Back(); elem != nil; elem = elem.Prev() {
+		entry := elem.Value.(entry)
+		if entry.timestamp.Before(start) || (end != nullTime && entry.timestamp.After(end)) {
+			break
+		}
+		result = append(result, entry.data)
+	}
+	return result
 }
 
 func (ts *timeStore) Delete(start, end time.Time) error {

@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGC(t *testing.T) {
@@ -31,8 +30,7 @@ func TestGC(t *testing.T) {
 	time.Sleep(time.Second)
 	// Perform a put to invoke GC.
 	assert.NoError(t, gcStore.Put(time.Now(), struct{}{}))
-	data, err := gcStore.Get(now, time.Now())
-	require.NoError(t, err)
+	data := gcStore.Get(now, time.Now())
 	assert.Len(t, data, 0)
 }
 
@@ -43,8 +41,7 @@ func TestGCDetail(t *testing.T) {
 		assert.NoError(t, gcStore.Put(time.Now(), struct{}{}))
 		time.Sleep(100 * time.Millisecond)
 	}
-	data, err := gcStore.Get(now, time.Now())
-	require.NoError(t, err)
+	data := gcStore.Get(now, time.Now())
 	assert.NotEqual(t, 0, len(data))
 }
 
@@ -54,7 +51,6 @@ func TestLongGC(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		assert.NoError(t, gcStore.Put(time.Now(), i))
 	}
-	data, err := gcStore.Get(now, time.Now())
-	require.NoError(t, err)
+	data := gcStore.Get(now, time.Now())
 	assert.Equal(t, 200, len(data))
 }

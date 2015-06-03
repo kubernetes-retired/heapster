@@ -15,6 +15,7 @@
 package cache
 
 import (
+	"sync"
 	"time"
 
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
@@ -46,11 +47,13 @@ type realCache struct {
 	pods map[string]*podElement
 	// Map of node hostnames to node cache entry.
 	nodes map[string]*nodeElement
+	lock  sync.RWMutex
 }
 
 const (
 	gcDuration    = time.Second
 	rootContainer = "/"
+	machine       = "machine"
 )
 
 func (rc *realCache) newcontainerElement() *containerElement {
@@ -90,6 +93,8 @@ func storeSpecAndStats(ce *containerElement, c *source_api.Container) {
 }
 
 func (rc *realCache) StorePods(pods []source_api.Pod) error {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
 	for _, pod := range pods {
 		pe, ok := rc.pods[pod.ID]
 		if !ok {
@@ -120,6 +125,9 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 }
 
 func (rc *realCache) StoreContainers(containers []source_api.Container) error {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
 	for idx := range containers {
 		cont := &containers[idx]
 		ne, ok := rc.nodes[cont.Hostname]
@@ -131,6 +139,8 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 		if cont.Name == rootContainer {
 			// This is at the node level.
 			ne.node.Hostname = cont.Hostname
+			// Use "machine" as container name.
+			ne.node.Name = machine
 			ce = ne.node
 		} else {
 			var ok bool
@@ -147,6 +157,69 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 		storeSpecAndStats(ce, cont)
 	}
 	return nil
+}
+
+func (rc *realCache) GetPods(start, end time.Time) []*PodElement {
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
+	var result []*PodElement
+	for _, pe := range rc.pods {
+		podElement := &PodElement{
+			Metadata: pe.Metadata,
+		}
+		for _, ce := range pe.containers {
+			containerElement := &ContainerElement{
+				Metadata: ce.Metadata,
+			}
+			metrics := ce.metrics.Get(start, end)
+			for idx := range metrics {
+				cme := metrics[idx].(*ContainerMetricElement)
+				containerElement.Metrics = append(containerElement.Metrics, cme)
+			}
+			podElement.Containers = append(podElement.Containers, containerElement)
+		}
+		result = append(result, podElement)
+	}
+
+	return result
+}
+
+func (rc *realCache) GetNodes(start, end time.Time) []*ContainerElement {
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
+	var result []*ContainerElement
+	for _, ne := range rc.nodes {
+		ce := &ContainerElement{
+			Metadata: ne.node.Metadata,
+		}
+		metrics := ne.node.metrics.Get(start, end)
+		for idx := range metrics {
+			cme := metrics[idx].(*ContainerMetricElement)
+			ce.Metrics = append(ce.Metrics, cme)
+		}
+		result = append(result, ce)
+	}
+	return result
+}
+
+func (rc *realCache) GetFreeContainers(start, end time.Time) []*ContainerElement {
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
+	var result []*ContainerElement
+	for _, ne := range rc.nodes {
+		for _, ce := range ne.freeContainers {
+			containerElement := &ContainerElement{
+				Metadata: ce.Metadata,
+			}
+			metrics := ce.metrics.Get(start, end)
+			for idx := range metrics {
+				cme := metrics[idx].(*ContainerMetricElement)
+				containerElement.Metrics = append(containerElement.Metrics, cme)
+			}
+			result = append(result, containerElement)
+		}
+	}
+	return result
 }
 
 func NewCache(bufferDuration time.Duration) Cache {

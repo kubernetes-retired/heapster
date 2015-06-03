@@ -33,16 +33,8 @@ func (gcs *gcStore) Put(timestamp time.Time, data interface{}) error {
 	return nil
 }
 
-func (gcs *gcStore) Get(start, end time.Time) ([]interface{}, error) {
+func (gcs *gcStore) Get(start, end time.Time) []interface{} {
 	return gcs.store.Get(start, end)
-}
-
-func (gcs *gcStore) GetAll() []interface{} {
-	return gcs.store.GetAll()
-}
-
-func (gcs *gcStore) Last() interface{} {
-	return gcs.store.Last()
 }
 
 func (gcs *gcStore) Delete(start, end time.Time) error {

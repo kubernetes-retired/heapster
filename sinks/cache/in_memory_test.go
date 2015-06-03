@@ -24,8 +24,7 @@ import (
 
 func TestInitialization(t *testing.T) {
 	store := NewTimeStore()
-	data, err := store.Get(time.Now().Add(-time.Minute), time.Now())
-	require.NoError(t, err)
+	data := store.Get(time.Now().Add(-time.Minute), time.Now())
 	assert.Empty(t, len(data), time.Now())
 }
 
@@ -41,14 +40,12 @@ func TestInsert(t *testing.T) {
 	assert.NoError(t, store.Put(now.Add(-time.Second), 1))
 	assert.NoError(t, store.Put(now.Add(time.Second), 3))
 	assert.NoError(t, store.Put(now.Add(-2*time.Second), 0))
-	actual, err := store.Get(now.Add(-2*time.Second), now.Add(time.Second))
-	require.NoError(t, err)
+	actual := store.Get(time.Time{}, now.Add(time.Second))
 	require.Len(t, actual, 4)
 	for i := 0; i < len(actual); i++ {
 		assert.Equal(t, i, actual[i].(int))
 	}
-	assert.Equal(t, 3, store.Last())
-	actual = store.GetAll()
+	actual = store.Get(time.Time{}, time.Time{})
 	require.Len(t, actual, 4)
 	for i := 0; i < len(actual); i++ {
 		assert.Equal(t, i, actual[i].(int))
@@ -62,8 +59,7 @@ func TestDelete(t *testing.T) {
 	assert.NoError(t, store.Put(now.Add(-time.Second), 1))
 	assert.NoError(t, store.Put(now.Add(time.Second), 3))
 	assert.NoError(t, store.Delete(now.Add(-time.Second), now))
-	actual, err := store.Get(now.Add(-time.Second), now.Add(time.Second))
-	require.NoError(t, err)
+	actual := store.Get(now.Add(-time.Second), time.Time{})
 	require.Len(t, actual, 1)
 	assert.Equal(t, 3, actual[0].(int))
 }

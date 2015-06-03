@@ -24,11 +24,10 @@ type TimeStore interface {
 	Put(timestamp time.Time, data interface{}) error
 	// Get returns a slice of elements that were previously stored with timestamps
 	// between 'start' and 'end'. 'start' is expected to be before 'end'.
-	Get(start, end time.Time) ([]interface{}, error)
-	// GetAll returns all the elements in the timestore.
-	GetAll() []interface{}
-	// Last returns the most recent entry in the store.
-	Last() interface{}
+	// If 'start' is null, it returns all the elements up until 'end'.
+	// If 'end' is null, it returns all the elements from 'start'.
+	// If both 'start' and 'end' are null, it returns all the elements in the cache.
+	Get(start, end time.Time) []interface{}
 	// Delete removes all elements that were previously stored with timestamps
 	// between 'start' and 'end'.
 	Delete(start, end time.Time) error
