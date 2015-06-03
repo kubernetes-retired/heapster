@@ -23,7 +23,6 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/cache"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/golang/glog"
 )
 
@@ -51,14 +50,6 @@ func (self *kubeNodes) recordGoodNodes(nodes []string) {
 	defer self.stateLock.Unlock()
 
 	self.goodNodes = nodes
-}
-
-func parseSelectorOrDie(s string) labels.Selector {
-	selector, err := labels.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-	return selector
 }
 
 func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string, error) {
