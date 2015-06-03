@@ -1,7 +1,9 @@
 all: build
 
 deps:
+	go get github.com/tools/godep
 	go get github.com/progrium/go-extpoints
+	go get golang.org/x/tools/cmd/vet
 
 build: clean deps
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go generate github.com/GoogleCloudPlatform/heapster
