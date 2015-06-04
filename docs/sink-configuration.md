@@ -52,6 +52,19 @@ To use the InfluxDB sink add the following flag:
 
 This sink does not export any options!
 
+### Bosun
+This sink supports monitoring metrics only as of now.
+To use the Bosun sink add the following flag:
+```
+--sink=bosun:<BOSUN_URL>[?<BOSUN_OPTIONS>]
+```
+
+Example:
+```
+--sink=bosun:http://localhost:8070/
+```
+
+This sink does not export any options as of now!
 
 
 
