@@ -60,6 +60,8 @@ func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string, erro
 		switch addr.Type {
 		case api.NodeExternalIP:
 			nodeInfo.PublicIP = addr.Address
+		case api.NodeLegacyHostIP:
+			nodeInfo.PublicIP = addr.Address
 		case api.NodeInternalIP:
 			nodeInfo.InternalIP = addr.Address
 		case api.NodeHostName:
