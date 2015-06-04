@@ -24,7 +24,7 @@ import (
 )
 
 type externalSinkManager struct {
-	decoder       sink_api.Decoder
+	decoder       sink_api.DecoderV1
 	externalSinks []sink_api.ExternalSink
 }
 
@@ -49,7 +49,7 @@ func NewExternalSinkManager(externalSinks []sink_api.ExternalSink) (ExternalSink
 			return nil, err
 		}
 	}
-	decoder := sink_api.NewDecoder()
+	decoder := sink_api.NewV1Decoder()
 	return &externalSinkManager{
 		externalSinks: externalSinks,
 		decoder:       decoder,

@@ -15,44 +15,37 @@
 package api
 
 import (
-	"fmt"
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
-	cadvisor "github.com/google/cadvisor/info/v1"
+	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
+	"github.com/golang/glog"
+	cadvisor_api "github.com/google/cadvisor/info/v1"
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	fakeContainerCreationTime = 12345
-	fakeCurrentTime           = 12350
-)
-
-func TestEmptyInput(t *testing.T) {
-	timeseries, err := NewV1Decoder().Timeseries(source_api.AggregateData{})
+func TestEmptyInputV2(t *testing.T) {
+	timeseries, err := NewV2Decoder().TimeseriesFromPods([]*cache.PodElement{})
+	assert.NoError(t, err)
+	assert.Empty(t, timeseries)
+	timeseries, err = NewV2Decoder().TimeseriesFromContainers([]*cache.ContainerElement{})
 	assert.NoError(t, err)
 	assert.Empty(t, timeseries)
 }
 
-func getLabelsAsString(labels map[string]string) string {
-	output := make([]string, 0, len(labels))
-	for key, value := range labels {
-		output = append(output, fmt.Sprintf("%s:%s", key, value))
-	}
-
-	// Sort to produce a stable output.
-	sort.Strings(output)
-	return strings.Join(output, ",")
+func TestFuzzInputV2(t *testing.T) {
+	var pods []*cache.PodElement
+	f := fuzz.New().NumElements(2, 10)
+	f.Fuzz(&pods)
+	_, err := NewV2Decoder().TimeseriesFromPods(pods)
+	assert.NoError(t, err)
 }
 
-func getContainer(name string) source_api.Container {
+func getContainerElement(name string) *cache.ContainerElement {
 	f := fuzz.New().NumElements(1, 1).NilChance(0)
-	containerSpec := cadvisor.ContainerSpec{
+	containerSpec := &cadvisor_api.ContainerSpec{
 		CreationTime:  time.Unix(fakeContainerCreationTime, 0),
 		HasCpu:        true,
 		HasMemory:     true,
@@ -60,20 +53,26 @@ func getContainer(name string) source_api.Container {
 		HasFilesystem: true,
 		HasDiskIo:     true,
 	}
-	containerStats := make([]*cadvisor.ContainerStats, 1)
+	containerStats := make([]*cadvisor_api.ContainerStats, 1)
 	f.Fuzz(&containerStats)
-	return source_api.Container{
-		Name:  name,
-		Spec:  containerSpec,
-		Stats: containerStats,
+	return &cache.ContainerElement{
+		Metadata: cache.Metadata{
+			Name: name,
+		},
+		Metrics: []*cache.ContainerMetricElement{
+			{
+				Spec:  containerSpec,
+				Stats: containerStats[0],
+			},
+		},
 	}
 }
 
-func getFsStats(input source_api.AggregateData) map[string]int64 {
+func getFsStatsFromContainerElement(input []*cache.ContainerElement) map[string]int64 {
 	expectedFsStats := map[string]int64{}
-	for _, cont := range input.Containers {
-		for _, stat := range cont.Stats {
-			for _, fs := range stat.Filesystem {
+	for _, cont := range input {
+		for _, cme := range cont.Metrics {
+			for _, fs := range cme.Stats.Filesystem {
 				expectedFsStats[fs.Device] = int64(fs.Usage)
 			}
 		}
@@ -81,48 +80,40 @@ func getFsStats(input source_api.AggregateData) map[string]int64 {
 	return expectedFsStats
 }
 
-func TestRealInput(t *testing.T) {
+func TestRealInputV2(t *testing.T) {
 	timeSince = func(t time.Time) time.Duration {
 		return time.Unix(fakeCurrentTime, 0).Sub(t)
 	}
 	defer func() { timeSince = time.Since }()
 
-	containers := []source_api.Container{
-		getContainer("container1"),
+	glog.Info("1")
+	containers := []*cache.ContainerElement{
+		getContainerElement("container1"),
 	}
-	pods := []source_api.Pod{
+	pods := []*cache.PodElement{
 		{
-			PodMetadata: source_api.PodMetadata{
+			Metadata: cache.Metadata{
 				Name:      "pod1",
-				ID:        "123",
+				UID:       "123",
 				Namespace: "test",
 				Hostname:  "1.2.3.4",
-				Status:    "Running",
 			},
 			Containers: containers,
 		},
 		{
-			PodMetadata: source_api.PodMetadata{
+			Metadata: cache.Metadata{
 				Name:      "pod2",
-				ID:        "123",
+				UID:       "123",
 				Namespace: "test",
 				Hostname:  "1.2.3.5",
-				Status:    "Running",
 			},
 			Containers: containers,
 		},
 	}
-	input := source_api.AggregateData{
-		Pods:       pods,
-		Containers: containers,
-		Machine:    containers,
-	}
-	timeseries, err := NewV1Decoder().Timeseries(input)
+	timeseries, err := NewV2Decoder().TimeseriesFromPods(pods)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
-
-	expectedFsStats := getFsStats(input)
-
+	expectedFsStats := getFsStatsFromContainerElement(containers)
 	metrics := make(map[string][]Timeseries)
 	for index := range timeseries {
 		series, ok := metrics[timeseries[index].Point.Name]
@@ -132,14 +123,13 @@ func TestRealInput(t *testing.T) {
 		series = append(series, timeseries[index])
 		metrics[timeseries[index].Point.Name] = series
 	}
-
 	for index := range statMetrics {
 		series, ok := metrics[statMetrics[index].MetricDescriptor.Name]
 		require.True(t, ok)
 		for innerIndex, entry := range series {
 			assert.Equal(t, statMetrics[index].MetricDescriptor, *series[innerIndex].MetricDescriptor)
-			spec := containers[0].Spec
-			stats := containers[0].Stats[0]
+			spec := containers[0].Metrics[0].Spec
+			stats := containers[0].Metrics[0].Stats
 			switch entry.Point.Name {
 			case "uptime":
 				value, ok := entry.Point.Value.(int64)
@@ -189,71 +179,5 @@ func TestRealInput(t *testing.T) {
 			}
 		}
 	}
-}
-
-func TestFuzzInput(t *testing.T) {
-	var input source_api.AggregateData
-	fuzz.New().Fuzz(&input)
-	timeseries, err := NewV1Decoder().Timeseries(input)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, timeseries)
-}
-
-func TestPodLabelsProcessing(t *testing.T) {
-	podLabels := map[string]string{"key1": "value1", "key2": "value2"}
-	pods := []source_api.Pod{
-		{
-			PodMetadata: source_api.PodMetadata{
-				Name:      "pod1",
-				ID:        "123",
-				Namespace: "test",
-				Hostname:  "1.2.3.4",
-				Status:    "Running",
-				Labels:    podLabels,
-			},
-			Containers: []source_api.Container{getContainer("blah")},
-		},
-	}
-
-	expectedLabels := map[string]string{
-		LabelPodId:         "123",
-		LabelPodNamespace:  "test",
-		LabelLabels:        getLabelsAsString(podLabels),
-		LabelHostname:      "1.2.3.4",
-		LabelContainerName: "blah",
-	}
-	input := source_api.AggregateData{
-		Pods: pods,
-	}
-	timeseries, err := NewV1Decoder().Timeseries(input)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, timeseries)
-	// ignore ResourceID label.
-	for _, entry := range timeseries {
-		for name, value := range expectedLabels {
-			assert.Equal(t, entry.Point.Labels[name], value)
-		}
-	}
-}
-
-func TestContainerLabelsProcessing(t *testing.T) {
-	expectedLabels := map[string]string{
-		LabelHostname:      "1.2.3.4",
-		LabelContainerName: "blah",
-	}
-	container := getContainer("blah")
-	container.Hostname = "1.2.3.4"
-
-	input := source_api.AggregateData{
-		Containers: []source_api.Container{container},
-	}
-	timeseries, err := NewV1Decoder().Timeseries(input)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, timeseries)
-	// ignore ResourceID label.
-	for _, entry := range timeseries {
-		for name, value := range expectedLabels {
-			assert.Equal(t, entry.Point.Labels[name], value)
-		}
-	}
+	glog.Info("2")
 }

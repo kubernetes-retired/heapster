@@ -56,7 +56,7 @@ const (
 	machine       = "machine"
 )
 
-func (rc *realCache) newcontainerElement() *containerElement {
+func (rc *realCache) newContainerElement() *containerElement {
 	return &containerElement{
 		metrics: NewGCStore(NewTimeStore(), rc.bufferDuration, gcDuration),
 	}
@@ -70,7 +70,7 @@ func (rc *realCache) newpodElement() *podElement {
 
 func (rc *realCache) newnodeElement() *nodeElement {
 	return &nodeElement{
-		node:           rc.newcontainerElement(),
+		node:           rc.newContainerElement(),
 		freeContainers: make(map[string]*containerElement),
 	}
 }
@@ -112,7 +112,7 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 			cont := &pod.Containers[idx]
 			ce, ok := pe.containers[cont.Name]
 			if !ok {
-				ce = rc.newcontainerElement()
+				ce = rc.newContainerElement()
 			}
 			ce.Metadata = Metadata{
 				Name:     cont.Name,
@@ -146,7 +146,7 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 			var ok bool
 			ce, ok = ne.freeContainers[cont.Name]
 			if !ok {
-				ce = rc.newcontainerElement()
+				ce = rc.newContainerElement()
 				ce.Metadata = Metadata{
 					Name:     cont.Name,
 					Hostname: cont.Hostname,

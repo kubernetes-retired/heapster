@@ -56,16 +56,18 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 	pod := podNodePair.pod
 	node := podNodePair.nodeInfo
 	localPod := api.Pod{
-		Name:           pod.Name,
-		Namespace:      pod.Namespace,
-		ID:             string(pod.UID),
-		Hostname:       pod.Spec.Host,
-		HostPublicIP:   pod.Status.HostIP,
-		HostInternalIP: node.InternalIP,
-		Status:         string(pod.Status.Phase),
-		PodIP:          pod.Status.PodIP,
-		Labels:         make(map[string]string, 0),
-		Containers:     make([]api.Container, 0),
+		PodMetadata: api.PodMetadata{
+			Name:           pod.Name,
+			Namespace:      pod.Namespace,
+			ID:             string(pod.UID),
+			Hostname:       pod.Spec.Host,
+			HostPublicIP:   pod.Status.HostIP,
+			HostInternalIP: node.InternalIP,
+			Status:         string(pod.Status.Phase),
+			PodIP:          pod.Status.PodIP,
+			Labels:         make(map[string]string, 0),
+		},
+		Containers: make([]api.Container, 0),
 	}
 	for key, value := range pod.Labels {
 		localPod.Labels[key] = value

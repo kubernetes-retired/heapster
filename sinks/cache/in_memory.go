@@ -30,8 +30,20 @@ type entry struct {
 
 // TODO: Consider using cadvisor's in memory storage instead.
 type timeStore struct {
+	// A list that will contain all the timeStore entries.
+	// This list is in reverse chronological order.
+	// E.x. [4, 3, 1]
+	// list.Front refers to the most recent entry and list.Back refers to the oldest entry.
 	buffer *list.List
 	rwLock sync.RWMutex
+}
+
+func (ts *timeStore) printAll() {
+	return
+	glog.Info("printing list")
+	for elem := ts.buffer.Front(); elem != nil; elem = elem.Next() {
+		glog.Infof("%v, %v", elem.Value.(entry).timestamp, elem.Value.(entry).data)
+	}
 }
 
 func (ts *timeStore) Put(timestamp time.Time, data interface{}) error {
@@ -40,6 +52,7 @@ func (ts *timeStore) Put(timestamp time.Time, data interface{}) error {
 	}
 	ts.rwLock.Lock()
 	defer ts.rwLock.Unlock()
+	defer ts.printAll()
 	if ts.buffer.Len() == 0 {
 		glog.V(5).Infof("put pushfront: %v, %v", timestamp, data)
 		ts.buffer.PushFront(entry{timestamp: timestamp, data: data})
@@ -57,15 +70,20 @@ func (ts *timeStore) Put(timestamp time.Time, data interface{}) error {
 	return nil
 }
 
-func (ts *timeStore) GetAll() []interface{} {
-	ts.rwLock.RLock()
-	defer ts.rwLock.RUnlock()
-	result := []interface{}{}
-	for elem := ts.buffer.Back(); elem != nil; elem = elem.Prev() {
-		result = append(result, elem.Value.(entry).data)
+// Returns true if 't1' is equal to or before 't2'
+func timeEqualOrBefore(t1, t2 time.Time) bool {
+	if t1.Equal(t2) || t1.Before(t2) {
+		return true
 	}
+	return false
+}
 
-	return result
+// Returns true if 't1' is equal to or after 't2'
+func timeEqualOrAfter(t1, t2 time.Time) bool {
+	if t1.Equal(t2) || t1.After(t2) {
+		return true
+	}
+	return false
 }
 
 func (ts *timeStore) Get(start, end time.Time) []interface{} {
@@ -74,15 +92,20 @@ func (ts *timeStore) Get(start, end time.Time) []interface{} {
 	if ts.buffer.Len() == 0 {
 		return nil
 	}
-	nullTime := time.Time{}
-	if start == nullTime {
-		start = time.Unix(0, 0)
+	zeroTime := time.Time{}
+	if start == zeroTime {
+		start = zeroTime
 	}
 	result := []interface{}{}
-	for elem := ts.buffer.Back(); elem != nil; elem = elem.Prev() {
+	for elem := ts.buffer.Front(); elem != nil; elem = elem.Next() {
 		entry := elem.Value.(entry)
-		if entry.timestamp.Before(start) || (end != nullTime && entry.timestamp.After(end)) {
+		// Break the loop if we encounter a timestamp that is before 'start'
+		if entry.timestamp.Before(start) {
 			break
+		}
+		// Add all entries whose timestamp is before end.
+		if end != zeroTime && entry.timestamp.After(end) {
+			continue
 		}
 		result = append(result, entry.data)
 	}
@@ -95,18 +118,25 @@ func (ts *timeStore) Delete(start, end time.Time) error {
 	if ts.buffer.Len() == 0 {
 		return nil
 	}
-	if !end.After(start) {
-		return fmt.Errorf("End time %v is not after Start time %v", end, start)
+	if (end != time.Time{}) && !end.After(start) {
+		return fmt.Errorf("end time %v is not after start time %v", end, start)
 	}
+	defer ts.printAll()
+	// Assuming that deletes will happen more frequently for older data.
 	elem := ts.buffer.Back()
 	for elem != nil {
 		entry := elem.Value.(entry)
-		if entry.timestamp.Before(start) || entry.timestamp.After(end) {
+		if (end != time.Time{}) && entry.timestamp.After(end) {
+			// If we have reached an entry which is more recent than 'end' stop iterating.
 			break
 		}
 		oldElem := elem
 		elem = elem.Prev()
-		ts.buffer.Remove(oldElem)
+
+		// Skip entried which are before start.
+		if !entry.timestamp.Before(start) {
+			ts.buffer.Remove(oldElem)
+		}
 	}
 	return nil
 }

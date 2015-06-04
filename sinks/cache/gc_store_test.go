@@ -24,33 +24,36 @@ import (
 func TestGC(t *testing.T) {
 	gcStore := NewGCStore(NewTimeStore(), time.Microsecond, time.Microsecond)
 	now := time.Now()
+	assert := assert.New(t)
 	for i := 0; i < 100; i++ {
-		assert.NoError(t, gcStore.Put(time.Now(), struct{}{}))
+		assert.NoError(gcStore.Put(time.Now(), struct{}{}))
 	}
 	time.Sleep(time.Second)
 	// Perform a put to invoke GC.
-	assert.NoError(t, gcStore.Put(time.Now(), struct{}{}))
+	assert.NoError(gcStore.Put(time.Now(), struct{}{}))
 	data := gcStore.Get(now, time.Now())
-	assert.Len(t, data, 0)
+	assert.Len(data, 0)
 }
 
 func TestGCDetail(t *testing.T) {
-	gcStore := NewGCStore(NewTimeStore(), time.Second, time.Microsecond)
+	gcStore := NewGCStore(NewTimeStore(), time.Hour, time.Microsecond)
 	now := time.Now()
+	assert := assert.New(t)
 	for i := 0; i < 20; i++ {
-		assert.NoError(t, gcStore.Put(time.Now(), struct{}{}))
-		time.Sleep(100 * time.Millisecond)
+		timestamp := now.Add(-time.Hour + (time.Duration(i) * time.Minute))
+		assert.NoError(gcStore.Put(timestamp, struct{}{}))
 	}
-	data := gcStore.Get(now, time.Now())
-	assert.NotEqual(t, 0, len(data))
+	data := gcStore.Get(time.Time{}, time.Now())
+	assert.NotEmpty(data)
 }
 
 func TestLongGC(t *testing.T) {
 	gcStore := NewGCStore(NewTimeStore(), time.Hour, time.Microsecond)
 	now := time.Now()
+	assert := assert.New(t)
 	for i := 0; i < 200; i++ {
-		assert.NoError(t, gcStore.Put(time.Now(), i))
+		assert.NoError(gcStore.Put(time.Now(), i))
 	}
 	data := gcStore.Get(now, time.Now())
-	assert.Equal(t, 200, len(data))
+	assert.Equal(200, len(data))
 }

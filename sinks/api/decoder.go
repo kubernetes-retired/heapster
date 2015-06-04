@@ -20,6 +20,12 @@ import (
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
+// Codec represents an engine that translated from sources.api to sink.api objects.
+type DecoderV1 interface {
+	// Timeseries returns the metrics found in input as a timeseries slice.
+	Timeseries(input source_api.AggregateData) ([]Timeseries, error)
+}
+
 type defaultDecoder struct {
 	supportedStatMetrics []SupportedStatMetric
 
@@ -82,14 +88,6 @@ func (self *defaultDecoder) getContainerSliceMetrics(containers []source_api.Con
 	return result
 }
 
-func copyLabels(labels map[string]string) map[string]string {
-	c := make(map[string]string, len(labels))
-	for key, val := range labels {
-		c[key] = val
-	}
-	return c
-}
-
 func (self *defaultDecoder) getContainerMetrics(container *source_api.Container, labels map[string]string) []Timeseries {
 	if container == nil {
 		return nil
@@ -149,7 +147,7 @@ func (self *defaultDecoder) getContainerMetrics(container *source_api.Container,
 	return result
 }
 
-func NewDecoder() Decoder {
+func NewV1Decoder() DecoderV1 {
 	// Get supported metrics.
 	return &defaultDecoder{
 		supportedStatMetrics: statMetrics,

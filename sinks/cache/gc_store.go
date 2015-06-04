@@ -29,7 +29,7 @@ func (gcs *gcStore) Put(timestamp time.Time, data interface{}) error {
 	if err := gcs.store.Put(timestamp, data); err != nil {
 		return err
 	}
-	gcs.reapOldData()
+	gcs.reapOldData(timestamp)
 	return nil
 }
 
@@ -41,11 +41,11 @@ func (gcs *gcStore) Delete(start, end time.Time) error {
 	return gcs.store.Delete(start, end)
 }
 
-func (gcs *gcStore) reapOldData() {
-	end := time.Now().Add(-gcs.bufferDuration)
-	start := time.Unix(0, 0)
+func (gcs *gcStore) reapOldData(timestamp time.Time) {
+	end := timestamp.Add(-gcs.bufferDuration)
+	start := time.Time{}
 	if err := gcs.store.Delete(start, end); err != nil {
-		glog.Fatalf("failed to delete old data")
+		glog.Fatalf("failed to delete old data - %v", err)
 	}
 }
 

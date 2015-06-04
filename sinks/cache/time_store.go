@@ -24,9 +24,9 @@ type TimeStore interface {
 	Put(timestamp time.Time, data interface{}) error
 	// Get returns a slice of elements that were previously stored with timestamps
 	// between 'start' and 'end'. 'start' is expected to be before 'end'.
-	// If 'start' is null, it returns all the elements up until 'end'.
-	// If 'end' is null, it returns all the elements from 'start'.
-	// If both 'start' and 'end' are null, it returns all the elements in the cache.
+	// If 'start' is zero, it returns all the elements up until 'end'.
+	// If 'end' is zero, it returns all the elements from 'start'.
+	// If both 'start' and 'end' are zero, it returns all the elements in the cache.
 	Get(start, end time.Time) []interface{}
 	// Delete removes all elements that were previously stored with timestamps
 	// between 'start' and 'end'.

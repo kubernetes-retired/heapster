@@ -33,33 +33,40 @@ func TestNilInsert(t *testing.T) {
 	assert.Error(t, store.Put(time.Now(), nil))
 }
 
+func expectElements(t *testing.T, data []interface{}) {
+	for i := 0; i < len(data); i++ {
+		assert.Equal(t, len(data)-i-1, data[i].(int))
+	}
+}
+
 func TestInsert(t *testing.T) {
 	store := NewTimeStore()
 	now := time.Now()
-	assert.NoError(t, store.Put(now, 2))
-	assert.NoError(t, store.Put(now.Add(-time.Second), 1))
-	assert.NoError(t, store.Put(now.Add(time.Second), 3))
-	assert.NoError(t, store.Put(now.Add(-2*time.Second), 0))
-	actual := store.Get(time.Time{}, now.Add(time.Second))
-	require.Len(t, actual, 4)
-	for i := 0; i < len(actual); i++ {
-		assert.Equal(t, i, actual[i].(int))
-	}
+	assert := assert.New(t)
+	assert.NoError(store.Put(now, 2))
+	assert.NoError(store.Put(now.Add(-time.Second), 1))
+	assert.NoError(store.Put(now.Add(time.Second), 3))
+	assert.NoError(store.Put(now.Add(-2*time.Second), 0))
+	actual := store.Get(time.Time{}, now)
+	require.Len(t, actual, 3)
+	expectElements(t, actual)
 	actual = store.Get(time.Time{}, time.Time{})
 	require.Len(t, actual, 4)
-	for i := 0; i < len(actual); i++ {
-		assert.Equal(t, i, actual[i].(int))
-	}
+	expectElements(t, actual)
 }
 
 func TestDelete(t *testing.T) {
 	store := NewTimeStore()
 	now := time.Now()
-	assert.NoError(t, store.Put(now, 2))
-	assert.NoError(t, store.Put(now.Add(-time.Second), 1))
-	assert.NoError(t, store.Put(now.Add(time.Second), 3))
-	assert.NoError(t, store.Delete(now.Add(-time.Second), now))
+	assert := assert.New(t)
+	assert.NoError(store.Put(now, 2))
+	assert.NoError(store.Put(now.Add(-time.Second), 1))
+	assert.NoError(store.Put(now.Add(-2*time.Second), 0))
+	assert.NoError(store.Put(now.Add(time.Second), 3))
+	assert.NoError(store.Delete(now.Add(-time.Second), now))
 	actual := store.Get(now.Add(-time.Second), time.Time{})
 	require.Len(t, actual, 1)
-	assert.Equal(t, 3, actual[0].(int))
+	assert.Equal(3, actual[0].(int))
+	assert.NoError(store.Delete(time.Time{}, time.Time{}))
+	assert.Empty(store.Get(time.Time{}, time.Time{}))
 }

@@ -20,7 +20,13 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 )
 
-type defaultDecoder struct {
+type DecoderV2 interface {
+	// Timeseries returns the metrics found in input as a timeseries slice.
+	TimeseriesFromPods([]*cache.PodElement) ([]Timeseries, error)
+	TimeseriesFromContainers([]*cache.ContainerElement) ([]Timeseries, error)
+}
+
+type v2Decoder struct {
 	supportedStatMetrics []SupportedStatMetric
 
 	// TODO: Garbage collect data.
@@ -28,30 +34,28 @@ type defaultDecoder struct {
 	lastExported map[timeseriesKey]time.Time
 }
 
-type timeseriesKey struct {
-	// Name of the metric.
-	Name string
-
-	// Mangled labels on the metric.
-	Labels string
-}
-
-func (self *defaultDecoder) Timeseries(pods []*cache.PodElement, nodes []*cache.NodeElement) ([]Timeseries, error) {
+func (self *v2Decoder) TimeseriesFromPods(pods []*cache.PodElement) ([]Timeseries, error) {
 	var result []Timeseries
 	// Format metrics and push them.
-	for index := range input.Pods {
-		result = append(result, self.getPodMetrics(&input.Pods[index])...)
+	for index := range pods {
+		result = append(result, self.getPodMetrics(pods[index])...)
 	}
-	result = append(result, self.getContainerSliceMetrics(input.Containers)...)
-	result = append(result, self.getContainerSliceMetrics(input.Machine)...)
-
+	return result, nil
+}
+func (self *v2Decoder) TimeseriesFromContainers(containers []*cache.ContainerElement) ([]Timeseries, error) {
+	labels := make(map[string]string)
+	var result []Timeseries
+	for index := range containers {
+		labels[LabelHostname] = containers[index].Hostname
+		result = append(result, self.getContainerMetrics(containers[index], copyLabels(labels))...)
+	}
 	return result, nil
 }
 
 // Generate the labels.
-func (self *defaultDecoder) getPodLabels(pod *cache.PodElement) map[string]string {
+func (self *v2Decoder) getPodLabels(pod *cache.PodElement) map[string]string {
 	labels := make(map[string]string)
-	labels[LabelPodId] = pod.ID
+	labels[LabelPodId] = pod.UID
 	labels[LabelPodNamespace] = pod.Namespace
 	labels[LabelPodName] = pod.Name
 	labels[LabelLabels] = LabelsToString(pod.Labels, ",")
@@ -60,23 +64,15 @@ func (self *defaultDecoder) getPodLabels(pod *cache.PodElement) map[string]strin
 	return labels
 }
 
-func (self *defaultDecoder) getPodMetrics(pod *cache.PodElement) []Timeseries {
+func (self *v2Decoder) getPodMetrics(pod *cache.PodElement) []Timeseries {
 	// Break the individual metrics from the container statistics.
 	result := []Timeseries{}
-	for index := range pod.Containers {
-		timeseries := self.getContainerMetrics(&pod.Containers[index], self.getPodLabels(pod))
-		result = append(result, timeseries...)
+	if pod == nil || pod.Containers == nil {
+		return result
 	}
-
-	return result
-}
-
-func (self *defaultDecoder) getContainerSliceMetrics(containers []source_api.Container) []Timeseries {
-	labels := make(map[string]string)
-	var result []Timeseries
-	for index := range containers {
-		labels[LabelHostname] = containers[index].Hostname
-		result = append(result, self.getContainerMetrics(&containers[index], copyLabels(labels))...)
+	for index := range pod.Containers {
+		timeseries := self.getContainerMetrics(pod.Containers[index], self.getPodLabels(pod))
+		result = append(result, timeseries...)
 	}
 
 	return result
@@ -90,7 +86,7 @@ func copyLabels(labels map[string]string) map[string]string {
 	return c
 }
 
-func (self *defaultDecoder) getContainerMetrics(container *cache.ContainerElement, labels map[string]string) []Timeseries {
+func (self *v2Decoder) getContainerMetrics(container *cache.ContainerElement, labels map[string]string) []Timeseries {
 	if container == nil {
 		return nil
 	}
@@ -98,33 +94,33 @@ func (self *defaultDecoder) getContainerMetrics(container *cache.ContainerElemen
 	// One metric value per data point.
 	var result []Timeseries
 	labelsAsString := LabelsToString(labels, ",")
-	for _, stat := range container.Stats {
-		if stat == nil {
+	for _, metric := range container.Metrics {
+		if metric == nil || metric.Spec == nil || metric.Stats == nil {
 			continue
 		}
 		// Add all supported metrics that have values.
 		for index, supported := range self.supportedStatMetrics {
 			// Finest allowed granularity is seconds.
-			stat.Timestamp = stat.Timestamp.Round(time.Second)
+			metric.Stats.Timestamp = metric.Stats.Timestamp.Round(time.Second)
 			key := timeseriesKey{
 				Name:   supported.Name,
 				Labels: labelsAsString,
 			}
-			// TODO: remove this once the heapster source is tested to not provide duplicate stats.
+			// TODO: remove this once the heapster source is tested to not provide duplicate metric.Statss.
 
-			if data, ok := self.lastExported[key]; ok && data.After(stat.Timestamp) {
+			if data, ok := self.lastExported[key]; ok && data.After(metric.Stats.Timestamp) {
 				continue
 			}
 
-			if supported.HasValue(&container.Spec) {
-				// Cumulative stats have container creation time as their start time.
+			if supported.HasValue(metric.Spec) {
+				// Cumulative metric.Statss have container creation time as their start time.
 				var startTime time.Time
 				if supported.Type == MetricCumulative {
-					startTime = container.Spec.CreationTime
+					startTime = metric.Spec.CreationTime
 				} else {
-					startTime = stat.Timestamp
+					startTime = metric.Stats.Timestamp
 				}
-				points := supported.GetValue(&container.Spec, stat)
+				points := supported.GetValue(metric.Spec, metric.Stats)
 				for _, point := range points {
 					labels := copyLabels(labels)
 					for name, value := range point.labels {
@@ -136,23 +132,24 @@ func (self *defaultDecoder) getContainerMetrics(container *cache.ContainerElemen
 							Name:   supported.Name,
 							Labels: labels,
 							Start:  startTime.Round(time.Second),
-							End:    stat.Timestamp,
+							End:    metric.Stats.Timestamp,
 							Value:  point.value,
 						},
 					}
 					result = append(result, timeseries)
 				}
 			}
-			self.lastExported[key] = stat.Timestamp
+			self.lastExported[key] = metric.Stats.Timestamp
 		}
+
 	}
 
 	return result
 }
 
-func NewDecoder() Decoder {
+func NewV2Decoder() DecoderV2 {
 	// Get supported metrics.
-	return &defaultDecoder{
+	return &v2Decoder{
 		supportedStatMetrics: statMetrics,
 		lastExported:         make(map[timeseriesKey]time.Time),
 	}

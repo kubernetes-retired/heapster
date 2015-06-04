@@ -17,7 +17,6 @@ package api
 import (
 	"time"
 
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
@@ -170,12 +169,4 @@ type ExternalSink interface {
 	DebugInfo() string
 	// Returns an user friendly string that describes the External Sink.
 	Name() string
-}
-
-// Codec represents an engine that translated from sources.api to sink.api objects.
-type Decoder interface {
-	// Timeseries returns the metrics found in input as a timeseries slice.
-	Timeseries(input source_api.AggregateData) ([]Timeseries, error)
-	// TODO: Process events.
-	// TODO: Process config data.
 }

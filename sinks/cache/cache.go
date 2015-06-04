@@ -49,22 +49,22 @@ type PodElement struct {
 type Cache interface {
 	StorePods([]source_api.Pod) error
 	StoreContainers([]source_api.Container) error
-
+	// TODO: Handle events.
 	// GetPods returns a list of pod elements in the cache between 'start' and 'end'.
-	// If 'start' is null, it returns all the elements up until 'end'.
-	// If 'end' is null, it returns all the elements from 'start'.
-	// If both 'start' and 'end' are null, it returns all the elements in the cache.
+	// If 'start' is zero, it returns all the elements up until 'end'.
+	// If 'end' is zero, it returns all the elements from 'start'.
+	// If both 'start' and 'end' are zero, it returns all the elements in the cache.
 	GetPods(start, end time.Time) []*PodElement
 
 	// GetNodes returns a list of pod elements in the cache between 'start' and 'end'.
-	// If 'start' is null, it returns all the elements up until 'end'.
-	// If 'end' is null, it returns all the elements from 'start'.
-	// If both 'start' and 'end' are null, it returns all the elements in the cache.
+	// If 'start' is zero, it returns all the elements up until 'end'.
+	// If 'end' is zero, it returns all the elements from 'start'.
+	// If both 'start' and 'end' are zero, it returns all the elements in the cache.
 	GetNodes(start, end time.Time) []*ContainerElement
 
 	// GetFreeContainers returns a list of pod elements in the cache between 'start' and 'end'.
-	// If 'start' is null, it returns all the elements up until 'end'.
-	// If 'end' is null, it returns all the elements from 'start'.
-	// If both 'start' and 'end' are null, it returns all the elements in the cache.
+	// If 'start' is zero, it returns all the elements up until 'end'.
+	// If 'end' is zero, it returns all the elements from 'start'.
+	// If both 'start' and 'end' are zero, it returns all the elements in the cache.
 	GetFreeContainers(start, end time.Time) []*ContainerElement
 }
