@@ -75,8 +75,9 @@ func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string, erro
 		if hostname == nodeInfo.PublicIP {
 			// If the only identifier we have for the node is a public IP, then use it;
 			// don't force a DNS lookup
+			glog.V(4).Infof("Only have PublicIP %s for node %s, so using it for InternalIP",
+				nodeInfo.PublicIP, node.Name)
 			nodeInfo.InternalIP = nodeInfo.PublicIP
-
 		} else {
 			addrs, err := net.LookupIP(hostname)
 			if err == nil {
