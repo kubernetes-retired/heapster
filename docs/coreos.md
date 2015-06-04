@@ -22,7 +22,7 @@ $ docker run -d -p 8083:8083 -p 8086:8086 --name influxdb kubernetes/heapster_in
 Pass the host where heapster is running via the 'INFLUXDB_HOST' environment variable.
 
 ```shell
-$ docker run --name heapster --link influxdb:influxdb -d kubernetes/heapster:v0.13.0 --source="cadvisor:coreos?fleetEndpoint=127.0.0.1&cadvisorPort=8080" --sink="influxdb:http://influxdb:8086"
+$ docker run --name heapster --link influxdb:influxdb -d kubernetes/heapster:v0.13.0 --source="cadvisor:coreos?fleetEndpoint=http://127.0.0.1:4001&cadvisorPort=8080" --sink="influxdb:http://influxdb:8086"
 ```
 
 **Step 4: Start Grafana**
