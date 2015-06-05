@@ -24,12 +24,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/manager"
 	"github.com/GoogleCloudPlatform/heapster/sinks"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/validate"
 	"github.com/GoogleCloudPlatform/heapster/version"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 )
 
@@ -55,15 +57,15 @@ func main() {
 	if err := validateFlags(); err != nil {
 		glog.Fatal(err)
 	}
-	sources, sink, err := doWork()
+	sources, sink, manager, err := doWork()
 	if err != nil {
 		glog.Error(err)
 		os.Exit(1)
 	}
-	setupHandlers(sources, sink)
+	handler := setupHandlers(sources, sink, manager)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
-	glog.Fatal(http.ListenAndServe(addr, nil))
+	glog.Fatal(http.ListenAndServe(addr, handler))
 	os.Exit(0)
 }
 
@@ -81,38 +83,58 @@ func validateFlags() error {
 	return nil
 }
 
-func setupHandlers(sources []api.Source, sink sinks.ExternalSinkManager) {
+func setupHandlers(sources []api.Source, sink sinks.ExternalSinkManager, m manager.Manager) http.Handler {
+	// Make API handler.
+	wsContainer := restful.NewContainer()
+	a := v1.NewApi(m)
+	a.Register(wsContainer)
+
 	// Validation/Debug handler.
-	http.HandleFunc(validate.ValidatePage, func(w http.ResponseWriter, r *http.Request) {
-		err := validate.HandleRequest(w, sources, sink)
+	handleValidate := func(req *restful.Request, resp *restful.Response) {
+		err := validate.HandleRequest(resp, sources, sink)
 		if err != nil {
-			fmt.Fprintf(w, "%s", err)
+			fmt.Fprintf(resp, "%s", err)
 		}
-	})
+	}
+	ws := new(restful.WebService).
+		Path("/validate").
+		Produces("text/plain")
+	ws.Route(ws.GET("").To(handleValidate)).
+		Doc("get validation information")
+	wsContainer.Add(ws)
 
 	// TODO(jnagal): Add a main status page.
-	http.Handle("/", http.RedirectHandler(validate.ValidatePage, http.StatusTemporaryRedirect))
+	// Redirect root to /validate
+	redirectHandler := http.RedirectHandler(validate.ValidatePage, http.StatusTemporaryRedirect)
+	handleRoot := func(req *restful.Request, resp *restful.Response) {
+		redirectHandler.ServeHTTP(resp, req.Request)
+	}
+	ws = new(restful.WebService)
+	ws.Route(ws.GET("/").To(handleRoot))
+	wsContainer.Add(ws)
+
+	return wsContainer
 }
 
-func doWork() ([]api.Source, sinks.ExternalSinkManager, error) {
+func doWork() ([]api.Source, sinks.ExternalSinkManager, manager.Manager, error) {
 	sources, err := newSources()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	externalSinks, err := newSinks()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	sinkManager, err := sinks.NewExternalSinkManager(externalSinks)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	go util.Until(manager.Housekeep, *argPollDuration, util.NeverStop)
-	return sources, sinkManager, nil
+	return sources, sinkManager, manager, nil
 }
 
 func setMaxProcs() {
