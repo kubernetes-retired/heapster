@@ -17,6 +17,7 @@ package cache
 import (
 	"time"
 
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	source_api "k8s.io/heapster/sources/api"
 )
@@ -39,6 +40,8 @@ type Event struct {
 	Source string
 	// The timestamp at which the event was generated.
 	Timestamp time.Time
+	// Store a public API version instead of internal version.
+	Raw kube_api.Event
 }
 
 type ContainerMetricElement struct {

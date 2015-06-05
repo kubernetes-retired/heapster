@@ -25,7 +25,7 @@ import (
 	"k8s.io/heapster/extpoints"
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api"
 )
 
 const (

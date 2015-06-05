@@ -104,6 +104,7 @@ func (eventSource *eventsSourceImpl) storeEventsInCache(events *kubeapi.EventLis
 				Message:   event.Message,
 				Source:    event.Source.Component,
 				Timestamp: event.LastTimestamp.Time,
+				Raw:       event,
 			})
 	}
 	return eventSource.ec.StoreEvents(internalEvents)

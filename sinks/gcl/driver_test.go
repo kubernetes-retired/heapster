@@ -24,7 +24,7 @@ import (
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	kube_time "github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/stretchr/testify/assert"
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api"
 )
 
 type fakeHttpClient struct {

@@ -30,7 +30,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 	heapster_api "k8s.io/heapster/api/v1"
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
 )
 

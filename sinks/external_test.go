@@ -16,11 +16,14 @@ package sinks
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	fuzz "github.com/google/gofuzz"
+	sink_api "k8s.io/heapster/sinks/api"
+	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
 )
 
@@ -52,18 +55,18 @@ func (d *DummySink) StoreEvents([]kube_api.Event) error {
 }
 
 func (d *DummySink) DebugInfo() string {
-	return ""
+	return "dummy sink"
 }
 
 func (d *DummySink) Name() string {
-	return ""
+	return "dummy"
 }
 
 func TestSetSinksRegister(t *testing.T) {
 	as := assert.New(t)
 	s1 := &DummySink{}
 	as.Equal(0, s1.Registered)
-	m, err := NewExternalSinkManager([]sink_api.ExternalSink{s1})
+	m, err := NewExternalSinkManager([]sink_api.ExternalSink{s1}, nil, time.Minute)
 	as.Nil(err)
 	as.Equal(1, s1.Registered)
 	err = m.SetSinks([]sink_api.ExternalSink{s1})
@@ -85,7 +88,7 @@ func TestSetSinksUnregister(t *testing.T) {
 	as := assert.New(t)
 	s1 := &DummySink{}
 	as.Equal(0, s1.Unregistered)
-	m, err := NewExternalSinkManager([]sink_api.ExternalSink{s1})
+	m, err := NewExternalSinkManager([]sink_api.ExternalSink{s1}, nil, time.Minute)
 	as.Nil(err)
 	as.Equal(0, s1.Unregistered)
 	err = m.SetSinks([]sink_api.ExternalSink{s1})
@@ -108,7 +111,7 @@ func TestSetSinksRegisterAgain(t *testing.T) {
 	s1 := &DummySink{}
 	as.Equal(0, s1.Registered)
 	as.Equal(0, s1.Unregistered)
-	m, err := NewExternalSinkManager([]sink_api.ExternalSink{s1})
+	m, err := NewExternalSinkManager([]sink_api.ExternalSink{s1}, nil, time.Minute)
 	as.Nil(err)
 	as.Equal(1, s1.Registered)
 	as.Equal(0, s1.Unregistered)
@@ -129,28 +132,50 @@ func TestSetSinksRegisterAgain(t *testing.T) {
 func TestSetSinksStore(t *testing.T) {
 	as := assert.New(t)
 	s1 := &DummySink{}
-	m, err := NewExternalSinkManager([]sink_api.ExternalSink{s1})
+	c := cache.NewCache(time.Minute, time.Hour)
+	m, err := NewExternalSinkManager([]sink_api.ExternalSink{s1}, c, time.Microsecond)
 	as.Nil(err)
 	as.Equal(0, s1.StoredTimeseries)
 	as.Equal(0, s1.StoredEvents)
-	err = m.Store(source_api.AggregateData{})
-	as.Nil(err)
+	var (
+		pods       []source_api.Pod
+		containers []source_api.Container
+		events     []*cache.Event
+	)
+	f := fuzz.New().NumElements(1, 1).NilChance(0)
+	f.Fuzz(&pods)
+	f.Fuzz(&containers)
+	f.Fuzz(&events)
+	c.StorePods(pods)
+	c.StoreContainers(containers)
+	c.StoreEvents(events)
+	stopChan := m.Sync()
+	as.NotNil(stopChan)
+	time.Sleep(time.Second)
 	as.Equal(1, s1.StoredTimeseries)
 	as.Equal(1, s1.StoredEvents)
+	stopChan <- struct{}{}
 	err = m.SetSinks([]sink_api.ExternalSink{})
 	as.Nil(err)
-	err = m.Store(source_api.AggregateData{})
-	as.Nil(err)
+	stopChan = m.Sync()
+	as.NotNil(stopChan)
 	as.Equal(1, s1.StoredTimeseries)
 	as.Equal(1, s1.StoredEvents)
+
 	err = m.SetSinks([]sink_api.ExternalSink{s1})
+	as.Equal(1, s1.StoredTimeseries)
+	as.Equal(1, s1.StoredEvents)
 	as.Nil(err)
-	err = m.Store(source_api.AggregateData{})
-	as.Nil(err)
+	f.Fuzz(&pods)
+	f.Fuzz(&containers)
+	f.Fuzz(&events)
+	c.StorePods(pods)
+	c.StoreContainers(containers)
+	c.StoreEvents(events)
+	stopChan = m.Sync()
+	as.NotNil(stopChan)
+	time.Sleep(time.Second)
 	as.Equal(2, s1.StoredTimeseries)
 	as.Equal(2, s1.StoredEvents)
-	err = m.Store(source_api.AggregateData{})
-	as.Nil(err)
-	as.Equal(3, s1.StoredTimeseries)
-	as.Equal(3, s1.StoredEvents)
+	stopChan <- struct{}{}
 }

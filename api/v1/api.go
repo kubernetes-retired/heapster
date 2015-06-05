@@ -20,7 +20,7 @@ import (
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 	"k8s.io/heapster/manager"
-	sinksApi "k8s.io/heapster/sinks/api/v1"
+	sinksApi "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/util"
 )
 

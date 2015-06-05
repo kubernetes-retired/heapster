@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/hawkular/hawkular-client-go/metrics"
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api"
 
 	assert "github.com/stretchr/testify/require"
 )

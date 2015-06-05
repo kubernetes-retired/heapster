@@ -28,7 +28,7 @@ import (
 	"github.com/golang/glog"
 	influxdb "github.com/influxdb/influxdb/client"
 	"k8s.io/heapster/extpoints"
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/util"
 )
 

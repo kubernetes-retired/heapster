@@ -21,7 +21,7 @@ import (
 	kube_time "github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	influxdb "github.com/influxdb/influxdb/client"
 	"github.com/stretchr/testify/assert"
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api"
 )
 
 type capturedWriteCall struct {
