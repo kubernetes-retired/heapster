@@ -74,3 +74,16 @@ Metrics mentioned above are stored along with corresponding labels as [custom me
 
 TODO: Add a snapshot of all the metrics stored in GCM.
 
+### Hawkular
+
+Each metric is stored as separate timeseries (metric) in Hawkular-Metrics with tags being inherited from common ancestor type. The metric name is created with the following format: `containerName/podId/metricName` (`/` is separator). All the metrics are stored as gauges at this point (this might change after the counter type has been redefined in the Hawkular). Each definition stores the labels as tags with following addons:
+
+* All the Label descriptions are stored as label_description
+* The ancestor metric name (such as cpu/usage) is stored under the tag `descriptor_name`
+* To ease search, a tag with `group_id` stores the key `containerName/metricName` so each podId can be linked under a single timeseries if necessary.
+* Type (Gauge / Cumulative) is stored to `type` tag
+* Units are stored under `units` tag
+
+At the start, all the definitions are fetched from the Hawkular-Metrics tenant and filtered to cache only the Heapster metrics. It is recommended to use a separate tenant for Heapster information if you have lots of metrics from other systems, but not required.
+
+The Hawkular-Metrics instance can be a standalone installation of Hawkular-Metrics or the full installation of Hawkular. 

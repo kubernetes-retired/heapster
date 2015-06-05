@@ -23,7 +23,6 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/cache"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/golang/glog"
 )
 
@@ -53,12 +52,44 @@ func (self *kubeNodes) recordGoodNodes(nodes []string) {
 	self.goodNodes = nodes
 }
 
-func parseSelectorOrDie(s string) labels.Selector {
-	selector, err := labels.Parse(s)
-	if err != nil {
-		panic(err)
+func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string, error) {
+	nodeInfo := Info{}
+	hostname := ""
+	var nodeErr error
+	for _, addr := range node.Status.Addresses {
+		switch addr.Type {
+		case api.NodeExternalIP:
+			nodeInfo.PublicIP = addr.Address
+		case api.NodeLegacyHostIP:
+			nodeInfo.PublicIP = addr.Address
+		case api.NodeInternalIP:
+			nodeInfo.InternalIP = addr.Address
+		case api.NodeHostName:
+			hostname = addr.Address
+		}
 	}
-	return selector
+	if hostname == "" {
+		hostname = node.Name
+	}
+	if nodeInfo.InternalIP == "" {
+		if hostname == nodeInfo.PublicIP {
+			// If the only identifier we have for the node is a public IP, then use it;
+			// don't force a DNS lookup
+			glog.V(4).Infof("Only have PublicIP %s for node %s, so using it for InternalIP",
+				nodeInfo.PublicIP, node.Name)
+			nodeInfo.InternalIP = nodeInfo.PublicIP
+		} else {
+			addrs, err := net.LookupIP(hostname)
+			if err == nil {
+				nodeInfo.InternalIP = addrs[0].String()
+			} else {
+				glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
+				self.recordNodeError(node.Name)
+				nodeErr = err
+			}
+		}
+	}
+	return nodeInfo, hostname, nodeErr
 }
 
 func (self *kubeNodes) List() (*NodeList, error) {
@@ -72,33 +103,12 @@ func (self *kubeNodes) List() (*NodeList, error) {
 
 	goodNodes := []string{}
 	for _, node := range allNodes.Items {
-		nodeInfo := Info{}
-		hostname := ""
-		for _, addr := range node.Status.Addresses {
-			switch addr.Type {
-			case api.NodeExternalIP:
-				nodeInfo.PublicIP = addr.Address
-			case api.NodeInternalIP:
-				nodeInfo.InternalIP = addr.Address
-			case api.NodeHostName:
-				hostname = addr.Address
-			}
-		}
-		if hostname == "" {
-			hostname = node.Name
-		}
-		if nodeInfo.InternalIP == "" {
-			addrs, err := net.LookupIP(hostname)
-			if err == nil {
-				nodeInfo.InternalIP = addrs[0].String()
-			} else {
-				glog.Errorf("Skipping host %s since looking up its IP failed - %s", node.Name, err)
-				self.recordNodeError(node.Name)
-			}
-		}
+		nodeInfo, hostname, err := self.getNodeInfoAndHostname(node)
 
 		nodeList.Items[Host(hostname)] = nodeInfo
-		goodNodes = append(goodNodes, node.Name)
+		if err == nil {
+			goodNodes = append(goodNodes, node.Name)
+		}
 	}
 	self.recordGoodNodes(goodNodes)
 	glog.V(5).Infof("kube nodes found: %+v", nodeList)
