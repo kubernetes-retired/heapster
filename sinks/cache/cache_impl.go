@@ -51,14 +51,13 @@ type realCache struct {
 }
 
 const (
-	gcDuration    = time.Second
 	rootContainer = "/"
 	machine       = "machine"
 )
 
 func (rc *realCache) newContainerElement() *containerElement {
 	return &containerElement{
-		metrics: NewGCStore(NewTimeStore(), rc.bufferDuration, gcDuration),
+		metrics: NewGCStore(NewTimeStore(), rc.bufferDuration),
 	}
 }
 
@@ -87,7 +86,6 @@ func storeSpecAndStats(ce *containerElement, c *source_api.Container) {
 			Spec:  &c.Spec,
 			Stats: c.Stats[idx],
 		}
-
 		ce.metrics.Put(c.Stats[idx].Timestamp, cme)
 	}
 }
@@ -113,6 +111,7 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 			ce, ok := pe.containers[cont.Name]
 			if !ok {
 				ce = rc.newContainerElement()
+				pe.containers[cont.Name] = ce
 			}
 			ce.Metadata = Metadata{
 				Name:     cont.Name,
@@ -224,7 +223,8 @@ func (rc *realCache) GetFreeContainers(start, end time.Time) []*ContainerElement
 
 func NewCache(bufferDuration time.Duration) Cache {
 	return &realCache{
-		pods:  make(map[string]*podElement),
-		nodes: make(map[string]*nodeElement),
+		pods:           make(map[string]*podElement),
+		nodes:          make(map[string]*nodeElement),
+		bufferDuration: bufferDuration,
 	}
 }
