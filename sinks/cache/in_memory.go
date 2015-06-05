@@ -38,21 +38,15 @@ type timeStore struct {
 	rwLock sync.RWMutex
 }
 
-func (ts *timeStore) printAll() {
-	return
-	glog.Info("printing list")
-	for elem := ts.buffer.Front(); elem != nil; elem = elem.Next() {
-		glog.Infof("%v, %v", elem.Value.(entry).timestamp, elem.Value.(entry).data)
-	}
-}
-
 func (ts *timeStore) Put(timestamp time.Time, data interface{}) error {
 	if data == nil {
 		return fmt.Errorf("cannot store nil data")
 	}
+	if (timestamp == time.Time{}) {
+		return fmt.Errorf("cannot store data with zero timestamp")
+	}
 	ts.rwLock.Lock()
 	defer ts.rwLock.Unlock()
-	defer ts.printAll()
 	if ts.buffer.Len() == 0 {
 		glog.V(5).Infof("put pushfront: %v, %v", timestamp, data)
 		ts.buffer.PushFront(entry{timestamp: timestamp, data: data})
@@ -121,7 +115,6 @@ func (ts *timeStore) Delete(start, end time.Time) error {
 	if (end != time.Time{}) && !end.After(start) {
 		return fmt.Errorf("end time %v is not after start time %v", end, start)
 	}
-	defer ts.printAll()
 	// Assuming that deletes will happen more frequently for older data.
 	elem := ts.buffer.Back()
 	for elem != nil {

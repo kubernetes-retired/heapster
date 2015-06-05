@@ -22,21 +22,19 @@ import (
 )
 
 func TestGC(t *testing.T) {
-	gcStore := NewGCStore(NewTimeStore(), time.Microsecond, time.Microsecond)
+	gcStore := NewGCStore(NewTimeStore(), time.Second)
 	now := time.Now()
 	assert := assert.New(t)
 	for i := 0; i < 100; i++ {
-		assert.NoError(gcStore.Put(time.Now(), struct{}{}))
+		timestamp := now.Add(-time.Hour + (time.Duration(i) * time.Minute))
+		assert.NoError(gcStore.Put(timestamp, struct{}{}))
 	}
-	time.Sleep(time.Second)
-	// Perform a put to invoke GC.
-	assert.NoError(gcStore.Put(time.Now(), struct{}{}))
 	data := gcStore.Get(now, time.Now())
 	assert.Len(data, 0)
 }
 
 func TestGCDetail(t *testing.T) {
-	gcStore := NewGCStore(NewTimeStore(), time.Hour, time.Microsecond)
+	gcStore := NewGCStore(NewTimeStore(), time.Hour)
 	now := time.Now()
 	assert := assert.New(t)
 	for i := 0; i < 20; i++ {
@@ -48,7 +46,7 @@ func TestGCDetail(t *testing.T) {
 }
 
 func TestLongGC(t *testing.T) {
-	gcStore := NewGCStore(NewTimeStore(), time.Hour, time.Microsecond)
+	gcStore := NewGCStore(NewTimeStore(), time.Hour)
 	now := time.Now()
 	assert := assert.New(t)
 	for i := 0; i < 200; i++ {

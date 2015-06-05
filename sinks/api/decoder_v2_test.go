@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	"github.com/golang/glog"
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"
@@ -86,7 +85,6 @@ func TestRealInputV2(t *testing.T) {
 	}
 	defer func() { timeSince = time.Since }()
 
-	glog.Info("1")
 	containers := []*cache.ContainerElement{
 		getContainerElement("container1"),
 	}
@@ -179,5 +177,4 @@ func TestRealInputV2(t *testing.T) {
 			}
 		}
 	}
-	glog.Info("2")
 }

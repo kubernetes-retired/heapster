@@ -25,6 +25,7 @@ type gcStore struct {
 	store          TimeStore
 }
 
+// The GC store expects data to be inserted in reverse chronological order.
 func (gcs *gcStore) Put(timestamp time.Time, data interface{}) error {
 	if err := gcs.store.Put(timestamp, data); err != nil {
 		return err
@@ -43,13 +44,15 @@ func (gcs *gcStore) Delete(start, end time.Time) error {
 
 func (gcs *gcStore) reapOldData(timestamp time.Time) {
 	end := timestamp.Add(-gcs.bufferDuration)
-	start := time.Time{}
-	if err := gcs.store.Delete(start, end); err != nil {
-		glog.Fatalf("failed to delete old data - %v", err)
+	if end.Before(time.Time{}) {
+		return
+	}
+	if err := gcs.store.Delete(time.Time{}, end); err != nil {
+		glog.Errorf("failed to delete old data - %v", err)
 	}
 }
 
-func NewGCStore(store TimeStore, bufferDuration, gcDuration time.Duration) TimeStore {
+func NewGCStore(store TimeStore, bufferDuration time.Duration) TimeStore {
 	gcStore := &gcStore{
 		bufferDuration: bufferDuration,
 		store:          store,

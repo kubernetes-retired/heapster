@@ -21,6 +21,7 @@ import "time"
 // Implementations are expected to be thread safe.
 type TimeStore interface {
 	// Put stores 'data' with 'timestamp'. Returns error upon failure.
+	// Ignores zero timestamps.
 	Put(timestamp time.Time, data interface{}) error
 	// Get returns a slice of elements that were previously stored with timestamps
 	// between 'start' and 'end'. 'start' is expected to be before 'end'.
