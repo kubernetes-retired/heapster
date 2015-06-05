@@ -39,6 +39,7 @@ var (
 	argPort            = flag.Int("port", 8082, "port to listen")
 	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores).")
+	argCacheDuration   = flag.Duration("cache_duration", 10*time.Minute, "The total amount of historical data that will be cached by heapster.")
 	argSources         Uris
 	argSinks           Uris
 )
@@ -106,7 +107,7 @@ func doWork() ([]api.Source, sinks.ExternalSinkManager, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution)
+	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration)
 	if err != nil {
 		return nil, nil, err
 	}

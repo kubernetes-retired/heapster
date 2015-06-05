@@ -53,10 +53,14 @@ func TestKubePodMetricsFull(t *testing.T) {
 	}
 	podList := []api.Pod{
 		{
-			Name: "blah",
+			PodMetadata: api.PodMetadata{
+				Name: "blah",
+			},
 		},
 		{
-			Name: "blah1",
+			PodMetadata: api.PodMetadata{
+				Name: "blah1",
+			},
 		},
 	}
 	container := &api.Container{

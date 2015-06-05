@@ -21,14 +21,12 @@ import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
-// PodState is the state of a pod, used as either input (desired state) or output (current state)
-type Pod struct {
+type PodMetadata struct {
 	Name      string `json:"name,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
 	// TODO(vishh): Rename to UID.
 	ID             string            `json:"id,omitempty"`
 	Hostname       string            `json:"hostname,omitempty"`
-	Containers     []Container       `json:"containers"`
 	Status         string            `json:"status,omitempty"`
 	PodIP          string            `json:"pod_ip,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
@@ -36,11 +34,18 @@ type Pod struct {
 	HostInternalIP string            `json:"host_internal_ip,omitempty"`
 }
 
+// PodState is the state of a pod, used as either input (desired state) or output (current state)
+type Pod struct {
+	PodMetadata `json:",inline"`
+	Containers  []Container `json:"containers"`
+}
+
 type AggregateData struct {
 	Pods       []Pod
 	Containers []Container
-	Machine    []Container
-	Events     []kubeapi.Event
+	// TODO: Add node metadata.
+	Machine []Container
+	Events  []kubeapi.Event
 }
 
 func (a *AggregateData) Merge(b *AggregateData) {

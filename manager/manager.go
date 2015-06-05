@@ -20,6 +20,7 @@ import (
 	"time"
 
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks"
+	cache "github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 )
@@ -35,6 +36,7 @@ type Manager interface {
 type realManager struct {
 	sources     []source_api.Source
 	sinkManager sink_api.ExternalSinkManager
+	cache       cache.Cache
 	lastSync    time.Time
 	resolution  time.Duration
 }
@@ -44,10 +46,11 @@ type syncData struct {
 	mutex sync.Mutex
 }
 
-func NewManager(sources []source_api.Source, sinkManager sink_api.ExternalSinkManager, res time.Duration) (Manager, error) {
+func NewManager(sources []source_api.Source, sinkManager sink_api.ExternalSinkManager, res, bufferDuration time.Duration) (Manager, error) {
 	return &realManager{
 		sources:     sources,
 		sinkManager: sinkManager,
+		cache:       cache.NewCache(bufferDuration),
 		lastSync:    time.Now(),
 		resolution:  res,
 	}, nil
@@ -84,6 +87,15 @@ func (rm *realManager) Housekeep() {
 		}
 	}
 	glog.V(2).Infof("completed scraping data from sources. Errors: %v", errors)
+	if err := rm.cache.StorePods(sd.data.Pods); err != nil {
+		errors = append(errors, err.Error())
+	}
+	if err := rm.cache.StoreContainers(sd.data.Machine); err != nil {
+		errors = append(errors, err.Error())
+	}
+	if err := rm.cache.StoreContainers(sd.data.Containers); err != nil {
+		errors = append(errors, err.Error())
+	}
 	if err := rm.sinkManager.Store(sd.data); err != nil {
 		errors = append(errors, err.Error())
 	}
