@@ -87,7 +87,7 @@ var statMetrics = []SupportedStatMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "memory/page_faults",
-			Description: "Number of major page faults",
+			Description: "Number of page faults",
 			Type:        MetricCumulative,
 			ValueType:   ValueInt64,
 			Units:       UnitsCount,
@@ -97,6 +97,21 @@ var statMetrics = []SupportedStatMetric{
 		},
 		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
 			return []internalPoint{{value: int64(stat.Memory.ContainerData.Pgfault)}}
+		},
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "memory/major_page_faults",
+			Description: "Number of major page faults",
+			Type:        MetricCumulative,
+			ValueType:   ValueInt64,
+			Units:       UnitsCount,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasMemory
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(stat.Memory.ContainerData.Pgmajfault)}}
 		},
 	},
 	{

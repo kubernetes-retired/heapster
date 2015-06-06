@@ -162,6 +162,10 @@ func TestRealInput(t *testing.T) {
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
 				assert.Equal(t, stats.Memory.ContainerData.Pgfault, value)
+			case "memory/major_page_faults":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				assert.Equal(t, stats.Memory.ContainerData.Pgmajfault, value)
 			case "network/rx":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
