@@ -35,11 +35,11 @@ import (
 
 var (
 	argPollDuration    = flag.Duration("poll_duration", 10*time.Second, "The frequency at which heapster will poll for stats")
-	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats. Acceptible values are [second, 'poll_duration')")
-	argPort            = flag.Int("port", 8082, "port to listen")
+	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats. Acceptable values are in the range [1 second, 'poll_duration')")
+	argPort            = flag.Int("port", 8082, "port to listen to")
 	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores).")
-	argCacheDuration   = flag.Duration("cache_duration", 10*time.Minute, "The total amount of historical data that will be cached by heapster.")
+	argCacheDuration   = flag.Duration("cache_duration", 10*time.Minute, "The total duration of the historical data that will be cached by heapster.")
 	argSources         Uris
 	argSinks           Uris
 )
