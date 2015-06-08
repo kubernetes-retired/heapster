@@ -167,6 +167,11 @@
 			"Rev": "0f397d4e145fb4053792d42b3424dd2143fb23ad"
 		},
 		{
+			"ImportPath": "github.com/emicklei/go-restful",
+			"Comment": "v1.1.3-45-gd487287",
+			"Rev": "d4872876992d385f0e69b007f154e5633bdb40af"
+		},
+		{
 			"ImportPath": "github.com/ghodss/yaml",
 			"Rev": "4fb5c728a37b361a1e971a3bb3d785fcc96b6ef5"
 		},

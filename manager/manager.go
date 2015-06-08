@@ -19,8 +19,9 @@ import (
 	"sync"
 	"time"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks"
-	cache "github.com/GoogleCloudPlatform/heapster/sinks/cache"
+	"github.com/GoogleCloudPlatform/heapster/sinks"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 )
@@ -31,14 +32,18 @@ type Manager interface {
 	// Housekeep collects data from all the configured sources and
 	// stores the data to all the configured sinks.
 	Housekeep()
+
+	// Export the latest data point of all metrics.
+	ExportMetrics() ([]*sink_api.Point, error)
 }
 
 type realManager struct {
 	sources     []source_api.Source
-	sinkManager sink_api.ExternalSinkManager
 	cache       cache.Cache
+	sinkManager sinks.ExternalSinkManager
 	lastSync    time.Time
 	resolution  time.Duration
+	decoder     sink_api.DecoderV2
 }
 
 type syncData struct {
@@ -46,13 +51,14 @@ type syncData struct {
 	mutex sync.Mutex
 }
 
-func NewManager(sources []source_api.Source, sinkManager sink_api.ExternalSinkManager, res, bufferDuration time.Duration) (Manager, error) {
+func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration) (Manager, error) {
 	return &realManager{
 		sources:     sources,
 		sinkManager: sinkManager,
 		cache:       cache.NewCache(bufferDuration),
 		lastSync:    time.Now(),
 		resolution:  res,
+		decoder:     sink_api.NewV2Decoder(),
 	}, nil
 }
 
@@ -101,5 +107,67 @@ func (rm *realManager) Housekeep() {
 	}
 	if len(errors) > 0 {
 		glog.V(1).Infof("housekeeping resulted in following errors: %v", errors)
+	}
+}
+
+func (rm *realManager) ExportMetrics() ([]*sink_api.Point, error) {
+	var zero time.Time
+
+	// Get all pods as points.
+	pods := trimStatsForPods(rm.cache.GetPods(zero, zero))
+	timeseries, err := rm.decoder.TimeseriesFromPods(pods)
+	if err != nil {
+		return []*sink_api.Point{}, err
+	}
+	points := make([]*sink_api.Point, 0, len(timeseries))
+	points = appendPoints(points, timeseries)
+
+	// Get all nodes as points.
+	containers := trimStatsForContainers(rm.cache.GetNodes(zero, zero))
+	timeseries, err = rm.decoder.TimeseriesFromContainers(containers)
+	if err != nil {
+		return []*sink_api.Point{}, err
+	}
+	points = appendPoints(points, timeseries)
+
+	// Get all free containers as points.
+	containers = trimStatsForContainers(rm.cache.GetFreeContainers(zero, zero))
+	timeseries, err = rm.decoder.TimeseriesFromContainers(containers)
+	if err != nil {
+		return []*sink_api.Point{}, err
+	}
+	points = appendPoints(points, timeseries)
+
+	return points, nil
+}
+
+// Extract the points from the specified timeseries and append them to output.
+func appendPoints(output []*sink_api.Point, toExtract []sink_api.Timeseries) []*sink_api.Point {
+	for i := range toExtract {
+		output = append(output, toExtract[i].Point)
+	}
+	return output
+}
+
+// Only keep latest stats for the specified pods
+func trimStatsForPods(pods []*cache.PodElement) []*cache.PodElement {
+	for _, pod := range pods {
+		trimStatsForContainers(pod.Containers)
+	}
+	return pods
+}
+
+// Only keep latest stats for the specified containers
+func trimStatsForContainers(containers []*cache.ContainerElement) []*cache.ContainerElement {
+	for _, cont := range containers {
+		onlyKeepLatestStat(cont)
+	}
+	return containers
+}
+
+// Only keep the latest stats data point.
+func onlyKeepLatestStat(cont *cache.ContainerElement) {
+	if len(cont.Metrics) > 1 {
+		cont.Metrics = cont.Metrics[len(cont.Metrics)-1:]
 	}
 }
