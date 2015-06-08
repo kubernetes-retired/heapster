@@ -2,18 +2,19 @@
 
 Heapster exports the following metrics to its backends.
 
-| Metric Name        | Description                                                                                        | Type       | Units       | Supported Since |
-|--------------------|----------------------------------------------------------------------------------------------------|------------|-------------|-----------------|
-| uptime             | Number of millisecond since the container was started                                             | Cumulative | Milliseconds | v0.9            |
-| cpu/usage          | Cumulative CPU usage on all cores                                                                  | Cumulative | Nanoseconds       | v0.9            |
-| memory/usage       | Total memory usage                                                                                 | Gauge      | Bytes       | v0.9            |
-| memory/page_faults | Number of major page faults                                                                        | Cumulative      | Count       | v0.9            |
-| memory/working_set | Total working set usage. Working set is the memory being used and not easily dropped by the Kernel | Gauge      | Bytes       | v0.9            |
-| network/rx         | Cumulative number of bytes received over the network                                               | Cumulative | Bytes       | v0.9            |
-| network/rx_errors  | Cumulative number of errors while receiving over the network                                       | Cumulative | Count       | v0.9            |
-| network/tx         | Cumulative number of bytes sent over the network                                                   | Cumulative | Bytes       | v0.9            |
-| network/tx_errors  | Cumulative number of errors while sending over the network                                         | Cumulative | Count       | v0.9            |
-| filesystem/usage   | Total number of bytes used on a filesystem identified by label 'resource_id'                       | Gauge      | Bytes       | v0.11.0            |
+| Metric Name              | Description                                                                                        | Type       | Units        | Supported Since |
+|--------------------------|----------------------------------------------------------------------------------------------------|------------|--------------|-----------------|
+| uptime                   | Number of millisecond since the container was started                                              | Cumulative | Milliseconds | v0.9            |
+| cpu/usage                | Cumulative CPU usage on all cores                                                                  | Cumulative | Nanoseconds  | v0.9            |
+| memory/usage             | Total memory usage                                                                                 | Gauge      | Bytes        | v0.9            |
+| memory/working_set       | Total working set usage. Working set is the memory being used and not easily dropped by the Kernel | Gauge      | Bytes        | v0.9            |
+| memory/page_faults       | Total number of page faults                                                                        | Cumulative | Count        | v0.9            |
+| memory/major_page_faults | Number of major page faults                                                                        | Cumulative | Count        | HEAD            |
+| network/rx               | Cumulative number of bytes received over the network                                               | Cumulative | Bytes        | v0.9            |
+| network/rx_errors        | Cumulative number of errors while receiving over the network                                       | Cumulative | Count        | v0.9            |
+| network/tx               | Cumulative number of bytes sent over the network                                                   | Cumulative | Bytes        | v0.9            |
+| network/tx_errors        | Cumulative number of errors while sending over the network                                         | Cumulative | Count        | v0.9            |
+| filesystem/usage         | Total number of bytes used on a filesystem identified by label 'resource_id'                       | Gauge      | Bytes        | v0.11.0         |
 
 *Note: Gauge refers to instantaneous metrics*
 
@@ -24,7 +25,7 @@ Heapster tags each metric with the following labels.
 | Label Name     | Description                                                                   | Supported Since | Kubernetes specific |
 |----------------|-------------------------------------------------------------------------------|-----------------|---------------------|
 | pod_id         | Unique ID of a Pod                                                            | v0.9            | Yes                 |
-| pod_name       | User-provided name of a Pod                                                   | HEAD            | Yes                 |
+| pod_name       | User-provided name of a Pod                                                   | v0.13           | Yes                 |
 | pod_namespace  | The namespace of a Pod                                                        | v0.10           | Yes                 |
 | container_name | User-provided name of the container or full cgroup name for system containers | v0.9            | No                  |
 | labels         | Comma-separated list of user-provided labels. Format is 'key:value'           | v0.9            | Yes                 |
