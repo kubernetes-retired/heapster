@@ -28,6 +28,50 @@ To run without auth file, use the following config:
 --source=kubernetes:http://kubernetes-ro?auth=""
 ```
 
+Alternatively, create a [service account](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/docs/design/service_accounts.md)
+like this:
+
+```
+cat <EOF | kubectl create -f -
+apiVersion: v1beta3
+kind: ServiceAccount
+metadata:
+  name: heapster
+EOF
+```
+
+This will generate a token on the API server. You will then need to reference the service account in your Heapster pod spec like this:
+
+```
+apiVersion: "v1beta3"
+kind: "ReplicationController"
+metadata:
+  labels:
+    name: "heapster"
+  name: "monitoring-heapster-controller"
+spec:
+  replicas: 1
+  selector:
+    name: "heapster"
+  template:
+    metadata:
+      labels:
+        name: "heapster"
+    spec:
+      serviceAccount: "heapster"
+      containers:
+        -
+          image: "kubernetes/heapster:v0.13.0"
+          name: "heapster"
+          command:
+            - "/heapster"
+            - "--source=kubernetes:http://kubernetes-ro?useServiceAccount=true&auth="
+            - "--sink=influxdb:http://monitoring-influxdb:80"
+```
+
+This will mount the generated token at `/var/run/secrets/kubernetes.io/serviceaccount/token` in the heapster container.
+
+
 The following options are available:
 
 * `apiVersion` - API version to use to talk to Kubernetes (default: `v1beta3`)
@@ -35,6 +79,7 @@ The following options are available:
 * `kubeletPort` - kubelet port to use (default: `10255`)
 * `kubeletHttps` - whether to use https to connect to kubelets (default: `false`)
 * `auth` - client auth file to use (default: /etc/kubernetes/kubeConfig/kubeConfig)
+* `useServiceAccount` - whether to use the service account token if one is mounted at `/var/run/secrets/kubernetes.io/serviceaccount/token` (default: `false`)
 
 ### Cadvisor
 Cadvisor source comes in two types: standalone & CoreOS:
@@ -52,7 +97,7 @@ The following options are available:
 * `hostsFile` - file containing list of hosts to gather cadvisor metrics from (default: `/var/run/heapster/hosts`)
 * `cadvisorPort` - cadvisor port to use (default: `8080`)
 
-Here is an example: 
+Here is an example:
 ```shell
 ./heapster --source="cadvisor:external?cadvisorPort=4194"
 ```
