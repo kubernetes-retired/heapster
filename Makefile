@@ -1,5 +1,8 @@
 all: build
 
+TAG = v0.14.0
+PREFIX = gcr.io/google_containers
+
 deps:
 	go get github.com/tools/godep
 	go get github.com/progrium/go-extpoints
@@ -25,18 +28,15 @@ test-integration: clean deps
 
 container: build
 	cp ./heapster ./deploy/docker/heapster
-	docker build -t kubernetes/heapster:canary ./deploy/docker/
-	docker build -t gcr.io/google_containers/heapster:canary ./deploy/docker/	
+	docker build -t $(PREFIX)/heapster:$(TAG) ./deploy/docker/
 
 .PHONY: grafana
 grafana:
-	docker build -t kubernetes/heapster_grafana:canary ./grafana/
-	docker build -t gcr.io/google_containers/heapster_grafana:canary ./grafana/
+	docker build -t $(PREFIX)/heapster_grafana:$(TAG) ./grafana/
 
 .PHONY: influxdb
 influxdb:
-	docker build -t kubernetes/heapster_grafana:canary ./influxdb/
-	docker build -t gcr.io/google_containers/heapster_grafana:canary ./influxdb/
+	docker build -t $(PREFIX)/heapster_grafana:$(TAG) ./influxdb/
 
 clean:
 	rm -f heapster
