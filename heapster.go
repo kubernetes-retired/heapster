@@ -24,14 +24,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/manager"
 	"github.com/GoogleCloudPlatform/heapster/sinks"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/validate"
 	"github.com/GoogleCloudPlatform/heapster/version"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 )
 
@@ -81,39 +78,6 @@ func validateFlags() error {
 	}
 
 	return nil
-}
-
-func setupHandlers(sources []api.Source, sink sinks.ExternalSinkManager, m manager.Manager) http.Handler {
-	// Make API handler.
-	wsContainer := restful.NewContainer()
-	a := v1.NewApi(m)
-	a.Register(wsContainer)
-
-	// Validation/Debug handler.
-	handleValidate := func(req *restful.Request, resp *restful.Response) {
-		err := validate.HandleRequest(resp, sources, sink)
-		if err != nil {
-			fmt.Fprintf(resp, "%s", err)
-		}
-	}
-	ws := new(restful.WebService).
-		Path("/validate").
-		Produces("text/plain")
-	ws.Route(ws.GET("").To(handleValidate)).
-		Doc("get validation information")
-	wsContainer.Add(ws)
-
-	// TODO(jnagal): Add a main status page.
-	// Redirect root to /validate
-	redirectHandler := http.RedirectHandler(validate.ValidatePage, http.StatusTemporaryRedirect)
-	handleRoot := func(req *restful.Request, resp *restful.Response) {
-		redirectHandler.ServeHTTP(resp, req.Request)
-	}
-	ws = new(restful.WebService)
-	ws.Route(ws.GET("/").To(handleRoot))
-	wsContainer.Add(ws)
-
-	return wsContainer
 }
 
 func doWork() ([]api.Source, sinks.ExternalSinkManager, manager.Manager, error) {
