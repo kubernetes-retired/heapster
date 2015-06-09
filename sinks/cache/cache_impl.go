@@ -50,10 +50,7 @@ type realCache struct {
 	lock  sync.RWMutex
 }
 
-const (
-	rootContainer = "/"
-	machine       = "machine"
-)
+const rootContainer = "/"
 
 func (rc *realCache) newContainerElement() *containerElement {
 	return &containerElement{
@@ -138,8 +135,7 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 		if cont.Name == rootContainer {
 			// This is at the node level.
 			ne.node.Hostname = cont.Hostname
-			// Use "machine" as container name.
-			ne.node.Name = machine
+			ne.node.Name = NodeContainerName
 			ce = ne.node
 		} else {
 			var ok bool

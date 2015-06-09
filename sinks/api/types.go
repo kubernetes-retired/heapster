@@ -17,7 +17,6 @@ package api
 import (
 	"time"
 
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
@@ -160,21 +159,4 @@ type SupportedStatMetric struct {
 type Timeseries struct {
 	Point            *Point
 	MetricDescriptor *MetricDescriptor
-}
-
-// ExternalSink is the interface that needs to be implemented by all external storage backends.
-type ExternalSink interface {
-	// Registers a metric with the backend.
-	Register([]MetricDescriptor) error
-	// Stores input data into the backend.
-	// Support input types are as follows:
-	// 1. []Timeseries
-	// TODO: Add map[string]string to support storing raw data like node or pod status, spec, etc.
-	StoreTimeseries([]Timeseries) error
-	// Stores events into the backend.
-	StoreEvents([]kube_api.Event) error
-	// Returns debug information specific to the sink.
-	DebugInfo() string
-	// Returns an user friendly string that describes the External Sink.
-	Name() string
 }
