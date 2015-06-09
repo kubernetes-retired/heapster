@@ -51,6 +51,12 @@ func getContainerElement(name string) *cache.ContainerElement {
 		HasNetwork:    true,
 		HasFilesystem: true,
 		HasDiskIo:     true,
+		Cpu: cadvisor_api.CpuSpec{
+			Limit: 100,
+		},
+		Memory: cadvisor_api.MemorySpec{
+			Limit: 100,
+		},
 	}
 	containerStats := make([]*cadvisor_api.ContainerStats, 1)
 	f.Fuzz(&containerStats)
@@ -67,12 +73,12 @@ func getContainerElement(name string) *cache.ContainerElement {
 	}
 }
 
-func getFsStatsFromContainerElement(input []*cache.ContainerElement) map[string]int64 {
-	expectedFsStats := map[string]int64{}
+func getFsStatsFromContainerElement(input []*cache.ContainerElement) map[string]fsStats {
+	expectedFsStats := map[string]fsStats{}
 	for _, cont := range input {
 		for _, cme := range cont.Metrics {
 			for _, fs := range cme.Stats.Filesystem {
-				expectedFsStats[fs.Device] = int64(fs.Usage)
+				expectedFsStats[fs.Device] = fsStats{int64(fs.Limit), int64(fs.Usage)}
 			}
 		}
 	}
@@ -175,7 +181,21 @@ func TestRealInputV2(t *testing.T) {
 				require.True(t, ok)
 				name, ok := entry.Point.Labels[LabelResourceID]
 				require.True(t, ok)
-				assert.Equal(t, expectedFsStats[name], value)
+				assert.Equal(t, expectedFsStats[name].usage, value)
+			case "cpu/limit":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				assert.Equal(t, spec.Cpu.Limit, value)
+			case "memory/limit":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				assert.Equal(t, spec.Memory.Limit, value)
+			case "filesystem/limit":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				name, ok := entry.Point.Labels[LabelResourceID]
+				require.True(t, ok)
+				assert.Equal(t, expectedFsStats[name].limit, value)
 			default:
 				t.Errorf("unexpected metric type")
 			}

@@ -60,7 +60,7 @@ var statMetrics = []SupportedStatMetric{
 			Description: "CPU limit in millicores",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
-			Units:       UnitsNanoseconds,
+			Units:       UnitsCount,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasCpu && (spec.Cpu.Limit > 0)

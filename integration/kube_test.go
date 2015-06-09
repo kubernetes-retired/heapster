@@ -43,8 +43,8 @@ const (
 	influxdbBuildDir     = "../influxdb"
 	grafanaBuildDir      = "../grafana"
 	makefile             = "../Makefile"
-	podlistQuery         = "select distinct(pod_id) from /cpu.*/"
-	nodelistQuery        = "select distinct(hostname) from /cpu.*/"
+	podlistQuery         = "select distinct(pod_id) from \"cpu/usage_ns_cumulative\""
+	nodelistQuery        = "select distinct(hostname) from \"cpu/usage_ns_cumulative\""
 	eventsQuery          = "select distinct(value) from \"log/events\""
 )
 
