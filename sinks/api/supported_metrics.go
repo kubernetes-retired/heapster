@@ -56,6 +56,22 @@ var statMetrics = []SupportedStatMetric{
 	},
 	{
 		MetricDescriptor: MetricDescriptor{
+			Name:        "cpu/limit",
+			Description: "CPU limit in millicores",
+			Type:        MetricGauge,
+			ValueType:   ValueInt64,
+			Units:       UnitsNanoseconds,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasCpu && (spec.Cpu.Limit > 0)
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(spec.Cpu.Limit)}}
+		},
+		OnlyExportIfChanged: true,
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
 			Name:        "memory/usage",
 			Description: "Total memory usage",
 			Type:        MetricGauge,
@@ -83,6 +99,22 @@ var statMetrics = []SupportedStatMetric{
 		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
 			return []internalPoint{{value: int64(stat.Memory.WorkingSet)}}
 		},
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "memory/limit",
+			Description: "Memory limit",
+			Type:        MetricGauge,
+			ValueType:   ValueInt64,
+			Units:       UnitsBytes,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasMemory && (spec.Memory.Limit > 0)
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			return []internalPoint{{value: int64(spec.Memory.Limit)}}
+		},
+		OnlyExportIfChanged: true,
 	},
 	{
 		MetricDescriptor: MetricDescriptor{
@@ -180,7 +212,7 @@ var statMetrics = []SupportedStatMetric{
 			Description: "Total number of bytes consumed on a filesystem",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
-			Units:       UnitsCount,
+			Units:       UnitsBytes,
 		},
 		HasValue: func(spec *cadvisor.ContainerSpec) bool {
 			return spec.HasFilesystem
@@ -197,6 +229,31 @@ var statMetrics = []SupportedStatMetric{
 			}
 			return result
 		},
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "filesystem/limit",
+			Description: "The total size of filesystem in bytes",
+			Type:        MetricGauge,
+			ValueType:   ValueInt64,
+			Units:       UnitsBytes,
+		},
+		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+			return spec.HasFilesystem
+		},
+		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
+			result := make([]internalPoint, 0, len(stat.Filesystem))
+			for _, fs := range stat.Filesystem {
+				result = append(result, internalPoint{
+					value: int64(fs.Limit),
+					labels: map[string]string{
+						LabelResourceID: fs.Device,
+					},
+				})
+			}
+			return result
+		},
+		OnlyExportIfChanged: true,
 	},
 
 	// TODO(vmarmol): DiskIO stats if we find those useful and know how to export them in a user-friendly way.
