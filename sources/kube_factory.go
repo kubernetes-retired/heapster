@@ -16,6 +16,7 @@ package sources
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"strconv"
@@ -31,11 +32,13 @@ import (
 )
 
 const (
-	defaultApiVersion     = "v1beta3"
-	defaultInsecure       = false
-	defaultKubeletPort    = 10255
-	defaultKubeConfigFile = "/etc/kubernetes/kubeconfig/kubeconfig"
-	defaultKubeletHttps   = false
+	defaultApiVersion         = "v1beta3"
+	defaultInsecure           = false
+	defaultKubeletPort        = 10255
+	defaultKubeConfigFile     = "/etc/kubernetes/kubeconfig/kubeconfig"
+	defaultKubeletHttps       = false
+	defaultUseServiceAccount  = false
+	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 func init() {
@@ -101,6 +104,22 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 	if len(kubeConfig.Version) == 0 {
 		return nil, fmt.Errorf("invalid kubernetes API version specified")
 	}
+
+	useServiceAccount := defaultUseServiceAccount
+	if len(options["useServiceAccount"]) >= 1 {
+		useServiceAccount, err = strconv.ParseBool(options["useServiceAccount"][0])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if useServiceAccount {
+		// If a readable service account token exists, then use it
+		if contents, err := ioutil.ReadFile(defaultServiceAccountFile); err == nil {
+			kubeConfig.BearerToken = string(contents)
+		}
+	}
+
 	kubeClient := kube_client.NewOrDie(kubeConfig)
 
 	nodesApi, err := nodes.NewKubeNodes(kubeClient)
