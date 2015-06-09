@@ -75,6 +75,8 @@ const (
 	UnitsMilliseconds
 	// A metric in nanoseconds.
 	UnitsNanoseconds
+	// A metric in millicores.
+	UnitsMillicores
 )
 
 func (self *MetricUnitsType) String() string {
@@ -85,6 +87,8 @@ func (self *MetricUnitsType) String() string {
 		return "ms"
 	case UnitsNanoseconds:
 		return "ns"
+	case UnitsMillicores:
+		return "millicores"
 	}
 	return ""
 }
@@ -146,6 +150,10 @@ type SupportedStatMetric struct {
 
 	// Returns a slice of internal point objects that contain metric values and associated labels.
 	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) []internalPoint
+
+	// TODO(vmarmol): Make use of this.
+	// Whether to only export if the metric's value has changed (Default: false).
+	OnlyExportIfChanged bool
 }
 
 // Timeseries represents a single metric.
