@@ -10,7 +10,7 @@ if ! git diff --name-only origin/master | grep -c -E "*.go|*.sh|.*yaml" &> /dev/
   exit 0
 fi
 
-SUPPORTED_KUBE_VERSIONS="0.16.2"
+SUPPORTED_KUBE_VERSIONS="0.18.2"
 TEST_NAMESPACE="default"
 
 make test-unit
