@@ -27,6 +27,7 @@ To run without auth file, use the following config:
 ```
 --source=kubernetes:http://kubernetes-ro?auth=""
 ```
+*Note: Remove "monitoring-token" volume from heaspter controller config if you are running without auth.*
 
 Alternatively, create a [service account](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/docs/design/service_accounts.md)
 like this:
