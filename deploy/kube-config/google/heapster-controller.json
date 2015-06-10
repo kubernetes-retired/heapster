@@ -36,7 +36,7 @@
 		"containers": [
 		    {
 			"name": "heapster",
-			"image": "kubernetes/heapster:v0.13.0",
+			"image": "kubernetes/heapster:v0.14.0",
 			"command": [
 			    "/heapster",
 			    "--source=kubernetes:https://kubernetes",
