@@ -25,7 +25,7 @@
 			"name": "heapster",
 			"command": [
 			    "/heapster",
-			    "--source=kubernetes:http://kubernetes-ro",
+			    "--source=kubernetes:https://kubernetes",
 			    "--sink=influxdb:http://monitoring-influxdb:80"
 			],
 			"volumeMounts": [

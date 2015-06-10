@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.14.0 (6-9-2015)
+- Heapster exposes a REST endpoint that serves the metrics being pushed to sinks.
+- Support for service accounts.
+
 ## 0.13.0 (5-29-2015)
 - Switch use of Kubernetes API to v1beta3.
 - Add option to connect to Kubelets through HTTPS.
