@@ -69,8 +69,11 @@ func getContainer(name string) source_api.Container {
 	containerStats := make([]*cadvisor.ContainerStats, 1)
 	f.Fuzz(&containerStats)
 	return source_api.Container{
-		Name:  name,
-		Spec:  containerSpec,
+		Name: name,
+		Spec: source_api.ContainerSpec{
+			ContainerSpec: containerSpec,
+			HasResourceId: true,
+		},
 		Stats: containerStats,
 	}
 }
@@ -214,8 +217,16 @@ func TestRealInput(t *testing.T) {
 				name, ok := entry.Point.Labels[LabelResourceID]
 				require.True(t, ok)
 				assert.Equal(t, expectedFsStats[name].limit, value)
+			case "cpu/node_usage":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				assert.Equal(t, stats.Cpu.Usage.Total, value)
+			case "memory/node_usage":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				assert.Equal(t, stats.Memory.Usage, value)
 			default:
-				t.Errorf("unexpected metric type")
+				t.Errorf("unexpected metric type %s", entry.Point.Name)
 			}
 		}
 	}

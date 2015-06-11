@@ -52,11 +52,11 @@ func TestBasicCadvisor(t *testing.T) {
 func TestDetailedCadvisor(t *testing.T) {
 	rootContainer := api.Container{
 		Name: "/",
-		Spec: cadvisor_api.ContainerSpec{
+		Spec: api.ContainerSpec{ContainerSpec: cadvisor_api.ContainerSpec{
 			CreationTime: time.Now(),
 			HasCpu:       true,
 			HasMemory:    true,
-		},
+		}},
 		Stats: []*cadvisor_api.ContainerStats{
 			{
 				Timestamp: time.Now(),
@@ -66,11 +66,11 @@ func TestDetailedCadvisor(t *testing.T) {
 	subContainers := []api.Container{
 		{
 			Name: "a",
-			Spec: cadvisor_api.ContainerSpec{
+			Spec: api.ContainerSpec{ContainerSpec: cadvisor_api.ContainerSpec{
 				CreationTime: time.Now(),
 				HasCpu:       true,
 				HasMemory:    true,
-			},
+			}},
 			Stats: []*cadvisor_api.ContainerStats{
 				{
 					Timestamp: time.Now(),
@@ -79,11 +79,11 @@ func TestDetailedCadvisor(t *testing.T) {
 		},
 		{
 			Name: "b",
-			Spec: cadvisor_api.ContainerSpec{
+			Spec: api.ContainerSpec{ContainerSpec: cadvisor_api.ContainerSpec{
 				CreationTime: time.Now(),
 				HasCpu:       true,
 				HasMemory:    true,
-			},
+			}},
 			Stats: []*cadvisor_api.ContainerStats{
 				{
 					Timestamp: time.Now(),
@@ -97,7 +97,7 @@ func TestDetailedCadvisor(t *testing.T) {
 			ContainerReference: cadvisor_api.ContainerReference{
 				Name: rootContainer.Name,
 			},
-			Spec:  rootContainer.Spec,
+			Spec:  rootContainer.Spec.ContainerSpec,
 			Stats: rootContainer.Stats,
 		},
 	}
@@ -106,7 +106,7 @@ func TestDetailedCadvisor(t *testing.T) {
 			ContainerReference: cadvisor_api.ContainerReference{
 				Name: cont.Name,
 			},
-			Spec:  cont.Spec,
+			Spec:  cont.Spec.ContainerSpec,
 			Stats: cont.Stats,
 		})
 	}
@@ -127,12 +127,12 @@ func TestDetailedCadvisor(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, subcontainers, len(subContainers))
 	assert.NotNil(t, root)
-	assert.True(t, root.Spec.Eq(&rootContainer.Spec))
+	assert.True(t, root.Spec.Eq(&rootContainer.Spec.ContainerSpec))
 	for i, stat := range root.Stats {
 		assert.True(t, stat.Eq(rootContainer.Stats[i]))
 	}
 	for i, cont := range subcontainers {
-		assert.True(t, subContainers[i].Spec.Eq(&cont.Spec))
+		assert.True(t, subContainers[i].Spec.Eq(&cont.Spec.ContainerSpec))
 		for j, stat := range cont.Stats {
 			assert.True(t, subContainers[i].Stats[j].Eq(stat))
 		}

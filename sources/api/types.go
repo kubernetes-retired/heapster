@@ -56,12 +56,17 @@ func (a *AggregateData) Merge(b *AggregateData) {
 	a.Events = append(a.Events, b.Events...)
 }
 
+type ContainerSpec struct {
+	cadvisor.ContainerSpec
+	HasResourceId bool
+	ResourceId    string
+}
+
 type Container struct {
 	Hostname string
 	Name     string
-	// TODO(vishh): Consider defining an internal Spec and Stats API to guard against
-	// changes to cadvisor API.
-	Spec  cadvisor.ContainerSpec
+	Spec     ContainerSpec
+	// TODO(vishh): Consider defining an internal Stats API to guard against changes to cadvisor API.
 	Stats []*cadvisor.ContainerStats
 }
 

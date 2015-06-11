@@ -28,7 +28,7 @@ import (
 )
 
 func checkContainer(t *testing.T, expected api.Container, actual api.Container) {
-	assert.True(t, actual.Spec.Eq(&expected.Spec))
+	assert.True(t, actual.Spec.ContainerSpec.Eq(&expected.Spec.ContainerSpec))
 	for i, stat := range actual.Stats {
 		assert.True(t, stat.Eq(expected.Stats[i]))
 	}
@@ -55,11 +55,11 @@ func TestBasicKubelet(t *testing.T) {
 func TestDetailedKubelet(t *testing.T) {
 	rootContainer := api.Container{
 		Name: "/",
-		Spec: cadvisor_api.ContainerSpec{
+		Spec: api.ContainerSpec{ContainerSpec: cadvisor_api.ContainerSpec{
 			CreationTime: time.Now(),
 			HasCpu:       true,
 			HasMemory:    true,
-		},
+		}},
 		Stats: []*cadvisor_api.ContainerStats{
 			{
 				Timestamp: time.Now(),
@@ -70,7 +70,7 @@ func TestDetailedKubelet(t *testing.T) {
 		ContainerReference: cadvisor_api.ContainerReference{
 			Name: rootContainer.Name,
 		},
-		Spec:  rootContainer.Spec,
+		Spec:  rootContainer.Spec.ContainerSpec,
 		Stats: rootContainer.Stats,
 	}
 	data, err := json.Marshal(&response)
@@ -92,11 +92,11 @@ func TestDetailedKubelet(t *testing.T) {
 func TestAllContainers(t *testing.T) {
 	rootContainer := api.Container{
 		Name: "/",
-		Spec: cadvisor_api.ContainerSpec{
+		Spec: api.ContainerSpec{ContainerSpec: cadvisor_api.ContainerSpec{
 			CreationTime: time.Now(),
 			HasCpu:       true,
 			HasMemory:    true,
-		},
+		}},
 		Stats: []*cadvisor_api.ContainerStats{
 			{
 				Timestamp: time.Now(),
@@ -105,11 +105,11 @@ func TestAllContainers(t *testing.T) {
 	}
 	subcontainer := api.Container{
 		Name: "/sub",
-		Spec: cadvisor_api.ContainerSpec{
+		Spec: api.ContainerSpec{ContainerSpec: cadvisor_api.ContainerSpec{
 			CreationTime: time.Now(),
 			HasCpu:       true,
 			HasMemory:    true,
-		},
+		}},
 		Stats: []*cadvisor_api.ContainerStats{
 			{
 				Timestamp: time.Now(),
@@ -121,14 +121,14 @@ func TestAllContainers(t *testing.T) {
 			ContainerReference: cadvisor_api.ContainerReference{
 				Name: rootContainer.Name,
 			},
-			Spec:  rootContainer.Spec,
+			Spec:  rootContainer.Spec.ContainerSpec,
 			Stats: rootContainer.Stats,
 		},
 		subcontainer.Name: {
 			ContainerReference: cadvisor_api.ContainerReference{
 				Name: subcontainer.Name,
 			},
-			Spec:  subcontainer.Spec,
+			Spec:  subcontainer.Spec.ContainerSpec,
 			Stats: subcontainer.Stats,
 		},
 	}

@@ -173,7 +173,7 @@ func (self *bigquerySink) containerStatsToValues(
 	pod *api.Pod,
 	hostname,
 	containerName string,
-	spec cadvisor.ContainerSpec,
+	spec api.ContainerSpec,
 	stat *cadvisor.ContainerStats) (row map[string]interface{}) {
 	row = make(map[string]interface{})
 
