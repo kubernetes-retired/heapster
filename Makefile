@@ -18,7 +18,7 @@ sanitize:
 	hooks/run_vet.sh
 
 test-unit: clean deps sanitize build
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go test --test.short github.com/GoogleCloudPlatform/heapster/...
+	godep go test --test.short github.com/GoogleCloudPlatform/heapster/...
 
 test-unit-cov: clean deps sanitize build
 	hooks/coverage.sh

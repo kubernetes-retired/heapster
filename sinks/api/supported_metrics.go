@@ -66,7 +66,8 @@ var statMetrics = []SupportedStatMetric{
 			return spec.HasCpu && (spec.Cpu.Limit > 0)
 		},
 		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
-			return []internalPoint{{value: int64(spec.Cpu.Limit)}}
+			// Normalize to a conversion factor of 1000.
+			return []internalPoint{{value: int64(spec.Cpu.Limit*1000) / 1024}}
 		},
 		OnlyExportIfChanged: true,
 	},
