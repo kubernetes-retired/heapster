@@ -185,7 +185,8 @@ func TestRealInputV2(t *testing.T) {
 			case "cpu/limit":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				assert.Equal(t, spec.Cpu.Limit, value)
+				expected := (spec.Cpu.Limit * 1000) / 1024
+				assert.Equal(t, expected, value)
 			case "memory/limit":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
