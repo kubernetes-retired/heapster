@@ -15,6 +15,7 @@
 package datasource
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
@@ -47,13 +48,17 @@ type Kubelet interface {
 }
 
 func NewKubelet(kubeletConfig *kube_client.KubeletConfig) (Kubelet, error) {
-	kubeletHttpClient, err := kube_client.NewKubeletHttpClient(kubeletConfig)
+	transport, err := kube_client.MakeTransport(kubeletConfig)
 	if err != nil {
 		return nil, err
+	}
+	c := &http.Client{
+		Transport: transport,
+		Timeout:   kubeletConfig.HTTPTimeout,
 	}
 
 	return &kubeletSource{
 		config: kubeletConfig,
-		client: kubeletHttpClient,
+		client: c,
 	}, nil
 }

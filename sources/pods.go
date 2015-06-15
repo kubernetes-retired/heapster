@@ -60,7 +60,7 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 			Name:           pod.Name,
 			Namespace:      pod.Namespace,
 			ID:             string(pod.UID),
-			Hostname:       pod.Spec.Host,
+			Hostname:       pod.Spec.NodeName,
 			HostPublicIP:   pod.Status.HostIP,
 			HostInternalIP: node.InternalIP,
 			Status:         string(pod.Status.Phase),
@@ -111,10 +111,10 @@ func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	selectedPods := []podNodePair{}
 	// TODO(vishh): Avoid this loop by setting a node selector on the watcher.
 	for i, pod := range pods {
-		if nodeInfo, ok := nodeList.Items[nodes.Host(pod.Spec.Host)]; ok {
-			selectedPods = append(selectedPods, podNodePair{&pods[i], &nodeInfo})
+		if nodeInfo, ok := nodeList.Items[nodes.Host(pod.Spec.NodeName)]; ok {
+			selectedPods = append(selectedPods, podNodePair{pods[i], &nodeInfo})
 		} else {
-			glog.V(2).Infof("pod %q with host %q and hostip %q not found in nodeList", pod.Name, pod.Spec.Host, pod.Status.HostIP)
+			glog.V(2).Infof("pod %q with host %q and hostip %q not found in nodeList", pod.Name, pod.Spec.NodeName, pod.Status.HostIP)
 		}
 	}
 	glog.V(4).Infof("selected pods from api server %+v", selectedPods)

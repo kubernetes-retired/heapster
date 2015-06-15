@@ -403,12 +403,12 @@ func (self *realKubeFramework) GetNodes() ([]string, error) {
 
 func (self *realKubeFramework) GetPods() ([]string, error) {
 	var pods []string
-	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything())
+	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything(), fields.Everything())
 	if err != nil {
 		return pods, err
 	}
 	for _, pod := range podList.Items {
-		if !strings.Contains(pod.Spec.Host, "kubernetes-master") {
+		if !strings.Contains(pod.Spec.NodeName, "kubernetes-master") {
 			pods = append(pods, string(pod.Name))
 		}
 	}
@@ -419,7 +419,7 @@ func (rkf *realKubeFramework) WaitUntilPodRunning(ns string, podLabels map[strin
 	podsInterface := rkf.Client().Pods(ns)
 	for i := 0; i < int(timeout/time.Second); i++ {
 		selector := labels.Set(podLabels).AsSelector()
-		podList, err := podsInterface.List(selector)
+		podList, err := podsInterface.List(selector, fields.Everything())
 		if err != nil {
 			glog.V(1).Info(err)
 			return err
