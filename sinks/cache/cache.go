@@ -46,6 +46,9 @@ type PodElement struct {
 	// TODO: Cache history of Spec and Status.
 }
 
+// NodeContainerName is the container name assigned to node level metrics.
+const NodeContainerName = "machine"
+
 type Cache interface {
 	StorePods([]source_api.Pod) error
 	StoreContainers([]source_api.Container) error

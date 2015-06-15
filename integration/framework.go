@@ -22,7 +22,6 @@ import (
 	"os/exec"
 	"path"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
@@ -37,9 +36,6 @@ import (
 )
 
 type kubeFramework interface {
-	// The testing.T used by the framework and the current test.
-	T() *testing.T
-
 	// Kube client
 	Client() *kclient.Client
 
@@ -50,13 +46,13 @@ type kubeFramework interface {
 	ParseService(filePath string) (*api.Service, error)
 
 	// Creates a kube service.
-	CreateService(ns string, service *api.Service) error
+	CreateService(ns string, service *api.Service) (*api.Service, error)
 
 	// Deletes a kube service.
 	DeleteService(ns string, service *api.Service) error
 
 	// Creates a kube replication controller.
-	CreateRC(ns string, rc *api.ReplicationController) error
+	CreateRC(ns string, rc *api.ReplicationController) (*api.ReplicationController, error)
 
 	// Deletes a kube replication controller.
 	DeleteRC(ns string, rc *api.ReplicationController) error
@@ -66,13 +62,16 @@ type kubeFramework interface {
 
 	// Returns a url that provides access to a kubernetes service via the proxy on the apiserver.
 	// This url requires master auth.
-	GetProxyUrlForService(serviceName string) string
+	GetProxyUrlForService(service *api.Service) string
 
 	// Returns the node hostnames.
 	GetNodes() ([]string, error)
 
 	// Returns pods in the cluster.
 	GetPods() ([]string, error)
+
+	WaitUntilPodRunning(ns string, podLabels map[string]string, timeout time.Duration) error
+	WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error
 }
 
 type realKubeFramework struct {
@@ -87,9 +86,6 @@ type realKubeFramework struct {
 
 	// The base directory of current kubernetes release.
 	baseDir string
-
-	// Testing framework in use
-	t *testing.T
 }
 
 const (
@@ -164,22 +160,6 @@ func destroyCluster(kubeBaseDir string) error {
 	return nil
 }
 
-func getMasterIP() (string, error) {
-	out, err := exec.Command("gcloud", "compute", "instances", "list", "kubernetes-master", "--format=yaml").CombinedOutput()
-	if err != nil {
-		return "", err
-	}
-	glog.V(2).Infof("Output of gcloud compute instance list kubernetes-master:\n %s", out)
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.Contains(line, "natIP") {
-			externalIPLine := strings.Split(line, ":")
-			return strings.TrimSpace(externalIPLine[1]), nil
-		}
-	}
-
-	return "", fmt.Errorf("external IP not found for the master. 'gcloud compute instances list kubernetes-master' returned %s", out)
-}
-
 func downloadRelease(workDir, version string) error {
 	// Temporary download path.
 	downloadPath := path.Join(workDir, "kube")
@@ -200,12 +180,6 @@ func downloadRelease(workDir, version string) error {
 }
 
 func getKubeClient() (string, *kclient.Client, error) {
-	masterIP, err := getMasterIP()
-	if err != nil {
-		return "", nil, err
-	}
-	glog.V(1).Infof("Kubernetes master IP is %s", masterIP)
-
 	c, err := kclientcmd.LoadFromFile(*kubeConfig)
 	if err != nil {
 		return "", nil, fmt.Errorf("error loading kubeConfig: %v", err.Error())
@@ -220,13 +194,12 @@ func getKubeClient() (string, *kclient.Client, error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("error parsing kubeConfig: %v", err.Error())
 	}
-
 	kubeClient, err := kclient.New(config)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating client - %q", err)
 	}
 
-	return masterIP, kubeClient, nil
+	return c.Clusters[c.CurrentContext].Server, kubeClient, nil
 }
 
 func validateCluster(baseDir string) bool {
@@ -309,13 +282,9 @@ func downloadAndSetupCluster(version string) (baseDir string, err error) {
 	return kubeBaseDir, nil
 }
 
-func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
+func newKubeFramework(version string) (kubeFramework, error) {
 	var err error
 	kubeBaseDir := ""
-	// All integration tests are large.
-	if testing.Short() {
-		t.Skip("Skipping framework test in short mode")
-	}
 	if version != "" {
 		if len(strings.Split(version, ".")) != 3 {
 			return nil, fmt.Errorf("invalid kubernetes version specified - %q", version)
@@ -331,18 +300,12 @@ func newKubeFramework(t *testing.T, version string) (kubeFramework, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &realKubeFramework{
 		kubeClient: kubeClient,
-		t:          t,
 		baseDir:    kubeBaseDir,
 		version:    version,
 		masterIP:   masterIP,
 	}, nil
-}
-
-func (self *realKubeFramework) T() *testing.T {
-	return self.t
 }
 
 func (self *realKubeFramework) Client() *kclient.Client {
@@ -382,29 +345,28 @@ func (self *realKubeFramework) ParseService(filePath string) (*api.Service, erro
 	return service, nil
 }
 
-func (self *realKubeFramework) CreateService(ns string, service *api.Service) error {
-	_, err := self.kubeClient.Services(ns).Create(service)
-	return err
+func (self *realKubeFramework) CreateService(ns string, service *api.Service) (*api.Service, error) {
+	newSvc, err := self.kubeClient.Services(ns).Create(service)
+	return newSvc, err
 }
 
 func (self *realKubeFramework) DeleteService(ns string, service *api.Service) error {
 	if _, err := self.kubeClient.Services(ns).Get(service.Name); err != nil {
-		glog.V(1).Infof("cannot find service %q - %v", service.Name, err)
+		glog.V(2).Infof("cannot find service %q - %v", service.Name, err)
 		return nil
 	}
 
 	return self.kubeClient.Services(ns).Delete(service.Name)
 }
 
-func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController) error {
-	_, err := self.kubeClient.ReplicationControllers(ns).Create(rc)
-	return err
+func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController) (*api.ReplicationController, error) {
+	return self.kubeClient.ReplicationControllers(ns).Create(rc)
 }
 
 func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationController) error {
 	rc, err := self.kubeClient.ReplicationControllers(ns).Get(inputRc.Name)
 	if err != nil {
-		glog.V(1).Infof("Cannot find Replication Controller %q. Skipping deletion - %v", inputRc.Name, err)
+		glog.V(2).Infof("Cannot find Replication Controller %q. Skipping deletion - %v", inputRc.Name, err)
 		return nil
 	}
 	rc.Spec.Replicas = 0
@@ -422,8 +384,8 @@ func (self *realKubeFramework) DestroyCluster() {
 	destroyCluster(self.baseDir)
 }
 
-func (self *realKubeFramework) GetProxyUrlForService(serviceName string) string {
-	return fmt.Sprintf("%s/api/v1beta3/proxy/namespaces/default/services/%s/", self.masterIP, serviceName)
+func (self *realKubeFramework) GetProxyUrlForService(service *api.Service) string {
+	return fmt.Sprintf("%s/api/v1/proxy/namespaces/default/services/%s/", self.masterIP, service.Name)
 }
 
 func (self *realKubeFramework) GetNodes() ([]string, error) {
@@ -447,8 +409,44 @@ func (self *realKubeFramework) GetPods() ([]string, error) {
 	}
 	for _, pod := range podList.Items {
 		if !strings.Contains(pod.Spec.Host, "kubernetes-master") {
-			pods = append(pods, string(pod.UID))
+			pods = append(pods, string(pod.Name))
 		}
 	}
 	return pods, nil
+}
+
+func (rkf *realKubeFramework) WaitUntilPodRunning(ns string, podLabels map[string]string, timeout time.Duration) error {
+	podsInterface := rkf.Client().Pods(ns)
+	for i := 0; i < int(timeout/time.Second); i++ {
+		selector := labels.Set(podLabels).AsSelector()
+		podList, err := podsInterface.List(selector)
+		if err != nil {
+			glog.V(1).Info(err)
+			return err
+		}
+		if len(podList.Items) > 0 {
+			podSpec := podList.Items[0]
+			if podSpec.Status.Phase == api.PodRunning {
+				return nil
+			}
+		}
+		time.Sleep(time.Second)
+	}
+	return fmt.Errorf("pod not in running state after %d", timeout/time.Second)
+}
+
+func (rkf *realKubeFramework) WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error {
+	for i := 0; i < int(timeout/time.Second); i++ {
+		e, err := rkf.Client().Endpoints(svc.Namespace).Get(svc.Name)
+		if err != nil {
+			return err
+		}
+		if len(e.Subsets) > 0 {
+			return nil
+		}
+		time.Sleep(time.Second)
+	}
+
+	return fmt.Errorf("Service %q not active after %d seconds - no endpoints found", svc.Name, timeout/time.Second)
+
 }

@@ -2,6 +2,7 @@ all: build
 
 TAG = v0.14.0
 PREFIX = gcr.io/google_containers
+FLAGS = 
 
 deps:
 	go get github.com/tools/godep
@@ -18,13 +19,13 @@ sanitize:
 	hooks/run_vet.sh
 
 test-unit: clean deps sanitize build
-	godep go test --test.short github.com/GoogleCloudPlatform/heapster/...
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go test --test.short github.com/GoogleCloudPlatform/heapster/... $(FLAGS)
 
 test-unit-cov: clean deps sanitize build
 	hooks/coverage.sh
 
-test-integration: clean deps
-	godep go test -v --timeout=30m github.com/GoogleCloudPlatform/heapster/integration/... --vmodule=*=2 
+test-integration: clean deps build
+	godep go test -v --timeout=30m github.com/GoogleCloudPlatform/heapster/integration/... --vmodule=*=2 $(FLAGS)
 
 container: build
 	cp ./heapster ./deploy/docker/heapster
