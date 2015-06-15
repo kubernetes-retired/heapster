@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/api/repr"
+	"github.com/GoogleCloudPlatform/heapster/api/schema"
 	"github.com/GoogleCloudPlatform/heapster/sinks"
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
@@ -37,13 +37,13 @@ type Manager interface {
 	// Export the latest data point of all metrics.
 	ExportMetrics() ([]*sink_api.Point, error)
 
-	GetCluster() repr.Cluster
+	GetCluster() schema.Cluster
 }
 
 type realManager struct {
 	sources     []source_api.Source
 	cache       cache.Cache
-	cluster     repr.Cluster
+	cluster     schema.Cluster
 	sinkManager sinks.ExternalSinkManager
 	lastSync    time.Time
 	resolution  time.Duration
@@ -60,7 +60,7 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 		sources:     sources,
 		sinkManager: sinkManager,
 		cache:       cache.NewCache(bufferDuration),
-		cluster:     repr.NewCluster(),
+		cluster:     schema.NewCluster(),
 		lastSync:    time.Now(),
 		resolution:  res,
 		decoder:     sink_api.NewV2Decoder(),
@@ -80,7 +80,7 @@ func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, s
 	errChan <- err
 }
 
-func (rm *realManager) GetCluster() repr.Cluster {
+func (rm *realManager) GetCluster() schema.Cluster {
 	return rm.cluster
 }
 

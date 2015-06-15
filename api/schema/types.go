@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package repr
+package schema
 
 import (
+	"github.com/GoogleCloudPlatform/heapster/api/schema/info"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	"sync"
 	"time"
@@ -23,7 +24,7 @@ import (
 type Cluster interface {
 	Update(cache.Cache) error
 
-	GetAllClusterData() (*ClusterInfo, time.Time, error)
+	GetAllClusterData() (*info.ClusterInfo, time.Time, error)
 	/*
 		GetNewClusterData(time.Time) (*ClusterInfo, time.Time, error)
 
@@ -37,42 +38,6 @@ type Cluster interface {
 
 type realCluster struct {
 	timestamp time.Time // Cluster timestamp signifies the last update from cache.
-	ClusterInfo
-}
-
-type InfoType struct {
-	Metrics map[string][]*MetricTimeseries
-	Labels  map[string]string
-	lock    *sync.RWMutex
-}
-
-type ClusterInfo struct {
-	InfoType
-	Namespaces map[string]*NamespaceInfo
-	Nodes      map[string]*NodeInfo
-}
-
-type NamespaceInfo struct {
-	InfoType
-	Pods map[string]*PodInfo
-}
-
-type NodeInfo struct {
-	InfoType
-	Pods           map[string]*PodInfo
-	FreeContainers map[string]*ContainerInfo
-}
-
-type PodInfo struct {
-	InfoType
-	Containers map[string]*ContainerInfo
-}
-
-type ContainerInfo struct {
-	InfoType
-}
-
-type MetricTimeseries struct {
-	Timestamp time.Time
-	Value     uint64
+	lock      *sync.RWMutex
+	info.ClusterInfo
 }

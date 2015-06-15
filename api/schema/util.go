@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package repr
+package schema
 
 import (
+	"github.com/GoogleCloudPlatform/heapster/api/schema/info"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	"sync"
 	"time"
 )
 
@@ -28,13 +28,13 @@ func maxTimestamp(first time.Time, second time.Time) time.Time {
 	}
 }
 
-func updateInfoType(info *InfoType, ce *cache.ContainerElement) time.Time {
-	/* Updates the metrics of an InfoType struct from a ContainerElement struct
-	*  Returns the max timestamp in the resulting timeseries slice
-	 */
-	new_metrics := parseMetrics(ce.Metrics)
+func updateInfoType(info *info.InfoType, ce *cache.ContainerElement) (time.Time, error) {
+	// Updates the metrics of an InfoType struct from a ContainerElement struct
+	//  Returns the max timestamp in the resulting timeseries slice
 
 	var latest_time time.Time
+
+	new_metrics, err := parseMetrics(ce.Metrics)
 
 	// Update Metrics
 	for key, metricSlice := range new_metrics {
@@ -53,44 +53,48 @@ func updateInfoType(info *InfoType, ce *cache.ContainerElement) time.Time {
 			}
 		}
 	}
-	/* TODO: manage length of historical data */
+	// TODO: manage length of historical data
 
 	// Copy labels from the ContainerElement to InfoType
-	info.Labels = ce.Labels
 
-	return latest_time
+	return latest_time, err
 }
 
-func newInfoType(metrics map[string][]*MetricTimeseries, labels map[string]string) InfoType {
-	/* InfoType Constructor */
+func newInfoType(metrics map[string][]*info.MetricTimeseries, labels map[string]string) info.InfoType {
+	// InfoType Constructor
 	if metrics == nil {
-		metrics = make(map[string][]*MetricTimeseries)
+		metrics = make(map[string][]*info.MetricTimeseries)
 	}
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	return InfoType{metrics, labels, new(sync.RWMutex)}
+	return info.InfoType{
+		Metrics: metrics,
+		Labels:  labels,
+	}
 }
 
-func addMetricToMap(metric string, timestamp time.Time, value uint64, dict_ref *map[string][]*MetricTimeseries) error {
-	/*
-	*	Adds a metric to a map of MetricTimeseries
-	 */
+func addMetricToMap(metric string, timestamp time.Time, value uint64, dict_ref *map[string][]*info.MetricTimeseries) error {
+	// Adds a metric to a map of MetricTimeseries
 	dict := *dict_ref
 	if val, ok := dict[metric]; ok {
-		dict[metric] = append(val, &MetricTimeseries{timestamp, value})
+		dict[metric] = append(val, &info.MetricTimeseries{
+			Timestamp: timestamp,
+			Value:     value,
+		})
 	} else {
-		new_timeseries := &MetricTimeseries{timestamp, value}
-		dict[metric] = []*MetricTimeseries{new_timeseries}
+		new_timeseries := &info.MetricTimeseries{timestamp, value}
+		dict[metric] = []*info.MetricTimeseries{new_timeseries}
 	}
 	return nil
 }
 
-func parseMetrics(cmes []*cache.ContainerMetricElement) map[string][]*MetricTimeseries {
-	/*
-	*	Generates a map of MetricTimeseries slices from a slice of ContainerMetricElements
-	 */
-	metrics := make(map[string][]*MetricTimeseries)
+func parseMetrics(cmes []*cache.ContainerMetricElement) (map[string][]*info.MetricTimeseries, error) {
+	// Generates a map of MetricTimeseries slices from a slice of ContainerMetricElements
+
+	var err error
+
+	metrics := make(map[string][]*info.MetricTimeseries)
 
 	for _, cme := range cmes {
 		timestamp := cme.Stats.Timestamp
@@ -126,15 +130,15 @@ func parseMetrics(cmes []*cache.ContainerMetricElement) map[string][]*MetricTime
 			for _, fsstat := range cme.Stats.Filesystem {
 				dev := fsstat.Device
 
-				/* Add FS limit, if applicable */
+				// Add FS limit, if applicable
 				fs_limit := fsstat.Limit
 				addMetricToMap("fs/limit"+dev, timestamp, fs_limit, &metrics)
 
-				/* Add FS metric */
+				// Add FS metric
 				fs_usage := fsstat.Usage
 				addMetricToMap("fs/usage"+dev, timestamp, fs_usage, &metrics)
 			}
 		}
 	}
-	return metrics
+	return metrics, err
 }

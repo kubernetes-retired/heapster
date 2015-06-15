@@ -12,29 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package repr
+package schema
 
 import (
+	"github.com/GoogleCloudPlatform/heapster/api/schema/info"
 	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 )
 
-type ReprApi struct {
+type SchemaApi struct {
 	cluster Cluster
 }
 
 // Create a new Api to serve from the specified cluster.
-func NewReprApi(c Cluster) *ReprApi {
-	return &ReprApi{
+func NewSchemaApi(c Cluster) *SchemaApi {
+	return &SchemaApi{
 		cluster: c,
 	}
 }
 
 // Register the Api on the appropriate endpoints.
-func (a *ReprApi) Register(container *restful.Container) {
+func (a *SchemaApi) Register(container *restful.Container) {
 	ws := new(restful.WebService)
 	ws.
-		Path("/api/repr/cluster").
+		Path("/api/schema/cluster").
 		Doc("Exports all metrics at the cluster level").
 		Produces(restful.MIME_JSON)
 	ws.Route(ws.GET("").
@@ -42,21 +43,21 @@ func (a *ReprApi) Register(container *restful.Container) {
 		To(a.exportAllClusterMetrics).
 		Doc("Exports all metrics at the cluster level").
 		Operation("allCluster").
-		Writes(ClusterInfo{}))
+		Writes(info.ClusterInfo{}))
 
 	container.Add(ws)
 }
 
-func (a *ReprApi) exportAllClusterMetrics(request *restful.Request, response *restful.Response) {
+func (a *SchemaApi) exportAllClusterMetrics(request *restful.Request, response *restful.Response) {
 	clinfo, _, _ := a.cluster.GetAllClusterData()
 
-	glog.Infof("Exported All Cluster Metrics")
+	glog.V(2).Infof("Exported All Cluster Metrics")
 
 	response.WriteAsJson(clinfo)
 }
 
 func compressionFilter(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
-	// wrap responseWriter into a compressing one
+	// Wrap responseWriter into a compressing one
 	compress, err := restful.NewCompressingResponseWriter(resp.ResponseWriter, restful.ENCODING_GZIP)
 	if err != nil {
 		glog.Warningf("Failed to create CompressingResponseWriter for request %q: %v", req.Request.URL, err)
