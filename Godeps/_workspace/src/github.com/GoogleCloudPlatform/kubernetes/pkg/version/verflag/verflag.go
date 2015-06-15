@@ -23,8 +23,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/version"
-	flag "github.com/spf13/pflag"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/version"
+	flag "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
 )
 
 type versionValue int

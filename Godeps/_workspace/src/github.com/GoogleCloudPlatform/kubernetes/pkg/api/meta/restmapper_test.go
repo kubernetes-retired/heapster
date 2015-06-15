@@ -19,7 +19,7 @@ package meta
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 )
 
 type fakeCodec struct{}

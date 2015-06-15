@@ -21,7 +21,7 @@ import (
 	"hash/adler32"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/davecgh/go-spew/spew"
 )
 
 type A struct {

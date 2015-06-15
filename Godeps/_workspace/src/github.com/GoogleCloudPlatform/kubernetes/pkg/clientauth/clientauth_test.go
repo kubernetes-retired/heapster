@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/clientauth"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/clientauth"
 )
 
 func TestLoadFromFile(t *testing.T) {

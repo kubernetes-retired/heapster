@@ -19,8 +19,8 @@ package clientcmd
 import (
 	"io"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	clientcmdapi "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/client"
+	clientcmdapi "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
 )
 
 // DeferredLoadingClientConfig is a ClientConfig interface that is backed by a set of loading rules

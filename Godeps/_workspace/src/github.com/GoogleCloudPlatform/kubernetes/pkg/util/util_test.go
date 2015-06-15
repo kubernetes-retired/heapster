@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ghodss/yaml"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/ghodss/yaml"
 )
 
 func TestUntil(t *testing.T) {

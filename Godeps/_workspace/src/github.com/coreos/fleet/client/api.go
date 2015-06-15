@@ -17,8 +17,8 @@
 package client
 
 import (
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/schema"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/machine"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/schema"
 )
 
 type API interface {

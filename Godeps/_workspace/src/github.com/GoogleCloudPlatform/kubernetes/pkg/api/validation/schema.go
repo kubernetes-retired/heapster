@@ -22,9 +22,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util/yaml"
-	"github.com/emicklei/go-restful/swagger"
-	"github.com/golang/glog"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/util/yaml"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/emicklei/go-restful/swagger"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/glog"
 )
 
 type InvalidTypeError struct {

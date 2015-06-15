@@ -312,7 +312,9 @@ type MemoryStatsMemoryData struct {
 	Pgmajfault uint64 `json:"pgmajfault"`
 }
 
-type NetworkStats struct {
+type InterfaceStats struct {
+	// The name of the interface.
+	Name string `json:"name"`
 	// Cumulative count of bytes received.
 	RxBytes uint64 `json:"rx_bytes"`
 	// Cumulative count of packets received.
@@ -331,6 +333,11 @@ type NetworkStats struct {
 	TxDropped uint64 `json:"tx_dropped"`
 }
 
+type NetworkStats struct {
+	InterfaceStats `json:",inline"`
+	Interfaces     []InterfaceStats `json:"interfaces,omitempty"`
+}
+
 type FsStats struct {
 	// The block device name associated with the filesystem.
 	Device string `json:"device,omitempty"`
@@ -340,6 +347,9 @@ type FsStats struct {
 
 	// Number of bytes that is consumed by the container on this filesystem.
 	Usage uint64 `json:"usage"`
+
+	// Number of bytes available for non-root user.
+	Available uint64 `json:"available"`
 
 	// Number of reads completed
 	// This is the total number of reads completed successfully.

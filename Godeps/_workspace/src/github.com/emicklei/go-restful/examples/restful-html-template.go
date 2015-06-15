@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"text/template"
 
-	"github.com/emicklei/go-restful"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/emicklei/go-restful"
 )
 
 // This example shows how to serve a HTML page using the standard Go template engine.

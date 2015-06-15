@@ -20,9 +20,9 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 
-	"github.com/coreos/fleet/etcd"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/etcd"
 )
 
 // LatestDaemonVersion attempts to retrieve the latest version of fleetd

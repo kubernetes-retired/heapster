@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"speter.net/go/exp/math/dec/inf"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/speter.net/go/exp/math/dec/inf"
 )
 
 type decFunZZ func(z, x, y *inf.Dec) *inf.Dec

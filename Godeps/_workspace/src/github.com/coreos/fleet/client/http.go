@@ -21,10 +21,10 @@ import (
 	"net/url"
 	"path"
 
-	"google.golang.org/api/googleapi"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/google.golang.org/api/googleapi"
 
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/schema"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/machine"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/schema"
 )
 
 func NewHTTPClient(c *http.Client, ep url.URL) (API, error) {

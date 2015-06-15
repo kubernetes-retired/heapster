@@ -33,8 +33,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
-	"github.com/google/gofuzz"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/gofuzz"
 )
 
 // For testing, bypass HandleCrash.

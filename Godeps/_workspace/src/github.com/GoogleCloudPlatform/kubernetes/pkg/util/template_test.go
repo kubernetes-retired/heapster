@@ -19,7 +19,7 @@ package util
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/stretchr/testify/assert"
 )
 
 func TestWrap(t *testing.T) {

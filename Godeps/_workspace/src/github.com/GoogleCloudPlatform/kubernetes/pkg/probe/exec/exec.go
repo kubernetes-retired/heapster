@@ -19,10 +19,10 @@ package exec
 import (
 	"strings"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/probe"
-	uexec "github.com/GoogleCloudPlatform/kubernetes/pkg/util/exec"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/probe"
+	uexec "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/util/exec"
 
-	"github.com/golang/glog"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/glog"
 )
 
 const defaultHealthyOutput = "ok"

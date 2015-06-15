@@ -23,11 +23,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 
-	"github.com/ghodss/yaml"
-	"github.com/google/gofuzz"
-	flag "github.com/spf13/pflag"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/ghodss/yaml"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/gofuzz"
+	flag "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
 )
 
 var fuzzIters = flag.Int("fuzz_iters", 50, "How many fuzzing iterations to do.")

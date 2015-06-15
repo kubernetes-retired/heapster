@@ -19,7 +19,7 @@ package util
 import (
 	"hash"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/davecgh/go-spew/spew"
 )
 
 // DeepHashObject writes specified object to hash using the spew library

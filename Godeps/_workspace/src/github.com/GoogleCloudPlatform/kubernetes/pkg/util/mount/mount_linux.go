@@ -28,7 +28,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/golang/glog"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/glog"
 )
 
 const FlagBind = syscall.MS_BIND

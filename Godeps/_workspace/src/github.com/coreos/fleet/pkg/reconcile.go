@@ -19,9 +19,9 @@ package pkg
 import (
 	"time"
 
-	"github.com/jonboulle/clockwork"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 
-	"github.com/coreos/fleet/log"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/log"
 )
 
 type Event string

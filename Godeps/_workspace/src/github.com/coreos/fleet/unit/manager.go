@@ -17,7 +17,7 @@
 package unit
 
 import (
-	"github.com/coreos/fleet/pkg"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/pkg"
 )
 
 type UnitManager interface {

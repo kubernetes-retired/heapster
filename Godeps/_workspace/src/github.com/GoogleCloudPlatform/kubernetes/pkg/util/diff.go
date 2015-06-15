@@ -23,7 +23,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/davecgh/go-spew/spew"
 )
 
 // StringDiff diffs a and b and returns a human readable diff.

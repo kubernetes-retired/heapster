@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ghodss/yaml"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/ghodss/yaml"
 )
 
 type TimeHolder struct {

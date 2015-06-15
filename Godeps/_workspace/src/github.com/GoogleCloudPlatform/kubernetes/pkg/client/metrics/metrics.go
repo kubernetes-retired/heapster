@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 )
 
 const restClientSubsystem = "rest_client"

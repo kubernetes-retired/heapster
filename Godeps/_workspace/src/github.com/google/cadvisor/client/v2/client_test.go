@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	info "github.com/google/cadvisor/info/v1"
+	info "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/cadvisor/info/v1"
 	infoV2 "github.com/google/cadvisor/info/v2"
 	"github.com/kr/pretty"
 )

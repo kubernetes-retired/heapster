@@ -21,8 +21,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/golang/glog"
-	"github.com/spf13/pflag"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
 )
 
 var logFlushFreq = pflag.Duration("log_flush_frequency", 5*time.Second, "Maximum number of seconds between log flushes")

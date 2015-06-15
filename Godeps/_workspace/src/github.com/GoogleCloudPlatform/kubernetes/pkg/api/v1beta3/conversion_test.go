@@ -19,8 +19,8 @@ package v1beta3_test
 import (
 	"testing"
 
-	newer "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	current "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
+	newer "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	current "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
 )
 
 func TestNodeConversion(t *testing.T) {

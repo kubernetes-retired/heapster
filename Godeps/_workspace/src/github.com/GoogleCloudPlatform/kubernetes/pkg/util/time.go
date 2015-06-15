@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/google/gofuzz"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/gofuzz"
 )
 
 // Time is a wrapper around time.Time which supports correct

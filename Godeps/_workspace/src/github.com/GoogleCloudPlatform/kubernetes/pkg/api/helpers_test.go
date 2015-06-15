@@ -20,9 +20,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/resource"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/resource"
 
-	"speter.net/go/exp/math/dec/inf"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/speter.net/go/exp/math/dec/inf"
 )
 
 func TestConversionError(t *testing.T) {

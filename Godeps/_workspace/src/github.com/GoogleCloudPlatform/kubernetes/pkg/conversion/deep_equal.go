@@ -17,7 +17,7 @@ limitations under the License.
 package conversion
 
 import (
-	"github.com/GoogleCloudPlatform/kubernetes/third_party/forked/reflect"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/third_party/forked/reflect"
 )
 
 // The code for this type must be located in third_party, since it forks from

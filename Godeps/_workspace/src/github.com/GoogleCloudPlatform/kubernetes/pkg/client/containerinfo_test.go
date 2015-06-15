@@ -28,8 +28,8 @@ import (
 	"testing"
 	"time"
 
-	cadvisorApi "github.com/google/cadvisor/info/v1"
-	cadvisorApiTest "github.com/google/cadvisor/info/v1/test"
+	cadvisorApi "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/cadvisor/info/v1"
+	cadvisorApiTest "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/cadvisor/info/v1/test"
 )
 
 func testHTTPContainerInfoGetter(

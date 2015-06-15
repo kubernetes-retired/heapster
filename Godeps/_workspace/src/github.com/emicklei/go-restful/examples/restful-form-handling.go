@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/emicklei/go-restful"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/emicklei/go-restful"
 	"github.com/gorilla/schema"
 	"io"
 	"net/http"

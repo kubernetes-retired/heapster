@@ -23,8 +23,8 @@ import (
 	"io"
 	"unicode"
 
-	"github.com/ghodss/yaml"
-	"github.com/golang/glog"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/ghodss/yaml"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/glog"
 )
 
 // ToJSON converts a single YAML document into a JSON document

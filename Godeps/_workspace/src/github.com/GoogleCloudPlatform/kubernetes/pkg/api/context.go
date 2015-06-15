@@ -19,8 +19,8 @@ package api
 import (
 	stderrs "errors"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/auth/user"
-	"golang.org/x/net/context"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/auth/user"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 // Context carries values across API boundaries.

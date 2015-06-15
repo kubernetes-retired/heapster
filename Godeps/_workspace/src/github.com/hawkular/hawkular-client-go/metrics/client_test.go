@@ -3,7 +3,7 @@ package metrics
 import (
 	"crypto/rand"
 	"fmt"
-	assert "github.com/stretchr/testify/require"
+	assert "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 	"time"

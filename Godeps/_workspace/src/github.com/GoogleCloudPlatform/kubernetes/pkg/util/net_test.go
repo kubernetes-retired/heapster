@@ -19,7 +19,7 @@ package util
 import (
 	"testing"
 
-	flag "github.com/spf13/pflag"
+	flag "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
 )
 
 func TestIP(t *testing.T) {

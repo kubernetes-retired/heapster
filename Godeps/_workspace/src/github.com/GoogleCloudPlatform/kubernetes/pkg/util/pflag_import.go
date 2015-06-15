@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/spf13/pflag"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
 )
 
 // flagValueWrapper implements pflag.Value around a flag.Value.  The main

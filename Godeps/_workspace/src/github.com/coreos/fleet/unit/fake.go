@@ -19,7 +19,7 @@ package unit
 import (
 	"sync"
 
-	"github.com/coreos/fleet/pkg"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/pkg"
 )
 
 func NewFakeUnitManager() *FakeUnitManager {

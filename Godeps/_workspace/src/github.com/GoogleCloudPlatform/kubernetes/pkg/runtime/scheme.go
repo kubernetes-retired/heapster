@@ -18,7 +18,7 @@ package runtime
 
 import (
 	"fmt"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/conversion"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/conversion"
 	"net/url"
 	"reflect"
 )

@@ -1,6 +1,6 @@
 package swagger
 
-import "github.com/emicklei/go-restful"
+import "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/emicklei/go-restful"
 
 type orderedRouteMap struct {
 	elements map[string][]restful.Route

@@ -25,7 +25,7 @@ import (
 	"net/http"
 	"strconv"
 
-	cadvisorApi "github.com/google/cadvisor/info/v1"
+	cadvisorApi "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/cadvisor/info/v1"
 )
 
 type ContainerInfoGetter interface {

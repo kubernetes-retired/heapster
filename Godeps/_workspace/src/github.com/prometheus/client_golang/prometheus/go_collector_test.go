@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	dto "github.com/prometheus/client_model/go"
+	dto "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/prometheus/client_model/go"
 )
 
 func TestGoCollector(t *testing.T) {

@@ -23,11 +23,11 @@ import (
 	"sort"
 	"time"
 
-	dto "github.com/prometheus/client_model/go"
+	dto "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/prometheus/client_model/go"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 )
 
 func ExampleGauge() {

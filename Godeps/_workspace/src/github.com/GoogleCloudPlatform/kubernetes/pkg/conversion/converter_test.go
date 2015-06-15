@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/gofuzz"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/gofuzz"
 )
 
 func TestConverter_byteSlice(t *testing.T) {

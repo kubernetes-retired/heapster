@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"code.google.com/p/go-uuid/uuid"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/types"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/types"
 )
 
 var uuidLock sync.Mutex

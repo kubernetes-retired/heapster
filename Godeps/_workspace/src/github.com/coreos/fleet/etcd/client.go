@@ -24,7 +24,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/coreos/fleet/log"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/log"
 )
 
 const (

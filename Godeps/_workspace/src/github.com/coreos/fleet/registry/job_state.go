@@ -20,9 +20,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/unit"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/etcd"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/job"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/unit"
 )
 
 // determineJobState decides what the State field of a Job object should

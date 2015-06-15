@@ -24,7 +24,7 @@ import (
 	"path"
 	"strings"
 
-	v1 "github.com/google/cadvisor/info/v1"
+	v1 "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/cadvisor/info/v1"
 	info "github.com/google/cadvisor/info/v2"
 )
 

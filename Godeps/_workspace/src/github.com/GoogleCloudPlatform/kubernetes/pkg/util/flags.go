@@ -17,7 +17,7 @@ limitations under the License.
 package util
 
 import (
-	flag "github.com/spf13/pflag"
+	flag "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
 )
 
 // InitFlags normalizes and parses the command line flags

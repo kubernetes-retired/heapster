@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/jwt"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/golang.org/x/oauth2"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/golang.org/x/oauth2/jwt"
 	"google.golang.org/cloud/compute/metadata"
 )
 

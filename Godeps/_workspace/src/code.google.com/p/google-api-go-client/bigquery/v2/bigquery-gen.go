@@ -11,10 +11,10 @@ package bigquery
 
 import (
 	"bytes"
-	"code.google.com/p/google-api-go-client/googleapi"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/code.google.com/p/google-api-go-client/googleapi"
 	"io"
 	"net/http"
 	"net/url"

@@ -21,9 +21,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	fuzz "github.com/google/gofuzz"
-	"github.com/spf13/pflag"
-	"speter.net/go/exp/math/dec/inf"
+	fuzz "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/gofuzz"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
+	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/speter.net/go/exp/math/dec/inf"
 )
 
 var (
