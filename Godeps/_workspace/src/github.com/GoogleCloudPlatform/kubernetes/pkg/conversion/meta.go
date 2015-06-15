@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ func (SimpleMetaFactory) Interpret(data []byte) (version, kind string, err error
 	}{}
 	err = json.Unmarshal(data, &findKind)
 	if err != nil {
-		return "", "", fmt.Errorf("couldn't get version/kind: %v", err)
+		return "", "", fmt.Errorf("couldn't get version/kind; json parse error: %v", err)
 	}
 	return findKind.APIVersion, findKind.Kind, nil
 }

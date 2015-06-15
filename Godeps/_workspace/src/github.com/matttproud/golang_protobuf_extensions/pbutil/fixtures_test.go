@@ -30,8 +30,8 @@
 package pbutil
 
 import (
-	. "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	. "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/protobuf/proto/testdata"
+	. "github.com/golang/protobuf/proto"
+	. "github.com/golang/protobuf/proto/testdata"
 )
 
 // FROM https://github.com/golang/protobuf/blob/master/proto/all_test.go.

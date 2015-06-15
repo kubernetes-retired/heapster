@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/util/fielderrors"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util/fielderrors"
 )
 
 func TestErrorNew(t *testing.T) {
@@ -95,7 +95,7 @@ func TestNewInvalid(t *testing.T) {
 			fielderrors.NewFieldDuplicate("field[0].name", "bar"),
 			&api.StatusDetails{
 				Kind: "kind",
-				ID:   "name",
+				Name: "name",
 				Causes: []api.StatusCause{{
 					Type:  api.CauseTypeFieldValueDuplicate,
 					Field: "field[0].name",
@@ -106,7 +106,7 @@ func TestNewInvalid(t *testing.T) {
 			fielderrors.NewFieldInvalid("field[0].name", "bar", "detail"),
 			&api.StatusDetails{
 				Kind: "kind",
-				ID:   "name",
+				Name: "name",
 				Causes: []api.StatusCause{{
 					Type:  api.CauseTypeFieldValueInvalid,
 					Field: "field[0].name",
@@ -117,7 +117,7 @@ func TestNewInvalid(t *testing.T) {
 			fielderrors.NewFieldNotFound("field[0].name", "bar"),
 			&api.StatusDetails{
 				Kind: "kind",
-				ID:   "name",
+				Name: "name",
 				Causes: []api.StatusCause{{
 					Type:  api.CauseTypeFieldValueNotFound,
 					Field: "field[0].name",
@@ -128,7 +128,7 @@ func TestNewInvalid(t *testing.T) {
 			fielderrors.NewFieldNotSupported("field[0].name", "bar"),
 			&api.StatusDetails{
 				Kind: "kind",
-				ID:   "name",
+				Name: "name",
 				Causes: []api.StatusCause{{
 					Type:  api.CauseTypeFieldValueNotSupported,
 					Field: "field[0].name",
@@ -139,7 +139,7 @@ func TestNewInvalid(t *testing.T) {
 			fielderrors.NewFieldRequired("field[0].name"),
 			&api.StatusDetails{
 				Kind: "kind",
-				ID:   "name",
+				Name: "name",
 				Causes: []api.StatusCause{{
 					Type:  api.CauseTypeFieldValueRequired,
 					Field: "field[0].name",

@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package client
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -28,9 +29,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/version"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/version"
 )
 
 // Config holds the common attributes that can be passed to a Kubernetes client on
@@ -75,8 +76,14 @@ type Config struct {
 	UserAgent string
 
 	// Transport may be used for custom HTTP behavior. This attribute may not
-	// be specified with the TLS client certificate options.
+	// be specified with the TLS client certificate options. Use WrapTransport
+	// for most client level operations.
 	Transport http.RoundTripper
+	// WrapTransport will be invoked for custom HTTP behavior after the underlying
+	// transport is initialized (either the transport created from TLSClientConfig,
+	// Transport, or http.DefaultTransport). The config may layer other RoundTrippers
+	// on top of the returned RoundTripper.
+	WrapTransport func(rt http.RoundTripper) http.RoundTripper
 
 	// QPS indicates the maximum QPS to the master from this client.  If zero, QPS is unlimited.
 	QPS float32
@@ -95,6 +102,9 @@ type KubeletConfig struct {
 
 	// HTTPTimeout is used by the client to timeout http requests to Kubelet.
 	HTTPTimeout time.Duration
+
+	// Dial is a custom dialer used for the client
+	Dial func(net, addr string) (net.Conn, error)
 }
 
 // TLSClientConfig contains settings to enable transport layer security
@@ -158,6 +168,34 @@ func NewOrDie(c *Config) *Client {
 		panic(err)
 	}
 	return client
+}
+
+// InClusterConfig returns a config object which uses the service account
+// kubernetes gives to pods. It's intended for clients that expect to be
+// running inside a pod running on kuberenetes. It will return an error if
+// called from a process not running in a kubernetes environment.
+func InClusterConfig() (*Config, error) {
+	token, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	if err != nil {
+		return nil, err
+	}
+	return &Config{
+		// TODO: switch to using cluster DNS.
+		Host:        "https://" + net.JoinHostPort(os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")),
+		Version:     "v1beta3",
+		BearerToken: string(token),
+		// TODO: package certs along with the token
+		Insecure: true,
+	}, nil
+}
+
+// NewInCluster is a shortcut for calling InClusterConfig() and then New().
+func NewInCluster() (*Client, error) {
+	cc, err := InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	return New(cc)
 }
 
 // SetKubernetesDefaults sets default values on the provided client config for accessing the
@@ -254,6 +292,9 @@ func TransportFor(config *Config) (http.RoundTripper, error) {
 		} else {
 			transport = http.DefaultTransport
 		}
+	}
+	if config.WrapTransport != nil {
+		transport = config.WrapTransport(transport)
 	}
 
 	transport, err = HTTPWrappersForConfig(config, transport)

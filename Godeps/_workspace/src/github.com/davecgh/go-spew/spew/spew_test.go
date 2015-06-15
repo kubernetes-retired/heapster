@@ -19,7 +19,7 @@ package spew_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"io/ioutil"
 	"os"
 	"testing"

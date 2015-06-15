@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-import "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/speter.net/go/exp/math/dec/inf"
+import "speter.net/go/exp/math/dec/inf"
 
 func ExampleDec_SetString() {
 	d := new(inf.Dec)

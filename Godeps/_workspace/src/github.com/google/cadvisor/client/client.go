@@ -25,8 +25,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/glog"
-	info "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/cadvisor/info/v1"
+	"github.com/golang/glog"
+	info "github.com/google/cadvisor/info/v1"
 )
 
 // Client represents the base URL for a cAdvisor client.

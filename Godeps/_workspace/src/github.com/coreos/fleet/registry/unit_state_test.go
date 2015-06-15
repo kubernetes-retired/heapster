@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/etcd"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/machine"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/unit"
 )
 
 type action struct {

@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/code.google.com/p/google-api-go-client/googleapi/internal/uritemplates"
+	"code.google.com/p/google-api-go-client/googleapi/internal/uritemplates"
 )
 
 // ContentTyper is an interface for Readers which know (or would like

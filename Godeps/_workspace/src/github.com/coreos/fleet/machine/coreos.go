@@ -25,10 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/docker/libcontainer/netlink"
+	"github.com/docker/libcontainer/netlink"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/log"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/unit"
 )
 
 const (

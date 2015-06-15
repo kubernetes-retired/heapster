@@ -20,9 +20,9 @@ import (
 	"io/ioutil"
 	"strings"
 
-	bigquery "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/code.google.com/p/google-api-go-client/bigquery/v2"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/golang.org/x/oauth2"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/golang.org/x/oauth2/jwt"
+	bigquery "code.google.com/p/google-api-go-client/bigquery/v2"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/jwt"
 )
 
 var (

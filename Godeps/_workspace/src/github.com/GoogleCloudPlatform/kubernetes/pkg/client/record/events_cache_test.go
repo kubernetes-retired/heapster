@@ -1,5 +1,5 @@
 /*
-Copyright 2015 Google Inc. All rights reserved.
+Copyright 2015 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ package record
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 )
 
 func TestAddOrUpdateEventNoExisting(t *testing.T) {
@@ -67,7 +67,7 @@ func TestAddOrUpdateEventExisting(t *testing.T) {
 			Name:       "anOkName",
 			Namespace:  "someNamespace",
 			UID:        "C934D3234CD0242",
-			APIVersion: "v1beta2",
+			APIVersion: "version",
 		},
 		Source: api.EventSource{
 			Component: "kubelet",
@@ -88,7 +88,7 @@ func TestAddOrUpdateEventExisting(t *testing.T) {
 			Name:       "anOkName",
 			Namespace:  "someNamespace",
 			UID:        "C934D3234CD0242",
-			APIVersion: "v1beta2",
+			APIVersion: "version",
 		},
 		Source: api.EventSource{
 			Component: "kubelet",
@@ -119,7 +119,7 @@ func TestGetEventNoExisting(t *testing.T) {
 			Name:       "iAmAController",
 			Namespace:  "IHaveANamespace",
 			UID:        "9039D34AFBCDA42",
-			APIVersion: "v1beta3",
+			APIVersion: "version",
 		},
 		Source: api.EventSource{
 			Component: "kubelet",

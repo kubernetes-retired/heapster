@@ -22,10 +22,10 @@ import (
 	"path"
 	"sort"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/etcd"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/job"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/log"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/unit"
 )
 
 const (

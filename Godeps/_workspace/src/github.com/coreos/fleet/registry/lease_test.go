@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/etcd"
 )
 
 func TestSerializeLeaseMetadata(t *testing.T) {

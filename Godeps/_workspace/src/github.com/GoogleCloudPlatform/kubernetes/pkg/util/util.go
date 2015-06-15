@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"path"
 	"reflect"
@@ -33,8 +34,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/glog"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/gofuzz"
+	"github.com/golang/glog"
+	"github.com/google/gofuzz"
 )
 
 // For testing, bypass HandleCrash.
@@ -65,7 +66,7 @@ func logPanic(r interface{}) {
 		}
 		callers = callers + fmt.Sprintf("%v:%v\n", file, line)
 	}
-	glog.Infof("Recovered from panic: %#v (%v)\n%v", r, r, callers)
+	glog.Errorf("Recovered from panic: %#v (%v)\n%v", r, r, callers)
 }
 
 // ErrorHandlers is a list of functions which will be invoked when an unreturnable
@@ -213,8 +214,13 @@ func ApplyOomScoreAdj(pid int, value int) error {
 		pidStr = strconv.Itoa(pid)
 	}
 
-	if err := ioutil.WriteFile(path.Join("/proc", pidStr, "oom_score_adj"), []byte(strconv.Itoa(value)), 0700); err != nil {
-		fmt.Errorf("failed to set oom_score_adj to %d: %v", value, err)
+	oom_value, err := ioutil.ReadFile(path.Join("/proc", pidStr, "oom_score_adj"))
+	if err != nil {
+		return fmt.Errorf("failed to read oom_score_adj: %v", err)
+	} else if string(oom_value) != strconv.Itoa(value) {
+		if err := ioutil.WriteFile(path.Join("/proc", pidStr, "oom_score_adj"), []byte(strconv.Itoa(value)), 0700); err != nil {
+			return fmt.Errorf("failed to set oom_score_adj to %d: %v", value, err)
+		}
 	}
 
 	return nil
@@ -396,6 +402,7 @@ func chooseHostInterfaceNativeGo() (net.IP, error) {
 		return nil, err
 	}
 	i := 0
+	var ip net.IP
 	for i = range intfs {
 		if flagsSet(intfs[i].Flags, net.FlagUp) && flagsClear(intfs[i].Flags, net.FlagLoopback|net.FlagPointToPoint) {
 			addrs, err := intfs[i].Addrs()
@@ -403,24 +410,25 @@ func chooseHostInterfaceNativeGo() (net.IP, error) {
 				return nil, err
 			}
 			if len(addrs) > 0 {
-				// This interface should suffice.
-				break
+				for _, addr := range addrs {
+					if addrIP, _, err := net.ParseCIDR(addr.String()); err == nil {
+						if addrIP.To4() != nil {
+							ip = addrIP.To4()
+							break
+						}
+					}
+				}
+				if ip != nil {
+					// This interface should suffice.
+					break
+				}
 			}
 		}
 	}
-	if i == len(intfs) {
-		return nil, err
+	if ip == nil {
+		return nil, fmt.Errorf("no acceptable interface from host")
 	}
-	glog.V(4).Infof("Choosing interface %s for from-host portals", intfs[i].Name)
-	addrs, err := intfs[i].Addrs()
-	if err != nil {
-		return nil, err
-	}
-	glog.V(4).Infof("Interface %s = %s", intfs[i].Name, addrs[0].String())
-	ip, _, err := net.ParseCIDR(addrs[0].String())
-	if err != nil {
-		return nil, err
-	}
+	glog.V(4).Infof("Choosing interface %s (IP %v) as default", intfs[i].Name, ip)
 	return ip, nil
 }
 
@@ -490,4 +498,30 @@ func chooseHostInterfaceFromRoute(inFile io.Reader, nw networkInterfacer) (net.I
 		return nil, fmt.Errorf("Unable to select an IP.")
 	}
 	return nil, nil
+}
+
+func GetClient(req *http.Request) string {
+	if userAgent, ok := req.Header["User-Agent"]; ok {
+		if len(userAgent) > 0 {
+			return userAgent[0]
+		}
+	}
+	return "unknown"
+}
+
+func ShortenString(str string, n int) string {
+	if len(str) <= n {
+		return str
+	} else {
+		return str[:n]
+	}
+}
+
+func FileExists(filename string) (bool, error) {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return true, nil
 }

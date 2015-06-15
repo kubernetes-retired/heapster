@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,18 +23,17 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/meta"
-	apitesting "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/testing"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta1"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta2"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/davecgh/go-spew/spew"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/meta"
+	apitesting "github.com/GoogleCloudPlatform/kubernetes/pkg/api/testing"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"github.com/davecgh/go-spew/spew"
 
-	flag "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
+	flag "github.com/spf13/pflag"
 )
 
 var fuzzIters = flag.Int("fuzz_iters", 20, "How many fuzzing iterations to do.")
@@ -85,20 +84,18 @@ func roundTrip(t *testing.T, codec runtime.Codec, item runtime.Object) {
 }
 
 // roundTripSame verifies the same source object is tested in all API versions.
-func roundTripSame(t *testing.T, item runtime.Object) {
+func roundTripSame(t *testing.T, item runtime.Object, except ...string) {
+	set := util.NewStringSet(except...)
 	seed := rand.Int63()
 	fuzzInternalObject(t, "", item, seed)
-	roundTrip(t, v1beta1.Codec, item)
-	roundTrip(t, v1beta2.Codec, item)
-	fuzzInternalObject(t, "v1beta3", item, seed)
-	roundTrip(t, v1beta3.Codec, item)
-}
-
-func roundTripAll(t *testing.T, item runtime.Object) {
-	seed := rand.Int63()
-	roundTrip(t, v1beta1.Codec, fuzzInternalObject(t, "v1beta1", item, seed))
-	roundTrip(t, v1beta2.Codec, fuzzInternalObject(t, "v1beta2", item, seed))
-	roundTrip(t, v1beta3.Codec, fuzzInternalObject(t, "v1beta3", item, seed))
+	if !set.Has("v1beta3") {
+		fuzzInternalObject(t, "v1beta3", item, seed)
+		roundTrip(t, v1beta3.Codec, item)
+	}
+	if !set.Has("v1") {
+		fuzzInternalObject(t, "v1", item, seed)
+		roundTrip(t, v1.Codec, item)
+	}
 }
 
 // For debugging problems
@@ -129,7 +126,8 @@ func TestList(t *testing.T) {
 }
 
 var nonRoundTrippableTypes = util.NewStringSet("ContainerManifest", "ContainerManifestList")
-var nonInternalRoundTrippableTypes = util.NewStringSet("List", "ListOptions")
+var nonInternalRoundTrippableTypes = util.NewStringSet("List", "ListOptions", "PodExecOptions")
+var nonRoundTrippableTypesByVersion = map[string][]string{}
 
 func TestRoundTripTypes(t *testing.T) {
 	// api.Scheme.Log(t)
@@ -148,7 +146,7 @@ func TestRoundTripTypes(t *testing.T) {
 			if _, err := meta.TypeAccessor(item); err != nil {
 				t.Fatalf("%q is not a TypeMeta and cannot be tested - add it to nonRoundTrippableTypes: %v", kind, err)
 			}
-			roundTripSame(t, item)
+			roundTripSame(t, item, nonRoundTrippableTypesByVersion[kind]...)
 			if !nonInternalRoundTrippableTypes.Has(kind) {
 				roundTrip(t, api.Codec, fuzzInternalObject(t, "", item, rand.Int63()))
 			}

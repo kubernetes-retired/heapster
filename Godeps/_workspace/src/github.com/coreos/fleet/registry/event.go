@@ -21,9 +21,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/etcd"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/log"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/pkg"
+	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/pkg"
 )
 
 const (

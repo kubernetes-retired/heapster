@@ -1,5 +1,5 @@
 /*
-Copyright 2015 Google Inc. All rights reserved.
+Copyright 2015 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,16 +19,16 @@ package testclient
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 )
 
 func TestNewClient(t *testing.T) {
-	o := NewObjects(api.Scheme)
-	if err := AddObjectsFromPath("../../../examples/guestbook/frontend-service.json", o); err != nil {
+	o := NewObjects(api.Scheme, api.Scheme)
+	if err := AddObjectsFromPath("../../../examples/guestbook/frontend-service.json", o, api.Scheme); err != nil {
 		t.Fatal(err)
 	}
 	client := &Fake{ReactFn: ObjectReaction(o, latest.RESTMapper)}
@@ -52,7 +52,7 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	o := NewObjects(api.Scheme)
+	o := NewObjects(api.Scheme, api.Scheme)
 	o.Add(&api.List{
 		Items: []runtime.Object{
 			// This first call to List will return this error

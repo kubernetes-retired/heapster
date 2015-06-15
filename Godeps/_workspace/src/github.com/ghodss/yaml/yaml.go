@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/gopkg.in/v2/yaml"
+	"gopkg.in/v2/yaml"
 )
 
 // Marshals the object into JSON then converts JSON to YAML and returns the

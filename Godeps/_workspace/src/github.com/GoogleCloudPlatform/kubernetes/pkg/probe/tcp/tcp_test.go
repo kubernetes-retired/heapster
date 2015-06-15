@@ -1,5 +1,5 @@
 /*
-Copyright 2015 Google Inc. All rights reserved.
+Copyright 2015 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,10 +22,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/probe"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/probe"
 )
 
 func TestTcpHealthChecker(t *testing.T) {
@@ -34,10 +35,11 @@ func TestTcpHealthChecker(t *testing.T) {
 		expectedStatus probe.Result
 		usePort        bool
 		expectError    bool
+		output         string
 	}{
 		// The probe will be filled in below.  This is primarily testing that a connection is made.
-		{probe.Success, true, false},
-		{probe.Failure, false, false},
+		{probe.Success, true, false, ""},
+		{probe.Failure, false, false, "tcp: unknown port"},
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +62,7 @@ func TestTcpHealthChecker(t *testing.T) {
 		if !test.usePort {
 			p = -1
 		}
-		status, err := prober.Probe(host, p, 1*time.Second)
+		status, output, err := prober.Probe(host, p, 1*time.Second)
 		if status != test.expectedStatus {
 			t.Errorf("expected: %v, got: %v", test.expectedStatus, status)
 		}
@@ -69,6 +71,9 @@ func TestTcpHealthChecker(t *testing.T) {
 		}
 		if err == nil && test.expectError {
 			t.Errorf("unexpected non-error.")
+		}
+		if !strings.Contains(output, test.output) {
+			t.Errorf("expected %s, got %s", test.output, output)
 		}
 	}
 }

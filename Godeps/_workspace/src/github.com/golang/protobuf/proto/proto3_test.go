@@ -34,9 +34,9 @@ package proto_test
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	pb "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/protobuf/proto/proto3_proto"
-	tpb "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/protobuf/proto/testdata"
+	"github.com/golang/protobuf/proto"
+	pb "github.com/golang/protobuf/proto/proto3_proto"
+	tpb "github.com/golang/protobuf/proto/testdata"
 )
 
 func TestProto3ZeroValues(t *testing.T) {

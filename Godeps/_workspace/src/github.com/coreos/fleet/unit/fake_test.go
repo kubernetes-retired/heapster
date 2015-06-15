@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/pkg"
+	"github.com/coreos/fleet/pkg"
 )
 
 func TestFakeUnitManagerEmpty(t *testing.T) {

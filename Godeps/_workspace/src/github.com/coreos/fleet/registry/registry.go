@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/etcd"
 )
 
 const DefaultKeyPrefix = "/_coreos.com/fleet/"

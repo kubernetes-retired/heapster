@@ -3,7 +3,7 @@ package restful
 import (
 	"os"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/emicklei/go-restful/log"
+	"github.com/emicklei/go-restful/log"
 )
 
 // Copyright 2013 Ernest Micklei. All rights reserved.

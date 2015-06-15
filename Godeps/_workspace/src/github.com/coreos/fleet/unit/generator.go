@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/log"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/pkg"
+	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/pkg"
 )
 
 type UnitStateHeartbeat struct {

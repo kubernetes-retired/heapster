@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	dto "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/prometheus/client_model/go"
+	dto "github.com/prometheus/client_model/go"
 )
 
 type respBody string

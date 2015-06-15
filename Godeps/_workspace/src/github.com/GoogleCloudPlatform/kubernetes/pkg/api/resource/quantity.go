@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import (
 	"regexp"
 	"strings"
 
-	flag "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/speter.net/go/exp/math/dec/inf"
+	flag "github.com/spf13/pflag"
+	"speter.net/go/exp/math/dec/inf"
 )
 
 // Quantity is a fixed-point representation of a number.
@@ -190,7 +190,9 @@ func ParseQuantity(str string) (*Quantity, error) {
 	// of an amount.
 	// Arguably, this should be inf.RoundHalfUp (normal rounding), but
 	// that would have the side effect of rounding values < .5m to zero.
-	amount.Round(amount, 3, inf.RoundUp)
+	if v, ok := amount.Unscaled(); v != int64(0) || !ok {
+		amount.Round(amount, 3, inf.RoundUp)
+	}
 
 	// The max is just a simple cap.
 	if amount.Cmp(maxAllowed) > 0 {
@@ -234,6 +236,11 @@ func removeFactors(d, factor *big.Int) (result *big.Int, times int) {
 //   rounded up. (1.1i becomes 2i.)
 func (q *Quantity) Canonicalize() (string, suffix) {
 	if q.Amount == nil {
+		return "0", ""
+	}
+
+	// zero is zero always
+	if q.Amount.Cmp(&inf.Dec{}) == 0 {
 		return "0", ""
 	}
 

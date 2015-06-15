@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,15 +19,19 @@ package cache
 import (
 	"errors"
 	"io"
+	"net"
+	"net/url"
 	"reflect"
+	"sync"
+	"syscall"
 	"time"
 
-	apierrs "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/meta"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/glog"
+	apierrs "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/meta"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
+	"github.com/golang/glog"
 )
 
 // ListerWatcher is any object that knows how to perform an initial list and start a watch on a resource.
@@ -53,8 +57,10 @@ type Reflector struct {
 	resyncPeriod time.Duration
 	// lastSyncResourceVersion is the resource version token last
 	// observed when doing a sync with the underlying store
-	// it is not thread safe as it is not synchronized with access to the store
+	// it is thread safe, but not synchronized with the underlying store
 	lastSyncResourceVersion string
+	// lastSyncResourceVersionMutex guards read/write access to lastSyncResourceVersion
+	lastSyncResourceVersionMutex sync.RWMutex
 }
 
 // NewNamespaceKeyedIndexerAndReflector creates an Indexer and a Reflector
@@ -106,17 +112,24 @@ var (
 	errorStopRequested = errors.New("Stop requested")
 )
 
-// resyncChan returns a channel which will receive something when a resync is required.
-func (r *Reflector) resyncChan() <-chan time.Time {
+// resyncChan returns a channel which will receive something when a resync is
+// required, and a cleanup function.
+func (r *Reflector) resyncChan() (<-chan time.Time, func() bool) {
 	if r.resyncPeriod == 0 {
-		return neverExitWatch
+		return neverExitWatch, func() bool { return false }
 	}
-	return time.After(r.resyncPeriod)
+	// The cleanup function is required: imagine the scenario where watches
+	// always fail so we end up listing frequently. Then, if we don't
+	// manually stop the timer, we could end up with many timers active
+	// concurrently.
+	t := time.NewTimer(r.resyncPeriod)
+	return t.C, t.Stop
 }
 
 func (r *Reflector) listAndWatch(stopCh <-chan struct{}) {
 	var resourceVersion string
-	resyncCh := r.resyncChan()
+	resyncCh, cleanup := r.resyncChan()
+	defer cleanup()
 
 	list, err := r.listerWatcher.List()
 	if err != nil {
@@ -138,7 +151,7 @@ func (r *Reflector) listAndWatch(stopCh <-chan struct{}) {
 		glog.Errorf("Unable to sync list result: %v", err)
 		return
 	}
-	r.lastSyncResourceVersion = resourceVersion
+	r.setLastSyncResourceVersion(resourceVersion)
 
 	for {
 		w, err := r.listerWatcher.Watch(resourceVersion)
@@ -151,10 +164,22 @@ func (r *Reflector) listAndWatch(stopCh <-chan struct{}) {
 			default:
 				glog.Errorf("Failed to watch %v: %v", r.expectedType, err)
 			}
+			// If this is "connection refused" error, it means that most likely apiserver is not responsive.
+			// It doesn't make sense to re-list all objects because most likely we will be able to restart
+			// watch where we ended.
+			// If that's the case wait and resend watch request.
+			if urlError, ok := err.(*url.Error); ok {
+				if opError, ok := urlError.Err.(*net.OpError); ok {
+					if errno, ok := opError.Err.(syscall.Errno); ok && errno == syscall.ECONNREFUSED {
+						time.Sleep(time.Second)
+						continue
+					}
+				}
+			}
 			return
 		}
 		if err := r.watchHandler(w, &resourceVersion, resyncCh, stopCh); err != nil {
-			if err != errorResyncRequested {
+			if err != errorResyncRequested && err != errorStopRequested {
 				glog.Errorf("watch of %v ended with: %v", r.expectedType, err)
 			}
 			return
@@ -218,7 +243,7 @@ loop:
 				glog.Errorf("unable to understand watch event %#v", event)
 			}
 			*resourceVersion = meta.ResourceVersion()
-			r.lastSyncResourceVersion = *resourceVersion
+			r.setLastSyncResourceVersion(*resourceVersion)
 			eventCount++
 		}
 	}
@@ -235,5 +260,13 @@ loop:
 // LastSyncResourceVersion is the resource version observed when last sync with the underlying store
 // The value returned is not synchronized with access to the underlying store and is not thread-safe
 func (r *Reflector) LastSyncResourceVersion() string {
+	r.lastSyncResourceVersionMutex.RLock()
+	defer r.lastSyncResourceVersionMutex.RUnlock()
 	return r.lastSyncResourceVersion
+}
+
+func (r *Reflector) setLastSyncResourceVersion(v string) {
+	r.lastSyncResourceVersionMutex.Lock()
+	defer r.lastSyncResourceVersionMutex.Unlock()
+	r.lastSyncResourceVersion = v
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package api
 import (
 	"fmt"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/ghodss/yaml"
+	"github.com/ghodss/yaml"
 )
 
 func ExampleEmptyConfig() {
@@ -52,9 +52,6 @@ func ExampleOfOptionsConfig() {
 		Server:                "https://bravo.org:8080",
 		APIVersion:            "v1beta1",
 		InsecureSkipTLSVerify: false,
-	}
-	defaultConfig.AuthInfos["black-mage-via-file"] = AuthInfo{
-		AuthPath: "path/to/my/.kubernetes_auth",
 	}
 	defaultConfig.AuthInfos["white-mage-via-cert"] = AuthInfo{
 		ClientCertificate: "path/to/my/client-cert-filename",
@@ -116,9 +113,6 @@ func ExampleOfOptionsConfig() {
 	// preferences:
 	//   colors: true
 	// users:
-	//   black-mage-via-file:
-	//     LocationOfOrigin: ""
-	//     auth-path: path/to/my/.kubernetes_auth
 	//   red-mage-via-token:
 	//     LocationOfOrigin: ""
 	//     token: my-secret-token

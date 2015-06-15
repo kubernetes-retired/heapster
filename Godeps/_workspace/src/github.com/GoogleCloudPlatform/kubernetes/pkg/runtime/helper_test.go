@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,11 +20,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/testapi"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/gofuzz"
+	"github.com/google/gofuzz"
 )
 
 func TestIsList(t *testing.T) {
@@ -129,6 +130,22 @@ func TestExtractListOfValuePtrs(t *testing.T) {
 		if obj, ok := list[i].(*api.Pod); !ok {
 			t.Fatalf("Expected list[%d] to be *api.Pod, it is %#v", i, obj)
 		}
+	}
+}
+
+func TestDecodeList(t *testing.T) {
+	pl := &api.List{
+		Items: []runtime.Object{
+			&api.Pod{ObjectMeta: api.ObjectMeta{Name: "1"}},
+			&runtime.Unknown{TypeMeta: runtime.TypeMeta{Kind: "Pod", APIVersion: testapi.Version()}, RawJSON: []byte(`{"kind":"Pod","apiVersion":"` + testapi.Version() + `","metadata":{"name":"test"}}`)},
+			&runtime.Unstructured{TypeMeta: runtime.TypeMeta{Kind: "Foo", APIVersion: "Bar"}, Object: map[string]interface{}{"test": "value"}},
+		},
+	}
+	if errs := runtime.DecodeList(pl.Items, api.Scheme); len(errs) != 0 {
+		t.Fatalf("unexpected error %v", errs)
+	}
+	if pod, ok := pl.Items[1].(*api.Pod); !ok || pod.Name != "test" {
+		t.Errorf("object not converted: %#v", pl.Items[1])
 	}
 }
 

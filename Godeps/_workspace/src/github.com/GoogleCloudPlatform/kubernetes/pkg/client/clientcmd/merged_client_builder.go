@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ package clientcmd
 import (
 	"io"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	clientcmdapi "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
+	clientcmdapi "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
 )
 
 // DeferredLoadingClientConfig is a ClientConfig interface that is backed by a set of loading rules
@@ -45,6 +45,11 @@ func NewInteractiveDeferredLoadingClientConfig(loadingRules *ClientConfigLoading
 }
 
 func (config DeferredLoadingClientConfig) createClientConfig() (ClientConfig, error) {
+	// Are we running in a cluster? If so, use that.
+	icc := inClusterClientConfig{}
+	if icc.Possible() {
+		return icc, nil
+	}
 	mergedConfig, err := config.loadingRules.Load()
 	if err != nil {
 		return nil, err

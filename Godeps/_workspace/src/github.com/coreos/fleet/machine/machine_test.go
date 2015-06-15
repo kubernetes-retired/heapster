@@ -19,7 +19,7 @@ package machine
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/pkg"
+	"github.com/coreos/fleet/pkg"
 )
 
 func TestHasMetadata(t *testing.T) {

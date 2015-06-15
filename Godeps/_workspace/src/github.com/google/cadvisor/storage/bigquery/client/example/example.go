@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/cadvisor/storage/bigquery/client"
 	"github.com/SeanDolphin/bqschema"
+	"github.com/google/cadvisor/storage/bigquery/client"
 )
 
 type container struct {

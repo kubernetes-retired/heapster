@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ package api
 import (
 	stderrs "errors"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/auth/user"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/auth/user"
+	"golang.org/x/net/context"
 )
 
 // Context carries values across API boundaries.

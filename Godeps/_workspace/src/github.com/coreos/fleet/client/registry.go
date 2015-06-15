@@ -17,9 +17,9 @@
 package client
 
 import (
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/job"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/registry"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/schema"
+	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/schema"
 )
 
 type RegistryClient struct {

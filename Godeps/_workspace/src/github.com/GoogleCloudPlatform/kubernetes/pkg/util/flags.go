@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,12 +16,33 @@ limitations under the License.
 
 package util
 
-import (
-	flag "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/spf13/pflag"
-)
+import "strings"
+
+import "github.com/spf13/pflag"
+import "github.com/golang/glog"
+
+// WordSepNormalizeFunc changes all flags that contain "_" separators
+func WordSepNormalizeFunc(f *pflag.FlagSet, name string) pflag.NormalizedName {
+	if strings.Contains(name, "_") {
+		return pflag.NormalizedName(strings.Replace(name, "_", "-", -1))
+	}
+	return pflag.NormalizedName(name)
+}
+
+// WarnWordSepNormalizeFunc changes and warns for flags that contain "_" separators
+func WarnWordSepNormalizeFunc(f *pflag.FlagSet, name string) pflag.NormalizedName {
+	if strings.Contains(name, "_") {
+		nname := strings.Replace(name, "_", "-", -1)
+		glog.Warningf("%s is DEPRECATED and will be removed in a future version. Use %s instead.", name, nname)
+
+		return pflag.NormalizedName(nname)
+	}
+	return pflag.NormalizedName(name)
+}
 
 // InitFlags normalizes and parses the command line flags
 func InitFlags() {
+	pflag.CommandLine.SetNormalizeFunc(WordSepNormalizeFunc)
 	AddAllFlagsToPFlags()
-	flag.Parse()
+	pflag.Parse()
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2015 Google Inc. All rights reserved.
+Copyright 2015 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,17 +17,17 @@ limitations under the License.
 package testclient
 
 import (
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/version"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/version"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
 )
 
 // NewSimpleFake returns a client that will respond with the provided objects
 func NewSimpleFake(objects ...runtime.Object) *Fake {
-	o := NewObjects(api.Scheme)
+	o := NewObjects(api.Scheme, api.Scheme)
 	for _, obj := range objects {
 		if err := o.Add(obj); err != nil {
 			panic(err)
@@ -103,8 +103,16 @@ func (c *Fake) Pods(namespace string) client.PodInterface {
 	return &FakePods{Fake: c, Namespace: namespace}
 }
 
+func (c *Fake) PodTemplates(namespace string) client.PodTemplateInterface {
+	return &FakePodTemplates{Fake: c, Namespace: namespace}
+}
+
 func (c *Fake) Services(namespace string) client.ServiceInterface {
 	return &FakeServices{Fake: c, Namespace: namespace}
+}
+
+func (c *Fake) ServiceAccounts(namespace string) client.ServiceAccountsInterface {
+	return &FakeServiceAccounts{Fake: c, Namespace: namespace}
 }
 
 func (c *Fake) Secrets(namespace string) client.SecretsInterface {
@@ -124,4 +132,8 @@ func (c *Fake) ServerVersion() (*version.Info, error) {
 func (c *Fake) ServerAPIVersions() (*api.APIVersions, error) {
 	c.Actions = append(c.Actions, FakeAction{Action: "get-apiversions", Value: nil})
 	return &api.APIVersions{Versions: []string{"v1beta1", "v1beta2"}}, nil
+}
+
+func (c *Fake) ComponentStatuses() client.ComponentStatusInterface {
+	return &FakeComponentStatuses{Fake: c}
 }

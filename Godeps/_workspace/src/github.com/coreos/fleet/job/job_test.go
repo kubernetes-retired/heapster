@@ -21,8 +21,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/pkg"
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/fleet/unit"
 )
 
 func newUnit(t *testing.T, str string) *unit.UnitFile {

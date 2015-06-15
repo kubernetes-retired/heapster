@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/emicklei/go-restful"
+	"github.com/emicklei/go-restful"
 )
 
 // This example show how to test one particular RouteFunction (getIt)

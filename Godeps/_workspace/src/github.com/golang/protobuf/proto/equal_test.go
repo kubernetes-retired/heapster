@@ -34,8 +34,8 @@ package proto_test
 import (
 	"testing"
 
-	. "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-	pb "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/golang/protobuf/proto/testdata"
+	. "github.com/golang/protobuf/proto"
+	pb "github.com/golang/protobuf/proto/testdata"
 )
 
 // Four identical base messages.

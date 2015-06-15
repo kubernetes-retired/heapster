@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
-	info "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/cadvisor/info/v1"
-	itest "github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/google/cadvisor/info/v1/test"
+	info "github.com/google/cadvisor/info/v1"
+	itest "github.com/google/cadvisor/info/v1/test"
 	"github.com/kr/pretty"
 )
 

@@ -9,7 +9,7 @@ package google
 import (
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/golang.org/x/oauth2"
+	"golang.org/x/oauth2"
 	"google.golang.org/appengine"
 )
 

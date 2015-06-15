@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/emicklei/go-restful"
+	"github.com/emicklei/go-restful"
 	"log"
 	"net/http"
 )
