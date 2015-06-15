@@ -19,7 +19,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/heapster/manager"
 	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api"
-	"github.com/emicklei/go-restful"
+	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 )
 
@@ -67,6 +67,7 @@ var targetLabelNames = []string{
 	sinksApi.LabelPodId,
 	sinksApi.LabelPodName,
 	sinksApi.LabelPodNamespace,
+	sinksApi.LabelPodNamespaceUID,
 	sinksApi.LabelContainerName,
 	sinksApi.LabelLabels,
 	sinksApi.LabelHostname,

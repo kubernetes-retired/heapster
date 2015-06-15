@@ -71,21 +71,23 @@ func TestRealCacheData(t *testing.T) {
 	pods := []source_api.Pod{
 		{
 			PodMetadata: source_api.PodMetadata{
-				Name:      "pod1",
-				ID:        "123",
-				Namespace: "test",
-				Hostname:  "1.2.3.4",
-				Status:    "Running",
+				Name:         "pod1",
+				ID:           "123",
+				Namespace:    "test",
+				NamespaceUID: "test-uid",
+				Hostname:     "1.2.3.4",
+				Status:       "Running",
 			},
 			Containers: containers,
 		},
 		{
 			PodMetadata: source_api.PodMetadata{
-				Name:      "pod2",
-				ID:        "1234",
-				Namespace: "test",
-				Hostname:  "1.2.3.5",
-				Status:    "Running",
+				Name:         "pod2",
+				ID:           "1234",
+				Namespace:    "test",
+				NamespaceUID: "test-uid",
+				Hostname:     "1.2.3.5",
+				Status:       "Running",
 			},
 			Containers: containers,
 		},

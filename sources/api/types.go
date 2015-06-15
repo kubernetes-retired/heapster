@@ -22,8 +22,9 @@ import (
 )
 
 type PodMetadata struct {
-	Name      string `json:"name,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
+	Name         string `json:"name,omitempty"`
+	Namespace    string `json:"namespace,omitempty"`
+	NamespaceUID string
 	// TODO(vishh): Rename to UID.
 	ID             string            `json:"id,omitempty"`
 	Hostname       string            `json:"hostname,omitempty"`

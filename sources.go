@@ -29,7 +29,7 @@ func newSources() ([]api.Source, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(uri.Scheme) == 0 || len(uri.Opaque) == 0 {
+		if (uri.Scheme == "" || uri.Opaque == "") && uri.Path == "" {
 			return nil, fmt.Errorf("Invalid source definition: %s", sourceFlag)
 		}
 		factory := extpoints.SourceFactories.Lookup(uri.Scheme)
