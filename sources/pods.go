@@ -72,6 +72,7 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 			Status:         string(pod.Status.Phase),
 			PodIP:          pod.Status.PodIP,
 			Labels:         make(map[string]string, 0),
+			ExternalID:     node.ExternalID,
 		},
 		Containers: make([]api.Container, 0),
 	}

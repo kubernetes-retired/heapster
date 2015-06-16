@@ -71,6 +71,7 @@ var targetLabelNames = []string{
 	sinksApi.LabelContainerName,
 	sinksApi.LabelLabels,
 	sinksApi.LabelHostname,
+	sinksApi.LabelExternalID,
 }
 
 // Separates target schema labels from other labels.

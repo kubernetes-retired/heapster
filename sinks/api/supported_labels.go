@@ -23,6 +23,7 @@ const (
 	LabelLabels          = "labels"
 	LabelHostname        = "hostname"
 	LabelResourceID      = "resource_id"
+	LabelExternalID      = "external_id"
 )
 
 // TODO(vmarmol): Things we should consider adding (note that we only get 10 labels):
@@ -60,6 +61,10 @@ var allLabels = []LabelDescriptor{
 	{
 		Key:         LabelResourceID,
 		Description: "Identifier(s) specific to a metric",
+	},
+	{
+		Key:         LabelExternalID,
+		Description: "Identifier specific to a node. Set by cloud provider or user",
 	},
 }
 

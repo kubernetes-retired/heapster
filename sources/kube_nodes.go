@@ -56,11 +56,13 @@ func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start
 	// Find host container.
 	hostIndex := -1
 	hostString := string(host)
+	externalID := string(info.ExternalID)
 	for i := range containers {
 		if containers[i].Name == "/" {
 			hostIndex = i
 		}
 		containers[i].Hostname = hostString
+		containers[i].ExternalID = externalID
 	}
 	var hostContainer *api.Container = nil
 	if hostIndex >= 0 {

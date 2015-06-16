@@ -101,6 +101,7 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 				UID:          pod.ID,
 				Hostname:     pod.Hostname,
 				Labels:       pod.Labels,
+				ExternalID:   pod.ExternalID,
 			}
 			rc.pods[pod.ID] = pe
 		}
@@ -144,8 +145,9 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 			if !ok {
 				ce = rc.newContainerElement()
 				ce.Metadata = Metadata{
-					Name:     cont.Name,
-					Hostname: cont.Hostname,
+					Name:       cont.Name,
+					Hostname:   cont.Hostname,
+					ExternalID: cont.ExternalID,
 				}
 				ne.freeContainers[cont.Name] = ce
 			}
