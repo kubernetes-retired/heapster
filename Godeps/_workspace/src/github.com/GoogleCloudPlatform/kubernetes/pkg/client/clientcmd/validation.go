@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -176,17 +176,6 @@ func validateAuthInfo(authInfoName string, authInfo clientcmdapi.AuthInfo) []err
 	}
 	if len(authInfo.Username) != 0 || len(authInfo.Password) != 0 {
 		methods = append(methods, "basicAuth")
-	}
-	if len(authInfo.AuthPath) != 0 {
-		usingAuthPath = true
-		methods = append(methods, "authFile")
-
-		file, err := os.Open(authInfo.AuthPath)
-		os.IsNotExist(err)
-		defer file.Close()
-		if err != nil {
-			validationErrors = append(validationErrors, fmt.Errorf("unable to read auth-path %v for %v due to %v", authInfo.AuthPath, authInfoName, err))
-		}
 	}
 
 	if len(authInfo.ClientCertificate) != 0 || len(authInfo.ClientCertificateData) != 0 {

@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@ func init() {
 		&Pod{},
 		&PodList{},
 		&PodStatusResult{},
+		&PodTemplate{},
+		&PodTemplateList{},
 		&ReplicationControllerList{},
 		&ReplicationController{},
 		&ServiceList{},
@@ -49,6 +51,8 @@ func init() {
 		&ResourceQuotaList{},
 		&Namespace{},
 		&NamespaceList{},
+		&ServiceAccount{},
+		&ServiceAccountList{},
 		&Secret{},
 		&SecretList{},
 		&PersistentVolume{},
@@ -58,6 +62,12 @@ func init() {
 		&DeleteOptions{},
 		&ListOptions{},
 		&PodLogOptions{},
+		&PodExecOptions{},
+		&PodProxyOptions{},
+		&ComponentStatus{},
+		&ComponentStatusList{},
+		&SerializedReference{},
+		&RangeAllocation{},
 	)
 	// Legacy names are supported
 	Scheme.AddKnownTypeWithName("", "Minion", &Node{})
@@ -67,6 +77,8 @@ func init() {
 func (*Pod) IsAnAPIObject()                       {}
 func (*PodList) IsAnAPIObject()                   {}
 func (*PodStatusResult) IsAnAPIObject()           {}
+func (*PodTemplate) IsAnAPIObject()               {}
+func (*PodTemplateList) IsAnAPIObject()           {}
 func (*ReplicationController) IsAnAPIObject()     {}
 func (*ReplicationControllerList) IsAnAPIObject() {}
 func (*Service) IsAnAPIObject()                   {}
@@ -88,6 +100,8 @@ func (*ResourceQuota) IsAnAPIObject()             {}
 func (*ResourceQuotaList) IsAnAPIObject()         {}
 func (*Namespace) IsAnAPIObject()                 {}
 func (*NamespaceList) IsAnAPIObject()             {}
+func (*ServiceAccount) IsAnAPIObject()            {}
+func (*ServiceAccountList) IsAnAPIObject()        {}
 func (*Secret) IsAnAPIObject()                    {}
 func (*SecretList) IsAnAPIObject()                {}
 func (*PersistentVolume) IsAnAPIObject()          {}
@@ -97,3 +111,9 @@ func (*PersistentVolumeClaimList) IsAnAPIObject() {}
 func (*DeleteOptions) IsAnAPIObject()             {}
 func (*ListOptions) IsAnAPIObject()               {}
 func (*PodLogOptions) IsAnAPIObject()             {}
+func (*PodExecOptions) IsAnAPIObject()            {}
+func (*PodProxyOptions) IsAnAPIObject()           {}
+func (*ComponentStatus) IsAnAPIObject()           {}
+func (*ComponentStatusList) IsAnAPIObject()       {}
+func (*SerializedReference) IsAnAPIObject()       {}
+func (*RangeAllocation) IsAnAPIObject()           {}

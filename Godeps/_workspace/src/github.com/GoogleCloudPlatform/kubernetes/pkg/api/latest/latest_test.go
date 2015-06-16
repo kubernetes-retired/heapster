@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,8 +21,6 @@ import (
 	"testing"
 
 	internal "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	_ "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta1"
-	_ "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta2"
 )
 
 func TestResourceVersioner(t *testing.T) {
@@ -72,12 +70,12 @@ func TestInterfacesFor(t *testing.T) {
 }
 
 func TestRESTMapper(t *testing.T) {
-	// TODO: This test does not seem right. The version returned here depends on the order in which API versions were registered. This will just return the API version that was registered first. Fix this.
-	if v, k, err := RESTMapper.VersionAndKindForResource("replicationControllers"); err != nil || v != "v1beta1" || k != "ReplicationController" {
+	if v, k, err := RESTMapper.VersionAndKindForResource("replicationcontrollers"); err != nil || v != "v1" || k != "ReplicationController" {
 		t.Errorf("unexpected version mapping: %s %s %v", v, k, err)
 	}
-	if v, k, err := RESTMapper.VersionAndKindForResource("replicationcontrollers"); err != nil || v != "v1beta1" || k != "ReplicationController" {
-		t.Errorf("unexpected version mapping: %s %s %v", v, k, err)
+
+	if m, err := RESTMapper.RESTMapping("PodTemplate", ""); err != nil || m.APIVersion != "v1" || m.Resource != "podtemplates" {
+		t.Errorf("unexpected version mapping: %#v %v", m, err)
 	}
 
 	for _, version := range Versions {
@@ -95,7 +93,7 @@ func TestRESTMapper(t *testing.T) {
 
 		interfaces, _ := InterfacesFor(version)
 		if mapping.Codec != interfaces.Codec {
-			t.Errorf("unexpected codec: %#v", mapping)
+			t.Errorf("unexpected codec: %#v, expected: %#v", mapping, interfaces)
 		}
 
 		rc := &internal.ReplicationController{ObjectMeta: internal.ObjectMeta{Name: "foo"}}

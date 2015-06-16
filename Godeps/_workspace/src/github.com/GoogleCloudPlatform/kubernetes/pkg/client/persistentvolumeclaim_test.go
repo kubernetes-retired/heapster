@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,9 +28,6 @@ import (
 )
 
 func getPersistentVolumeClaimsResoureName() string {
-	if api.PreV1Beta3(testapi.Version()) {
-		return "persistentVolumeClaims"
-	}
 	return "persistentvolumeclaims"
 }
 
@@ -41,7 +38,7 @@ func TestPersistentVolumeClaimCreate(t *testing.T) {
 			Name: "abc",
 		},
 		Spec: api.PersistentVolumeClaimSpec{
-			AccessModes: []api.AccessModeType{
+			AccessModes: []api.PersistentVolumeAccessMode{
 				api.ReadWriteOnce,
 				api.ReadOnlyMany,
 			},
@@ -75,7 +72,7 @@ func TestPersistentVolumeClaimGet(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: api.PersistentVolumeClaimSpec{
-			AccessModes: []api.AccessModeType{
+			AccessModes: []api.PersistentVolumeAccessMode{
 				api.ReadWriteOnce,
 				api.ReadOnlyMany,
 			},
@@ -130,7 +127,7 @@ func TestPersistentVolumeClaimUpdate(t *testing.T) {
 			ResourceVersion: "1",
 		},
 		Spec: api.PersistentVolumeClaimSpec{
-			AccessModes: []api.AccessModeType{
+			AccessModes: []api.PersistentVolumeAccessMode{
 				api.ReadWriteOnce,
 				api.ReadOnlyMany,
 			},
@@ -157,7 +154,7 @@ func TestPersistentVolumeClaimStatusUpdate(t *testing.T) {
 			ResourceVersion: "1",
 		},
 		Spec: api.PersistentVolumeClaimSpec{
-			AccessModes: []api.AccessModeType{
+			AccessModes: []api.PersistentVolumeAccessMode{
 				api.ReadWriteOnce,
 				api.ReadOnlyMany,
 			},

@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@ limitations under the License.
 package clientcmd
 
 import (
+	"fmt"
 	"io"
+	"net/url"
 	"os"
 
 	"github.com/imdario/mergo"
@@ -85,6 +87,13 @@ func (config DirectClientConfig) ClientConfig() (*client.Config, error) {
 
 	clientConfig := &client.Config{}
 	clientConfig.Host = configClusterInfo.Server
+	if u, err := url.ParseRequestURI(clientConfig.Host); err == nil && u.Opaque == "" && len(u.Path) > 1 {
+		clientConfig.Prefix = u.Path
+		u.Path = ""
+		u.RawQuery = ""
+		u.Fragment = ""
+		clientConfig.Host = u.String()
+	}
 	clientConfig.Version = configClusterInfo.APIVersion
 
 	// only try to read the auth information if we are secure
@@ -117,25 +126,6 @@ func (config DirectClientConfig) ClientConfig() (*client.Config, error) {
 func getServerIdentificationPartialConfig(configAuthInfo clientcmdapi.AuthInfo, configClusterInfo clientcmdapi.Cluster) (*client.Config, error) {
 	mergedConfig := &client.Config{}
 
-	defaultAuthPathInfo, err := NewDefaultAuthLoader().LoadAuth(os.Getenv("HOME") + "/.kubernetes_auth")
-	// if the error is anything besides a does not exist, then fail.  Not existing is ok
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-	if defaultAuthPathInfo != nil {
-		defaultAuthPathConfig := makeServerIdentificationConfig(*defaultAuthPathInfo)
-		mergo.Merge(mergedConfig, defaultAuthPathConfig)
-	}
-
-	if len(configAuthInfo.AuthPath) > 0 {
-		authPathInfo, err := NewDefaultAuthLoader().LoadAuth(configAuthInfo.AuthPath)
-		if err != nil {
-			return nil, err
-		}
-		authPathConfig := makeServerIdentificationConfig(*authPathInfo)
-		mergo.Merge(mergedConfig, authPathConfig)
-	}
-
 	// configClusterInfo holds the information identify the server provided by .kubeconfig
 	configClientConfig := &client.Config{}
 	configClientConfig.CAFile = configClusterInfo.CertificateAuthority
@@ -156,15 +146,6 @@ func getServerIdentificationPartialConfig(configAuthInfo clientcmdapi.AuthInfo, 
 func getUserIdentificationPartialConfig(configAuthInfo clientcmdapi.AuthInfo, fallbackReader io.Reader) (*client.Config, error) {
 	mergedConfig := &client.Config{}
 
-	if len(configAuthInfo.AuthPath) > 0 {
-		authPathInfo, err := NewDefaultAuthLoader().LoadAuth(configAuthInfo.AuthPath)
-		if err != nil {
-			return nil, err
-		}
-		authPathConfig := makeUserIdentificationConfig(*authPathInfo)
-		mergo.Merge(mergedConfig, authPathConfig)
-	}
-
 	// blindly overwrite existing values based on precedence
 	if len(configAuthInfo.Token) > 0 {
 		mergedConfig.BearerToken = configAuthInfo.Token
@@ -178,22 +159,6 @@ func getUserIdentificationPartialConfig(configAuthInfo clientcmdapi.AuthInfo, fa
 	if len(configAuthInfo.Username) > 0 || len(configAuthInfo.Password) > 0 {
 		mergedConfig.Username = configAuthInfo.Username
 		mergedConfig.Password = configAuthInfo.Password
-	}
-
-	// if there isn't sufficient information to authenticate the user to the server, merge in ~/.kubernetes_auth.
-	if !canIdentifyUser(*mergedConfig) {
-		defaultAuthPathInfo, err := NewDefaultAuthLoader().LoadAuth(os.Getenv("HOME") + "/.kubernetes_auth")
-		// if the error is anything besides a does not exist, then fail.  Not existing is ok
-		if err != nil && !os.IsNotExist(err) {
-			return nil, err
-		}
-		if defaultAuthPathInfo != nil {
-			defaultAuthPathConfig := makeUserIdentificationConfig(*defaultAuthPathInfo)
-			previouslyMergedConfig := mergedConfig
-			mergedConfig = &client.Config{}
-			mergo.Merge(mergedConfig, defaultAuthPathConfig)
-			mergo.Merge(mergedConfig, previouslyMergedConfig)
-		}
 	}
 
 	// if there still isn't enough information to authenticate the user, try prompting
@@ -327,4 +292,33 @@ func (config DirectClientConfig) getCluster() clientcmdapi.Cluster {
 	mergo.Merge(&mergedClusterInfo, config.overrides.ClusterInfo)
 
 	return mergedClusterInfo
+}
+
+// inClusterClientConfig makes a config that will work from within a kubernetes cluster container environment.
+type inClusterClientConfig struct{}
+
+func (inClusterClientConfig) RawConfig() (clientcmdapi.Config, error) {
+	return clientcmdapi.Config{}, fmt.Errorf("inCluster environment config doesn't support multiple clusters")
+}
+
+func (inClusterClientConfig) ClientConfig() (*client.Config, error) {
+	return client.InClusterConfig()
+}
+
+func (inClusterClientConfig) Namespace() (string, error) {
+	// TODO: generic way to figure out what namespace you are running in?
+	// This way assumes you've set the POD_NAMESPACE environment variable
+	// using the downward API.
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+		return ns, nil
+	}
+	return "default", nil
+}
+
+// Possible returns true if loading an inside-kubernetes-cluster is possible.
+func (inClusterClientConfig) Possible() bool {
+	fi, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	return os.Getenv("KUBERNETES_SERVICE_HOST") != "" &&
+		os.Getenv("KUBERNETES_SERVICE_PORT") != "" &&
+		err == nil && !fi.IsDir()
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2015 Google Inc. All rights reserved.
+Copyright 2015 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -183,26 +183,48 @@ func (pf *PortForwarder) forward() error {
 	return nil
 }
 
-// listenOnPort creates a new listener on port and waits for new connections
-// in the background.
+// listenOnPort delegates tcp4 and tcp6 listener creation and waits for connections on both of these addresses.
+// If both listener creation fail, an error is raised.
 func (pf *PortForwarder) listenOnPort(port *ForwardedPort) error {
-	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port.Local))
+	errTcp4 := pf.listenOnPortAndAddress(port, "tcp4", "127.0.0.1")
+	errTcp6 := pf.listenOnPortAndAddress(port, "tcp6", "[::1]")
+	if errTcp4 != nil && errTcp6 != nil {
+		return fmt.Errorf("All listeners failed to create with the following errors: %s, %s", errTcp4, errTcp6)
+	}
+	return nil
+}
+
+// listenOnPortAndAddress delegates listener creation and waits for new connections
+// in the background f
+func (pf *PortForwarder) listenOnPortAndAddress(port *ForwardedPort, protocol string, address string) error {
+	listener, err := pf.getListener(protocol, address, port)
 	if err != nil {
 		return err
 	}
-	parts := strings.Split(listener.Addr().String(), ":")
-	localPort, err := strconv.ParseUint(parts[1], 10, 16)
-	if err != nil {
-		return fmt.Errorf("Error parsing local part: %s", err)
-	}
-	port.Local = uint16(localPort)
-	glog.Infof("Forwarding from %d -> %d", localPort, port.Remote)
-
 	pf.listeners = append(pf.listeners, listener)
-
 	go pf.waitForConnection(listener, *port)
-
 	return nil
+}
+
+// getListener creates a listener on the interface targeted by the given hostname on the given port with
+// the given protocol. protocol is in net.Listen style which basically admits values like tcp, tcp4, tcp6
+func (pf *PortForwarder) getListener(protocol string, hostname string, port *ForwardedPort) (net.Listener, error) {
+	listener, err := net.Listen(protocol, fmt.Sprintf("%s:%d", hostname, port.Local))
+	if err != nil {
+		glog.Errorf("Unable to create listener: Error %s", err)
+		return nil, err
+	}
+	listenerAddress := listener.Addr().String()
+	host, localPort, _ := net.SplitHostPort(listenerAddress)
+	localPortUInt, err := strconv.ParseUint(localPort, 10, 16)
+
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing local port: %s from %s (%s)", err, listenerAddress, host)
+	}
+	port.Local = uint16(localPortUInt)
+	glog.Infof("Forwarding from %s:%d -> %d", hostname, localPortUInt, port.Remote)
+
+	return listener, nil
 }
 
 // waitForConnection waits for new connections to listener and handles them in

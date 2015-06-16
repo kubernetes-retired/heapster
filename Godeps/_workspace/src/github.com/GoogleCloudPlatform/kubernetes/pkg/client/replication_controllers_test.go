@@ -1,5 +1,5 @@
 /*
-Copyright 2015 Google Inc. All rights reserved.
+Copyright 2015 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,9 +25,6 @@ import (
 )
 
 func getRCResourceName() string {
-	if api.PreV1Beta3(testapi.Version()) {
-		return "replicationControllers"
-	}
 	return "replicationcontrollers"
 }
 

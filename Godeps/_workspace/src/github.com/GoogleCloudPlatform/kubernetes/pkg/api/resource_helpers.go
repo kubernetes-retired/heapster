@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,6 +41,13 @@ func (self *ResourceList) Memory() *resource.Quantity {
 	return &resource.Quantity{}
 }
 
+func (self *ResourceList) Pods() *resource.Quantity {
+	if val, ok := (*self)[ResourcePods]; ok {
+		return &val
+	}
+	return &resource.Quantity{}
+}
+
 func GetContainerStatus(statuses []ContainerStatus, name string) (ContainerStatus, bool) {
 	for i := range statuses {
 		if statuses[i].Name == name {
@@ -57,4 +64,14 @@ func GetExistingContainerStatus(statuses []ContainerStatus, name string) Contain
 		}
 	}
 	return ContainerStatus{}
+}
+
+// IsPodReady retruns true if a pod is ready; false otherwise.
+func IsPodReady(pod *Pod) bool {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == PodReady && c.Status == ConditionTrue {
+			return true
+		}
+	}
+	return false
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2015 Google Inc. All rights reserved.
+Copyright 2015 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -209,6 +209,84 @@ func (s *fakeUpgradeStream) Headers() http.Header {
 	return http.Header{}
 }
 
+type GetListenerTestCase struct {
+	Hostname                string
+	Protocol                string
+	ShouldRaiseError        bool
+	ExpectedListenerAddress string
+}
+
+func TestGetListener(t *testing.T) {
+	var pf PortForwarder
+	testCases := []GetListenerTestCase{
+		{
+			Hostname:                "localhost",
+			Protocol:                "tcp4",
+			ShouldRaiseError:        false,
+			ExpectedListenerAddress: "127.0.0.1",
+		},
+		{
+			Hostname:                "127.0.0.1",
+			Protocol:                "tcp4",
+			ShouldRaiseError:        false,
+			ExpectedListenerAddress: "127.0.0.1",
+		},
+		{
+			Hostname:                "[::1]",
+			Protocol:                "tcp6",
+			ShouldRaiseError:        false,
+			ExpectedListenerAddress: "::1",
+		},
+		{
+			Hostname:         "[::1]",
+			Protocol:         "tcp4",
+			ShouldRaiseError: true,
+		},
+		{
+			Hostname:         "127.0.0.1",
+			Protocol:         "tcp6",
+			ShouldRaiseError: true,
+		},
+		{
+			// IPv6 address must be put into brackets. This test reveals this.
+			Hostname:         "::1",
+			Protocol:         "tcp6",
+			ShouldRaiseError: true,
+		},
+	}
+
+	for i, testCase := range testCases {
+		expectedListenerPort := "12345"
+		listener, err := pf.getListener(testCase.Protocol, testCase.Hostname, &ForwardedPort{12345, 12345})
+		errorRaised := err != nil
+
+		if testCase.ShouldRaiseError != errorRaised {
+			t.Errorf("Test case #%d failed: Data %v an error has been raised(%t) where it should not (or reciprocally): %v", i, testCase, testCase.ShouldRaiseError, err)
+			continue
+		}
+		if errorRaised {
+			continue
+		}
+
+		if listener == nil {
+			t.Errorf("Test case #%d did not raised an error (%t) but failed in initializing listener", i, err)
+			continue
+		}
+
+		host, port, _ := net.SplitHostPort(listener.Addr().String())
+		t.Logf("Asked a %s forward for: %s:%v, got listener %s:%s, expected: %s", testCase.Protocol, testCase.Hostname, 12345, host, port, expectedListenerPort)
+		if host != testCase.ExpectedListenerAddress {
+			t.Errorf("Test case #%d failed: Listener does not listen on exepected address: asked %v got %v", i, testCase.ExpectedListenerAddress, host)
+		}
+		if port != expectedListenerPort {
+			t.Errorf("Test case #%d failed: Listener does not listen on exepected port: asked %v got %v", i, expectedListenerPort, port)
+
+		}
+		listener.Close()
+
+	}
+}
+
 func TestForwardPorts(t *testing.T) {
 	testCases := []struct {
 		Upgrader *fakeUpgrader
@@ -313,4 +391,5 @@ func TestForwardPorts(t *testing.T) {
 			t.Fatalf("%d: expected conn closure", i)
 		}
 	}
+
 }

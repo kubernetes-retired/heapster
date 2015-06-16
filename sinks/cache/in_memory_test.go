@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/Godeps/_workspace/src/github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInitialization(t *testing.T) {

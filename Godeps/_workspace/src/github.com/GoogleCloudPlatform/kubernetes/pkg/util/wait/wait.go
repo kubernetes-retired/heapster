@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ type WaitFunc func() <-chan struct{}
 // placed on the channel and once more when the channel is closed.  If c
 // returns an error the loop ends and that error is returned, and if c returns
 // true the loop ends and nil is returned. ErrWaitTimeout will be returned if
-// the channel is closed without c every returning true.
+// the channel is closed without c ever returning true.
 func WaitFor(wait WaitFunc, c ConditionFunc) error {
 	w := wait()
 	for {
@@ -89,7 +89,12 @@ func poller(interval, timeout time.Duration) WaitFunc {
 			defer tick.Stop()
 			var after <-chan time.Time
 			if timeout != 0 {
-				after = time.After(timeout)
+				// time.After is more convenient, but it
+				// potentially leaves timers around much longer
+				// than necessary if we exit early.
+				timer := time.NewTimer(timeout)
+				after = timer.C
+				defer timer.Stop()
 			}
 			for {
 				select {

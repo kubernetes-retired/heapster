@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,6 +40,10 @@ type Scheme struct {
 	// default coverting behavior.
 	converter *Converter
 
+	// cloner stores all registered copy functions. It also has default
+	// deep copy behavior.
+	cloner *Cloner
+
 	// Indent will cause the JSON output from Encode to be indented, iff it is true.
 	Indent bool
 
@@ -60,6 +64,7 @@ func NewScheme() *Scheme {
 		typeToVersion:   map[reflect.Type]string{},
 		typeToKind:      map[reflect.Type][]string{},
 		converter:       NewConverter(),
+		cloner:          NewCloner(),
 		InternalVersion: "",
 		MetaFactory:     DefaultMetaFactory,
 	}
@@ -201,6 +206,40 @@ func (s *Scheme) AddConversionFuncs(conversionFuncs ...interface{}) error {
 	return nil
 }
 
+// Similar to AddConversionFuncs, but registers conversion functions that were
+// automatically generated.
+func (s *Scheme) AddGeneratedConversionFuncs(conversionFuncs ...interface{}) error {
+	for _, f := range conversionFuncs {
+		if err := s.converter.RegisterGeneratedConversionFunc(f); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AddDeepCopyFuncs adds functions to the list of deep copy functions.
+// Note that to copy sub-objects, you can use the conversion.Cloner object that
+// will be passed to your deep-copy function.
+func (s *Scheme) AddDeepCopyFuncs(deepCopyFuncs ...interface{}) error {
+	for _, f := range deepCopyFuncs {
+		if err := s.cloner.RegisterDeepCopyFunc(f); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Similar to AddDeepCopyFuncs, but registers deep copy functions that were
+// automatically generated.
+func (s *Scheme) AddGeneratedDeepCopyFuncs(deepCopyFuncs ...interface{}) error {
+	for _, f := range deepCopyFuncs {
+		if err := s.cloner.RegisterGeneratedDeepCopyFunc(f); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // AddStructFieldConversion allows you to specify a mechanical copy for a moved
 // or renamed struct field without writing an entire conversion function. See
 // the comment in Converter.SetStructFieldCopy for parameter details.
@@ -232,12 +271,28 @@ func (s *Scheme) AddDefaultingFuncs(defaultingFuncs ...interface{}) error {
 	return nil
 }
 
+// Recognizes returns true if the scheme is able to handle the provided version and kind
+// of an object.
+func (s *Scheme) Recognizes(version, kind string) bool {
+	m, ok := s.versionMap[version]
+	if !ok {
+		return false
+	}
+	_, ok = m[kind]
+	return ok
+}
+
 // RegisterInputDefaults sets the provided field mapping function and field matching
 // as the defaults for the provided input type.  The fn may be nil, in which case no
 // mapping will happen by default. Use this method to register a mechanism for handling
 // a specific input type in conversion, such as a map[string]string to structs.
 func (s *Scheme) RegisterInputDefaults(in interface{}, fn FieldMappingFunc, defaultFlags FieldMatchingFlags) error {
 	return s.converter.RegisterInputDefaults(in, fn, defaultFlags)
+}
+
+// Performs a deep copy of the given object.
+func (s *Scheme) DeepCopy(in interface{}) (interface{}, error) {
+	return s.cloner.DeepCopy(in)
 }
 
 // Convert will attempt to convert in into out. Both must be pointers. For easy

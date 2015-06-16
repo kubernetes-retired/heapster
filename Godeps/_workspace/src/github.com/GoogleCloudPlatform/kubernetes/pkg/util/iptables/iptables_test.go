@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -176,7 +176,7 @@ func TestEnsureRuleAlreadyExists(t *testing.T) {
 		},
 	}
 	runner := New(&fexec, ProtocolIpv4)
-	exists, err := runner.EnsureRule(TableNAT, ChainOutput, "abc", "123")
+	exists, err := runner.EnsureRule(Append, TableNAT, ChainOutput, "abc", "123")
 	if err != nil {
 		t.Errorf("expected success, got %v", err)
 	}
@@ -212,7 +212,7 @@ func TestEnsureRuleNew(t *testing.T) {
 		},
 	}
 	runner := New(&fexec, ProtocolIpv4)
-	exists, err := runner.EnsureRule(TableNAT, ChainOutput, "abc", "123")
+	exists, err := runner.EnsureRule(Append, TableNAT, ChainOutput, "abc", "123")
 	if err != nil {
 		t.Errorf("expected success, got %v", err)
 	}
@@ -245,7 +245,7 @@ func TestEnsureRuleErrorChecking(t *testing.T) {
 		},
 	}
 	runner := New(&fexec, ProtocolIpv4)
-	_, err := runner.EnsureRule(TableNAT, ChainOutput, "abc", "123")
+	_, err := runner.EnsureRule(Append, TableNAT, ChainOutput, "abc", "123")
 	if err == nil {
 		t.Errorf("expected failure")
 	}
@@ -275,7 +275,7 @@ func TestEnsureRuleErrorCreating(t *testing.T) {
 		},
 	}
 	runner := New(&fexec, ProtocolIpv4)
-	_, err := runner.EnsureRule(TableNAT, ChainOutput, "abc", "123")
+	_, err := runner.EnsureRule(Append, TableNAT, ChainOutput, "abc", "123")
 	if err == nil {
 		t.Errorf("expected failure")
 	}
