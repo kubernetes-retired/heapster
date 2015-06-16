@@ -30,6 +30,8 @@ Heapster tags each metric with the following labels.
 | container_name | User-provided name of the container or full cgroup name for system containers | v0.9            | No                  |
 | labels         | Comma-separated list of user-provided labels. Format is 'key:value'           | v0.9            | Yes                 |
 | hostname       | Hostname where the container ran                                              | v0.9            | No                  |
+| namespace_id   | UID of the namespace of a Pod                                                 | v0.14.1         | Yes                 |
+| host_id    | Cloud-provider specified or user specified Identifier of a node               | v0.14.1         | Yes                 |
 | resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | v0.11.0 | No |
 
 
