@@ -63,28 +63,28 @@ func compressionFilter(req *restful.Request, resp *restful.Response, chain *rest
 }
 
 // Labels used by the target schema. A target schema uniquely identifies a container.
-var targetLabelNames = []string{
-	sinksApi.LabelPodId,
-	sinksApi.LabelPodName,
-	sinksApi.LabelPodNamespace,
-	sinksApi.LabelPodNamespaceUID,
-	sinksApi.LabelContainerName,
-	sinksApi.LabelLabels,
-	sinksApi.LabelHostname,
-	sinksApi.LabelExternalID,
+var targetLabelNames = map[string]struct{}{
+	sinksApi.LabelPodId:           struct{}{},
+	sinksApi.LabelPodName:         struct{}{},
+	sinksApi.LabelPodNamespace:    struct{}{},
+	sinksApi.LabelContainerName:   struct{}{},
+	sinksApi.LabelLabels:          struct{}{},
+	sinksApi.LabelHostname:        struct{}{},
+	sinksApi.LabelHostID:          struct{}{},
+	sinksApi.LabelPodNamespaceUID: struct{}{},
 }
 
 // Separates target schema labels from other labels.
 func separateLabels(labels map[string]string) (map[string]string, map[string]string) {
 	targetLabels := make(map[string]string, len(targetLabelNames))
 	otherLabels := make(map[string]string, len(labels)-len(targetLabels))
-	for _, label := range targetLabelNames {
+	for label, _ := range labels {
 		// Ignore blank labels.
-		if labels[label] == "" {
+		if label == "" {
 			continue
 		}
 
-		if _, ok := labels[label]; ok {
+		if _, ok := targetLabelNames[label]; ok {
 			targetLabels[label] = labels[label]
 		} else {
 			otherLabels[label] = labels[label]

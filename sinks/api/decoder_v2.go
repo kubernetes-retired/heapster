@@ -61,7 +61,7 @@ func (self *v2Decoder) getPodLabels(pod *cache.PodElement) map[string]string {
 	labels[LabelPodName] = pod.Name
 	labels[LabelLabels] = LabelsToString(pod.Labels, ",")
 	labels[LabelHostname] = pod.Hostname
-	labels[LabelExternalID] = pod.ExternalID
+	labels[LabelHostID] = pod.ExternalID
 
 	return labels
 }
@@ -93,7 +93,7 @@ func (self *v2Decoder) getContainerMetrics(container *cache.ContainerElement, la
 		return nil
 	}
 	labels[LabelContainerName] = container.Name
-	labels[LabelExternalID] = container.ExternalID
+	labels[LabelHostID] = container.ExternalID
 	// One metric value per data point.
 	var result []Timeseries
 	labelsAsString := LabelsToString(labels, ",")
