@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.14.1 (6-15-2015)
+- Expose External ID of nodes as a label and namespace UID as a label.
+- Fix bug in handling metric specific labels.
+
 ## 0.14.0 (6-9-2015)
 - Heapster exposes a REST endpoint that serves the metrics being pushed to sinks.
 - Support for service accounts.
