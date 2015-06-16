@@ -22,11 +22,12 @@ import (
 )
 
 type Metadata struct {
-	Name      string
-	Namespace string
-	UID       string
-	Hostname  string
-	Labels    map[string]string
+	Name         string
+	Namespace    string
+	NamespaceUID string
+	UID          string
+	Hostname     string
+	Labels       map[string]string
 }
 
 type ContainerMetricElement struct {

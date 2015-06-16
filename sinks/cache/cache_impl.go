@@ -95,11 +95,12 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 		if !ok {
 			pe = rc.newpodElement()
 			pe.Metadata = Metadata{
-				Name:      pod.Name,
-				Namespace: pod.Namespace,
-				UID:       pod.ID,
-				Hostname:  pod.Hostname,
-				Labels:    pod.Labels,
+				Name:         pod.Name,
+				Namespace:    pod.Namespace,
+				NamespaceUID: pod.NamespaceUID,
+				UID:          pod.ID,
+				Hostname:     pod.Hostname,
+				Labels:       pod.Labels,
 			}
 			rc.pods[pod.ID] = pe
 		}

@@ -56,7 +56,6 @@ func NewKubelet(kubeletConfig *kube_client.KubeletConfig) (Kubelet, error) {
 		Transport: transport,
 		Timeout:   kubeletConfig.HTTPTimeout,
 	}
-
 	return &kubeletSource{
 		config: kubeletConfig,
 		client: c,

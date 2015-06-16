@@ -15,13 +15,14 @@
 package api
 
 const (
-	LabelPodId         = "pod_id"
-	LabelPodName       = "pod_name"
-	LabelPodNamespace  = "pod_namespace"
-	LabelContainerName = "container_name"
-	LabelLabels        = "labels"
-	LabelHostname      = "hostname"
-	LabelResourceID    = "resource_id"
+	LabelPodId           = "pod_id"
+	LabelPodName         = "pod_name"
+	LabelPodNamespace    = "pod_namespace"
+	LabelPodNamespaceUID = "namespace_id"
+	LabelContainerName   = "container_name"
+	LabelLabels          = "labels"
+	LabelHostname        = "hostname"
+	LabelResourceID      = "resource_id"
 )
 
 // TODO(vmarmol): Things we should consider adding (note that we only get 10 labels):
@@ -51,6 +52,10 @@ var allLabels = []LabelDescriptor{
 	{
 		Key:         LabelPodNamespace,
 		Description: "The namespace of the pod",
+	},
+	{
+		Key:         LabelPodNamespaceUID,
+		Description: "The UID of namespace of the pod",
 	},
 	{
 		Key:         LabelResourceID,

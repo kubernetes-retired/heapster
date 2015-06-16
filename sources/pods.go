@@ -17,14 +17,17 @@ package sources
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/cache"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
+	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
+	kcache "github.com/GoogleCloudPlatform/kubernetes/pkg/client/cache"
+	kframework "github.com/GoogleCloudPlatform/kubernetes/pkg/controller/framework"
+	kSelector "github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/golang/glog"
 )
 
@@ -40,16 +43,18 @@ type podsApi interface {
 }
 
 type realPodsApi struct {
-	client *client.Client
+	client *kclient.Client
 	// a means to list all scheduled pods
-	podLister *cache.StoreToPodLister
-	reflector *cache.Reflector
-	stopChan  chan struct{}
+	podLister      *kcache.StoreToPodLister
+	namespaceStore kcache.Store
+	reflector      *kcache.Reflector
+	stopChan       chan struct{}
 }
 
 type podNodePair struct {
-	pod      *kube_api.Pod
-	nodeInfo *nodes.Info
+	pod       *kapi.Pod
+	nodeInfo  *nodes.Info
+	namespace *kapi.Namespace
 }
 
 func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
@@ -59,6 +64,7 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 		PodMetadata: api.PodMetadata{
 			Name:           pod.Name,
 			Namespace:      pod.Namespace,
+			NamespaceUID:   string(podNodePair.namespace.UID),
 			ID:             string(pod.UID),
 			Hostname:       pod.Spec.NodeName,
 			HostPublicIP:   pod.Status.HostIP,
@@ -112,7 +118,20 @@ func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	// TODO(vishh): Avoid this loop by setting a node selector on the watcher.
 	for i, pod := range pods {
 		if nodeInfo, ok := nodeList.Items[nodes.Host(pod.Spec.NodeName)]; ok {
-			selectedPods = append(selectedPods, podNodePair{pods[i], &nodeInfo})
+			nsObj, exists, err := self.namespaceStore.GetByKey(pod.Namespace)
+			if err != nil {
+				return []api.Pod{}, err
+			}
+			if !exists {
+				glog.V(2).Infof("Ignoring pod %s with namespace %s since namespace object was not found", pod.Name, pod.Namespace)
+				continue
+			}
+			ns, ok := nsObj.(*kapi.Namespace)
+			if !ok {
+				glog.V(2).Infof("Ignoring pod %s with namespace %s since casting to namespace object failed - %T, %v", pod.Name, pod.Namespace, ns, ns)
+				continue
+			}
+			selectedPods = append(selectedPods, podNodePair{pods[i], &nodeInfo, ns})
 		} else {
 			glog.V(2).Infof("pod %q with host %q and hostip %q not found in nodeList", pod.Name, pod.Spec.NodeName, pod.Status.HostIP)
 		}
@@ -126,26 +145,39 @@ func (self *realPodsApi) DebugInfo() string {
 	return ""
 }
 
-func newPodsApi(client *client.Client) podsApi {
+func createNamespaceLW(kubeClient *kclient.Client) *kcache.ListWatch {
+	return kcache.NewListWatchFromClient(kubeClient, "namespaces", kapi.NamespaceAll, kSelector.Everything())
+}
+
+const resyncPeriod = time.Minute
+
+func newPodsApi(client *kclient.Client) podsApi {
 	// Extend the selector to include specific nodes to monitor
 	// or provide an API to update the nodes to monitor.
-	selector, err := fields.ParseSelector("spec.host!=")
+	selector, err := kSelector.ParseSelector("spec.host!=")
 	if err != nil {
 		panic(err)
 	}
 
-	lw := cache.NewListWatchFromClient(client, "pods", kube_api.NamespaceAll, selector)
-	podLister := &cache.StoreToPodLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
+	lw := kcache.NewListWatchFromClient(client, "pods", kapi.NamespaceAll, selector)
+	podLister := &kcache.StoreToPodLister{Store: kcache.NewStore(kcache.MetaNamespaceKeyFunc)}
 	// Watch and cache all running pods.
-	reflector := cache.NewReflector(lw, &kube_api.Pod{}, podLister.Store, 0)
+	reflector := kcache.NewReflector(lw, &kapi.Pod{}, podLister.Store, 0)
 	stopChan := make(chan struct{})
 	reflector.RunUntil(stopChan)
+	nStore, nController := kframework.NewInformer(
+		createNamespaceLW(client),
+		&kapi.Namespace{},
+		resyncPeriod,
+		kframework.ResourceEventHandlerFuncs{})
+	go nController.Run(util.NeverStop)
 
 	podsApi := &realPodsApi{
-		client:    client,
-		podLister: podLister,
-		stopChan:  stopChan,
-		reflector: reflector,
+		client:         client,
+		podLister:      podLister,
+		stopChan:       stopChan,
+		reflector:      reflector,
+		namespaceStore: nStore,
 	}
 
 	return podsApi
