@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"errors"
 	"github.com/GoogleCloudPlatform/heapster/api/schema/info"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	"github.com/golang/glog"
@@ -23,6 +24,10 @@ import (
 )
 
 func NewCluster() Cluster {
+	return NewRealCluster()
+}
+
+func NewRealCluster() *realCluster {
 	cinfo := info.ClusterInfo{
 		InfoType:   newInfoType(nil, nil),
 		Namespaces: make(map[string]*info.NamespaceInfo),
@@ -43,38 +48,40 @@ func (rc *realCluster) GetAllClusterData() (*info.ClusterInfo, time.Time, error)
 	return &rc.ClusterInfo, rc.timestamp, nil
 }
 
-func (rc *realCluster) Update(c cache.Cache) error {
+func (rc *realCluster) Update(c *cache.Cache) error {
 	// Gets new data from cache and updates data structure
 	var zero time.Time
 
 	glog.V(2).Infoln("Schema Update operation started")
 
+	actual_cache := *c // Dereference the cache pointer to access cache methods
+
 	// Invoke cache interface since the last timestamp
-	nodes := c.GetNodes(rc.timestamp, zero)
+	nodes := actual_cache.GetNodes(rc.timestamp, zero)
 	latest_time := rc.timestamp
 
 	for _, node := range nodes {
 		timestamp, err := rc.updateNode(node)
 		if err != nil {
-			glog.Fatalf("Failed to Update Node Information: %s\n", err)
+			glog.Infof("Failed to Update Node Information: %s\n", err)
 		}
 		latest_time = maxTimestamp(latest_time, timestamp)
 	}
 
-	pods := c.GetPods(rc.timestamp, zero)
+	pods := actual_cache.GetPods(rc.timestamp, zero)
 	for _, pod := range pods {
 		timestamp, err := rc.updatePod(pod)
 		if err != nil {
-			glog.Fatalf("Failed to Update Pod Information: %s\n", err)
+			glog.Infof("Failed to Update Pod Information: %s\n", err)
 		}
 		latest_time = maxTimestamp(latest_time, timestamp)
 	}
 
-	free_containers := c.GetFreeContainers(rc.timestamp, zero)
+	free_containers := actual_cache.GetFreeContainers(rc.timestamp, zero)
 	for _, ce := range free_containers {
 		timestamp, err := rc.updateFreeContainer(ce)
 		if err != nil {
-			glog.Fatalf("Failed to Update Free Container Information: %s\n", err)
+			glog.Infof("Failed to Update Free Container Information: %s\n", err)
 		}
 		latest_time = maxTimestamp(latest_time, timestamp)
 	}
@@ -96,8 +103,10 @@ func (rc *realCluster) updateTime(new_time time.Time) {
 func (rc *realCluster) updateNode(node_container *cache.ContainerElement) (time.Time, error) {
 	// Inserts or updates Node information from "machine"-tagged containers
 	name := node_container.Name
+	var err error
 	if name != "machine" {
-		glog.Fatalf("Received node-level container with unexpected name: %s\n", name)
+		err := errors.New("Received node-level container with unexpected name")
+		return time.Time{}, err
 	}
 
 	hostname := node_container.Hostname
@@ -184,8 +193,6 @@ func (rc *realCluster) addPod(pod_name string, pod_uid string, namespace *info.N
 		}
 		namespace.Pods[pod_name] = pod_ptr
 		node.Pods[pod_name] = pod_ptr
-	} else {
-		glog.Fatalf("Pod name already exists in either namespace or node maps")
 	}
 
 	return pod_ptr
@@ -216,7 +223,7 @@ func (rc *realCluster) updatePod(pod *cache.PodElement) (time.Time, error) {
 	for _, ce := range pod.Containers {
 		new_time, err := rc.updatePodContainer(pod_ptr, ce)
 		if err != nil {
-			glog.Fatalf("Failed to update pod container")
+			return time.Time{}, err
 		}
 		latest_time = maxTimestamp(latest_time, new_time)
 	}
@@ -228,7 +235,7 @@ func (rc *realCluster) updatePodContainer(pod_info *info.PodInfo, ce *cache.Cont
 	// Appends new data in a new or existing ContainerInfo under a specified PodInfo
 	// Assumes Cluster lock is already taken
 
-	cinfo := rc.addContainer(ce.Name, &pod_info.Containers)
+	cinfo := addContainerToMap(ce.Name, &pod_info.Containers)
 	latest_time, err := updateInfoType(&cinfo.InfoType, ce)
 	return latest_time, err
 }
@@ -239,26 +246,7 @@ func (rc *realCluster) updateFreeContainer(ce *cache.ContainerElement) (time.Tim
 	defer rc.lock.Unlock()
 
 	node := rc.addNode(ce.Hostname)
-	cinfo := rc.addContainer(ce.Name, &node.FreeContainers)
+	cinfo := addContainerToMap(ce.Name, &node.FreeContainers)
 	latest_time, err := updateInfoType(&cinfo.InfoType, ce)
 	return latest_time, err
-}
-
-func (rc *realCluster) addContainer(container_name string, target_map *map[string]*info.ContainerInfo) *info.ContainerInfo {
-	//	Creates or finds a ContainerInfo element under a *map[string]*ContainerInfo
-	//	Assumes Cluster lock is already taken
-	// TODO: remove from realCluster, no need to be a method
-	var container_ptr *info.ContainerInfo
-
-	dict := *target_map
-	if val, ok := dict[container_name]; ok {
-		// A container already exists under that name, return pointer
-		container_ptr = val
-	} else {
-		container_ptr = &info.ContainerInfo{
-			InfoType: newInfoType(nil, nil),
-		}
-		dict[container_name] = container_ptr
-	}
-	return container_ptr
 }

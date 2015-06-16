@@ -22,7 +22,7 @@ import (
 )
 
 type Cluster interface {
-	Update(cache.Cache) error
+	Update(*cache.Cache) error
 
 	GetAllClusterData() (*info.ClusterInfo, time.Time, error)
 	/*

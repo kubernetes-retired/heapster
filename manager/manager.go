@@ -118,7 +118,7 @@ func (rm *realManager) Housekeep() {
 		glog.V(1).Infof("housekeeping resulted in following errors: %v", errors)
 	}
 
-	rm.cluster.Update(rm.cache)
+	rm.cluster.Update(&rm.cache)
 }
 
 func (rm *realManager) ExportMetrics() ([]*sink_api.Point, error) {

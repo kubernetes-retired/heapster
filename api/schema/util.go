@@ -15,9 +15,11 @@
 package schema
 
 import (
+	"errors"
+	"time"
+
 	"github.com/GoogleCloudPlatform/heapster/api/schema/info"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	"time"
 )
 
 func maxTimestamp(first time.Time, second time.Time) time.Time {
@@ -33,6 +35,15 @@ func updateInfoType(info *info.InfoType, ce *cache.ContainerElement) (time.Time,
 	//  Returns the max timestamp in the resulting timeseries slice
 
 	var latest_time time.Time
+	var err error
+
+	if ce == nil {
+		err = errors.New("Cannot update InfoType from Nil ContainerElement")
+		return latest_time, err
+	} else if info == nil {
+		err = errors.New("Cannot update Nil InfoType")
+		return latest_time, err
+	}
 
 	new_metrics, err := parseMetrics(ce.Metrics)
 
@@ -54,8 +65,6 @@ func updateInfoType(info *info.InfoType, ce *cache.ContainerElement) (time.Time,
 		}
 	}
 	// TODO: manage length of historical data
-
-	// Copy labels from the ContainerElement to InfoType
 
 	return latest_time, err
 }
@@ -83,7 +92,10 @@ func addMetricToMap(metric string, timestamp time.Time, value uint64, dict_ref *
 			Value:     value,
 		})
 	} else {
-		new_timeseries := &info.MetricTimeseries{timestamp, value}
+		new_timeseries := &info.MetricTimeseries{
+			Timestamp: timestamp,
+			Value:     value,
+		}
 		dict[metric] = []*info.MetricTimeseries{new_timeseries}
 	}
 	return nil
@@ -96,14 +108,21 @@ func parseMetrics(cmes []*cache.ContainerMetricElement) (map[string][]*info.Metr
 
 	metrics := make(map[string][]*info.MetricTimeseries)
 
+	if cmes == nil || len(cmes) == 0 {
+		err = errors.New("Cannot parse empty slice of containerMetricElement")
+		return nil, err
+	}
+
 	for _, cme := range cmes {
+		if cme == nil {
+			err = errors.New("Nil CME found in slice")
+			return nil, err
+		}
 		timestamp := cme.Stats.Timestamp
 		if cme.Spec.HasCpu {
 			// Add CPU limit
 			cpu_limit := cme.Spec.Cpu.Limit
-			if cpu_limit > 0 {
-				addMetricToMap("cpu/limit", timestamp, cpu_limit, &metrics)
-			}
+			addMetricToMap("cpu/limit", timestamp, cpu_limit, &metrics)
 
 			// Add CPU metric
 			cpu_usage := cme.Stats.Cpu.Usage.Total
@@ -113,17 +132,16 @@ func parseMetrics(cmes []*cache.ContainerMetricElement) (map[string][]*info.Metr
 		if cme.Spec.HasMemory {
 			// Add Memory Limit metric
 			mem_limit := cme.Spec.Memory.Limit
-			if mem_limit > 0 {
-				// TODO: -1 values from cache?
-				addMetricToMap("memory/limit", timestamp, mem_limit, &metrics)
-			}
+
+			// TODO: -1 values from cache?
+			addMetricToMap("memory/limit", timestamp, mem_limit, &metrics)
 
 			// Add Memory Usage metric
 			mem_usage := cme.Stats.Memory.Usage
 			addMetricToMap("memory/usage", timestamp, mem_usage, &metrics)
 
 			// Add Memory Working Set metric
-			mem_working := cme.Stats.Memory.Usage
+			mem_working := cme.Stats.Memory.WorkingSet
 			addMetricToMap("memory/working", timestamp, mem_working, &metrics)
 		}
 		if cme.Spec.HasFilesystem {
@@ -141,4 +159,22 @@ func parseMetrics(cmes []*cache.ContainerMetricElement) (map[string][]*info.Metr
 		}
 	}
 	return metrics, err
+}
+
+func addContainerToMap(container_name string, target_map *map[string]*info.ContainerInfo) *info.ContainerInfo {
+	//	Creates or finds a ContainerInfo element under a *map[string]*ContainerInfo
+	//	Assumes Cluster lock is already taken
+	var container_ptr *info.ContainerInfo
+
+	dict := *target_map
+	if val, ok := dict[container_name]; ok {
+		// A container already exists under that name, return pointer
+		container_ptr = val
+	} else {
+		container_ptr = &info.ContainerInfo{
+			InfoType: newInfoType(nil, nil),
+		}
+		dict[container_name] = container_ptr
+	}
+	return container_ptr
 }
