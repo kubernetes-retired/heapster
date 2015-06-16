@@ -416,7 +416,7 @@ const (
 )
 
 func fullLabelName(name string) string {
-	if !strings.Contains(name, "custom.cloudmonitoring.googleapis.com/") {
+	if !strings.Contains(name, "googleapis.com/") {
 		return fmt.Sprintf("custom.cloudmonitoring.googleapis.com/%s/label/%s", metricDomain, name)
 	}
 	return name

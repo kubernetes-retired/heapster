@@ -59,7 +59,7 @@ func getContainer(name string) source_api.Container {
 	}
 	return source_api.Container{
 		Name:  name,
-		Spec:  containerSpec,
+		Spec:  source_api.ContainerSpec{ContainerSpec: containerSpec},
 		Stats: containerStats,
 	}
 }

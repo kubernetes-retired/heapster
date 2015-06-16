@@ -15,14 +15,16 @@
 package api
 
 const (
-	LabelPodId           = "pod_id"
-	LabelPodName         = "pod_name"
-	LabelPodNamespace    = "pod_namespace"
-	LabelPodNamespaceUID = "namespace_id"
-	LabelContainerName   = "container_name"
-	LabelLabels          = "labels"
-	LabelHostname        = "hostname"
-	LabelResourceID      = "resource_id"
+	LabelPodId               = "pod_id"
+	LabelPodName             = "pod_name"
+	LabelPodNamespace        = "pod_namespace"
+	LabelPodNamespaceUID     = "namespace_id"
+	LabelContainerName       = "container_name"
+	LabelLabels              = "labels"
+	LabelHostname            = "hostname"
+	LabelResourceID          = "resource_id"
+	LabelComputeResourceID   = "compute.googleapis.com/resource_id"
+	LabelComputeResourceType = "compute.googleapis.com/resource_type"
 )
 
 // TODO(vmarmol): Things we should consider adding (note that we only get 10 labels):
@@ -60,6 +62,14 @@ var allLabels = []LabelDescriptor{
 	{
 		Key:         LabelResourceID,
 		Description: "Identifier(s) specific to a metric",
+	},
+	{
+		Key:         LabelComputeResourceID,
+		Description: "Resource id for machines (GCE, used for auto-scaling)",
+	},
+	{
+		Key:         LabelComputeResourceType,
+		Description: "Resource type for machines (GCE, used for auto-scaling)",
 	},
 }
 

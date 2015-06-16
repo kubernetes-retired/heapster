@@ -31,7 +31,7 @@ type Metadata struct {
 }
 
 type ContainerMetricElement struct {
-	Spec  *cadvisor_api.ContainerSpec
+	Spec  *source_api.ContainerSpec
 	Stats *cadvisor_api.ContainerStats
 }
 

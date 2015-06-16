@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
+	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +45,7 @@ func TestFuzzInputV2(t *testing.T) {
 
 func getContainerElement(name string) *cache.ContainerElement {
 	f := fuzz.New().NumElements(1, 1).NilChance(0)
-	containerSpec := &cadvisor_api.ContainerSpec{
+	containerSpec := cadvisor_api.ContainerSpec{
 		CreationTime:  time.Unix(fakeContainerCreationTime, 0),
 		HasCpu:        true,
 		HasMemory:     true,
@@ -66,7 +67,10 @@ func getContainerElement(name string) *cache.ContainerElement {
 		},
 		Metrics: []*cache.ContainerMetricElement{
 			{
-				Spec:  containerSpec,
+				Spec: &source_api.ContainerSpec{
+					ContainerSpec: containerSpec,
+					IsNode:        true,
+				},
 				Stats: containerStats[0],
 			},
 		},
@@ -197,8 +201,16 @@ func TestRealInputV2(t *testing.T) {
 				name, ok := entry.Point.Labels[LabelResourceID]
 				require.True(t, ok)
 				assert.Equal(t, expectedFsStats[name].limit, value)
+			case "cpu/node_usage":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				assert.Equal(t, stats.Cpu.Usage.Total, value)
+			case "memory/node_usage":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				assert.Equal(t, stats.Memory.Usage, value)
 			default:
-				t.Errorf("unexpected metric type")
+				t.Errorf("unexpected metric type %s", entry.Point.Name)
 			}
 		}
 	}

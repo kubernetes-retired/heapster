@@ -49,4 +49,8 @@ var gcmRateMetrics = map[string]rateMetric{
 		name:        "network/tx_errors_rate",
 		description: "Rate of errors transmitting over the network in errors per second",
 	},
+	"cpu/node_usage": rateMetric{
+		name:        "cpu/node_usage_rate",
+		description: "Rate of total CPU usage in millicores per second for a node",
+	},
 }
