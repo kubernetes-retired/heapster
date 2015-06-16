@@ -89,7 +89,7 @@ func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string, erro
 			}
 		}
 	}
-	nodeInfo.ResourceId = node.Spec.ExternalID
+	nodeInfo.ExternalID = node.Spec.ExternalID
 	return nodeInfo, hostname, nodeErr
 }
 

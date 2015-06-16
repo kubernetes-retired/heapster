@@ -69,7 +69,7 @@ func getContainerElement(name string) *cache.ContainerElement {
 			{
 				Spec: &source_api.ContainerSpec{
 					ContainerSpec: containerSpec,
-					HasResourceId: true,
+					IsNode:        true,
 				},
 				Stats: containerStats[0],
 			},

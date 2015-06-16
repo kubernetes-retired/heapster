@@ -58,8 +58,8 @@ func (a *AggregateData) Merge(b *AggregateData) {
 
 type ContainerSpec struct {
 	cadvisor.ContainerSpec
-	HasResourceId bool
-	ResourceId    string
+	IsNode     bool
+	ExternalID string
 }
 
 type Container struct {

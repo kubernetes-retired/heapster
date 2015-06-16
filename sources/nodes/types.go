@@ -29,7 +29,7 @@ type Info struct {
 	// restricted behind firewalls.
 	InternalIP string `json:"internal_ip,omitempty"`
 	// External ID of the node (e.g. assigned by a cloud provider)
-	ResourceId string
+	ExternalID string
 }
 
 // NodeList contains the nodes that an instance of heapster is required to

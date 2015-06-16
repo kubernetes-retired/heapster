@@ -72,7 +72,7 @@ func getContainer(name string) source_api.Container {
 		Name: name,
 		Spec: source_api.ContainerSpec{
 			ContainerSpec: containerSpec,
-			HasResourceId: true,
+			IsNode:        true,
 		},
 		Stats: containerStats,
 	}

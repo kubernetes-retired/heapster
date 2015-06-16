@@ -266,13 +266,13 @@ var statMetrics = []SupportedStatMetric{
 			Units:       UnitsNanoseconds,
 		},
 		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasCpu && spec.HasResourceId
+			return spec.HasCpu && spec.IsNode
 		},
 		GetValue: func(spec *source_api.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
 			result := internalPoint{
 				value: int64(stat.Cpu.Usage.Total),
 				labels: map[string]string{
-					LabelComputeResourceID:   spec.ResourceId,
+					LabelComputeResourceID:   spec.ExternalID,
 					LabelComputeResourceType: "instance",
 				},
 			}
@@ -288,13 +288,13 @@ var statMetrics = []SupportedStatMetric{
 			Units:       UnitsBytes,
 		},
 		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasMemory && spec.HasResourceId
+			return spec.HasMemory && spec.IsNode
 		},
 		GetValue: func(spec *source_api.ContainerSpec, stat *cadvisor.ContainerStats) []internalPoint {
 			result := internalPoint{
 				value: int64(stat.Memory.Usage),
 				labels: map[string]string{
-					LabelComputeResourceID:   spec.ResourceId,
+					LabelComputeResourceID:   spec.ExternalID,
 					LabelComputeResourceType: "instance",
 				},
 			}
