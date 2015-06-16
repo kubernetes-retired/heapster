@@ -12,29 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package api
+package v1
 
 import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
+	"github.com/GoogleCloudPlatform/heapster/util"
 )
 
-type DecoderV2 interface {
+type Decoder interface {
 	// Timeseries returns the metrics found in input as a timeseries slice.
 	TimeseriesFromPods([]*cache.PodElement) ([]Timeseries, error)
 	TimeseriesFromContainers([]*cache.ContainerElement) ([]Timeseries, error)
 }
 
-type v2Decoder struct {
-	supportedStatMetrics []SupportedStatMetric
+type timeseriesKey struct {
+	// Name of the metric.
+	Name string
 
+	// Mangled labels on the metric.
+	Labels string
+}
+
+type decoder struct {
+	supportedStatMetrics []SupportedStatMetric
 	// TODO: Garbage collect data.
 	// TODO: Deprecate this once we the core is fixed to never export duplicate stats.
 	lastExported map[timeseriesKey]time.Time
 }
 
-func (self *v2Decoder) TimeseriesFromPods(pods []*cache.PodElement) ([]Timeseries, error) {
+func (self *decoder) TimeseriesFromPods(pods []*cache.PodElement) ([]Timeseries, error) {
 	var result []Timeseries
 	// Format metrics and push them.
 	for index := range pods {
@@ -42,31 +50,31 @@ func (self *v2Decoder) TimeseriesFromPods(pods []*cache.PodElement) ([]Timeserie
 	}
 	return result, nil
 }
-func (self *v2Decoder) TimeseriesFromContainers(containers []*cache.ContainerElement) ([]Timeseries, error) {
+func (self *decoder) TimeseriesFromContainers(containers []*cache.ContainerElement) ([]Timeseries, error) {
 	labels := make(map[string]string)
 	var result []Timeseries
 	for index := range containers {
-		labels[LabelHostname] = containers[index].Hostname
-		result = append(result, self.getContainerMetrics(containers[index], copyLabels(labels))...)
+		labels[LabelHostname.Key] = containers[index].Hostname
+		result = append(result, self.getContainerMetrics(containers[index], util.CopyLabels(labels))...)
 	}
 	return result, nil
 }
 
 // Generate the labels.
-func (self *v2Decoder) getPodLabels(pod *cache.PodElement) map[string]string {
+func (self *decoder) getPodLabels(pod *cache.PodElement) map[string]string {
 	labels := make(map[string]string)
-	labels[LabelPodId] = pod.UID
-	labels[LabelPodNamespace] = pod.Namespace
-	labels[LabelPodNamespaceUID] = pod.NamespaceUID
-	labels[LabelPodName] = pod.Name
-	labels[LabelLabels] = LabelsToString(pod.Labels, ",")
-	labels[LabelHostname] = pod.Hostname
-	labels[LabelHostID] = pod.ExternalID
+	labels[LabelPodId.Key] = pod.UID
+	labels[LabelPodNamespace.Key] = pod.Namespace
+	labels[LabelPodNamespaceUID.Key] = pod.NamespaceUID
+	labels[LabelPodName.Key] = pod.Name
+	labels[LabelLabels.Key] = util.LabelsToString(pod.Labels, ",")
+	labels[LabelHostname.Key] = pod.Hostname
+	labels[LabelHostID.Key] = pod.ExternalID
 
 	return labels
 }
 
-func (self *v2Decoder) getPodMetrics(pod *cache.PodElement) []Timeseries {
+func (self *decoder) getPodMetrics(pod *cache.PodElement) []Timeseries {
 	// Break the individual metrics from the container statistics.
 	result := []Timeseries{}
 	if pod == nil || pod.Containers == nil {
@@ -80,25 +88,17 @@ func (self *v2Decoder) getPodMetrics(pod *cache.PodElement) []Timeseries {
 	return result
 }
 
-func copyLabels(labels map[string]string) map[string]string {
-	c := make(map[string]string, len(labels))
-	for key, val := range labels {
-		c[key] = val
-	}
-	return c
-}
-
-func (self *v2Decoder) getContainerMetrics(container *cache.ContainerElement, labels map[string]string) []Timeseries {
+func (self *decoder) getContainerMetrics(container *cache.ContainerElement, labels map[string]string) []Timeseries {
 	if container == nil {
 		return nil
 	}
-	labels[LabelContainerName] = container.Name
-	if _, exists := labels[LabelHostID]; !exists {
-		labels[LabelHostID] = container.ExternalID
+	labels[LabelContainerName.Key] = container.Name
+	if _, exists := labels[LabelHostID.Key]; !exists {
+		labels[LabelHostID.Key] = container.ExternalID
 	}
 	// One metric value per data point.
 	var result []Timeseries
-	labelsAsString := LabelsToString(labels, ",")
+	labelsAsString := util.LabelsToString(labels, ",")
 	for _, metric := range container.Metrics {
 		if metric == nil || metric.Spec == nil || metric.Stats == nil {
 			continue
@@ -127,8 +127,8 @@ func (self *v2Decoder) getContainerMetrics(container *cache.ContainerElement, la
 				}
 				points := supported.GetValue(metric.Spec, metric.Stats)
 				for _, point := range points {
-					labels := copyLabels(labels)
-					for name, value := range point.labels {
+					labels := util.CopyLabels(labels)
+					for name, value := range point.Labels {
 						labels[name] = value
 					}
 					timeseries := Timeseries{
@@ -138,7 +138,7 @@ func (self *v2Decoder) getContainerMetrics(container *cache.ContainerElement, la
 							Labels: labels,
 							Start:  startTime.Round(time.Second),
 							End:    metric.Stats.Timestamp,
-							Value:  point.value,
+							Value:  point.Value,
 						},
 					}
 					result = append(result, timeseries)
@@ -152,9 +152,9 @@ func (self *v2Decoder) getContainerMetrics(container *cache.ContainerElement, la
 	return result
 }
 
-func NewV2Decoder() DecoderV2 {
+func NewDecoder() Decoder {
 	// Get supported metrics.
-	return &v2Decoder{
+	return &decoder{
 		supportedStatMetrics: statMetrics,
 		lastExported:         make(map[timeseriesKey]time.Time),
 	}

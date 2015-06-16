@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	fuzz "github.com/google/gofuzz"
@@ -34,7 +35,7 @@ const (
 )
 
 func TestEmptyInput(t *testing.T) {
-	timeseries, err := NewV1Decoder().Timeseries(source_api.AggregateData{})
+	timeseries, err := NewDecoder().Timeseries(source_api.AggregateData{})
 	assert.NoError(t, err)
 	assert.Empty(t, timeseries)
 }
@@ -93,11 +94,6 @@ func getFsStats(input source_api.AggregateData) map[string]fsStats {
 }
 
 func TestRealInput(t *testing.T) {
-	timeSince = func(t time.Time) time.Duration {
-		return time.Unix(fakeCurrentTime, 0).Sub(t)
-	}
-	defer func() { timeSince = time.Since }()
-
 	containers := []source_api.Container{
 		getContainer("container1"),
 	}
@@ -128,22 +124,23 @@ func TestRealInput(t *testing.T) {
 		Containers: containers,
 		Machine:    containers,
 	}
-	timeseries, err := NewV1Decoder().Timeseries(input)
+	timeseries, err := NewDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 
 	expectedFsStats := getFsStats(input)
 
-	metrics := make(map[string][]Timeseries)
+	metrics := make(map[string][]sink_api.Timeseries)
 	for index := range timeseries {
 		series, ok := metrics[timeseries[index].Point.Name]
 		if !ok {
-			series = make([]Timeseries, 0)
+			series = make([]sink_api.Timeseries, 0)
 		}
 		series = append(series, timeseries[index])
 		metrics[timeseries[index].Point.Name] = series
 	}
 
+	statMetrics := sink_api.SupportedStatMetrics()
 	for index := range statMetrics {
 		series, ok := metrics[statMetrics[index].MetricDescriptor.Name]
 		require.True(t, ok)
@@ -153,10 +150,8 @@ func TestRealInput(t *testing.T) {
 			stats := containers[0].Stats[0]
 			switch entry.Point.Name {
 			case "uptime":
-				value, ok := entry.Point.Value.(int64)
+				_, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				expected := timeSince(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()
-				assert.Equal(t, expected, value)
 			case "cpu/usage":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
@@ -196,7 +191,7 @@ func TestRealInput(t *testing.T) {
 			case "filesystem/usage":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				name, ok := entry.Point.Labels[LabelResourceID]
+				name, ok := entry.Point.Labels[sink_api.LabelResourceID.Key]
 				require.True(t, ok)
 				assert.Equal(t, expectedFsStats[name].usage, value)
 			case "cpu/limit":
@@ -211,7 +206,7 @@ func TestRealInput(t *testing.T) {
 			case "filesystem/limit":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				name, ok := entry.Point.Labels[LabelResourceID]
+				name, ok := entry.Point.Labels[sink_api.LabelResourceID.Key]
 				require.True(t, ok)
 				assert.Equal(t, expectedFsStats[name].limit, value)
 			default:
@@ -224,7 +219,7 @@ func TestRealInput(t *testing.T) {
 func TestFuzzInput(t *testing.T) {
 	var input source_api.AggregateData
 	fuzz.New().Fuzz(&input)
-	timeseries, err := NewV1Decoder().Timeseries(input)
+	timeseries, err := NewDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 }
@@ -246,16 +241,16 @@ func TestPodLabelsProcessing(t *testing.T) {
 	}
 
 	expectedLabels := map[string]string{
-		LabelPodId:         "123",
-		LabelPodNamespace:  "test",
-		LabelLabels:        getLabelsAsString(podLabels),
-		LabelHostname:      "1.2.3.4",
-		LabelContainerName: "blah",
+		sink_api.LabelPodId.Key:         "123",
+		sink_api.LabelPodNamespace.Key:  "test",
+		sink_api.LabelLabels.Key:        getLabelsAsString(podLabels),
+		sink_api.LabelHostname.Key:      "1.2.3.4",
+		sink_api.LabelContainerName.Key: "blah",
 	}
 	input := source_api.AggregateData{
 		Pods: pods,
 	}
-	timeseries, err := NewV1Decoder().Timeseries(input)
+	timeseries, err := NewDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 	// ignore ResourceID label.
@@ -268,8 +263,8 @@ func TestPodLabelsProcessing(t *testing.T) {
 
 func TestContainerLabelsProcessing(t *testing.T) {
 	expectedLabels := map[string]string{
-		LabelHostname:      "1.2.3.4",
-		LabelContainerName: "blah",
+		sink_api.LabelHostname.Key:      "1.2.3.4",
+		sink_api.LabelContainerName.Key: "blah",
 	}
 	container := getContainer("blah")
 	container.Hostname = "1.2.3.4"
@@ -277,7 +272,7 @@ func TestContainerLabelsProcessing(t *testing.T) {
 	input := source_api.AggregateData{
 		Containers: []source_api.Container{container},
 	}
-	timeseries, err := NewV1Decoder().Timeseries(input)
+	timeseries, err := NewDecoder().Timeseries(input)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 	// ignore ResourceID label.

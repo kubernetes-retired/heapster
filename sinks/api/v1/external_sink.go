@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package api
+package v1
 
-import kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+import (
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+)
 
 // ExternalSink is the interface that needs to be implemented by all external storage backends.
 type ExternalSink interface {

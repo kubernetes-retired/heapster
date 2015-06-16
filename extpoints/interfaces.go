@@ -15,7 +15,7 @@
 package extpoints
 
 import (
-	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	sourceApi "github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 

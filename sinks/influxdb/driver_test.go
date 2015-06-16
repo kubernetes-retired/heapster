@@ -17,7 +17,7 @@ package influxdb
 import (
 	"testing"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	kube_time "github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	influxdb "github.com/influxdb/influxdb/client"
