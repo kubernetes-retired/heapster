@@ -27,7 +27,9 @@ type Info struct {
 	// Internal IP of the host. This is the IP that heapster will
 	// use to communicate with the host sinc Public IP access is usually
 	// restricted behind firewalls.
-	InternalIP string `json:"internal_ip,omitempty"`
+	InternalIP string
+	// An optional ID assigned to nodes by either the cloud provider or user.
+	ExternalID string
 }
 
 // NodeList contains the nodes that an instance of heapster is required to

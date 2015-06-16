@@ -63,6 +63,7 @@ func (self *defaultDecoder) getPodLabels(pod *source_api.Pod) map[string]string 
 	labels[LabelPodName] = pod.Name
 	labels[LabelLabels] = LabelsToString(pod.Labels, ",")
 	labels[LabelHostname] = pod.Hostname
+	labels[LabelHostID] = pod.ExternalID
 
 	return labels
 }
@@ -83,6 +84,7 @@ func (self *defaultDecoder) getContainerSliceMetrics(containers []source_api.Con
 	var result []Timeseries
 	for index := range containers {
 		labels[LabelHostname] = containers[index].Hostname
+		labels[LabelHostID] = containers[index].ExternalID
 		result = append(result, self.getContainerMetrics(&containers[index], copyLabels(labels))...)
 	}
 

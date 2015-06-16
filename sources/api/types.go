@@ -26,13 +26,14 @@ type PodMetadata struct {
 	Namespace    string `json:"namespace,omitempty"`
 	NamespaceUID string
 	// TODO(vishh): Rename to UID.
-	ID             string            `json:"id,omitempty"`
-	Hostname       string            `json:"hostname,omitempty"`
-	Status         string            `json:"status,omitempty"`
-	PodIP          string            `json:"pod_ip,omitempty"`
-	Labels         map[string]string `json:"labels,omitempty"`
-	HostPublicIP   string            `json:"host_public_ip,omitempty"`
-	HostInternalIP string            `json:"host_internal_ip,omitempty"`
+	ID             string
+	Hostname       string
+	Status         string
+	PodIP          string
+	Labels         map[string]string
+	HostPublicIP   string
+	HostInternalIP string
+	ExternalID     string
 }
 
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
@@ -57,8 +58,9 @@ func (a *AggregateData) Merge(b *AggregateData) {
 }
 
 type Container struct {
-	Hostname string
-	Name     string
+	Hostname   string
+	ExternalID string
+	Name       string
 	// TODO(vishh): Consider defining an internal Spec and Stats API to guard against
 	// changes to cadvisor API.
 	Spec  cadvisor.ContainerSpec

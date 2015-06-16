@@ -28,6 +28,7 @@ type Metadata struct {
 	UID          string
 	Hostname     string
 	Labels       map[string]string
+	ExternalID   string
 }
 
 type ContainerMetricElement struct {
