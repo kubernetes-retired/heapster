@@ -18,7 +18,8 @@ import (
 	"net/http"
 
 	"github.com/GoogleCloudPlatform/heapster/manager"
-	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
+	"github.com/GoogleCloudPlatform/heapster/util"
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 )
@@ -64,14 +65,14 @@ func compressionFilter(req *restful.Request, resp *restful.Response, chain *rest
 
 // Labels used by the target schema. A target schema uniquely identifies a container.
 var targetLabelNames = map[string]struct{}{
-	sinksApi.LabelPodId:           struct{}{},
-	sinksApi.LabelPodName:         struct{}{},
-	sinksApi.LabelPodNamespace:    struct{}{},
-	sinksApi.LabelContainerName:   struct{}{},
-	sinksApi.LabelLabels:          struct{}{},
-	sinksApi.LabelHostname:        struct{}{},
-	sinksApi.LabelHostID:          struct{}{},
-	sinksApi.LabelPodNamespaceUID: struct{}{},
+	sinksApi.LabelPodId.Key:           struct{}{},
+	sinksApi.LabelPodName.Key:         struct{}{},
+	sinksApi.LabelPodNamespace.Key:    struct{}{},
+	sinksApi.LabelContainerName.Key:   struct{}{},
+	sinksApi.LabelLabels.Key:          struct{}{},
+	sinksApi.LabelHostname.Key:        struct{}{},
+	sinksApi.LabelHostID.Key:          struct{}{},
+	sinksApi.LabelPodNamespaceUID.Key: struct{}{},
 }
 
 // Separates target schema labels from other labels.
@@ -105,7 +106,7 @@ func (a *Api) exportMetrics(request *restful.Request, response *restful.Response
 	timeseriesForTargetLabels := map[string]*Timeseries{}
 	for _, point := range points {
 		targetLabels, otherLabels := separateLabels(point.Labels)
-		labelsStr := sinksApi.LabelsToString(targetLabels, ",")
+		labelsStr := util.LabelsToString(targetLabels, ",")
 
 		// Add timeseries if it does not exist.
 		timeseries, ok := timeseriesForTargetLabels[labelsStr]

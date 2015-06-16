@@ -26,7 +26,7 @@ import (
 	"time"
 
 	heapster_api "github.com/GoogleCloudPlatform/heapster/api/v1"
-	heapster_sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/golang/glog"
@@ -173,11 +173,11 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNod
 	actualPods := map[string]bool{}
 	actualNodes := map[string]bool{}
 	for _, point := range timeseries {
-		if podName, ok := point.Labels[heapster_sink_api.LabelPodName]; ok {
+		if podName, ok := point.Labels[sink_api.LabelPodName.Key]; ok {
 			actualPods[podName] = true
 
-		} else if cName, ok := point.Labels[heapster_sink_api.LabelContainerName]; ok && cName == cache.NodeContainerName {
-			hostname, ok := point.Labels[heapster_sink_api.LabelHostname]
+		} else if cName, ok := point.Labels[sink_api.LabelContainerName.Key]; ok && cName == cache.NodeContainerName {
+			hostname, ok := point.Labels[sink_api.LabelHostname.Key]
 			if !ok {
 				return fmt.Errorf("hostname label missing on node container %+v", point.Labels)
 			}

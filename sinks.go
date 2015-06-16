@@ -19,11 +19,11 @@ import (
 	"net/url"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
-	"github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 )
 
-func newSinks() ([]api.ExternalSink, error) {
-	var sinks []api.ExternalSink
+func newSinks() ([]sink_api.ExternalSink, error) {
+	var sinks []sink_api.ExternalSink
 	for _, sinkFlag := range argSinks {
 		uri, err := url.Parse(sinkFlag)
 		if err != nil {
