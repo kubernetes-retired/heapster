@@ -49,6 +49,16 @@ func (a *Api) Register(container *restful.Container) {
 		Operation("exportMetrics").
 		Writes([]*Timeseries{}))
 	container.Add(ws)
+	ws = new(restful.WebService)
+	ws.Path("/api/v1/metric-export-schema").
+		Doc("Schema for metrics exported by heapster").
+		Produces(restful.MIME_JSON)
+	ws.Route(ws.GET("").
+		To(a.exportMetricsSchema).
+		Doc("export the schema for all metrics").
+		Operation("exportmetricsSchema").
+		Writes(TimeseriesSchema{}))
+	container.Add(ws)
 }
 
 func compressionFilter(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
@@ -93,6 +103,40 @@ func separateLabels(labels map[string]string) (map[string]string, map[string]str
 	}
 
 	return targetLabels, otherLabels
+}
+
+func (a *Api) exportMetricsSchema(request *restful.Request, response *restful.Response) {
+	result := TimeseriesSchema{}
+	for _, label := range sinksApi.CommonLabels() {
+		result.CommonLabels = append(result.CommonLabels, LabelDescriptor{
+			Key:         label.Key,
+			Description: label.Description,
+		})
+	}
+	for _, label := range sinksApi.PodLabels() {
+		result.PodLabels = append(result.PodLabels, LabelDescriptor{
+			Key:         label.Key,
+			Description: label.Description,
+		})
+	}
+
+	for _, metric := range sinksApi.SupportedStatMetrics() {
+		md := MetricDescriptor{
+			Name:        metric.Name,
+			Description: metric.Description,
+			Type:        metric.Type.String(),
+			ValueType:   metric.ValueType.String(),
+			Units:       metric.Units.String(),
+		}
+		for _, label := range metric.Labels {
+			md.Labels = append(md.Labels, LabelDescriptor{
+				Key:         label.Key,
+				Description: label.Description,
+			})
+		}
+		result.Metrics = append(result.Metrics, md)
+	}
+	response.WriteEntity(result)
 }
 
 func (a *Api) exportMetrics(request *restful.Request, response *restful.Response) {
