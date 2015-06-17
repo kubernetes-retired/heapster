@@ -37,7 +37,7 @@ type NamespaceInfo struct {
 type NodeInfo struct {
 	InfoType
 	Pods           map[string]*PodInfo       `json:"pods,omitempty"`
-	FreeContainers map[string]*ContainerInfo `json:"free_containers"`
+	FreeContainers map[string]*ContainerInfo `json:"free_containers,omitempty"`
 }
 
 type PodInfo struct {
