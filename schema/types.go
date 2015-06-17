@@ -41,9 +41,8 @@ type realCluster struct {
 // REST consumption requires conversion to the corresponding versioned API types
 
 type InfoType struct {
-	// TODO: replace []*MetricTimeSeries with a BoundedTimeStore
-	Metrics map[string][]*MetricTimeseries // key: Metric name
-	Labels  map[string]string              // key: Label
+	Metrics map[string][]*cache.TimeStore // key: Metric Name
+	Labels  map[string]string             // key: Label
 }
 
 type ClusterInfo struct {
@@ -71,9 +70,4 @@ type PodInfo struct {
 
 type ContainerInfo struct {
 	InfoType
-}
-
-type MetricTimeseries struct {
-	Timestamp time.Time
-	Value     uint64
 }
