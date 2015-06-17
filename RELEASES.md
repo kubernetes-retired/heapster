@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.14.2 (6-16-2015)
+- Expose HostID for all containers.
+
 ## 0.14.1 (6-15-2015)
 - Expose External ID of nodes as a label and namespace UID as a label.
 - Fix bug in handling metric specific labels.
