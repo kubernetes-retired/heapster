@@ -19,11 +19,12 @@ import (
 	"time"
 
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
+	"github.com/GoogleCloudPlatform/heapster/store"
 )
 
 type containerElement struct {
 	Metadata
-	metrics TimeStore
+	metrics store.TimeStore
 }
 
 type podElement struct {
@@ -54,7 +55,7 @@ const rootContainer = "/"
 
 func (rc *realCache) newContainerElement() *containerElement {
 	return &containerElement{
-		metrics: NewGCStore(NewTimeStore(), rc.bufferDuration),
+		metrics: store.NewGCStore(store.NewTimeStore(), rc.bufferDuration),
 	}
 }
 
