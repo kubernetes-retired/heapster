@@ -42,7 +42,7 @@ type realCluster struct {
 
 type InfoType struct {
 	Metrics map[string]*cache.TimeStore // key: Metric Name
-	Labels  map[string]string             // key: Label
+	Labels  map[string]string           // key: Label
 }
 
 type ClusterInfo struct {
