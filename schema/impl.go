@@ -22,11 +22,13 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 )
 
+var lock sync.RWMutex
+
 func NewCluster() Cluster {
-	return NewRealCluster()
+	return newRealCluster()
 }
 
-func NewRealCluster() *realCluster {
+func newRealCluster() *realCluster {
 	cinfo := ClusterInfo{
 		InfoType:   newInfoType(nil, nil),
 		Namespaces: make(map[string]*NamespaceInfo),
@@ -34,7 +36,6 @@ func NewRealCluster() *realCluster {
 	}
 	cluster := &realCluster{
 		timestamp:   time.Time{},
-		lock:        new(sync.RWMutex),
 		ClusterInfo: cinfo,
 	}
 	return cluster
@@ -42,15 +43,15 @@ func NewRealCluster() *realCluster {
 
 func (rc *realCluster) GetAllClusterData() (*ClusterInfo, time.Time, error) {
 	// Returns the entire ClusterInfo object
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
+	lock.RLock()
+	defer lock.RUnlock()
 	return &rc.ClusterInfo, rc.timestamp, nil
 }
 
 func (rc *realCluster) GetAllNodeData(hostname string) (*NodeInfo, time.Time, error) {
 	// Returns the corresponding NodeInfo object
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
+	lock.RLock()
+	defer lock.RUnlock()
 
 	var res *NodeInfo
 	var stamp time.Time
@@ -69,8 +70,8 @@ func (rc *realCluster) GetAllNodeData(hostname string) (*NodeInfo, time.Time, er
 
 func (rc *realCluster) GetAllPodData(namespace string, pod_name string) (*PodInfo, time.Time, error) {
 	// Returns the corresponding NodeInfo object
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
+	lock.RLock()
+	defer lock.RUnlock()
 
 	var res *PodInfo
 	var stamp time.Time

@@ -15,10 +15,10 @@
 package schema
 
 import (
+	"time"
+
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	"github.com/GoogleCloudPlatform/heapster/store"
-	"sync"
-	"time"
 )
 
 type Cluster interface {
@@ -34,7 +34,6 @@ type Cluster interface {
 type realCluster struct {
 	// Implementation of Cluster
 	timestamp time.Time // Marks the last update from a cache.
-	lock      *sync.RWMutex
 	ClusterInfo
 }
 
