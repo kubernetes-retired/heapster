@@ -223,6 +223,73 @@ func TestGetAllClusterData(t *testing.T) {
 	verifyCacheFactoryCluster(clinfo, t)
 }
 
+func TestGetAllNodeData(t *testing.T) {
+	// Tests all the flows of GetAllNodeData
+	cluster := NewRealCluster()
+	node_name := "hostname2"
+
+	// First Call: Try to get a non-existing node
+	res_node, stamp, err := cluster.GetAllNodeData(node_name)
+	assert := assert.New(t)
+	assert.Error(err)
+	assert.Equal(stamp, time.Time{})
+	assert.Nil(res_node)
+
+	// Second Call: Add the node to the Cluster and Get successfully
+	cluster.Update(CacheFactory())
+	res_node, stamp, err = cluster.GetAllNodeData(node_name)
+
+	assert.NoError(err)
+	assert.NotEqual(stamp, time.Time{})
+	assert.NotNil(res_node)
+}
+
+func TestGetAllPodData(t *testing.T) {
+	// Tests the normal flow of GetAllPodData
+	cluster := NewRealCluster()
+	cluster.Update(CacheFactory())
+
+	pod_name := "pod1"
+	pod_hostname := "hostname2"
+	pod_uid := "123"
+	namespace := "test"
+	res_pod, stamp, err := cluster.GetAllPodData(namespace, pod_name)
+
+	assert := assert.New(t)
+	assert.NoError(err)
+	assert.NotEqual(stamp, time.Time{})
+	assert.Equal(res_pod.UID, pod_uid)
+	assert.Equal(res_pod, cluster.Nodes[pod_hostname].Pods[pod_name])
+}
+
+func TestGetAllPodDataError(t *testing.T) {
+	// Tests the error flows of GetAllPodData
+	cluster := NewRealCluster()
+	pod_name := "pod-xyz"
+	namespace := "default"
+
+	// First Call: No Namespaces in cluster
+	res_pod, new_stamp, err := cluster.GetAllPodData(namespace, pod_name)
+
+	assert := assert.New(t)
+	assert.Error(err)
+	assert.Equal(new_stamp, time.Time{})
+	assert.Nil(res_pod)
+
+	// Second Call: Namespace exists, pod does not exist under the specified namespace
+	cluster.addNamespace(namespace)
+	res_pod, new_stamp, err = cluster.GetAllPodData(namespace, pod_name)
+	assert.Error(err)
+	assert.Equal(new_stamp, time.Time{})
+	assert.Nil(res_pod)
+
+	// Third Call: Specific Namespace does not exist
+	res_pod, new_stamp, err = cluster.GetAllPodData("other_namespace", pod_name)
+	assert.Error(err)
+	assert.Equal(new_stamp, time.Time{})
+	assert.Nil(res_pod)
+}
+
 func PodElementFactory() *cache.PodElement {
 	// Test Helper Function
 	// Creates a PodElement with one ContainerElement and two ContainerMetricElements

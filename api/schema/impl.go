@@ -48,6 +48,53 @@ func (rc *realCluster) GetAllClusterData() (*info.ClusterInfo, time.Time, error)
 	return &rc.ClusterInfo, rc.timestamp, nil
 }
 
+func (rc *realCluster) GetAllNodeData(hostname string) (*info.NodeInfo, time.Time, error) {
+	// Returns the corresponding NodeInfo object
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
+
+	var res *info.NodeInfo
+	var stamp time.Time
+	var err error
+
+	if val, ok := rc.Nodes[hostname]; ok {
+		res = val
+		stamp = rc.timestamp
+		err = nil
+	} else {
+		res = nil
+		err = errors.New("Unable to find node with hostname: " + hostname)
+	}
+	return res, stamp, err
+}
+
+func (rc *realCluster) GetAllPodData(namespace string, pod_name string) (*info.PodInfo, time.Time, error) {
+	// Returns the corresponding NodeInfo object
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
+
+	var res *info.PodInfo
+	var stamp time.Time
+	var err error
+
+	if len(rc.Namespaces) == 0 {
+		err = errors.New("Unable to find pod: no namespaces registered")
+	} else {
+		if ns, ok := rc.Namespaces[namespace]; ok {
+			if val, ok := ns.Pods[pod_name]; ok {
+				res = val
+				stamp = rc.timestamp
+				err = nil
+			} else {
+				err = errors.New("Unable to find pod with name: " + pod_name)
+			}
+		} else {
+			err = errors.New("Unable to find namespace with name: " + namespace)
+		}
+	}
+	return res, stamp, err
+}
+
 func (rc *realCluster) Update(c *cache.Cache) error {
 	// Gets new data from cache and updates data structure
 	var zero time.Time

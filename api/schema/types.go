@@ -25,13 +25,11 @@ type Cluster interface {
 	Update(*cache.Cache) error
 
 	GetAllClusterData() (*info.ClusterInfo, time.Time, error)
+	GetAllNodeData(string) (*info.NodeInfo, time.Time, error)
+	GetAllPodData(string, string) (*info.PodInfo, time.Time, error)
 	/*
 		GetNewClusterData(time.Time) (*ClusterInfo, time.Time, error)
-
-		GetAllNodeData(string) (*NodeInfo, time.Time, error)
 		GetNewNodeData(string, time.Time) (*NodeInfo, time.Time, error)
-
-		GetAllPodData(string) (*PodInfo, time.Time, error)
 		GetNewPodData(string) (*PodInfo, time.Time, error)
 	*/
 }
