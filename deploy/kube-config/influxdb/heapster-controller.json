@@ -21,7 +21,7 @@
 	    "spec": {
 		"containers": [
 		    {
-			"image": "kubernetes/heapster:v0.14.1",
+			"image": "kubernetes/heapster:v0.14.2",
 			"name": "heapster",
 			"command": [
 			    "/heapster",
