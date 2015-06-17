@@ -93,6 +93,9 @@ func (self *v2Decoder) getContainerMetrics(container *cache.ContainerElement, la
 		return nil
 	}
 	labels[LabelContainerName] = container.Name
+	if _, exists := labels[LabelHostID]; !exists {
+		labels[LabelHostID] = container.ExternalID
+	}
 	// One metric value per data point.
 	var result []Timeseries
 	labelsAsString := LabelsToString(labels, ",")
