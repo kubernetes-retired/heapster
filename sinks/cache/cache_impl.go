@@ -138,6 +138,7 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 			// This is at the node level.
 			ne.node.Hostname = cont.Hostname
 			ne.node.Name = NodeContainerName
+			ne.node.ExternalID = cont.ExternalID
 			ce = ne.node
 		} else {
 			var ok bool

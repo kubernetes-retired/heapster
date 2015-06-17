@@ -114,6 +114,7 @@ func (self *kubePodsSource) getPodInfo(nodeList *nodes.NodeList, start, end time
 				}
 				glog.V(5).Infof("Fetched stats from kubelet for container %s in pod %s", container.Name, pod.Name)
 				pod.Containers[index].Hostname = pod.Hostname
+				pod.Containers[index].ExternalID = pod.ExternalID
 				pod.Containers[index].Spec = rawContainer.Spec
 				pod.Containers[index].Stats = rawContainer.Stats
 			}
