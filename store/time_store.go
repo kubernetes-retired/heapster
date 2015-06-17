@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package cache implements a cache for time series data.
-package cache
+package store
 
 import "time"
 

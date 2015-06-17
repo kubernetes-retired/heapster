@@ -16,6 +16,7 @@ package schema
 
 import (
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
+	"github.com/GoogleCloudPlatform/heapster/store"
 	"sync"
 	"time"
 )
@@ -41,7 +42,7 @@ type realCluster struct {
 // REST consumption requires conversion to the corresponding versioned API types
 
 type InfoType struct {
-	Metrics map[string]*cache.TimeStore // key: Metric Name
+	Metrics map[string]*store.TimeStore // key: Metric Name
 	Labels  map[string]string           // key: Label
 }
 
