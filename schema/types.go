@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"sync"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
@@ -22,30 +23,28 @@ import (
 )
 
 type Cluster interface {
-	// The Update operation populates the Cluster from a cache
+	// The Update operation populates the Cluster from a cache.
 	Update(*cache.Cache) error
 
-	// The Get operations extract internal types from the Cluster
-	// The returned Time value signifies the latest timestamp of all metrics on the cluster
+	// The Get operations extract internal types from the Cluster.
+	// The returned time.Time values signify the latest metric timestamp in the cluster.
 	// TODO(alex): Returning pointers is NOT safe, will be addressed in a later PR
-
 	GetAllClusterData() (*ClusterInfo, time.Time, error)
-	// Parameter: Internal Hostname of the node
 	GetAllNodeData(string) (*NodeInfo, time.Time, error)
-	// Parameters: Namespace, Pod Name
 	GetAllPodData(string, string) (*PodInfo, time.Time, error)
 }
 
+// Implementation of Cluster.
+// Timestamp signifies the latest timestamp of any metric
+// that is currently present in the realCluster
 type realCluster struct {
-	// Implementation of Cluster.
-	// Timestamp signifies the latest timestamp of any metric
-	// that is currently present in the realCluster
 	timestamp time.Time
+	lock      sync.RWMutex
 	ClusterInfo
 }
 
 // Internal Types
-// REST consumption requires conversion to the corresponding versioned API types
+// REST consumption requires conversion to the corresponding external API types.
 
 type InfoType struct {
 	Metrics map[string]*store.TimeStore // key: Metric Name
