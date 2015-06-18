@@ -57,7 +57,7 @@ func (rc *realCluster) GetAllNodeData(hostname string) (*NodeInfo, time.Time, er
 
 	res, ok := rc.Nodes[hostname]
 	if !ok {
-		return nil, zeroTime, fmt.Errorf("Unable to find node with hostname: %s", hostname)
+		return nil, zeroTime, fmt.Errorf("unable to find node with hostname: %s", hostname)
 	}
 
 	return res, rc.timestamp, nil
@@ -71,17 +71,17 @@ func (rc *realCluster) GetAllPodData(namespace string, pod_name string) (*PodInf
 	defer lock.RUnlock()
 
 	if len(rc.Namespaces) == 0 {
-		return nil, zeroTime, fmt.Errorf("Unable to find pod: no namespaces in cluster")
+		return nil, zeroTime, fmt.Errorf("unable to find pod: no namespaces in cluster")
 	}
 
 	ns, ok := rc.Namespaces[namespace]
 	if !ok {
-		return nil, zeroTime, fmt.Errorf("Unable to find namespace with name: %s", namespace)
+		return nil, zeroTime, fmt.Errorf("unable to find namespace with name: %s", namespace)
 	}
 
 	pod, ok := ns.Pods[pod_name]
 	if !ok {
-		return nil, zeroTime, fmt.Errorf("Unable to find pod with name: %s", pod_name)
+		return nil, zeroTime, fmt.Errorf("unable to find pod with name: %s", pod_name)
 	}
 
 	return pod, rc.timestamp, nil
