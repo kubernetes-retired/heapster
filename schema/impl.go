@@ -88,5 +88,6 @@ func (rc *realCluster) GetAllPodData(namespace string, pod_name string) (*PodInf
 }
 
 func (rc *realCluster) Update(c *cache.Cache) error {
+	// TODO(afein): Unimplemented
 	return nil
 }

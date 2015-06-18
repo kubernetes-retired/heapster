@@ -23,9 +23,8 @@ import (
 func maxTimestamp(first time.Time, second time.Time) time.Time {
 	if first.After(second) {
 		return first
-	} else {
-		return second
 	}
+	return second
 }
 
 func newInfoType(metrics map[string]*store.TimeStore, labels map[string]string) InfoType {
