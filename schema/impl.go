@@ -15,7 +15,7 @@
 package schema
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -50,49 +50,41 @@ func (rc *realCluster) GetAllClusterData() (*ClusterInfo, time.Time, error) {
 
 func (rc *realCluster) GetAllNodeData(hostname string) (*NodeInfo, time.Time, error) {
 	// Returns the corresponding NodeInfo object
+	var zeroTime time.Time
+
 	lock.RLock()
 	defer lock.RUnlock()
 
-	var res *NodeInfo
-	var stamp time.Time
-	var err error
-
-	if val, ok := rc.Nodes[hostname]; ok {
-		res = val
-		stamp = rc.timestamp
-		err = nil
-	} else {
-		res = nil
-		err = errors.New("Unable to find node with hostname: " + hostname)
+	res, ok := rc.Nodes[hostname]
+	if !ok {
+		return nil, zeroTime, fmt.Errorf("Unable to find node with hostname: %s", hostname)
 	}
-	return res, stamp, err
+
+	return res, rc.timestamp, nil
 }
 
 func (rc *realCluster) GetAllPodData(namespace string, pod_name string) (*PodInfo, time.Time, error) {
 	// Returns the corresponding NodeInfo object
+	var zeroTime time.Time
+
 	lock.RLock()
 	defer lock.RUnlock()
 
-	var res *PodInfo
-	var stamp time.Time
-	var err error
-
 	if len(rc.Namespaces) == 0 {
-		err = errors.New("Unable to find pod: no namespaces registered")
-	} else {
-		if ns, ok := rc.Namespaces[namespace]; ok {
-			if val, ok := ns.Pods[pod_name]; ok {
-				res = val
-				stamp = rc.timestamp
-				err = nil
-			} else {
-				err = errors.New("Unable to find pod with name: " + pod_name)
-			}
-		} else {
-			err = errors.New("Unable to find namespace with name: " + namespace)
-		}
+		return nil, zeroTime, fmt.Errorf("Unable to find pod: no namespaces in cluster")
 	}
-	return res, stamp, err
+
+	ns, ok := rc.Namespaces[namespace]
+	if !ok {
+		return nil, zeroTime, fmt.Errorf("Unable to find namespace with name: %s", namespace)
+	}
+
+	pod, ok := ns.Pods[pod_name]
+	if !ok {
+		return nil, zeroTime, fmt.Errorf("Unable to find pod with name: %s", pod_name)
+	}
+
+	return pod, rc.timestamp, nil
 }
 
 func (rc *realCluster) Update(c *cache.Cache) error {
