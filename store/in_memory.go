@@ -80,7 +80,7 @@ func timeEqualOrAfter(t1, t2 time.Time) bool {
 	return false
 }
 
-func (ts *timeStore) Get(start, end time.Time) []interface{} {
+func (ts *timeStore) Get(start, end time.Time) []TimePoint {
 	ts.rwLock.RLock()
 	defer ts.rwLock.RUnlock()
 	if ts.buffer.Len() == 0 {
@@ -90,7 +90,7 @@ func (ts *timeStore) Get(start, end time.Time) []interface{} {
 	if start == zeroTime {
 		start = zeroTime
 	}
-	result := []interface{}{}
+	result := []TimePoint{}
 	for elem := ts.buffer.Front(); elem != nil; elem = elem.Next() {
 		entry := elem.Value.(entry)
 		// Break the loop if we encounter a timestamp that is before 'start'
@@ -101,7 +101,11 @@ func (ts *timeStore) Get(start, end time.Time) []interface{} {
 		if end != zeroTime && entry.timestamp.After(end) {
 			continue
 		}
-		result = append(result, entry.data)
+		new_point := TimePoint{
+			Timestamp: entry.timestamp,
+			Value:     entry.data,
+		}
+		result = append(result, new_point)
 	}
 	return result
 }

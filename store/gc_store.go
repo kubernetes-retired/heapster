@@ -34,7 +34,7 @@ func (gcs *gcStore) Put(timestamp time.Time, data interface{}) error {
 	return nil
 }
 
-func (gcs *gcStore) Get(start, end time.Time) []interface{} {
+func (gcs *gcStore) Get(start, end time.Time) []TimePoint {
 	return gcs.store.Get(start, end)
 }
 

@@ -33,9 +33,9 @@ func TestNilInsert(t *testing.T) {
 	assert.Error(t, store.Put(time.Now(), nil))
 }
 
-func expectElements(t *testing.T, data []interface{}) {
+func expectElements(t *testing.T, data []TimePoint) {
 	for i := 0; i < len(data); i++ {
-		assert.Equal(t, len(data)-i-1, data[i].(int))
+		assert.Equal(t, len(data)-i-1, data[i].Value.(int))
 	}
 }
 
@@ -66,7 +66,7 @@ func TestDelete(t *testing.T) {
 	assert.NoError(store.Delete(now.Add(-time.Second), now))
 	actual := store.Get(now.Add(-time.Second), time.Time{})
 	require.Len(t, actual, 1)
-	assert.Equal(3, actual[0].(int))
+	assert.Equal(3, actual[0].Value.(int))
 	assert.NoError(store.Delete(time.Time{}, time.Time{}))
 	assert.Empty(store.Get(time.Time{}, time.Time{}))
 }
