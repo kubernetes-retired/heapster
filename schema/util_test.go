@@ -22,14 +22,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestMaxTimestamp tests all flows of maxTimeStamp
-func TestMaxTimestamp(t *testing.T) {
+// TestLatestsTimestamp tests all flows of latestTimeStamp
+func TestLatestTimestamp(t *testing.T) {
 	assert := assert.New(t)
 	past := time.Unix(1434212566, 0)
 	future := time.Unix(1434212800, 0)
-	assert.Equal(maxTimestamp(past, future), future)
-	assert.Equal(maxTimestamp(future, past), future)
-	assert.Equal(maxTimestamp(future, future), future)
+	assert.Equal(latestTimestamp(past, future), future)
+	assert.Equal(latestTimestamp(future, past), future)
+	assert.Equal(latestTimestamp(future, future), future)
 }
 
 // TestNewInfoType tests both flows of the InfoType constructor.

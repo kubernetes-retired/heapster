@@ -20,8 +20,8 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/store"
 )
 
-// maxTimestamp returns its largest time.Time argument
-func maxTimestamp(first time.Time, second time.Time) time.Time {
+// latestTimestamp returns its largest time.Time argument
+func latestTimestamp(first time.Time, second time.Time) time.Time {
 	if first.After(second) {
 		return first
 	}

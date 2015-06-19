@@ -167,7 +167,7 @@ func (rc *realCluster) addPod(pod_name string, pod_uid string, namespace *Namesp
 	if in_ns && in_node {
 		// Pod already in Namespace and Node maps, return pointer
 		pod_ptr, _ = node.Pods[pod_name]
-	} else if !in_ns && !in_node {
+	} else {
 		// Create new Pod and point from node and namespace
 		pod_ptr = &PodInfo{
 			InfoType:   newInfoType(nil, nil),

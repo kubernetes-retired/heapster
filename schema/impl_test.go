@@ -86,11 +86,6 @@ func TestAddPod(t *testing.T) {
 	new_pod := cluster.addPod(pod_name, pod_uid, namespace, node)
 	assert.NotNil(new_pod)
 	assert.Equal(new_pod, pod)
-
-	// Third call : References are mismatched
-	other_node := cluster.addNode("other-kubernetes-minion")
-	newest_pod := cluster.addPod(pod_name, pod_uid, namespace, other_node)
-	assert.Nil(newest_pod)
 }
 
 // TestUpdateTime tests the sanity of updateTime.
