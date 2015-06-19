@@ -20,20 +20,21 @@ import "time"
 // TimeStore represents a timeseries storage.
 // Implementations are expected to be thread safe.
 type TimeStore interface {
-	// Put stores 'data' with 'timestamp'. Returns error upon failure.
+	// Put stores a TimePoint to the TimeStore. Returns error upon failure.
 	// Ignores zero timestamps.
-	Put(timestamp time.Time, data interface{}) error
+	Put(tp TimePoint) error
 	// Get returns a slice of elements that were previously stored with timestamps
 	// between 'start' and 'end'. 'start' is expected to be before 'end'.
 	// If 'start' is zero, it returns all the elements up until 'end'.
 	// If 'end' is zero, it returns all the elements from 'start'.
-	// If both 'start' and 'end' are zero, it returns all the elements in the cache.
+	// If both 'start' and 'end' are zero, it returns all the elements in the store.
 	Get(start, end time.Time) []TimePoint
 	// Delete removes all elements that were previously stored with timestamps
 	// between 'start' and 'end'.
 	Delete(start, end time.Time) error
 }
 
+// TimePoint is a single point of a timeseries, representing a time-value pair.
 type TimePoint struct {
 	Timestamp time.Time
 	Value     interface{}

@@ -84,7 +84,10 @@ func storeSpecAndStats(ce *containerElement, c *source_api.Container) {
 			Spec:  &c.Spec,
 			Stats: c.Stats[idx],
 		}
-		ce.metrics.Put(c.Stats[idx].Timestamp, cme)
+		ce.metrics.Put(store.TimePoint{
+			Timestamp: c.Stats[idx].Timestamp,
+			Value:     cme,
+		})
 	}
 }
 
