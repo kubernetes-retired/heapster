@@ -34,12 +34,13 @@ type Cluster interface {
 	GetAllPodData(string, string) (*PodInfo, time.Time, error)
 }
 
-// Implementation of Cluster.
-// Timestamp signifies the latest timestamp of any metric
-// that is currently present in the realCluster
+// realCluster is an implementation of the Cluster interface.
+// timestamp marks the latest timestamp of any metric present in the realCluster.
+// tsConstructor generates a new empty TimeStore, used for storing historical data.
 type realCluster struct {
-	timestamp time.Time
-	lock      sync.RWMutex
+	timestamp     time.Time
+	lock          sync.RWMutex
+	tsConstructor func() store.TimeStore
 	ClusterInfo
 }
 

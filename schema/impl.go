@@ -18,22 +18,28 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/glog"
+
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
+	"github.com/GoogleCloudPlatform/heapster/store"
 )
 
-func NewCluster() Cluster {
-	return newRealCluster()
+// NewCluster returns a new Cluster, given a TimeStore constructor function.
+func NewCluster(tsConstructor func() store.TimeStore) Cluster {
+	return newRealCluster(tsConstructor)
 }
 
-func newRealCluster() *realCluster {
+// newRealCluster returns a realCluster, given a TimeStore constructor.
+func newRealCluster(tsConstructor func() store.TimeStore) *realCluster {
 	cinfo := ClusterInfo{
 		InfoType:   newInfoType(nil, nil),
 		Namespaces: make(map[string]*NamespaceInfo),
 		Nodes:      make(map[string]*NodeInfo),
 	}
 	cluster := &realCluster{
-		timestamp:   time.Time{},
-		ClusterInfo: cinfo,
+		timestamp:     time.Time{},
+		ClusterInfo:   cinfo,
+		tsConstructor: tsConstructor,
 	}
 	return cluster
 }
@@ -155,6 +161,16 @@ func (rc *realCluster) addPod(pod_name string, pod_uid string, namespace *Namesp
 	var in_ns bool
 	var in_node bool
 
+	if namespace == nil {
+		glog.V(2).Infof("nil namespace pointer passed to addPod")
+		return nil
+	}
+
+	if node == nil {
+		glog.V(2).Infof("nil node pointer passed to addPod")
+		return nil
+	}
+
 	// Check if the pod is already referenced by the namespace or the node
 	if _, ok := namespace.Pods[pod_name]; ok {
 		in_ns = true
@@ -179,4 +195,124 @@ func (rc *realCluster) addPod(pod_name string, pod_uid string, namespace *Namesp
 	}
 
 	return pod_ptr
+}
+
+// updateInfoType updates the metrics of an InfoType from a ContainerElement.
+// updateInfoType returns the latest timestamp in the resulting TimeStore
+// updateInfoType does not fail if a single ContainerMetricElement cannot be parsed
+func (rc *realCluster) updateInfoType(info *InfoType, ce *cache.ContainerElement) (time.Time, error) {
+	var latest_time time.Time
+
+	if ce == nil {
+		return latest_time, fmt.Errorf("cannot update InfoType from nil ContainerElement")
+	}
+	if info == nil {
+		return latest_time, fmt.Errorf("cannot update a nil InfoType")
+	}
+
+	for _, cme := range ce.Metrics {
+		stamp, err := rc.parseMetric(cme, info.Metrics)
+		if err != nil {
+			glog.V(2).Infof("failed to parse ContainerMetricElement: %s", err)
+			continue
+		}
+		latest_time = latestTimestamp(latest_time, stamp)
+	}
+	return latest_time, nil
+}
+
+// addMetricToMap adds a new metric (time-value pair) to a map of TimeStores.
+// addMetricToMap accepts as arguments the metric name, timestamp, value and the TimeStore map
+func (rc *realCluster) addMetricToMap(metric string, timestamp time.Time, value uint64, dict map[string]*store.TimeStore) error {
+	point := store.TimePoint{
+		Timestamp: timestamp,
+		Value:     value,
+	}
+	if val, ok := dict[metric]; ok {
+		ts := *val
+		err := ts.Put(point)
+		if err != nil {
+			return fmt.Errorf("failed to add metric to TimeStore: %s", err)
+		}
+	} else {
+		new_ts := rc.tsConstructor()
+		err := new_ts.Put(point)
+		if err != nil {
+			return fmt.Errorf("failed to add metric to TimeStore: %s", err)
+		}
+		dict[metric] = &new_ts
+	}
+	return nil
+}
+
+// parseMetric populates a map[string]*TimeStore from a ContainerMetricElement
+// parseMetric returns the ContainerMetricElement timestamp, iff successful.
+func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[string]*store.TimeStore) (time.Time, error) {
+	zeroTime := time.Time{}
+	if cme == nil {
+		return zeroTime, fmt.Errorf("cannot parse nil ContainerMetricElement")
+	}
+	if dict == nil {
+		return zeroTime, fmt.Errorf("cannot populate nil map")
+	}
+
+	timestamp := cme.Stats.Timestamp
+	if cme.Spec.HasCpu {
+		// Add CPU Limit metric
+		cpu_limit := cme.Spec.Cpu.Limit
+		err := rc.addMetricToMap("cpu/limit", timestamp, cpu_limit, dict)
+		if err != nil {
+			return zeroTime, fmt.Errorf("failed to add cpu/limit metric: %s", err)
+		}
+
+		// Add CPU Usage metric
+		cpu_usage := cme.Stats.Cpu.Usage.Total
+		err = rc.addMetricToMap("cpu/usage", timestamp, cpu_usage, dict)
+		if err != nil {
+			return zeroTime, fmt.Errorf("failed to add cpu/usage metric: %s", err)
+		}
+	}
+
+	if cme.Spec.HasMemory {
+		// Add Memory Limit metric
+		mem_limit := cme.Spec.Memory.Limit
+		err := rc.addMetricToMap("memory/limit", timestamp, mem_limit, dict)
+		if err != nil {
+			return zeroTime, fmt.Errorf("failed to add memory/limit metric: %s", err)
+		}
+
+		// Add Memory Usage metric
+		mem_usage := cme.Stats.Memory.Usage
+		err = rc.addMetricToMap("memory/usage", timestamp, mem_usage, dict)
+		if err != nil {
+			return zeroTime, fmt.Errorf("failed to add memory/usage metric: %s", err)
+		}
+
+		// Add Memory Working Set metric
+		mem_working := cme.Stats.Memory.WorkingSet
+		err = rc.addMetricToMap("memory/working", timestamp, mem_working, dict)
+		if err != nil {
+			return zeroTime, fmt.Errorf("failed to add memory/working metric: %s", err)
+		}
+	}
+	if cme.Spec.HasFilesystem {
+		for _, fsstat := range cme.Stats.Filesystem {
+			dev := fsstat.Device
+
+			// Add FS Limit Metric
+			fs_limit := fsstat.Limit
+			err := rc.addMetricToMap("fs/limit"+dev, timestamp, fs_limit, dict)
+			if err != nil {
+				return zeroTime, fmt.Errorf("failed to add fs/limit metric: %s", err)
+			}
+
+			// Add FS Usage Metric
+			fs_usage := fsstat.Usage
+			err = rc.addMetricToMap("fs/usage"+dev, timestamp, fs_usage, dict)
+			if err != nil {
+				return zeroTime, fmt.Errorf("failed to add fs/usage metric: %s", err)
+			}
+		}
+	}
+	return timestamp, nil
 }
