@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/api/schema"
 	"github.com/GoogleCloudPlatform/heapster/sinks"
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
@@ -35,11 +36,14 @@ type Manager interface {
 
 	// Export the latest data point of all metrics.
 	ExportMetrics() ([]*sink_api.Point, error)
+
+	GetCluster() schema.Cluster
 }
 
 type realManager struct {
 	sources     []source_api.Source
 	cache       cache.Cache
+	cluster     schema.Cluster
 	sinkManager sinks.ExternalSinkManager
 	lastSync    time.Time
 	resolution  time.Duration
@@ -56,6 +60,7 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 		sources:     sources,
 		sinkManager: sinkManager,
 		cache:       cache.NewCache(bufferDuration),
+		cluster:     schema.NewCluster(),
 		lastSync:    time.Now(),
 		resolution:  res,
 		decoder:     sink_api.NewDecoder(),
@@ -73,6 +78,10 @@ func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, s
 		sd.data.Merge(&data)
 	}
 	errChan <- err
+}
+
+func (rm *realManager) GetCluster() schema.Cluster {
+	return rm.cluster
 }
 
 func (rm *realManager) Housekeep() {
@@ -108,6 +117,8 @@ func (rm *realManager) Housekeep() {
 	if len(errors) > 0 {
 		glog.V(1).Infof("housekeeping resulted in following errors: %v", errors)
 	}
+
+	rm.cluster.Update(&rm.cache)
 }
 
 func (rm *realManager) ExportMetrics() ([]*sink_api.Point, error) {

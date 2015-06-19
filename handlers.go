@@ -20,6 +20,7 @@ import (
 	"net/http/pprof"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/heapster/api/schema"
 	"github.com/GoogleCloudPlatform/heapster/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/manager"
 	"github.com/GoogleCloudPlatform/heapster/sinks"
@@ -35,6 +36,10 @@ func setupHandlers(sources []api.Source, sink sinks.ExternalSinkManager, m manag
 	wsContainer := restful.NewContainer()
 	a := v1.NewApi(m)
 	a.Register(wsContainer)
+
+	// Make SchemaApi handler.
+	schemaApi := schema.NewSchemaApi(m.GetCluster())
+	schemaApi.Register(wsContainer)
 
 	// Validation/Debug handler.
 	handleValidate := func(req *restful.Request, resp *restful.Response) {
