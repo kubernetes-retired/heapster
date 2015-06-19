@@ -15,10 +15,10 @@
 package schema
 
 import (
+	"time"
+
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	"github.com/GoogleCloudPlatform/heapster/store"
-	"sync"
-	"time"
 )
 
 type Cluster interface {
@@ -26,15 +26,21 @@ type Cluster interface {
 	Update(*cache.Cache) error
 
 	// The Get operations extract internal types from the Cluster
+	// The returned Time value signifies the latest timestamp of all metrics on the cluster
+	// TODO(alex): Returning pointers is NOT safe, will be addressed in a later PR
+
 	GetAllClusterData() (*ClusterInfo, time.Time, error)
+	// Parameter: Internal Hostname of the node
 	GetAllNodeData(string) (*NodeInfo, time.Time, error)
+	// Parameters: Namespace, Pod Name
 	GetAllPodData(string, string) (*PodInfo, time.Time, error)
 }
 
 type realCluster struct {
-	// Implementation of Cluster
-	timestamp time.Time // Marks the last update from a cache.
-	lock      *sync.RWMutex
+	// Implementation of Cluster.
+	// Timestamp signifies the latest timestamp of any metric
+	// that is currently present in the realCluster
+	timestamp time.Time
 	ClusterInfo
 }
 
