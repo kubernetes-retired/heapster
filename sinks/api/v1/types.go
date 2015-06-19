@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package api
+package v1
 
 import (
 	"time"
@@ -108,7 +108,7 @@ type MetricDescriptor struct {
 	// Description of the metric.
 	Description string
 
-	// Descriptor of the labels used by this metric.
+	// Descriptor of the labels specific to this metric.
 	Labels []LabelDescriptor
 
 	// Type and value of metric data.
@@ -133,11 +133,11 @@ type Point struct {
 }
 
 // internalPoint is an internal object.
-type internalPoint struct {
+type InternalPoint struct {
 	// Overrides any default labels generated for every Point.
 	// This is typically used for metric specific labels like 'resource_id'.
-	labels map[string]string
-	value  interface{}
+	Labels map[string]string
+	Value  interface{}
 }
 
 // SupportedStatMetric represents a resource usage stat metric.
@@ -148,7 +148,7 @@ type SupportedStatMetric struct {
 	HasValue func(*cadvisor.ContainerSpec) bool
 
 	// Returns a slice of internal point objects that contain metric values and associated labels.
-	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) []internalPoint
+	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) []InternalPoint
 
 	// TODO(vmarmol): Make use of this.
 	// Whether to only export if the metric's value has changed (Default: false).

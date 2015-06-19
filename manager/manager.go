@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks"
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
@@ -43,7 +43,7 @@ type realManager struct {
 	sinkManager sinks.ExternalSinkManager
 	lastSync    time.Time
 	resolution  time.Duration
-	decoder     sink_api.DecoderV2
+	decoder     sink_api.Decoder
 }
 
 type syncData struct {
@@ -58,7 +58,7 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 		cache:       cache.NewCache(bufferDuration),
 		lastSync:    time.Now(),
 		resolution:  res,
-		decoder:     sink_api.NewV2Decoder(),
+		decoder:     sink_api.NewDecoder(),
 	}, nil
 }
 

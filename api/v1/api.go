@@ -18,7 +18,8 @@ import (
 	"net/http"
 
 	"github.com/GoogleCloudPlatform/heapster/manager"
-	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
+	"github.com/GoogleCloudPlatform/heapster/util"
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 )
@@ -48,6 +49,16 @@ func (a *Api) Register(container *restful.Container) {
 		Operation("exportMetrics").
 		Writes([]*Timeseries{}))
 	container.Add(ws)
+	ws = new(restful.WebService)
+	ws.Path("/api/v1/metric-export-schema").
+		Doc("Schema for metrics exported by heapster").
+		Produces(restful.MIME_JSON)
+	ws.Route(ws.GET("").
+		To(a.exportMetricsSchema).
+		Doc("export the schema for all metrics").
+		Operation("exportmetricsSchema").
+		Writes(TimeseriesSchema{}))
+	container.Add(ws)
 }
 
 func compressionFilter(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
@@ -64,14 +75,14 @@ func compressionFilter(req *restful.Request, resp *restful.Response, chain *rest
 
 // Labels used by the target schema. A target schema uniquely identifies a container.
 var targetLabelNames = map[string]struct{}{
-	sinksApi.LabelPodId:           struct{}{},
-	sinksApi.LabelPodName:         struct{}{},
-	sinksApi.LabelPodNamespace:    struct{}{},
-	sinksApi.LabelContainerName:   struct{}{},
-	sinksApi.LabelLabels:          struct{}{},
-	sinksApi.LabelHostname:        struct{}{},
-	sinksApi.LabelHostID:          struct{}{},
-	sinksApi.LabelPodNamespaceUID: struct{}{},
+	sinksApi.LabelPodId.Key:           struct{}{},
+	sinksApi.LabelPodName.Key:         struct{}{},
+	sinksApi.LabelPodNamespace.Key:    struct{}{},
+	sinksApi.LabelContainerName.Key:   struct{}{},
+	sinksApi.LabelLabels.Key:          struct{}{},
+	sinksApi.LabelHostname.Key:        struct{}{},
+	sinksApi.LabelHostID.Key:          struct{}{},
+	sinksApi.LabelPodNamespaceUID.Key: struct{}{},
 }
 
 // Separates target schema labels from other labels.
@@ -94,6 +105,40 @@ func separateLabels(labels map[string]string) (map[string]string, map[string]str
 	return targetLabels, otherLabels
 }
 
+func (a *Api) exportMetricsSchema(request *restful.Request, response *restful.Response) {
+	result := TimeseriesSchema{}
+	for _, label := range sinksApi.CommonLabels() {
+		result.CommonLabels = append(result.CommonLabels, LabelDescriptor{
+			Key:         label.Key,
+			Description: label.Description,
+		})
+	}
+	for _, label := range sinksApi.PodLabels() {
+		result.PodLabels = append(result.PodLabels, LabelDescriptor{
+			Key:         label.Key,
+			Description: label.Description,
+		})
+	}
+
+	for _, metric := range sinksApi.SupportedStatMetrics() {
+		md := MetricDescriptor{
+			Name:        metric.Name,
+			Description: metric.Description,
+			Type:        metric.Type.String(),
+			ValueType:   metric.ValueType.String(),
+			Units:       metric.Units.String(),
+		}
+		for _, label := range metric.Labels {
+			md.Labels = append(md.Labels, LabelDescriptor{
+				Key:         label.Key,
+				Description: label.Description,
+			})
+		}
+		result.Metrics = append(result.Metrics, md)
+	}
+	response.WriteEntity(result)
+}
+
 func (a *Api) exportMetrics(request *restful.Request, response *restful.Response) {
 	points, err := a.manager.ExportMetrics()
 	if err != nil {
@@ -105,7 +150,7 @@ func (a *Api) exportMetrics(request *restful.Request, response *restful.Response
 	timeseriesForTargetLabels := map[string]*Timeseries{}
 	for _, point := range points {
 		targetLabels, otherLabels := separateLabels(point.Labels)
-		labelsStr := sinksApi.LabelsToString(targetLabels, ",")
+		labelsStr := util.LabelsToString(targetLabels, ",")
 
 		// Add timeseries if it does not exist.
 		timeseries, ok := timeseriesForTargetLabels[labelsStr]

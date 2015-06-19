@@ -27,11 +27,12 @@ import (
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
+	"github.com/GoogleCloudPlatform/heapster/util"
 	"github.com/GoogleCloudPlatform/heapster/util/gce"
 	"github.com/GoogleCloudPlatform/heapster/util/gcstore"
 	"github.com/golang/glog"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 )
 
@@ -326,7 +327,7 @@ func (self *gcmSink) getEquivalentRateMetric(labels map[string]string, value int
 	}
 	key := lastValueKey{
 		metricName: fullMetricName(rateMetric.name),
-		labels:     sink_api.LabelsToString(labels, ","),
+		labels:     util.LabelsToString(labels, ","),
 	}
 	lastValueRaw := self.lastValue.Get(key)
 	self.lastValue.Put(key, lastValueData{

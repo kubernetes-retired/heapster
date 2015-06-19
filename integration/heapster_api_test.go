@@ -26,7 +26,7 @@ import (
 	"time"
 
 	heapster_api "github.com/GoogleCloudPlatform/heapster/api/v1"
-	heapster_sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/golang/glog"
@@ -148,7 +148,10 @@ func buildAndPushDockerImages(fm kubeFramework) error {
 	return buildAndPushHeapsterImage(hostnames)
 }
 
-const metricsEndpoint = "/api/v1/metric-export"
+const (
+	metricsEndpoint       = "/api/v1/metric-export"
+	metricsSchemaEndpoint = "/api/v1/metric-export-schema"
+)
 
 func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNodes, expectedPods []string) error {
 	body, err := fm.Client().Get().
@@ -170,18 +173,71 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNod
 	if len(timeseries) == 0 {
 		return fmt.Errorf("expected non zero timeseries")
 	}
+	body, err = fm.Client().Get().
+		Namespace(svc.Namespace).
+		Prefix("proxy").
+		Resource("services").
+		Name(svc.Name).
+		Suffix(metricsSchemaEndpoint).
+		Do().Raw()
+	if err != nil {
+		return err
+	}
+	var timeseriesSchema heapster_api.TimeseriesSchema
+	if err := json.Unmarshal(body, &timeseriesSchema); err != nil {
+		glog.V(2).Infof("response body: %v", string(body))
+		return err
+	}
+	// Build a map of metric names to metric descriptors.
+	mdMap := map[string]*heapster_api.MetricDescriptor{}
+	for idx := range timeseriesSchema.Metrics {
+		mdMap[timeseriesSchema.Metrics[idx].Name] = &timeseriesSchema.Metrics[idx]
+	}
 	actualPods := map[string]bool{}
 	actualNodes := map[string]bool{}
-	for _, point := range timeseries {
-		if podName, ok := point.Labels[heapster_sink_api.LabelPodName]; ok {
+	for _, ts := range timeseries {
+		// Verify the relevant labels are present.
+		// All common labels must be present.
+		for _, label := range sink_api.CommonLabels() {
+			_, exists := ts.Labels[label.Key]
+			if !exists {
+				return fmt.Errorf("timeseries: %v does not contain common label: %v", ts, label)
+			}
+		}
+		podName, podMetric := ts.Labels[sink_api.LabelPodName.Key]
+		if podMetric {
+			for _, label := range sink_api.PodLabels() {
+				_, exists := ts.Labels[label.Key]
+				if !exists {
+					return fmt.Errorf("timeseries: %v does not contain pod label: %v", ts, label)
+				}
+			}
+		}
+		if podMetric {
 			actualPods[podName] = true
 
-		} else if cName, ok := point.Labels[heapster_sink_api.LabelContainerName]; ok && cName == cache.NodeContainerName {
-			hostname, ok := point.Labels[heapster_sink_api.LabelHostname]
+		} else if cName, ok := ts.Labels[sink_api.LabelContainerName.Key]; ok && cName == cache.NodeContainerName {
+			hostname, ok := ts.Labels[sink_api.LabelHostname.Key]
 			if !ok {
-				return fmt.Errorf("hostname label missing on node container %+v", point.Labels)
+				return fmt.Errorf("hostname label missing on node container %+v", ts.Labels)
 			}
 			actualNodes[hostname] = true
+		}
+
+		for metricName, points := range ts.Metrics {
+			md, exists := mdMap[metricName]
+			if !exists {
+				return fmt.Errorf("unexpected metric %q", metricName)
+			}
+			for _, point := range points {
+				for _, label := range md.Labels {
+					_, exists := point.Labels[label.Key]
+					if !exists {
+						return fmt.Errorf("metric %q point %v does not contain metric label: %v", metricName, point, label)
+					}
+				}
+			}
+
 		}
 	}
 	if !expectedItemsExist(expectedPods, actualPods) {

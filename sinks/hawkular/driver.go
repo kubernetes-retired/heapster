@@ -25,7 +25,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/hawkular/hawkular-client-go/metrics"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 )
 
@@ -121,12 +121,12 @@ func (self *hawkularSink) descriptorToDefinition(md *sink_api.MetricDescriptor) 
 }
 
 func (self *hawkularSink) groupName(p *sink_api.Point) string {
-	n := []string{p.Labels[sink_api.LabelContainerName], p.Name}
+	n := []string{p.Labels[sink_api.LabelContainerName.Key], p.Name}
 	return strings.Join(n, separator)
 }
 
 func (self *hawkularSink) idName(p *sink_api.Point) string {
-	n := []string{p.Labels[sink_api.LabelContainerName], p.Labels[sink_api.LabelPodId], p.Name}
+	n := []string{p.Labels[sink_api.LabelContainerName.Key], p.Labels[sink_api.LabelPodId.Key], p.Name}
 	return strings.Join(n, separator)
 }
 

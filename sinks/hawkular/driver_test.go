@@ -16,10 +16,11 @@ package hawkular
 
 import (
 	"fmt"
-	"github.com/GoogleCloudPlatform/heapster/sinks/api"
-	"github.com/hawkular/hawkular-client-go/metrics"
 	"testing"
 	"time"
+
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
+	"github.com/hawkular/hawkular-client-go/metrics"
 
 	assert "github.com/stretchr/testify/require"
 )
@@ -35,16 +36,16 @@ func TestDescriptorTransform(t *testing.T) {
 
 	hSink := dummySink()
 
-	ld := api.LabelDescriptor{
+	ld := sink_api.LabelDescriptor{
 		Key:         "k1",
 		Description: "d1",
 	}
-	smd := api.MetricDescriptor{
+	smd := sink_api.MetricDescriptor{
 		Name:      "test/metric/1",
-		Units:     api.UnitsBytes,
-		ValueType: api.ValueInt64,
-		Type:      api.MetricGauge,
-		Labels:    []api.LabelDescriptor{ld},
+		Units:     sink_api.UnitsBytes,
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricGauge,
+		Labels:    []sink_api.LabelDescriptor{ld},
 	}
 
 	md := hSink.descriptorToDefinition(&smd)
@@ -59,18 +60,18 @@ func TestDescriptorTransform(t *testing.T) {
 func TestMetricTransform(t *testing.T) {
 	hSink := dummySink()
 
-	smd := api.MetricDescriptor{
-		ValueType: api.ValueInt64,
-		Type:      api.MetricCumulative,
+	smd := sink_api.MetricDescriptor{
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricCumulative,
 	}
 
 	l := make(map[string]string)
 	l["spooky"] = "notvisible"
-	l[api.LabelHostname] = "localhost"
-	l[api.LabelContainerName] = "docker"
-	l[api.LabelPodId] = "aaaa-bbbb-cccc-dddd"
+	l[sink_api.LabelHostname.Key] = "localhost"
+	l[sink_api.LabelContainerName.Key] = "docker"
+	l[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
-	p := api.Point{
+	p := sink_api.Point{
 		Name:   "test/metric/1",
 		Labels: l,
 		Start:  time.Now(),
@@ -78,7 +79,7 @@ func TestMetricTransform(t *testing.T) {
 		Value:  int64(123456),
 	}
 
-	ts := api.Timeseries{
+	ts := sink_api.Timeseries{
 		MetricDescriptor: &smd,
 		Point:            &p,
 	}
@@ -86,7 +87,7 @@ func TestMetricTransform(t *testing.T) {
 	m, err := hSink.pointToMetricHeader(&ts)
 	assert.NoError(t, err)
 
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", p.Labels[api.LabelContainerName], p.Labels[api.LabelPodId], p.Name), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", p.Labels[sink_api.LabelContainerName.Key], p.Labels[sink_api.LabelPodId.Key], p.Name), m.Id)
 
 	assert.Equal(t, 1, len(m.Data))
 	_, ok := m.Data[0].Value.(float64)

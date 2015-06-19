@@ -26,7 +26,8 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
+	"github.com/GoogleCloudPlatform/heapster/util"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/golang/glog"
 	influxdb "github.com/influxdb/influxdb/client"
@@ -92,7 +93,7 @@ func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influ
 		}
 	} else {
 		seriesName = strings.Replace(seriesName, "/", "_", -1)
-		seriesName = fmt.Sprintf("%s_%s", sink_api.LabelsToString(timeseries.Point.Labels, "_"), seriesName)
+		seriesName = fmt.Sprintf("%s_%s", util.LabelsToString(timeseries.Point.Labels, "_"), seriesName)
 	}
 	// Add timestamp.
 	columns = append(columns, "time")
@@ -105,12 +106,12 @@ func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influ
 }
 
 var eventColumns = []string{
-	"time",                 // Column 0
-	"sequence_number",      // Column 1
-	sink_api.LabelPodId,    // Column 2
-	sink_api.LabelPodName,  // Column 3
-	sink_api.LabelHostname, // Column 4
-	"value",                // Column 5
+	"time",                     // Column 0
+	"sequence_number",          // Column 1
+	sink_api.LabelPodId.Key,    // Column 2
+	sink_api.LabelPodName.Key,  // Column 3
+	sink_api.LabelHostname.Key, // Column 4
+	"value",                    // Column 5
 }
 
 // Stores events into the backend.
@@ -188,11 +189,11 @@ func (sink *influxdbSink) storeEventNoColumns(event kube_api.Event) (*influxdb.S
 	seriesName := strings.Replace(eventsSeriesName, "/", "_", -1)
 	labels := make(map[string]string)
 	if event.InvolvedObject.Kind == "Pod" {
-		labels[sink_api.LabelPodId] = string(event.InvolvedObject.UID)
-		labels[sink_api.LabelPodName] = event.InvolvedObject.Name
+		labels[sink_api.LabelPodId.Key] = string(event.InvolvedObject.UID)
+		labels[sink_api.LabelPodName.Key] = event.InvolvedObject.Name
 	}
-	labels[sink_api.LabelHostname] = event.Source.Host
-	seriesName = fmt.Sprintf("%s_%s", sink_api.LabelsToString(labels, "_"), seriesName)
+	labels[sink_api.LabelHostname.Key] = event.Source.Host
+	seriesName = fmt.Sprintf("%s_%s", util.LabelsToString(labels, "_"), seriesName)
 
 	columns := []string{}
 	columns = append(columns, "time")            // Column 0

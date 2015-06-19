@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	kube_time "github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/stretchr/testify/assert"
