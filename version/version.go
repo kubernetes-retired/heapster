@@ -19,4 +19,4 @@ package version
 // Increment major number for new feature additions and behavioral changes.
 // Increment minor number for bug fixes and performance enhancements.
 // Increment patch number for critical fixes to existing releases.
-const HeapsterVersion = "0.14.3"
+const HeapsterVersion = "0.14.2"
