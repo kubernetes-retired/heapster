@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package api
+package v1
 
 import (
 	"testing"
@@ -25,20 +25,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEmptyInputV2(t *testing.T) {
-	timeseries, err := NewV2Decoder().TimeseriesFromPods([]*cache.PodElement{})
+const (
+	fakeContainerCreationTime = 12345
+	fakeCurrentTime           = 12350
+)
+
+func TestEmptyInput(t *testing.T) {
+	timeseries, err := NewDecoder().TimeseriesFromPods([]*cache.PodElement{})
 	assert.NoError(t, err)
 	assert.Empty(t, timeseries)
-	timeseries, err = NewV2Decoder().TimeseriesFromContainers([]*cache.ContainerElement{})
+	timeseries, err = NewDecoder().TimeseriesFromContainers([]*cache.ContainerElement{})
 	assert.NoError(t, err)
 	assert.Empty(t, timeseries)
 }
 
-func TestFuzzInputV2(t *testing.T) {
+func TestFuzzInput(t *testing.T) {
 	var pods []*cache.PodElement
 	f := fuzz.New().NumElements(2, 10)
 	f.Fuzz(&pods)
-	_, err := NewV2Decoder().TimeseriesFromPods(pods)
+	_, err := NewDecoder().TimeseriesFromPods(pods)
 	assert.NoError(t, err)
 }
 
@@ -73,6 +78,11 @@ func getContainerElement(name string) *cache.ContainerElement {
 	}
 }
 
+type fsStats struct {
+	limit int64
+	usage int64
+}
+
 func getFsStatsFromContainerElement(input []*cache.ContainerElement) map[string]fsStats {
 	expectedFsStats := map[string]fsStats{}
 	for _, cont := range input {
@@ -85,7 +95,7 @@ func getFsStatsFromContainerElement(input []*cache.ContainerElement) map[string]
 	return expectedFsStats
 }
 
-func TestRealInputV2(t *testing.T) {
+func TestRealInput(t *testing.T) {
 	timeSince = func(t time.Time) time.Duration {
 		return time.Unix(fakeCurrentTime, 0).Sub(t)
 	}
@@ -114,7 +124,7 @@ func TestRealInputV2(t *testing.T) {
 			Containers: containers,
 		},
 	}
-	timeseries, err := NewV2Decoder().TimeseriesFromPods(pods)
+	timeseries, err := NewDecoder().TimeseriesFromPods(pods)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, timeseries)
 	expectedFsStats := getFsStatsFromContainerElement(containers)
@@ -179,7 +189,7 @@ func TestRealInputV2(t *testing.T) {
 			case "filesystem/usage":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				name, ok := entry.Point.Labels[LabelResourceID]
+				name, ok := entry.Point.Labels[LabelResourceID.Key]
 				require.True(t, ok)
 				assert.Equal(t, expectedFsStats[name].usage, value)
 			case "cpu/limit":
@@ -194,7 +204,7 @@ func TestRealInputV2(t *testing.T) {
 			case "filesystem/limit":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
-				name, ok := entry.Point.Labels[LabelResourceID]
+				name, ok := entry.Point.Labels[LabelResourceID.Key]
 				require.True(t, ok)
 				assert.Equal(t, expectedFsStats[name].limit, value)
 			default:

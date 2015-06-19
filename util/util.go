@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package api
+package util
 
 import (
 	"fmt"
@@ -30,4 +30,12 @@ func LabelsToString(labels map[string]string, separator string) string {
 	// Sort to produce a stable output.
 	sort.Strings(output)
 	return strings.Join(output, separator)
+}
+
+func CopyLabels(labels map[string]string) map[string]string {
+	c := make(map[string]string, len(labels))
+	for key, val := range labels {
+		c[key] = val
+	}
+	return c
 }

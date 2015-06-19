@@ -18,13 +18,14 @@ import (
 	"fmt"
 	"strings"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api_old "github.com/GoogleCloudPlatform/heapster/sinks/api"
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 )
 
 type externalSinkManager struct {
-	decoder       sink_api.DecoderV1
+	decoder       sink_api_old.Decoder
 	externalSinks []sink_api.ExternalSink
 }
 
@@ -49,7 +50,7 @@ func NewExternalSinkManager(externalSinks []sink_api.ExternalSink) (ExternalSink
 			return nil, err
 		}
 	}
-	decoder := sink_api.NewV1Decoder()
+	decoder := sink_api_old.NewDecoder()
 	return &externalSinkManager{
 		externalSinks: externalSinks,
 		decoder:       decoder,
