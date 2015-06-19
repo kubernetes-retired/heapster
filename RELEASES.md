@@ -1,9 +1,5 @@
 # Release Notes
 
-## 0.14.3 (6-19-2015)
-- Expose HostID for nodes. 
-- Added an API '/metric-export-schema' that exposes the schema for '/metric-export' API.
-
 ## 0.14.2 (6-16-2015)
 - Expose HostID for all containers.
 
