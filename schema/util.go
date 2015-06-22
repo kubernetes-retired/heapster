@@ -20,15 +20,18 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/store"
 )
 
-func maxTimestamp(first time.Time, second time.Time) time.Time {
+// latestTimestamp returns its largest time.Time argument
+func latestTimestamp(first time.Time, second time.Time) time.Time {
 	if first.After(second) {
 		return first
 	}
 	return second
 }
 
+// newInfoType is an InfoType Constructor, which returns a new InfoType.
+// Initial fields for the new InfoType can be provided as arguments.
+// A nil argument results in a newly-allocated map for that field.
 func newInfoType(metrics map[string]*store.TimeStore, labels map[string]string) InfoType {
-	// InfoType Constructor
 	if metrics == nil {
 		metrics = make(map[string]*store.TimeStore)
 	}

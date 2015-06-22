@@ -16,13 +16,10 @@ package schema
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 )
-
-var lock sync.RWMutex
 
 func NewCluster() Cluster {
 	return newRealCluster()
@@ -41,19 +38,23 @@ func newRealCluster() *realCluster {
 	return cluster
 }
 
+// GetAllClusterData returns a pointer to the ClusterInfo, along with all of its metrics.
+// GetAllClusterData also returns the latest cluster timestamp, for reuse in GetNew* methods.
 func (rc *realCluster) GetAllClusterData() (*ClusterInfo, time.Time, error) {
-	// Returns the entire ClusterInfo object
-	lock.RLock()
-	defer lock.RUnlock()
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
 	return &rc.ClusterInfo, rc.timestamp, nil
 }
 
+// GetAllNodeData finds a node, given a hostname (internal to the cluster).
+// GetAllNodeData returns a corresponding NodeInfo object, along with all of its metrics.
+// GetAllNodeData also returns the latest cluster timestamp, for reuse in GetNew* methods.
 func (rc *realCluster) GetAllNodeData(hostname string) (*NodeInfo, time.Time, error) {
-	// Returns the corresponding NodeInfo object
+	// TODO(alex): should return a deep copy instead of a pointer
 	var zeroTime time.Time
 
-	lock.RLock()
-	defer lock.RUnlock()
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
 
 	res, ok := rc.Nodes[hostname]
 	if !ok {
@@ -63,12 +64,15 @@ func (rc *realCluster) GetAllNodeData(hostname string) (*NodeInfo, time.Time, er
 	return res, rc.timestamp, nil
 }
 
+// GetAllPodData finds a pod, given a namespace string and a pod name string.
+// GetAllPodData returns a pointer to a PodInfo object, along with all of its metrics.
+// GetAllPodData also returns the latest cluster timestamp, for reuse in GetNew* methods.
 func (rc *realCluster) GetAllPodData(namespace string, pod_name string) (*PodInfo, time.Time, error) {
-	// Returns the corresponding NodeInfo object
+	// TODO(alex): should return a deep copy instead of a pointer
 	var zeroTime time.Time
 
-	lock.RLock()
-	defer lock.RUnlock()
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
 
 	if len(rc.Namespaces) == 0 {
 		return nil, zeroTime, fmt.Errorf("unable to find pod: no namespaces in cluster")
@@ -90,4 +94,89 @@ func (rc *realCluster) GetAllPodData(namespace string, pod_name string) (*PodInf
 func (rc *realCluster) Update(c *cache.Cache) error {
 	// TODO(afein): Unimplemented
 	return nil
+}
+
+// updateTime updates the Cluster timestamp to the specified time.
+func (rc *realCluster) updateTime(new_time time.Time) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+	rc.timestamp = new_time
+}
+
+// addNode creates or finds a NodeInfo element for the provided (internal) hostname.
+// addNode returns a pointer to the NodeInfo element that was created or found.
+// addNode assumes an appropriate lock is already taken by the caller.
+func (rc *realCluster) addNode(hostname string) *NodeInfo {
+	var node_ptr *NodeInfo
+
+	if val, ok := rc.Nodes[hostname]; ok {
+		// Node element already exists, return pointer
+		node_ptr = val
+	} else {
+		// Node does not exist in map, create a new NodeInfo object
+		node_ptr = &NodeInfo{
+			InfoType:       newInfoType(nil, nil),
+			Pods:           make(map[string]*PodInfo),
+			FreeContainers: make(map[string]*ContainerInfo),
+		}
+
+		// Add Pointer to new_node under cluster.Nodes
+		rc.Nodes[hostname] = node_ptr
+	}
+	return node_ptr
+}
+
+// addNamespace creates or finds a NamespaceInfo element for the provided namespace.
+// addNamespace returns a pointer to the NamespaceInfo element that was created or found.
+// addNamespace assumes an appropriate lock is already taken by the caller.
+func (rc *realCluster) addNamespace(name string) *NamespaceInfo {
+	var namespace_ptr *NamespaceInfo
+
+	if val, ok := rc.Namespaces[name]; ok {
+		// Namespace already exists, return pointer
+		namespace_ptr = val
+	} else {
+		// Namespace does not exist in map, create a new NamespaceInfo struct
+		namespace_ptr = &NamespaceInfo{
+			InfoType: newInfoType(nil, nil),
+			Pods:     make(map[string]*PodInfo),
+		}
+		rc.Namespaces[name] = namespace_ptr
+	}
+
+	return namespace_ptr
+}
+
+// addPod creates or finds a PodInfo element under the provided NodeInfo and NamespaceInfo.
+// addPod returns a pointer to the PodInfo element that was created or found.
+// addPod assumes an appropriate lock is already taken by the caller.
+func (rc *realCluster) addPod(pod_name string, pod_uid string, namespace *NamespaceInfo, node *NodeInfo) *PodInfo {
+	var pod_ptr *PodInfo
+	var in_ns bool
+	var in_node bool
+
+	// Check if the pod is already referenced by the namespace or the node
+	if _, ok := namespace.Pods[pod_name]; ok {
+		in_ns = true
+	}
+
+	if _, ok := node.Pods[pod_name]; ok {
+		in_node = true
+	}
+
+	if in_ns && in_node {
+		// Pod already in Namespace and Node maps, return pointer
+		pod_ptr, _ = node.Pods[pod_name]
+	} else {
+		// Create new Pod and point from node and namespace
+		pod_ptr = &PodInfo{
+			InfoType:   newInfoType(nil, nil),
+			UID:        pod_uid,
+			Containers: make(map[string]*ContainerInfo),
+		}
+		namespace.Pods[pod_name] = pod_ptr
+		node.Pods[pod_name] = pod_ptr
+	}
+
+	return pod_ptr
 }
