@@ -97,13 +97,11 @@ func (rc *realCluster) GetAllPodData(namespace string, pod_name string) (*PodInf
 	return pod, rc.timestamp, nil
 }
 
-func (rc *realCluster) Update(c *cache.Cache) error {
-	// TODO(afein): Unimplemented
-	return nil
-}
-
 // updateTime updates the Cluster timestamp to the specified time.
 func (rc *realCluster) updateTime(new_time time.Time) {
+	if new_time.Equal(time.Time{}) {
+		return
+	}
 	rc.lock.Lock()
 	defer rc.lock.Unlock()
 	rc.timestamp = new_time
@@ -315,4 +313,115 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 		}
 	}
 	return timestamp, nil
+}
+
+// Update populates the data structure from a cache.
+func (rc *realCluster) Update(c cache.Cache) error {
+	var zero time.Time
+	latest_time := rc.timestamp
+	glog.V(2).Infoln("Schema Update operation started")
+
+	// Invoke cache methods using the Cluster timestamp
+	nodes := c.GetNodes(rc.timestamp, zero)
+	for _, node := range nodes {
+		timestamp, err := rc.updateNode(node)
+		if err != nil {
+			return fmt.Errorf("Failed to Update Node Information: %s", err)
+		}
+		latest_time = latestTimestamp(latest_time, timestamp)
+	}
+
+	pods := c.GetPods(rc.timestamp, zero)
+	for _, pod := range pods {
+		timestamp, err := rc.updatePod(pod)
+		if err != nil {
+			return fmt.Errorf("Failed to Update Pod Information: %s", err)
+		}
+		latest_time = latestTimestamp(latest_time, timestamp)
+	}
+
+	free_containers := c.GetFreeContainers(rc.timestamp, zero)
+	for _, ce := range free_containers {
+		timestamp, err := rc.updateFreeContainer(ce)
+		if err != nil {
+			return fmt.Errorf("Failed to Update Free Container Information: %s", err)
+		}
+		latest_time = latestTimestamp(latest_time, timestamp)
+	}
+
+	// Update the Cluster timestamp to the latest time found in the new metrics
+	rc.updateTime(latest_time)
+
+	glog.V(2).Infoln("Schema Update operation completed")
+	return nil
+}
+
+// updateNode updates Node-level information from a "machine"-tagged ContainerElement
+func (rc *realCluster) updateNode(node_container *cache.ContainerElement) (time.Time, error) {
+	if node_container.Name != "machine" {
+		return time.Time{}, fmt.Errorf("Received node-level container with unexpected name: %s", node_container.Name)
+	}
+
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+	node_ptr := rc.addNode(node_container.Hostname)
+
+	// Update NodeInfo's Metrics and Labels - return latest metric timestamp
+	result, err := rc.updateInfoType(&node_ptr.InfoType, node_container)
+	return result, err
+}
+
+// updatePod updates Pod-level information from a PodElement
+func (rc *realCluster) updatePod(pod *cache.PodElement) (time.Time, error) {
+	if pod == nil {
+		return time.Time{}, fmt.Errorf("nil PodElement provided to updatePod")
+	}
+
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
+	// Get Namespace and Node pointers
+	namespace := rc.addNamespace(pod.Namespace)
+	node := rc.addNode(pod.Hostname)
+
+	// Get Pod pointer
+	pod_ptr := rc.addPod(pod.Name, pod.UID, namespace, node)
+
+	// Copy Labels map
+	pod_ptr.Labels = pod.Labels
+
+	// Update container metrics
+	latest_time := time.Time{}
+	for _, ce := range pod.Containers {
+		new_time, err := rc.updatePodContainer(pod_ptr, ce)
+		if err != nil {
+			return time.Time{}, err
+		}
+		latest_time = latestTimestamp(latest_time, new_time)
+	}
+
+	return latest_time, nil
+}
+
+// updatePodContainer updates a Pod's Container-level information from a ContainerElement
+// updatePodContainer receives a PodInfo pointer and a ContainerElement pointer
+// Assumes Cluster lock is already taken
+func (rc *realCluster) updatePodContainer(pod_info *PodInfo, ce *cache.ContainerElement) (time.Time, error) {
+	// Get Container pointer and update its InfoType
+	cinfo := addContainerToMap(ce.Name, pod_info.Containers)
+	latest_time, err := rc.updateInfoType(&cinfo.InfoType, ce)
+	return latest_time, err
+}
+
+// updateFreeContainer updates Free Container-level information from a ContainerElement
+func (rc *realCluster) updateFreeContainer(ce *cache.ContainerElement) (time.Time, error) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
+	// Get Node pointer
+	node := rc.addNode(ce.Hostname)
+	// Get Container pointer and update its InfoType
+	cinfo := addContainerToMap(ce.Name, node.FreeContainers)
+	latest_time, err := rc.updateInfoType(&cinfo.InfoType, ce)
+	return latest_time, err
 }

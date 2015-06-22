@@ -23,7 +23,7 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/store"
 )
 
-// TestLatestsTimestamp tests all flows of latestTimeStamp
+// TestLatestsTimestamp tests all flows of latestTimeStamp.
 func TestLatestTimestamp(t *testing.T) {
 	assert := assert.New(t)
 	past := time.Unix(1434212566, 0)
@@ -53,4 +53,23 @@ func TestNewInfoType(t *testing.T) {
 	new_infotype = newInfoType(metrics, labels)
 	assert.Equal(new_infotype.Metrics, metrics)
 	assert.Equal(new_infotype.Labels, labels)
+}
+
+// TestAddContainerToMap tests all the flows of addContainerToMap.
+func TestAddContainerToMap(t *testing.T) {
+	new_map := make(map[string]*ContainerInfo)
+
+	// First Call: A new ContainerInfo is created
+	cinfo := addContainerToMap("new_container", new_map)
+
+	assert := assert.New(t)
+	assert.NotNil(cinfo)
+	assert.NotNil(cinfo.Metrics)
+	assert.NotNil(cinfo.Labels)
+	assert.Equal(new_map["new_container"], cinfo)
+
+	// Second Call: A ContainerInfo is already available for that key
+	new_cinfo := addContainerToMap("new_container", new_map)
+	assert.Equal(new_map["new_container"], new_cinfo)
+	assert.Equal(cinfo, new_cinfo)
 }

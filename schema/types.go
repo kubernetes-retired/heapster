@@ -24,7 +24,7 @@ import (
 
 type Cluster interface {
 	// The Update operation populates the Cluster from a cache.
-	Update(*cache.Cache) error
+	Update(cache.Cache) error
 
 	// The Get operations extract internal types from the Cluster.
 	// The returned time.Time values signify the latest metric timestamp in the cluster.
