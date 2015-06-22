@@ -27,7 +27,7 @@ func TestGC(t *testing.T) {
 	assert := assert.New(t)
 	for i := 0; i < 100; i++ {
 		timestamp := now.Add(-time.Hour + (time.Duration(i) * time.Minute))
-		assert.NoError(gcStore.Put(timestamp, struct{}{}))
+		assert.NoError(gcStore.Put(TimePoint{timestamp, struct{}{}}))
 	}
 	data := gcStore.Get(now, time.Now())
 	assert.Len(data, 0)
@@ -39,7 +39,7 @@ func TestGCDetail(t *testing.T) {
 	assert := assert.New(t)
 	for i := 0; i < 20; i++ {
 		timestamp := now.Add(-time.Hour + (time.Duration(i) * time.Minute))
-		assert.NoError(gcStore.Put(timestamp, struct{}{}))
+		assert.NoError(gcStore.Put(TimePoint{timestamp, struct{}{}}))
 	}
 	data := gcStore.Get(time.Time{}, time.Now())
 	assert.NotEmpty(data)
@@ -50,7 +50,7 @@ func TestLongGC(t *testing.T) {
 	now := time.Now()
 	assert := assert.New(t)
 	for i := 0; i < 200; i++ {
-		assert.NoError(gcStore.Put(time.Now(), i))
+		assert.NoError(gcStore.Put(TimePoint{time.Now(), i}))
 	}
 	data := gcStore.Get(now, time.Now())
 	assert.Equal(200, len(data))

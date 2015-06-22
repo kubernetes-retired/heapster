@@ -26,15 +26,15 @@ type gcStore struct {
 }
 
 // The GC store expects data to be inserted in reverse chronological order.
-func (gcs *gcStore) Put(timestamp time.Time, data interface{}) error {
-	if err := gcs.store.Put(timestamp, data); err != nil {
+func (gcs *gcStore) Put(tp TimePoint) error {
+	if err := gcs.store.Put(tp); err != nil {
 		return err
 	}
-	gcs.reapOldData(timestamp)
+	gcs.reapOldData(tp.Timestamp)
 	return nil
 }
 
-func (gcs *gcStore) Get(start, end time.Time) []interface{} {
+func (gcs *gcStore) Get(start, end time.Time) []TimePoint {
 	return gcs.store.Get(start, end)
 }
 

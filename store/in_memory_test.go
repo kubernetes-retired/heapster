@@ -22,6 +22,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// putWrapper puts a new TimePoint object to a TimeStore, given the time and value.
+func putWrapper(store TimeStore, timestamp time.Time, value interface{}) error {
+	new_point := TimePoint{
+		Timestamp: timestamp,
+		Value:     value,
+	}
+	return store.Put(new_point)
+}
+
 func TestInitialization(t *testing.T) {
 	store := NewTimeStore()
 	data := store.Get(time.Now().Add(-time.Minute), time.Now())
@@ -30,12 +39,15 @@ func TestInitialization(t *testing.T) {
 
 func TestNilInsert(t *testing.T) {
 	store := NewTimeStore()
-	assert.Error(t, store.Put(time.Now(), nil))
+	assert.Error(t, putWrapper(store, time.Now(), nil))
 }
 
-func expectElements(t *testing.T, data []interface{}) {
+func expectElements(t *testing.T, data []TimePoint) {
 	for i := 0; i < len(data); i++ {
-		assert.Equal(t, len(data)-i-1, data[i].(int))
+		assert.Equal(t, len(data)-i-1, data[i].Value.(int))
+		if i != len(data)-1 {
+			assert.True(t, data[i].Timestamp.After(data[i+1].Timestamp))
+		}
 	}
 }
 
@@ -43,10 +55,10 @@ func TestInsert(t *testing.T) {
 	store := NewTimeStore()
 	now := time.Now()
 	assert := assert.New(t)
-	assert.NoError(store.Put(now, 2))
-	assert.NoError(store.Put(now.Add(-time.Second), 1))
-	assert.NoError(store.Put(now.Add(time.Second), 3))
-	assert.NoError(store.Put(now.Add(-2*time.Second), 0))
+	assert.NoError(putWrapper(store, now, 2))
+	assert.NoError(putWrapper(store, now.Add(-time.Second), 1))
+	assert.NoError(putWrapper(store, now.Add(time.Second), 3))
+	assert.NoError(putWrapper(store, now.Add(-2*time.Second), 0))
 	actual := store.Get(time.Time{}, now)
 	require.Len(t, actual, 3)
 	expectElements(t, actual)
@@ -59,14 +71,14 @@ func TestDelete(t *testing.T) {
 	store := NewTimeStore()
 	now := time.Now()
 	assert := assert.New(t)
-	assert.NoError(store.Put(now, 2))
-	assert.NoError(store.Put(now.Add(-time.Second), 1))
-	assert.NoError(store.Put(now.Add(-2*time.Second), 0))
-	assert.NoError(store.Put(now.Add(time.Second), 3))
+	assert.NoError(putWrapper(store, now, 2))
+	assert.NoError(putWrapper(store, now.Add(-time.Second), 1))
+	assert.NoError(putWrapper(store, now.Add(-2*time.Second), 0))
+	assert.NoError(putWrapper(store, now.Add(time.Second), 3))
 	assert.NoError(store.Delete(now.Add(-time.Second), now))
 	actual := store.Get(now.Add(-time.Second), time.Time{})
 	require.Len(t, actual, 1)
-	assert.Equal(3, actual[0].(int))
+	assert.Equal(3, actual[0].Value.(int))
 	assert.NoError(store.Delete(time.Time{}, time.Time{}))
 	assert.Empty(store.Get(time.Time{}, time.Time{}))
 }

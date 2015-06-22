@@ -23,11 +23,6 @@ import (
 	"github.com/golang/glog"
 )
 
-type entry struct {
-	timestamp time.Time
-	data      interface{}
-}
-
 // TODO: Consider using cadvisor's in memory storage instead.
 type timeStore struct {
 	// A list that will contain all the timeStore entries.
@@ -38,29 +33,29 @@ type timeStore struct {
 	rwLock sync.RWMutex
 }
 
-func (ts *timeStore) Put(timestamp time.Time, data interface{}) error {
-	if data == nil {
-		return fmt.Errorf("cannot store nil data")
+func (ts *timeStore) Put(tp TimePoint) error {
+	if tp.Value == nil {
+		return fmt.Errorf("cannot store TimePoint with nil data")
 	}
-	if (timestamp == time.Time{}) {
-		return fmt.Errorf("cannot store data with zero timestamp")
+	if (tp.Timestamp == time.Time{}) {
+		return fmt.Errorf("cannot store TimePoint with zero timestamp")
 	}
 	ts.rwLock.Lock()
 	defer ts.rwLock.Unlock()
 	if ts.buffer.Len() == 0 {
-		glog.V(5).Infof("put pushfront: %v, %v", timestamp, data)
-		ts.buffer.PushFront(entry{timestamp: timestamp, data: data})
+		glog.V(5).Infof("put pushfront: %v, %v", tp.Timestamp, tp.Value)
+		ts.buffer.PushFront(tp)
 		return nil
 	}
 	for elem := ts.buffer.Front(); elem != nil; elem = elem.Next() {
-		if timestamp.After(elem.Value.(entry).timestamp) {
-			glog.V(5).Infof("put insert before: %v, %v, %v", elem, timestamp, data)
-			ts.buffer.InsertBefore(entry{timestamp: timestamp, data: data}, elem)
+		if tp.Timestamp.After(elem.Value.(TimePoint).Timestamp) {
+			glog.V(5).Infof("put insert before: %v, %v, %v", elem, tp.Timestamp, tp.Value)
+			ts.buffer.InsertBefore(tp, elem)
 			return nil
 		}
 	}
-	glog.V(5).Infof("put pushback: %v, %v", timestamp, data)
-	ts.buffer.PushBack((entry{timestamp: timestamp, data: data}))
+	glog.V(5).Infof("put pushback: %v, %v", tp.Timestamp, tp.Value)
+	ts.buffer.PushBack(tp)
 	return nil
 }
 
@@ -80,7 +75,7 @@ func timeEqualOrAfter(t1, t2 time.Time) bool {
 	return false
 }
 
-func (ts *timeStore) Get(start, end time.Time) []interface{} {
+func (ts *timeStore) Get(start, end time.Time) []TimePoint {
 	ts.rwLock.RLock()
 	defer ts.rwLock.RUnlock()
 	if ts.buffer.Len() == 0 {
@@ -90,18 +85,18 @@ func (ts *timeStore) Get(start, end time.Time) []interface{} {
 	if start == zeroTime {
 		start = zeroTime
 	}
-	result := []interface{}{}
+	result := []TimePoint{}
 	for elem := ts.buffer.Front(); elem != nil; elem = elem.Next() {
-		entry := elem.Value.(entry)
+		entry := elem.Value.(TimePoint)
 		// Break the loop if we encounter a timestamp that is before 'start'
-		if entry.timestamp.Before(start) {
+		if entry.Timestamp.Before(start) {
 			break
 		}
 		// Add all entries whose timestamp is before end.
-		if end != zeroTime && entry.timestamp.After(end) {
+		if end != zeroTime && entry.Timestamp.After(end) {
 			continue
 		}
-		result = append(result, entry.data)
+		result = append(result, entry)
 	}
 	return result
 }
@@ -118,8 +113,8 @@ func (ts *timeStore) Delete(start, end time.Time) error {
 	// Assuming that deletes will happen more frequently for older data.
 	elem := ts.buffer.Back()
 	for elem != nil {
-		entry := elem.Value.(entry)
-		if (end != time.Time{}) && entry.timestamp.After(end) {
+		entry := elem.Value.(TimePoint)
+		if (end != time.Time{}) && entry.Timestamp.After(end) {
 			// If we have reached an entry which is more recent than 'end' stop iterating.
 			break
 		}
@@ -127,7 +122,7 @@ func (ts *timeStore) Delete(start, end time.Time) error {
 		elem = elem.Prev()
 
 		// Skip entried which are before start.
-		if !entry.timestamp.Before(start) {
+		if !entry.Timestamp.Before(start) {
 			ts.buffer.Remove(oldElem)
 		}
 	}

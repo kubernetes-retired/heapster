@@ -84,7 +84,10 @@ func storeSpecAndStats(ce *containerElement, c *source_api.Container) {
 			Spec:  &c.Spec,
 			Stats: c.Stats[idx],
 		}
-		ce.metrics.Put(c.Stats[idx].Timestamp, cme)
+		ce.metrics.Put(store.TimePoint{
+			Timestamp: c.Stats[idx].Timestamp,
+			Value:     cme,
+		})
 	}
 }
 
@@ -173,7 +176,7 @@ func (rc *realCache) GetPods(start, end time.Time) []*PodElement {
 			}
 			metrics := ce.metrics.Get(start, end)
 			for idx := range metrics {
-				cme := metrics[idx].(*ContainerMetricElement)
+				cme := metrics[idx].Value.(*ContainerMetricElement)
 				containerElement.Metrics = append(containerElement.Metrics, cme)
 			}
 			podElement.Containers = append(podElement.Containers, containerElement)
@@ -194,7 +197,7 @@ func (rc *realCache) GetNodes(start, end time.Time) []*ContainerElement {
 		}
 		metrics := ne.node.metrics.Get(start, end)
 		for idx := range metrics {
-			cme := metrics[idx].(*ContainerMetricElement)
+			cme := metrics[idx].Value.(*ContainerMetricElement)
 			ce.Metrics = append(ce.Metrics, cme)
 		}
 		result = append(result, ce)
@@ -213,7 +216,7 @@ func (rc *realCache) GetFreeContainers(start, end time.Time) []*ContainerElement
 			}
 			metrics := ce.metrics.Get(start, end)
 			for idx := range metrics {
-				cme := metrics[idx].(*ContainerMetricElement)
+				cme := metrics[idx].Value.(*ContainerMetricElement)
 				containerElement.Metrics = append(containerElement.Metrics, cme)
 			}
 			result = append(result, containerElement)
