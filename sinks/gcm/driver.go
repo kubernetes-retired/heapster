@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -55,6 +56,10 @@ type gcmSink struct {
 
 	// The last value we have pushed for every cumulative metric.
 	lastValue gcstore.GCStore
+
+	// If true export only metrics for nodes. This is for autoscaling purposes due to its limitation.
+	// More info: https://cloud.google.com/monitoring/quota-policy.
+	nodeOnly bool
 }
 
 func (self *gcmSink) refreshToken() error {
@@ -259,6 +264,9 @@ func (self *gcmSink) StoreTimeseries(input []sink_api.Timeseries) error {
 	// Build a map of metrics by name.
 	metrics := make(map[string][]timeseries)
 	for _, entry := range input {
+		if self.nodeOnly && entry.Point.Labels[sink_api.LabelContainerName.Key] != "/" {
+			continue
+		}
 		metric := entry.Point
 
 		// Use full label names.
@@ -476,7 +484,7 @@ func (self *gcmSink) DebugInfo() string {
 }
 
 // Returns a thread-compatible implementation of GCM interactions.
-func new() (sink_api.ExternalSink, error) {
+func new(nodeOnly bool) (sink_api.ExternalSink, error) {
 	// TODO: Retry OnGCE call for ~15 seconds before declaring failure.
 	time.Sleep(3 * time.Second)
 	// Only support GCE for now.
@@ -500,6 +508,7 @@ func new() (sink_api.ExternalSink, error) {
 		project:         project,
 		exportedMetrics: make(map[string]metricDescriptor),
 		lastValue:       gcstore.New(time.Hour),
+		nodeOnly:        nodeOnly,
 	}
 
 	// Get an initial token.
@@ -519,8 +528,16 @@ func init() {
 	extpoints.SinkFactories.Register(CreateGCMSink, "gcm")
 }
 
-func CreateGCMSink(_ string, _ map[string][]string) ([]sink_api.ExternalSink, error) {
-	sink, err := new()
+func CreateGCMSink(_ string, options map[string][]string) ([]sink_api.ExternalSink, error) {
+	nodeOnly := false
+	if len(options["nodeOnly"]) >= 1 {
+		val, err := strconv.ParseBool(options["nodeOnly"][0])
+		if err != nil {
+			return nil, fmt.Errorf("invalid value %q for option 'nodeOnly' passed to gcm sink", options["nodeOnly"][0])
+		}
+		nodeOnly = val
+	}
+	sink, err := new(nodeOnly)
 	glog.Infof("created GCM sink")
 	return []sink_api.ExternalSink{sink}, err
 }
