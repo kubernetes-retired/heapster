@@ -18,8 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/store"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/GoogleCloudPlatform/heapster/store"
 )
 
 // TestLatestsTimestamp tests all flows of latestTimeStamp
