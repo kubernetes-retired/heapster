@@ -24,13 +24,14 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/store"
 )
 
-// NewCluster returns a new Cluster, given a TimeStore constructor function.
-func NewCluster(tsConstructor func() store.TimeStore) Cluster {
-	return newRealCluster(tsConstructor)
+// NewCluster returns a new Cluster.
+// Receives a TimeStore constructor function and a Duration resolution for stored data.
+func NewCluster(tsConstructor func() store.TimeStore, resolution time.Duration) Cluster {
+	return newRealCluster(tsConstructor, resolution)
 }
 
-// newRealCluster returns a realCluster, given a TimeStore constructor.
-func newRealCluster(tsConstructor func() store.TimeStore) *realCluster {
+// newRealCluster returns a realCluster, given a TimeStore constructor and a Duration resolution.
+func newRealCluster(tsConstructor func() store.TimeStore, resolution time.Duration) *realCluster {
 	cinfo := ClusterInfo{
 		InfoType:   newInfoType(nil, nil),
 		Namespaces: make(map[string]*NamespaceInfo),
@@ -40,61 +41,27 @@ func newRealCluster(tsConstructor func() store.TimeStore) *realCluster {
 		timestamp:     time.Time{},
 		ClusterInfo:   cinfo,
 		tsConstructor: tsConstructor,
+		resolution:    resolution,
 	}
 	return cluster
 }
 
-// GetAllClusterData returns a pointer to the ClusterInfo, along with all of its metrics.
-// GetAllClusterData also returns the latest cluster timestamp, for reuse in GetNew* methods.
-func (rc *realCluster) GetAllClusterData() (*ClusterInfo, time.Time, error) {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-	return &rc.ClusterInfo, rc.timestamp, nil
-}
-
-// GetAllNodeData finds a node, given a hostname (internal to the cluster).
-// GetAllNodeData returns a corresponding NodeInfo object, along with all of its metrics.
-// GetAllNodeData also returns the latest cluster timestamp, for reuse in GetNew* methods.
-func (rc *realCluster) GetAllNodeData(hostname string) (*NodeInfo, time.Time, error) {
-	// TODO(alex): should return a deep copy instead of a pointer
-	var zeroTime time.Time
-
+// GetClusterMetrics returns the summed cluster metrics, along with the latest timestamp.
+// GetClusterMetrics receives a start time as an argument.
+func (rc *realCluster) GetClusterMetrics(start time.Time) (map[string][]store.TimePoint, time.Time, error) {
 	rc.lock.RLock()
 	defer rc.lock.RUnlock()
 
-	res, ok := rc.Nodes[hostname]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("unable to find node with hostname: %s", hostname)
+	if len(rc.Metrics) == 0 {
+		return nil, time.Time{}, fmt.Errorf("cluster metrics are not populated yet")
 	}
 
-	return res, rc.timestamp, nil
-}
-
-// GetAllPodData finds a pod, given a namespace string and a pod name string.
-// GetAllPodData returns a pointer to a PodInfo object, along with all of its metrics.
-// GetAllPodData also returns the latest cluster timestamp, for reuse in GetNew* methods.
-func (rc *realCluster) GetAllPodData(namespace string, pod_name string) (*PodInfo, time.Time, error) {
-	// TODO(alex): should return a deep copy instead of a pointer
-	var zeroTime time.Time
-
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	if len(rc.Namespaces) == 0 {
-		return nil, zeroTime, fmt.Errorf("unable to find pod: no namespaces in cluster")
+	new_map := make(map[string][]store.TimePoint)
+	for key, ts_ptr := range rc.Metrics {
+		ts := *ts_ptr
+		new_map[key] = ts.Get(start, time.Time{})
 	}
-
-	ns, ok := rc.Namespaces[namespace]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("unable to find namespace with name: %s", namespace)
-	}
-
-	pod, ok := ns.Pods[pod_name]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("unable to find pod with name: %s", pod_name)
-	}
-
-	return pod, rc.timestamp, nil
+	return new_map, rc.timestamp, nil
 }
 
 // updateTime updates the Cluster timestamp to the specified time.
@@ -196,8 +163,8 @@ func (rc *realCluster) addPod(pod_name string, pod_uid string, namespace *Namesp
 }
 
 // updateInfoType updates the metrics of an InfoType from a ContainerElement.
-// updateInfoType returns the latest timestamp in the resulting TimeStore
-// updateInfoType does not fail if a single ContainerMetricElement cannot be parsed
+// updateInfoType returns the latest timestamp in the resulting TimeStore.
+// updateInfoType does not fail if a single ContainerMetricElement cannot be parsed.
 func (rc *realCluster) updateInfoType(info *InfoType, ce *cache.ContainerElement) (time.Time, error) {
 	var latest_time time.Time
 
@@ -220,7 +187,8 @@ func (rc *realCluster) updateInfoType(info *InfoType, ce *cache.ContainerElement
 }
 
 // addMetricToMap adds a new metric (time-value pair) to a map of TimeStores.
-// addMetricToMap accepts as arguments the metric name, timestamp, value and the TimeStore map
+// addMetricToMap accepts as arguments the metric name, timestamp, value and the TimeStore map.
+// The timestamp argument needs to be already rounded to the cluster resolution.
 func (rc *realCluster) addMetricToMap(metric string, timestamp time.Time, value uint64, dict map[string]*store.TimeStore) error {
 	point := store.TimePoint{
 		Timestamp: timestamp,
@@ -243,7 +211,7 @@ func (rc *realCluster) addMetricToMap(metric string, timestamp time.Time, value 
 	return nil
 }
 
-// parseMetric populates a map[string]*TimeStore from a ContainerMetricElement
+// parseMetric populates a map[string]*TimeStore from a ContainerMetricElement.
 // parseMetric returns the ContainerMetricElement timestamp, iff successful.
 func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[string]*store.TimeStore) (time.Time, error) {
 	zeroTime := time.Time{}
@@ -254,7 +222,10 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 		return zeroTime, fmt.Errorf("cannot populate nil map")
 	}
 
-	timestamp := cme.Stats.Timestamp
+	// Round the timestamp to the nearest resolution
+	timestamp := cme.Stats.Timestamp.Round(rc.resolution)
+
+	// TODO(alex): refactor to avoid repetition
 	if cme.Spec.HasCpu {
 		// Add CPU Limit metric
 		cpu_limit := cme.Spec.Cpu.Limit
@@ -349,6 +320,9 @@ func (rc *realCluster) Update(c cache.Cache) error {
 		latest_time = latestTimestamp(latest_time, timestamp)
 	}
 
+	// Perform metrics aggregation
+	rc.aggregationStep()
+
 	// Update the Cluster timestamp to the latest time found in the new metrics
 	rc.updateTime(latest_time)
 
@@ -356,7 +330,7 @@ func (rc *realCluster) Update(c cache.Cache) error {
 	return nil
 }
 
-// updateNode updates Node-level information from a "machine"-tagged ContainerElement
+// updateNode updates Node-level information from a "machine"-tagged ContainerElement.
 func (rc *realCluster) updateNode(node_container *cache.ContainerElement) (time.Time, error) {
 	if node_container.Name != "machine" {
 		return time.Time{}, fmt.Errorf("Received node-level container with unexpected name: %s", node_container.Name)
@@ -371,7 +345,7 @@ func (rc *realCluster) updateNode(node_container *cache.ContainerElement) (time.
 	return result, err
 }
 
-// updatePod updates Pod-level information from a PodElement
+// updatePod updates Pod-level information from a PodElement.
 func (rc *realCluster) updatePod(pod *cache.PodElement) (time.Time, error) {
 	if pod == nil {
 		return time.Time{}, fmt.Errorf("nil PodElement provided to updatePod")
@@ -403,9 +377,9 @@ func (rc *realCluster) updatePod(pod *cache.PodElement) (time.Time, error) {
 	return latest_time, nil
 }
 
-// updatePodContainer updates a Pod's Container-level information from a ContainerElement
-// updatePodContainer receives a PodInfo pointer and a ContainerElement pointer
-// Assumes Cluster lock is already taken
+// updatePodContainer updates a Pod's Container-level information from a ContainerElement.
+// updatePodContainer receives a PodInfo pointer and a ContainerElement pointer.
+// Assumes Cluster lock is already taken.
 func (rc *realCluster) updatePodContainer(pod_info *PodInfo, ce *cache.ContainerElement) (time.Time, error) {
 	// Get Container pointer and update its InfoType
 	cinfo := addContainerToMap(ce.Name, pod_info.Containers)
