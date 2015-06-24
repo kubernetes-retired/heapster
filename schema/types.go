@@ -78,3 +78,12 @@ type PodInfo struct {
 type ContainerInfo struct {
 	InfoType
 }
+
+// Supported metric names, used as keys for all map[string]*store.TimeStore
+const cpuLimit = "cpu/limit"
+const cpuUsage = "cpu/usage"
+const memLimit = "memory/limit"
+const memUsage = "memory/usage"
+const memWorking = "memory/working"
+const fsLimit = "fs/limit"
+const fsUsage = "fs/usage"

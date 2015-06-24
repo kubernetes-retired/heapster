@@ -260,39 +260,39 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 	if cme.Spec.HasCpu {
 		// Add CPU Limit metric
 		cpu_limit := cme.Spec.Cpu.Limit
-		err := rc.addMetricToMap("cpu/limit", timestamp, cpu_limit, dict)
+		err := rc.addMetricToMap(cpuLimit, timestamp, cpu_limit, dict)
 		if err != nil {
-			return zeroTime, fmt.Errorf("failed to add cpu/limit metric: %s", err)
+			return zeroTime, fmt.Errorf("failed to add %s metric: %s", cpuLimit, err)
 		}
 
 		// Add CPU Usage metric
 		cpu_usage := cme.Stats.Cpu.Usage.Total
-		err = rc.addMetricToMap("cpu/usage", timestamp, cpu_usage, dict)
+		err = rc.addMetricToMap(cpuUsage, timestamp, cpu_usage, dict)
 		if err != nil {
-			return zeroTime, fmt.Errorf("failed to add cpu/usage metric: %s", err)
+			return zeroTime, fmt.Errorf("failed to add %s metric: %s", cpuUsage, err)
 		}
 	}
 
 	if cme.Spec.HasMemory {
 		// Add Memory Limit metric
 		mem_limit := cme.Spec.Memory.Limit
-		err := rc.addMetricToMap("memory/limit", timestamp, mem_limit, dict)
+		err := rc.addMetricToMap(memLimit, timestamp, mem_limit, dict)
 		if err != nil {
-			return zeroTime, fmt.Errorf("failed to add memory/limit metric: %s", err)
+			return zeroTime, fmt.Errorf("failed to add %s metric: %s", memLimit, err)
 		}
 
 		// Add Memory Usage metric
 		mem_usage := cme.Stats.Memory.Usage
-		err = rc.addMetricToMap("memory/usage", timestamp, mem_usage, dict)
+		err = rc.addMetricToMap(memUsage, timestamp, mem_usage, dict)
 		if err != nil {
-			return zeroTime, fmt.Errorf("failed to add memory/usage metric: %s", err)
+			return zeroTime, fmt.Errorf("failed to add %s metric: %s", memUsage, err)
 		}
 
 		// Add Memory Working Set metric
 		mem_working := cme.Stats.Memory.WorkingSet
-		err = rc.addMetricToMap("memory/working", timestamp, mem_working, dict)
+		err = rc.addMetricToMap(memWorking, timestamp, mem_working, dict)
 		if err != nil {
-			return zeroTime, fmt.Errorf("failed to add memory/working metric: %s", err)
+			return zeroTime, fmt.Errorf("failed to add %s metric: %s", memWorking, err)
 		}
 	}
 	if cme.Spec.HasFilesystem {
@@ -301,16 +301,16 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 
 			// Add FS Limit Metric
 			fs_limit := fsstat.Limit
-			err := rc.addMetricToMap("fs/limit"+dev, timestamp, fs_limit, dict)
+			err := rc.addMetricToMap(fsLimit+dev, timestamp, fs_limit, dict)
 			if err != nil {
-				return zeroTime, fmt.Errorf("failed to add fs/limit metric: %s", err)
+				return zeroTime, fmt.Errorf("failed to add %s metric: %s", fsLimit, err)
 			}
 
 			// Add FS Usage Metric
 			fs_usage := fsstat.Usage
-			err = rc.addMetricToMap("fs/usage"+dev, timestamp, fs_usage, dict)
+			err = rc.addMetricToMap(fsUsage+dev, timestamp, fs_usage, dict)
 			if err != nil {
-				return zeroTime, fmt.Errorf("failed to add fs/usage metric: %s", err)
+				return zeroTime, fmt.Errorf("failed to add %s metric: %s", fsUsage, err)
 			}
 		}
 	}
