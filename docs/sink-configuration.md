@@ -33,12 +33,13 @@ The following options are available:
 This sink supports monitoring metrics only.
 To use the InfluxDB sink add the following flag:
 ```
---sink=gcm
+--sink=gcm[?<GCM_OPTIONS>]
 ```
 
 *Note: This sink works only on a Google Compute Enginer VM as of now*
 
-This sink does not export any options!
+The following options are available:
+* `nodeOnly` - export metrics for nodes only (default: `false`)
 
 
 ### Google Cloud Logging
