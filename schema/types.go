@@ -28,10 +28,7 @@ type Cluster interface {
 
 	// The Get operations extract internal types from the Cluster.
 	// The returned time.Time values signify the latest metric timestamp in the cluster.
-	// TODO(alex): Returning pointers is NOT safe, will be addressed in a later PR
-	GetAllClusterData() (*ClusterInfo, time.Time, error)
-	GetAllNodeData(string) (*NodeInfo, time.Time, error)
-	GetAllPodData(string, string) (*PodInfo, time.Time, error)
+	// TODO(alex): Get Operations are being reconstructed for [Schema 7]
 }
 
 // realCluster is an implementation of the Cluster interface.
@@ -41,6 +38,7 @@ type realCluster struct {
 	timestamp     time.Time
 	lock          sync.RWMutex
 	tsConstructor func() store.TimeStore
+	resolution    time.Duration
 	ClusterInfo
 }
 
