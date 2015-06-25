@@ -39,6 +39,15 @@ func NewKubeNodeMetrics(kubeletPort int, kubeletApi datasource.Kubelet, nodesApi
 	}
 }
 
+const rootContainer = "/"
+
+var knownContainers = map[string]string{
+	"/docker-daemon": "docker-daemon",
+	"/kubelet":       "kubelet",
+	"/kube-proxy":    "kube-proxy",
+	"/system":        "system",
+}
+
 // Returns the host container, non-Kubernetes containers, and an error (if any).
 func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start, end time.Time, resolution time.Duration) (*api.Container, []api.Container, error) {
 	// Get information for all containers.
@@ -58,8 +67,11 @@ func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start
 	hostString := string(host)
 	externalID := string(info.ExternalID)
 	for i := range containers {
-		if containers[i].Name == "/" {
+		if containers[i].Name == rootContainer {
 			hostIndex = i
+		}
+		if newName, exists := knownContainers[containers[i].Name]; exists {
+			containers[i].Name = newName
 		}
 		containers[i].Hostname = hostString
 		containers[i].ExternalID = externalID
