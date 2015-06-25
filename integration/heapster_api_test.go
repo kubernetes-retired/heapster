@@ -153,7 +153,7 @@ const (
 	metricsSchemaEndpoint = "/api/v1/metric-export-schema"
 )
 
-func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNodes, expectedPods []string) error {
+func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*heapster_api.Timeseries, error) {
 	body, err := fm.Client().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
@@ -162,18 +162,18 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNod
 		Suffix(metricsEndpoint).
 		Do().Raw()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var timeseries []*heapster_api.Timeseries
 	if err := json.Unmarshal(body, &timeseries); err != nil {
 		glog.V(2).Infof("response body: %v", string(body))
-		return err
+		return nil, err
 	}
+	return timeseries, nil
+}
 
-	if len(timeseries) == 0 {
-		return fmt.Errorf("expected non zero timeseries")
-	}
-	body, err = fm.Client().Get().
+func getSchema(fm kubeFramework, svc *kube_api.Service) (*heapster_api.TimeseriesSchema, error) {
+	body, err := fm.Client().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
 		Resource("services").
@@ -181,20 +181,44 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNod
 		Suffix(metricsSchemaEndpoint).
 		Do().Raw()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var timeseriesSchema heapster_api.TimeseriesSchema
 	if err := json.Unmarshal(body, &timeseriesSchema); err != nil {
 		glog.V(2).Infof("response body: %v", string(body))
+		return nil, err
+	}
+	return &timeseriesSchema, nil
+}
+
+var expectedSystemContainers = map[string]struct{}{
+	"machine":       struct{}{},
+	"kubelet":       struct{}{},
+	"kube-proxy":    struct{}{},
+	"system":        struct{}{},
+	"docker-daemon": struct{}{},
+}
+
+func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNodes, expectedPods []string) error {
+	timeseries, err := getTimeseries(fm, svc)
+	if err != nil {
+		return err
+	}
+	if len(timeseries) == 0 {
+		return fmt.Errorf("expected non zero timeseries")
+	}
+	schema, err := getSchema(fm, svc)
+	if err != nil {
 		return err
 	}
 	// Build a map of metric names to metric descriptors.
 	mdMap := map[string]*heapster_api.MetricDescriptor{}
-	for idx := range timeseriesSchema.Metrics {
-		mdMap[timeseriesSchema.Metrics[idx].Name] = &timeseriesSchema.Metrics[idx]
+	for idx := range schema.Metrics {
+		mdMap[schema.Metrics[idx].Name] = &schema.Metrics[idx]
 	}
 	actualPods := map[string]bool{}
 	actualNodes := map[string]bool{}
+	actualSystemContainers := map[string]map[string]struct{}{}
 	for _, ts := range timeseries {
 		// Verify the relevant labels are present.
 		// All common labels must be present.
@@ -215,13 +239,25 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNod
 		}
 		if podMetric {
 			actualPods[podName] = true
+		} else {
+			if cName, ok := ts.Labels[sink_api.LabelContainerName.Key]; ok {
+				hostname, ok := ts.Labels[sink_api.LabelHostname.Key]
+				if !ok {
+					return fmt.Errorf("hostname label missing on container %+v", ts)
+				}
 
-		} else if cName, ok := ts.Labels[sink_api.LabelContainerName.Key]; ok && cName == cache.NodeContainerName {
-			hostname, ok := ts.Labels[sink_api.LabelHostname.Key]
-			if !ok {
-				return fmt.Errorf("hostname label missing on node container %+v", ts.Labels)
+				if cName == cache.NodeContainerName {
+					actualNodes[hostname] = true
+				}
+				if _, exists := expectedSystemContainers[cName]; exists {
+					if actualSystemContainers[cName] == nil {
+						actualSystemContainers[cName] = map[string]struct{}{}
+					}
+					actualSystemContainers[cName][hostname] = struct{}{}
+				}
+			} else {
+				return fmt.Errorf("container_name label missing on timeseries - %v", ts)
 			}
-			actualNodes[hostname] = true
 		}
 
 		for metricName, points := range ts.Metrics {
@@ -240,6 +276,16 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNod
 
 		}
 	}
+	// Validate that system containers are running on all the nodes.
+	// This test could fail if one of the containers was down while the metrics sample was collected.
+	for cName, hosts := range actualSystemContainers {
+		for _, host := range expectedNodes {
+			if _, ok := hosts[host]; !ok {
+				return fmt.Errorf("System container %q not found on host: %q - %v", cName, host, actualSystemContainers)
+			}
+		}
+	}
+
 	if !expectedItemsExist(expectedPods, actualPods) {
 		return fmt.Errorf("expected pods don't exist.\nExpected: %v\nActual:%v", expectedPods, actualPods)
 	}
