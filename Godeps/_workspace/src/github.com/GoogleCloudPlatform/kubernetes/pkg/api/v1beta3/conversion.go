@@ -53,9 +53,10 @@ func addConversionFuncs() {
 			switch label {
 			case "metadata.name",
 				"metadata.namespace",
-				"status.phase",
-				"spec.host":
+				"status.phase":
 				return label, value, nil
+			case "spec.host":
+				return "spec.nodeName", value, nil
 			default:
 				return "", "", fmt.Errorf("field label not supported: %s", label)
 			}
@@ -490,7 +491,7 @@ func convert_v1beta3_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s con
 	} else {
 		out.NodeSelector = nil
 	}
-	out.ServiceAccount = in.ServiceAccount
+	out.ServiceAccountName = in.ServiceAccount
 	out.NodeName = in.Host
 	out.HostNetwork = in.HostNetwork
 	if in.ImagePullSecrets != nil {
@@ -552,7 +553,7 @@ func convert_api_PodSpec_To_v1beta3_PodSpec(in *api.PodSpec, out *PodSpec, s con
 	} else {
 		out.NodeSelector = nil
 	}
-	out.ServiceAccount = in.ServiceAccount
+	out.ServiceAccount = in.ServiceAccountName
 	out.Host = in.NodeName
 	out.HostNetwork = in.HostNetwork
 	if in.ImagePullSecrets != nil {
