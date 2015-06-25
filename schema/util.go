@@ -43,3 +43,19 @@ func newInfoType(metrics map[string]*store.TimeStore, labels map[string]string) 
 		Labels:  labels,
 	}
 }
+
+// addContainerToMap creates or finds a ContainerInfo element under a map[string]*ContainerInfo
+func addContainerToMap(container_name string, dict map[string]*ContainerInfo) *ContainerInfo {
+	var container_ptr *ContainerInfo
+
+	if val, ok := dict[container_name]; ok {
+		// A container already exists under that name, return the address
+		container_ptr = val
+	} else {
+		container_ptr = &ContainerInfo{
+			InfoType: newInfoType(nil, nil),
+		}
+		dict[container_name] = container_ptr
+	}
+	return container_ptr
+}
