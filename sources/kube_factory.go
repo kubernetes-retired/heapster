@@ -32,13 +32,13 @@ import (
 )
 
 const (
-	defaultApiVersion         = "v1beta3"
+	defaultApiVersion         = "v1"
 	defaultInsecure           = false
 	defaultKubeletPort        = 10255
-	defaultKubeConfigFile     = "/etc/kubernetes/kubeconfig/kubeconfig"
 	defaultKubeletHttps       = false
 	defaultUseServiceAccount  = false
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	defaultInClusterConfig    = true
 )
 
 func init() {
@@ -77,25 +77,47 @@ func getConfigOverrides(uri string, options map[string][]string) (*kubeClientCmd
 }
 
 func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, error) {
-	configOverrides, err := getConfigOverrides(uri, options)
+	var (
+		kubeConfig *kube_client.Config
+		err        error
+	)
 
-	authFile := defaultKubeConfigFile
-	if len(options["auth"]) > 0 {
-		authFile = options["auth"][0]
+	inClusterConfig := defaultInClusterConfig
+	if len(options["inClusterConfig"]) > 0 {
+		inClusterConfig, err = strconv.ParseBool(options["inClusterConfig"][0])
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	var kubeConfig *kube_client.Config
-	if authFile != "" {
-		if kubeConfig, err = kubeClientCmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&kubeClientCmd.ClientConfigLoadingRules{ExplicitPath: authFile},
-			configOverrides).ClientConfig(); err != nil {
+	if inClusterConfig {
+		kubeConfig, err = kube_client.InClusterConfig()
+		if err != nil {
 			return nil, err
 		}
 	} else {
-		kubeConfig = &kube_client.Config{
-			Host:     configOverrides.ClusterInfo.Server,
-			Version:  configOverrides.ClusterInfo.APIVersion,
-			Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
+		configOverrides, err := getConfigOverrides(uri, options)
+		if err != nil {
+			return nil, err
+		}
+
+		authFile := ""
+		if len(options["auth"]) > 0 {
+			authFile = options["auth"][0]
+		}
+
+		if authFile != "" {
+			if kubeConfig, err = kubeClientCmd.NewNonInteractiveDeferredLoadingClientConfig(
+				&kubeClientCmd.ClientConfigLoadingRules{ExplicitPath: authFile},
+				configOverrides).ClientConfig(); err != nil {
+				return nil, err
+			}
+		} else {
+			kubeConfig = &kube_client.Config{
+				Host:     configOverrides.ClusterInfo.Server,
+				Version:  configOverrides.ClusterInfo.APIVersion,
+				Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
+			}
 		}
 	}
 	if len(kubeConfig.Host) == 0 {
