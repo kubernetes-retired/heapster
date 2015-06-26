@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.15.0 (6-26-2015)
+- Use service accounts while running in kubernetes clusters
+- Expose kubernetes system containers with standard names
+- Minor bug fixes.
+
 ## 0.14.3 (6-19-2015)
 - Expose HostID for nodes. 
 - Added an API '/metric-export-schema' that exposes the schema for '/metric-export' API.
