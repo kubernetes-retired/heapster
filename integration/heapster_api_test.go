@@ -281,8 +281,8 @@ func apiTest(kubeVersion string) error {
 		return err
 	}
 	defer func() {
-		deleteAll(fm, ns, svc, rc)
-		removeHeapsterImage(fm)
+		//		deleteAll(fm, ns, svc, rc)
+		//	removeHeapsterImage(fm)
 	}()
 	if err := fm.WaitUntilPodRunning(ns, rc.Spec.Template.Labels, time.Minute); err != nil {
 		return err
