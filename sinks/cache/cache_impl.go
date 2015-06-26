@@ -22,6 +22,8 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/store"
 )
 
+const rootContainer = "/"
+
 type containerElement struct {
 	Metadata
 	metrics store.TimeStore
@@ -50,8 +52,6 @@ type realCache struct {
 	nodes map[string]*nodeElement
 	lock  sync.RWMutex
 }
-
-const rootContainer = "/"
 
 func (rc *realCache) newContainerElement() *containerElement {
 	return &containerElement{
