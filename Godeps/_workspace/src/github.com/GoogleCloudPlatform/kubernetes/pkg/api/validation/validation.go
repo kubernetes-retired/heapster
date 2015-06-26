@@ -220,7 +220,9 @@ func ValidateObjectMeta(meta *api.ObjectMeta, requiresNamespace bool, nameFn Val
 			allErrs = append(allErrs, errs.NewFieldInvalid("name", meta.Name, qualifier))
 		}
 	}
-
+	if meta.Generation < 0 {
+		allErrs = append(allErrs, errs.NewFieldInvalid("generation", meta.Generation, isNegativeErrorMsg))
+	}
 	if requiresNamespace {
 		if len(meta.Namespace) == 0 {
 			allErrs = append(allErrs, errs.NewFieldRequired("namespace"))
@@ -338,9 +340,9 @@ func validateSource(source *api.VolumeSource) errs.ValidationErrorList {
 		numVolumes++
 		allErrs = append(allErrs, validateGlusterfs(source.Glusterfs).Prefix("glusterfs")...)
 	}
-	if source.PersistentVolumeClaimVolumeSource != nil {
+	if source.PersistentVolumeClaim != nil {
 		numVolumes++
-		allErrs = append(allErrs, validatePersistentClaimVolumeSource(source.PersistentVolumeClaimVolumeSource).Prefix("persistentVolumeClaim")...)
+		allErrs = append(allErrs, validatePersistentClaimVolumeSource(source.PersistentVolumeClaim).Prefix("persistentVolumeClaim")...)
 	}
 	if source.RBD != nil {
 		numVolumes++
@@ -610,7 +612,7 @@ func validatePorts(ports []api.ContainerPort) errs.ValidationErrorList {
 		}
 		if len(port.Protocol) == 0 {
 			pErrs = append(pErrs, errs.NewFieldRequired("protocol"))
-		} else if !supportedPortProtocols.Has(strings.ToUpper(string(port.Protocol))) {
+		} else if !supportedPortProtocols.Has(string(port.Protocol)) {
 			pErrs = append(pErrs, errs.NewFieldNotSupported("protocol", port.Protocol))
 		}
 		allErrs = append(allErrs, pErrs.PrefixIndex(i)...)
@@ -861,29 +863,6 @@ func validateContainers(containers []api.Container, volumes util.StringSet) errs
 	return allErrs
 }
 
-var supportedManifestVersions = util.NewStringSet("v1beta1", "v1beta2")
-
-// ValidateManifest tests that the specified ContainerManifest has valid data.
-// This includes checking formatting and uniqueness.  It also canonicalizes the
-// structure by setting default values and implementing any backwards-compatibility
-// tricks.
-// TODO: replaced by ValidatePodSpec
-func ValidateManifest(manifest *api.ContainerManifest) errs.ValidationErrorList {
-	allErrs := errs.ValidationErrorList{}
-
-	if len(manifest.Version) == 0 {
-		allErrs = append(allErrs, errs.NewFieldRequired("version"))
-	} else if !supportedManifestVersions.Has(strings.ToLower(manifest.Version)) {
-		allErrs = append(allErrs, errs.NewFieldNotSupported("version", manifest.Version))
-	}
-	allVolumes, vErrs := validateVolumes(manifest.Volumes)
-	allErrs = append(allErrs, vErrs.Prefix("volumes")...)
-	allErrs = append(allErrs, validateContainers(manifest.Containers, allVolumes).Prefix("containers")...)
-	allErrs = append(allErrs, validateRestartPolicy(&manifest.RestartPolicy).Prefix("restartPolicy")...)
-	allErrs = append(allErrs, validateDNSPolicy(&manifest.DNSPolicy).Prefix("dnsPolicy")...)
-	return allErrs
-}
-
 func validateRestartPolicy(restartPolicy *api.RestartPolicy) errs.ValidationErrorList {
 	allErrors := errs.ValidationErrorList{}
 	switch *restartPolicy {
@@ -963,6 +942,11 @@ func ValidatePodSpec(spec *api.PodSpec) errs.ValidationErrorList {
 	allErrs = append(allErrs, ValidateLabels(spec.NodeSelector, "nodeSelector")...)
 	allErrs = append(allErrs, validateHostNetwork(spec.HostNetwork, spec.Containers).Prefix("hostNetwork")...)
 	allErrs = append(allErrs, validateImagePullSecrets(spec.ImagePullSecrets).Prefix("imagePullSecrets")...)
+	if len(spec.ServiceAccountName) > 0 {
+		if ok, msg := ValidateServiceAccountName(spec.ServiceAccountName, false); !ok {
+			allErrs = append(allErrs, errs.NewFieldInvalid("serviceAccountName", spec.ServiceAccountName, msg))
+		}
+	}
 
 	if spec.ActiveDeadlineSeconds != nil {
 		if *spec.ActiveDeadlineSeconds <= 0 {
@@ -1139,7 +1123,7 @@ func validateServicePort(sp *api.ServicePort, requireName bool, allNames *util.S
 
 	if len(sp.Protocol) == 0 {
 		allErrs = append(allErrs, errs.NewFieldRequired("protocol"))
-	} else if !supportedPortProtocols.Has(strings.ToUpper(string(sp.Protocol))) {
+	} else if !supportedPortProtocols.Has(string(sp.Protocol)) {
 		allErrs = append(allErrs, errs.NewFieldNotSupported("protocol", sp.Protocol))
 	}
 
@@ -1315,15 +1299,64 @@ func ValidateLimitRange(limitRange *api.LimitRange) errs.ValidationErrorList {
 	allErrs = append(allErrs, ValidateObjectMeta(&limitRange.ObjectMeta, true, ValidateLimitRangeName).Prefix("metadata")...)
 
 	// ensure resource names are properly qualified per docs/resources.md
+	limitTypeSet := map[api.LimitType]bool{}
 	for i := range limitRange.Spec.Limits {
 		limit := limitRange.Spec.Limits[i]
+		_, found := limitTypeSet[limit.Type]
+		if found {
+			allErrs = append(allErrs, errs.NewFieldDuplicate(fmt.Sprintf("spec.limits[%d].type", i), limit.Type))
+		}
+		limitTypeSet[limit.Type] = true
+
+		keys := util.StringSet{}
+		min := map[string]int64{}
+		max := map[string]int64{}
+		defaults := map[string]int64{}
+
 		for k := range limit.Max {
 			allErrs = append(allErrs, validateResourceName(string(k), fmt.Sprintf("spec.limits[%d].max[%s]", i, k))...)
+			keys.Insert(string(k))
+			q := limit.Max[k]
+			max[string(k)] = q.Value()
 		}
 		for k := range limit.Min {
 			allErrs = append(allErrs, validateResourceName(string(k), fmt.Sprintf("spec.limits[%d].min[%s]", i, k))...)
+			keys.Insert(string(k))
+			q := limit.Min[k]
+			min[string(k)] = q.Value()
+		}
+		for k := range limit.Default {
+			allErrs = append(allErrs, validateResourceName(string(k), fmt.Sprintf("spec.limits[%d].default[%s]", i, k))...)
+			keys.Insert(string(k))
+			q := limit.Default[k]
+			defaults[string(k)] = q.Value()
+		}
+
+		for k := range keys {
+			minValue, minValueFound := min[k]
+			maxValue, maxValueFound := max[k]
+			defaultValue, defaultValueFound := defaults[k]
+
+			if minValueFound && maxValueFound && minValue > maxValue {
+				minQuantity := limit.Min[api.ResourceName(k)]
+				maxQuantity := limit.Max[api.ResourceName(k)]
+				allErrs = append(allErrs, errs.NewFieldInvalid(fmt.Sprintf("spec.limits[%d].max[%s]", i, k), minValue, fmt.Sprintf("min value %s is greater than max value %s", minQuantity.String(), maxQuantity.String())))
+			}
+
+			if defaultValueFound && minValueFound && minValue > defaultValue {
+				minQuantity := limit.Min[api.ResourceName(k)]
+				defaultQuantity := limit.Default[api.ResourceName(k)]
+				allErrs = append(allErrs, errs.NewFieldInvalid(fmt.Sprintf("spec.limits[%d].max[%s]", i, k), minValue, fmt.Sprintf("min value %s is greater than default value %s", minQuantity.String(), defaultQuantity.String())))
+			}
+
+			if defaultValueFound && maxValueFound && defaultValue > maxValue {
+				maxQuantity := limit.Max[api.ResourceName(k)]
+				defaultQuantity := limit.Default[api.ResourceName(k)]
+				allErrs = append(allErrs, errs.NewFieldInvalid(fmt.Sprintf("spec.limits[%d].max[%s]", i, k), minValue, fmt.Sprintf("default value %s is greater than max value %s", defaultQuantity.String(), maxQuantity.String())))
+			}
 		}
 	}
+
 	return allErrs
 }
 
@@ -1518,7 +1551,6 @@ func validateFinalizerName(stringValue string) errs.ValidationErrorList {
 
 // ValidateNamespaceUpdate tests to make sure a namespace update can be applied.
 // newNamespace is updated with fields that cannot be changed
-// TODO The syntax here is the reverse of the (old, new) pattern in most other validation.  Fix this.
 func ValidateNamespaceUpdate(newNamespace *api.Namespace, oldNamespace *api.Namespace) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
 	allErrs = append(allErrs, ValidateObjectMetaUpdate(&newNamespace.ObjectMeta, &oldNamespace.ObjectMeta).Prefix("metadata")...)
@@ -1627,7 +1659,7 @@ func validateEndpointPort(port *api.EndpointPort, requireName bool) errs.Validat
 	}
 	if len(port.Protocol) == 0 {
 		allErrs = append(allErrs, errs.NewFieldRequired("protocol"))
-	} else if !supportedPortProtocols.Has(strings.ToUpper(string(port.Protocol))) {
+	} else if !supportedPortProtocols.Has(string(port.Protocol)) {
 		allErrs = append(allErrs, errs.NewFieldNotSupported("protocol", port.Protocol))
 	}
 	return allErrs

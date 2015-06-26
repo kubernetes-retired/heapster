@@ -32,8 +32,29 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/crypto/ssh"
 )
+
+var (
+	tunnelOpenCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "ssh_tunnel_open_count",
+			Help: "Counter of ssh tunnel total open attempts",
+		},
+	)
+	tunnelOpenFailCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "ssh_tunnel_open_fail_count",
+			Help: "Counter of ssh tunnel failed open attempts",
+		},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(tunnelOpenCounter)
+	prometheus.MustRegister(tunnelOpenFailCounter)
+}
 
 // TODO: Unit tests for this code, we can spin up a test SSH server with instructions here:
 // https://godoc.org/golang.org/x/crypto/ssh#ServerConn
@@ -60,8 +81,8 @@ func NewSSHTunnel(user, keyfile, host string) (*SSHTunnel, error) {
 	return makeSSHTunnel(user, signer, host)
 }
 
-func NewSSHTunnelFromBytes(user string, buffer []byte, host string) (*SSHTunnel, error) {
-	signer, err := MakePrivateKeySignerFromBytes(buffer)
+func NewSSHTunnelFromBytes(user string, privateKey []byte, host string) (*SSHTunnel, error) {
+	signer, err := MakePrivateKeySignerFromBytes(privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +104,9 @@ func makeSSHTunnel(user string, signer ssh.Signer, host string) (*SSHTunnel, err
 func (s *SSHTunnel) Open() error {
 	var err error
 	s.client, err = ssh.Dial("tcp", net.JoinHostPort(s.Host, s.SSHPort), s.Config)
+	tunnelOpenCounter.Inc()
 	if err != nil {
+		tunnelOpenFailCounter.Inc()
 		return err
 	}
 	return nil
@@ -97,6 +120,9 @@ func (s *SSHTunnel) Dial(network, address string) (net.Conn, error) {
 }
 
 func (s *SSHTunnel) tunnel(conn net.Conn, remoteHost, remotePort string) error {
+	if s.client == nil {
+		return errors.New("tunnel is not opened.")
+	}
 	tunnel, err := s.client.Dial("tcp", net.JoinHostPort(remoteHost, remotePort))
 	if err != nil {
 		return err
@@ -107,25 +133,53 @@ func (s *SSHTunnel) tunnel(conn net.Conn, remoteHost, remotePort string) error {
 }
 
 func (s *SSHTunnel) Close() error {
+	if s.client == nil {
+		return errors.New("Cannot close tunnel. Tunnel was not opened.")
+	}
 	if err := s.client.Close(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func RunSSHCommand(cmd, host string, signer ssh.Signer) (string, string, int, error) {
+// Interface to allow mocking of ssh.Dial, for testing SSH
+type sshDialer interface {
+	Dial(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error)
+}
+
+// Real implementation of sshDialer
+type realSSHDialer struct{}
+
+var _ sshDialer = &realSSHDialer{}
+
+func (d *realSSHDialer) Dial(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	return ssh.Dial(network, addr, config)
+}
+
+// RunSSHCommand returns the stdout, stderr, and exit code from running cmd on
+// host as specific user, along with any SSH-level error.
+// If user=="", it will default (like SSH) to os.Getenv("USER")
+func RunSSHCommand(cmd, user, host string, signer ssh.Signer) (string, string, int, error) {
+	return runSSHCommand(&realSSHDialer{}, cmd, user, host, signer)
+}
+
+// Internal implementation of runSSHCommand, for testing
+func runSSHCommand(dialer sshDialer, cmd, user, host string, signer ssh.Signer) (string, string, int, error) {
+	if user == "" {
+		user = os.Getenv("USER")
+	}
 	// Setup the config, dial the server, and open a session.
 	config := &ssh.ClientConfig{
-		User: os.Getenv("USER"),
+		User: user,
 		Auth: []ssh.AuthMethod{ssh.PublicKeys(signer)},
 	}
-	client, err := ssh.Dial("tcp", host, config)
+	client, err := dialer.Dial("tcp", host, config)
 	if err != nil {
-		return "", "", 0, fmt.Errorf("error getting SSH client to host %s: '%v'", host, err)
+		return "", "", 0, fmt.Errorf("error getting SSH client to %s@%s: '%v'", user, host, err)
 	}
 	session, err := client.NewSession()
 	if err != nil {
-		return "", "", 0, fmt.Errorf("error creating session to host %s: '%v'", host, err)
+		return "", "", 0, fmt.Errorf("error creating session to %s@%s: '%v'", user, host, err)
 	}
 	defer session.Close()
 
@@ -145,7 +199,7 @@ func RunSSHCommand(cmd, host string, signer ssh.Signer) (string, string, int, er
 		} else {
 			// Some other kind of error happened (e.g. an IOError); consider the
 			// SSH unsuccessful.
-			err = fmt.Errorf("failed running `%s` on %s: '%v'", cmd, host, err)
+			err = fmt.Errorf("failed running `%s` on %s@%s: '%v'", cmd, user, host, err)
 		}
 	}
 	return bout.String(), berr.String(), code, err
@@ -153,12 +207,7 @@ func RunSSHCommand(cmd, host string, signer ssh.Signer) (string, string, int, er
 
 func MakePrivateKeySignerFromFile(key string) (ssh.Signer, error) {
 	// Create an actual signer.
-	file, err := os.Open(key)
-	if err != nil {
-		return nil, fmt.Errorf("error opening SSH key %s: '%v'", key, err)
-	}
-	defer file.Close()
-	buffer, err := ioutil.ReadAll(file)
+	buffer, err := ioutil.ReadFile(key)
 	if err != nil {
 		return nil, fmt.Errorf("error reading SSH key %s: '%v'", key, err)
 	}
@@ -173,31 +222,62 @@ func MakePrivateKeySignerFromBytes(buffer []byte) (ssh.Signer, error) {
 	return signer, nil
 }
 
+func ParsePublicKeyFromFile(keyFile string) (*rsa.PublicKey, error) {
+	buffer, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("error reading SSH key %s: '%v'", keyFile, err)
+	}
+	keyBlock, _ := pem.Decode(buffer)
+	key, err := x509.ParsePKIXPublicKey(keyBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing SSH key %s: '%v'", keyFile, err)
+	}
+	rsaKey, ok := key.(*rsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("SSH key could not be parsed as rsa public key")
+	}
+	return rsaKey, nil
+}
+
+// Should be thread safe.
 type SSHTunnelEntry struct {
 	Address string
 	Tunnel  *SSHTunnel
 }
 
-type SSHTunnelList []SSHTunnelEntry
+// Not thread safe!
+type SSHTunnelList struct {
+	entries []SSHTunnelEntry
+}
 
-func MakeSSHTunnels(user, keyfile string, addresses []string) (SSHTunnelList, error) {
+func MakeSSHTunnels(user, keyfile string, addresses []string) *SSHTunnelList {
 	tunnels := []SSHTunnelEntry{}
 	for ix := range addresses {
 		addr := addresses[ix]
 		tunnel, err := NewSSHTunnel(user, keyfile, addr)
 		if err != nil {
-			return nil, err
+			glog.Errorf("Failed to create tunnel for %q: %v", addr, err)
+			continue
 		}
 		tunnels = append(tunnels, SSHTunnelEntry{addr, tunnel})
 	}
-	return tunnels, nil
+	return &SSHTunnelList{tunnels}
 }
 
-func (l SSHTunnelList) Open() error {
-	for ix := range l {
-		if err := l[ix].Tunnel.Open(); err != nil {
-			return err
+// Open attempts to open all tunnels in the list, and removes any tunnels that
+// failed to open.
+func (l *SSHTunnelList) Open() error {
+	var openTunnels []SSHTunnelEntry
+	for ix := range l.entries {
+		if err := l.entries[ix].Tunnel.Open(); err != nil {
+			glog.Errorf("Failed to open tunnel %v: %v", l.entries[ix], err)
+		} else {
+			openTunnels = append(openTunnels, l.entries[ix])
 		}
+	}
+	l.entries = openTunnels
+	if len(l.entries) == 0 {
+		return errors.New("Failed to open any tunnels.")
 	}
 	return nil
 }
@@ -205,10 +285,11 @@ func (l SSHTunnelList) Open() error {
 // Close asynchronously closes all tunnels in the list after waiting for 1
 // minute. Tunnels will still be open upon this function's return, but should
 // no longer be used.
-func (l SSHTunnelList) Close() {
-	for ix := range l {
-		entry := l[ix]
+func (l *SSHTunnelList) Close() {
+	for ix := range l.entries {
+		entry := l.entries[ix]
 		go func() {
+			defer HandleCrash()
 			time.Sleep(1 * time.Minute)
 			if err := entry.Tunnel.Close(); err != nil {
 				glog.Errorf("Failed to close tunnel %v: %v", entry, err)
@@ -217,20 +298,36 @@ func (l SSHTunnelList) Close() {
 	}
 }
 
-func (l SSHTunnelList) Dial(network, addr string) (net.Conn, error) {
-	if len(l) == 0 {
-		return nil, fmt.Errorf("Empty tunnel list.")
+/* this will make sense if we move the lock into SSHTunnelList.
+func (l *SSHTunnelList) Dial(network, addr string) (net.Conn, error) {
+	if len(l.entries) == 0 {
+		return nil, fmt.Errorf("empty tunnel list.")
 	}
-	return l[mathrand.Int()%len(l)].Tunnel.Dial(network, addr)
+	n := mathrand.Intn(len(l.entries))
+	return l.entries[n].Tunnel.Dial(network, addr)
+}
+*/
+
+// Returns a random tunnel, xor an error if there are none.
+func (l *SSHTunnelList) PickRandomTunnel() (SSHTunnelEntry, error) {
+	if len(l.entries) == 0 {
+		return SSHTunnelEntry{}, fmt.Errorf("empty tunnel list.")
+	}
+	n := mathrand.Intn(len(l.entries))
+	return l.entries[n], nil
 }
 
-func (l SSHTunnelList) Has(addr string) bool {
-	for ix := range l {
-		if l[ix].Address == addr {
+func (l *SSHTunnelList) Has(addr string) bool {
+	for ix := range l.entries {
+		if l.entries[ix].Address == addr {
 			return true
 		}
 	}
 	return false
+}
+
+func (l *SSHTunnelList) Len() int {
+	return len(l.entries)
 }
 
 func EncodePrivateKey(private *rsa.PrivateKey) []byte {
@@ -245,7 +342,6 @@ func EncodePublicKey(public *rsa.PublicKey) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return pem.EncodeToMemory(&pem.Block{
 		Bytes: publicBytes,
 		Type:  "PUBLIC KEY",

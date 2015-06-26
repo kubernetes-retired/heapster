@@ -207,78 +207,6 @@ func deepCopy_api_Container(in Container, out *Container, c *conversion.Cloner) 
 	return nil
 }
 
-func deepCopy_api_ContainerManifest(in ContainerManifest, out *ContainerManifest, c *conversion.Cloner) error {
-	out.Version = in.Version
-	out.ID = in.ID
-	out.UUID = in.UUID
-	if in.Volumes != nil {
-		out.Volumes = make([]Volume, len(in.Volumes))
-		for i := range in.Volumes {
-			if err := deepCopy_api_Volume(in.Volumes[i], &out.Volumes[i], c); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Volumes = nil
-	}
-	if in.Containers != nil {
-		out.Containers = make([]Container, len(in.Containers))
-		for i := range in.Containers {
-			if err := deepCopy_api_Container(in.Containers[i], &out.Containers[i], c); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Containers = nil
-	}
-	out.RestartPolicy = in.RestartPolicy
-	if in.TerminationGracePeriodSeconds != nil {
-		out.TerminationGracePeriodSeconds = new(int64)
-		*out.TerminationGracePeriodSeconds = *in.TerminationGracePeriodSeconds
-	} else {
-		out.TerminationGracePeriodSeconds = nil
-	}
-	if in.ActiveDeadlineSeconds != nil {
-		out.ActiveDeadlineSeconds = new(int64)
-		*out.ActiveDeadlineSeconds = *in.ActiveDeadlineSeconds
-	} else {
-		out.ActiveDeadlineSeconds = nil
-	}
-	out.DNSPolicy = in.DNSPolicy
-	out.HostNetwork = in.HostNetwork
-	if in.ImagePullSecrets != nil {
-		out.ImagePullSecrets = make([]LocalObjectReference, len(in.ImagePullSecrets))
-		for i := range in.ImagePullSecrets {
-			if err := deepCopy_api_LocalObjectReference(in.ImagePullSecrets[i], &out.ImagePullSecrets[i], c); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.ImagePullSecrets = nil
-	}
-	return nil
-}
-
-func deepCopy_api_ContainerManifestList(in ContainerManifestList, out *ContainerManifestList, c *conversion.Cloner) error {
-	if err := deepCopy_api_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
-		return err
-	}
-	if err := deepCopy_api_ListMeta(in.ListMeta, &out.ListMeta, c); err != nil {
-		return err
-	}
-	if in.Items != nil {
-		out.Items = make([]ContainerManifest, len(in.Items))
-		for i := range in.Items {
-			if err := deepCopy_api_ContainerManifest(in.Items[i], &out.Items[i], c); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Items = nil
-	}
-	return nil
-}
-
 func deepCopy_api_ContainerPort(in ContainerPort, out *ContainerPort, c *conversion.Cloner) error {
 	out.Name = in.Name
 	out.HostPort = in.HostPort
@@ -991,6 +919,7 @@ func deepCopy_api_ObjectMeta(in ObjectMeta, out *ObjectMeta, c *conversion.Clone
 	out.SelfLink = in.SelfLink
 	out.UID = in.UID
 	out.ResourceVersion = in.ResourceVersion
+	out.Generation = in.Generation
 	if err := deepCopy_util_Time(in.CreationTimestamp, &out.CreationTimestamp, c); err != nil {
 		return err
 	}
@@ -1377,7 +1306,7 @@ func deepCopy_api_PodSpec(in PodSpec, out *PodSpec, c *conversion.Cloner) error 
 	} else {
 		out.NodeSelector = nil
 	}
-	out.ServiceAccount = in.ServiceAccount
+	out.ServiceAccountName = in.ServiceAccountName
 	out.NodeName = in.NodeName
 	out.HostNetwork = in.HostNetwork
 	if in.ImagePullSecrets != nil {
@@ -1406,6 +1335,7 @@ func deepCopy_api_PodStatus(in PodStatus, out *PodStatus, c *conversion.Cloner) 
 		out.Conditions = nil
 	}
 	out.Message = in.Message
+	out.Reason = in.Reason
 	out.HostIP = in.HostIP
 	out.PodIP = in.PodIP
 	if in.StartTime != nil {
@@ -1598,6 +1528,7 @@ func deepCopy_api_ReplicationControllerSpec(in ReplicationControllerSpec, out *R
 
 func deepCopy_api_ReplicationControllerStatus(in ReplicationControllerStatus, out *ReplicationControllerStatus, c *conversion.Cloner) error {
 	out.Replicas = in.Replicas
+	out.ObservedGeneration = in.ObservedGeneration
 	return nil
 }
 
@@ -2091,13 +2022,13 @@ func deepCopy_api_VolumeSource(in VolumeSource, out *VolumeSource, c *conversion
 	} else {
 		out.Glusterfs = nil
 	}
-	if in.PersistentVolumeClaimVolumeSource != nil {
-		out.PersistentVolumeClaimVolumeSource = new(PersistentVolumeClaimVolumeSource)
-		if err := deepCopy_api_PersistentVolumeClaimVolumeSource(*in.PersistentVolumeClaimVolumeSource, out.PersistentVolumeClaimVolumeSource, c); err != nil {
+	if in.PersistentVolumeClaim != nil {
+		out.PersistentVolumeClaim = new(PersistentVolumeClaimVolumeSource)
+		if err := deepCopy_api_PersistentVolumeClaimVolumeSource(*in.PersistentVolumeClaim, out.PersistentVolumeClaim, c); err != nil {
 			return err
 		}
 	} else {
-		out.PersistentVolumeClaimVolumeSource = nil
+		out.PersistentVolumeClaim = nil
 	}
 	if in.RBD != nil {
 		out.RBD = new(RBDVolumeSource)
@@ -2149,8 +2080,6 @@ func init() {
 		deepCopy_api_ComponentStatus,
 		deepCopy_api_ComponentStatusList,
 		deepCopy_api_Container,
-		deepCopy_api_ContainerManifest,
-		deepCopy_api_ContainerManifestList,
 		deepCopy_api_ContainerPort,
 		deepCopy_api_ContainerState,
 		deepCopy_api_ContainerStateRunning,
