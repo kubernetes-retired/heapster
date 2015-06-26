@@ -103,7 +103,7 @@ Here is an example:
 ./heapster --source="cadvisor:external?cadvisorPort=4194"
 ```
 
-The `hostsFile` defines a list of hosts to poll for metrics and must be in JSON format. See below for an example:
+The `hostsFile` parameter defines a list of hosts to poll for metrics and must be in JSON format. See below for an example:
 
 ```
 {
