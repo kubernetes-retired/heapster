@@ -1,0 +1,18 @@
+heapster:
+    image: kubernetes/heapster:v0.14.3
+    ports:
+        - "8002:8002"
+    links:
+        - influxdb
+    command: --source="cadvisor:external?cadvisorPort=8080" --sink=influxdb:http://influxdb:8086 --vmodule=*=4  
+    volumes:
+        - ./sample-hosts.json:/var/run/heapster/hosts
+influxdb:
+    image: tutum/influxdb
+    ports:
+        - "8083:8083"
+        - "8086:8086"
+grafana:
+    image: grafana/grafana
+    ports:
+        - "3000:3000"
