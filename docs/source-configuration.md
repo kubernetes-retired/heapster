@@ -103,6 +103,22 @@ Here is an example:
 ./heapster --source="cadvisor:external?cadvisorPort=4194"
 ```
 
+The `hostsFile` parameter defines a list of hosts to poll for metrics and must be in JSON format. See below for an example:
+
+```
+{
+  "Items": [
+    {
+      "Name": "server-105",
+      "IP": "192.168.99.105"
+    },
+    {
+      "Name": "server-106",
+      "IP": "192.168.99.105"
+    }
+  ]
+}
+```
 
 #### CoreOS
 CoreOS cadvisor source discovers nodes from the specified fleet endpoints. Use it like this:
