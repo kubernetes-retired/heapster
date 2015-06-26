@@ -21,31 +21,31 @@ type rateMetric struct {
 
 // Map of base metrics to corresponding rateMetrics.
 var gcmRateMetrics = map[string]rateMetric{
-	"uptime": rateMetric{
+	"uptime": {
 		name:        "uptime_rate",
 		description: "Rate of change of time since start in seconds per second",
 	},
-	"cpu/usage": rateMetric{
+	"cpu/usage": {
 		name:        "cpu/usage_rate",
 		description: "Rate of total CPU usage in millicores per second",
 	},
-	"memory/page_faults": rateMetric{
+	"memory/page_faults": {
 		name:        "memory/page_faults_rate",
 		description: "Rate of major page faults in counts per second",
 	},
-	"network/rx": rateMetric{
+	"network/rx": {
 		name:        "network/rx_rate",
 		description: "Rate of bytes received over the network in bytes per second",
 	},
-	"network/rx_errors": rateMetric{
+	"network/rx_errors": {
 		name:        "network/rx_errors_rate",
 		description: "Rate of errors sending over the network in errors per second",
 	},
-	"network/tx": rateMetric{
+	"network/tx": {
 		name:        "network/tx_rate",
 		description: "Rate of bytes transmitted over the network in bytes per second",
 	},
-	"network/tx_errors": rateMetric{
+	"network/tx_errors": {
 		name:        "network/tx_errors_rate",
 		description: "Rate of errors transmitting over the network in errors per second",
 	},

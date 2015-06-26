@@ -17,6 +17,7 @@ package sinks
 import (
 	_ "github.com/GoogleCloudPlatform/heapster/sinks/gcl"
 	_ "github.com/GoogleCloudPlatform/heapster/sinks/gcm"
+	_ "github.com/GoogleCloudPlatform/heapster/sinks/gcmautoscaling"
 	_ "github.com/GoogleCloudPlatform/heapster/sinks/hawkular"
 	_ "github.com/GoogleCloudPlatform/heapster/sinks/influxdb"
 )
