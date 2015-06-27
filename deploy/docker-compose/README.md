@@ -12,4 +12,4 @@ InfluxDB web UI is on http://localhost:8086 and Grafana is available on http://l
 
 in this case you will need to visit http://192.168.59.103:8086 (InfluxDB) and http://192.168.59.103:3000 (Grafana)
 
-The provided compose it's configured by default with the cAdvisor source and will setup to poll metrics from hosts defined in sample-hosts.json. Since it's very unlikely default will suit you at all you should go ahead and modify sample files to fit your needs.
+The provided compose it's configured by default with the cAdvisor source and will setup to poll metrics from the `cAdvisor` host defined in sample-hosts.json.
