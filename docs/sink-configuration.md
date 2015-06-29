@@ -31,7 +31,7 @@ The following options are available:
 
 ### Google Cloud Monitoring
 This sink supports monitoring metrics only.
-To use the InfluxDB sink add the following flag:
+To use the GCM sink add the following flag:
 ```
 --sink=gcm
 ```
@@ -40,6 +40,16 @@ To use the InfluxDB sink add the following flag:
 
 This sink does not export any options!
 
+### Google Cloud Monitoring Autoscaling
+This sink supports monitoring metrics for autoscaling purposes only.
+To use the GCM Autoscaling sink add the following flag:
+```
+--sink=gcmautoscaling
+```
+
+*Note: This sink works only on a Google Compute Enginer VM as of now*
+
+This sink does not export any options!
 
 ### Google Cloud Logging
 This sink supports events only.
