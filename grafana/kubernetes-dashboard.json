@@ -76,7 +76,7 @@
               "function": "derivative",
               "column": "value",
               "series": "cpu/usage_ns_cumulative",
-              "query": "select container_name, derivative(value) from \"cpu/usage_ns_cumulative\" where $timeFilter group by time($interval), container_name order asc",
+              "query": "select container_name, derivative(value) from \"cpu/usage_ns_cumulative\" where $timeFilter group by time(2m), container_name order asc",
               "condition_filter": false,
               "condition_key": "",
               "condition_op": "=",
@@ -86,7 +86,7 @@
               "groupby_field": "container_name",
               "alias": "",
               "fill": "",
-              "rawQuery": false,
+	      "rawQuery": true,
               "hide": false
             }
           ],
@@ -169,6 +169,7 @@
               "interval": "5s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
+	      "rawQuery": true,
               "alias": ""
             }
           ],
@@ -253,19 +254,19 @@
               "function": "derivative",
               "column": "value",
               "series": "cpu/usage_ns_cumulative",
-              "query": "select container_name, derivative(value) from \"cpu/usage_ns_cumulative\" where $timeFilter and labels =~ /name:heapster/ group by time($interval), container_name order asc",
+              "query": "select container_name, derivative(value) from \"cpu/usage_ns_cumulative\" where $timeFilter and container_name =~ /heapster/ group by time(2m), container_name order asc",
               "condition_filter": true,
               "interval": "5s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
               "alias": "",
               "condition": "labels =~ /name:heapster/",
-              "rawQuery": false,
+	      "rawQuery": true,
               "fill": ""
             }
           ],
           "aliasColors": {},
-          "title": "Label 'name:heapster' CPU usage",
+          "title": "Heapster CPU usage",
           "datasource": null,
           "renderer": "png",
           "annotate": {
@@ -336,12 +337,13 @@
               "function": "mean",
               "column": "value",
               "series": "memory/usage_bytes_gauge",
-              "query": "select mean(value) from \"memory/usage_bytes_gauge\" where $timeFilter and labels =~ /name:heapster/ group by time($interval) order asc",
+              "query": "select mean(value) from \"memory/usage_bytes_gauge\" where $timeFilter and container_name =~ /heapster/ group by time($interval) order asc",
               "condition_filter": true,
               "interval": "5s",
               "groupby_field_add": true,
               "groupby_field": "",
               "alias": "total",
+	      "rawQuery": true,
               "condition": "labels =~ /name:heapster/"
             },
             {
@@ -349,17 +351,18 @@
               "function": "mean",
               "column": "value",
               "series": "memory/working_set_bytes_gauge",
-              "query": "select mean(value) from \"memory/working_set_bytes_gauge\" where $timeFilter and labels =~ /name:heapster/ group by time($interval) order asc",
+              "query": "select mean(value) from \"memory/working_set_bytes_gauge\" where $timeFilter and container_name =~ /heapster/ group by time($interval) order asc",
               "condition_filter": true,
               "interval": "5s",
               "groupby_field_add": true,
               "groupby_field": "",
               "alias": "in_use",
+	      "rawQuery": true,
               "condition": "labels =~ /name:heapster/"
             }
           ],
           "aliasColors": {},
-          "title": "Labels 'name:heapster' memory usage",
+          "title": "Heapster Memory Usage",
           "datasource": null,
           "renderer": "png",
           "annotate": {
@@ -440,19 +443,19 @@
               "function": "derivative",
               "column": "value",
               "series": "cpu/usage_ns_cumulative",
-              "query": "select container_name, derivative(value) from \"cpu/usage_ns_cumulative\" where $timeFilter and labels =~ /name:influxGrafana/ group by time($interval), container_name fill(0) order asc",
+              "query": "select container_name, derivative(value) from \"cpu/usage_ns_cumulative\" where $timeFilter and container_name =~ /influxdb/ group by time(2m), container_name order asc",
               "condition_filter": true,
               "interval": "5s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
               "alias": "",
               "condition": "labels =~ /name:influxGrafana/",
-              "rawQuery": false,
+	      "rawQuery": true,
               "fill": "0"
             }
           ],
           "aliasColors": {},
-          "title": "Labels 'name:influx-grafana' CPU usage",
+          "title": "influxdb CPU usage",
           "datasource": null,
           "renderer": "png",
           "annotate": {
@@ -523,12 +526,13 @@
               "function": "mean",
               "column": "value",
               "series": "memory/usage_bytes_gauge",
-              "query": "select container_name, mean(value) from \"memory/usage_bytes_gauge\" where $timeFilter and labels =~ /name:influxGrafana/ group by time($interval), container_name order asc",
+              "query": "select container_name, mean(value) from \"memory/usage_bytes_gauge\" where $timeFilter and container_name =~ /influxdb/ group by time($interval), container_name order asc",
               "condition_filter": true,
               "interval": "5s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
               "alias": "",
+	      "rawQuery": true,
               "condition": "labels =~ /name:influxGrafana/"
             },
             {
@@ -536,17 +540,18 @@
               "function": "mean",
               "column": "value",
               "series": "memory/working_set_bytes_gauge",
-              "query": "select container_name, mean(value) from \"memory/working_set_bytes_gauge\" where $timeFilter and labels =~ /name:influxGrafana/ group by time($interval), container_name order asc",
+              "query": "select container_name, mean(value) from \"memory/working_set_bytes_gauge\" where $timeFilter and container_name =~ /influxdb/ group by time($interval), container_name order asc",
               "condition_filter": true,
               "interval": "5s",
               "groupby_field_add": true,
               "groupby_field": "container_name",
               "alias": "",
+	      "rawQuery": true,
               "condition": "labels =~ /name:influxGrafana/"
             }
           ],
           "aliasColors": {},
-          "title": "Labels 'name:influx-grafana' memory usage",
+          "title": "influxdb memory usage",
           "datasource": null,
           "renderer": "png",
           "annotate": {
@@ -627,7 +632,7 @@
               "function": "derivative",
               "column": "value",
               "series": "cpu/usage_ns_cumulative",
-              "query": "select hostname, derivative(value) from \"cpu/usage_ns_cumulative\" where $timeFilter group by time($interval), hostname fill(null) order asc",
+              "query": "select hostname, derivative(value) from \"cpu/usage_ns_cumulative\" where $timeFilter group by time(2m), hostname fill(null) order asc",
               "condition_filter": true,
               "interval": "5s",
               "groupby_field_add": true,
@@ -718,6 +723,7 @@
               "groupby_field_add": true,
               "groupby_field": "hostname",
               "alias": "",
+              "rawQuery": true,
               "condition": "",
               "fill": "null"
             }
