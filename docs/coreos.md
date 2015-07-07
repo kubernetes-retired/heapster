@@ -22,7 +22,7 @@ This can be accomplished with either a cloud config entry:
         Restart=always
         ExecStartPre=/usr/bin/docker pull google/cadvisor:latest
         ExecStartPre=-/bin/bash -c "docker inspect cadvisor >/dev/null 2>&1 && docker rm -f cadvisor || true"
-        ExecStart=/usr/bin/docker run --volume=/var/run:/var/run:rw --volume=/sys/fs/cgroup/:/sys/fs/cgroup:ro --volume=/var/lib/docker/:/var/lib/docker:ro --publish=8080:8080 --name=cadvisor google/cadvisor:latest
+        ExecStart=/usr/bin/docker run --volume=/var/run:/var/run:rw --volume=/sys:/sys:ro --volume=/var/lib/docker/:/var/lib/docker:ro --volume=/:/rootfs:ro --publish=8080:8080 --name=cadvisor google/cadvisor:latest
         ExecStop=/usr/bin/docker rm -f cadvisor
 ```
 
@@ -37,7 +37,7 @@ Requires=docker.service
 Restart=always
 ExecStartPre=/usr/bin/docker pull google/cadvisor:latest
 ExecStartPre=-/bin/bash -c "docker inspect cadvisor >/dev/null 2>&1 && docker rm -f cadvisor || true"
-ExecStart=/usr/bin/docker run --volume=/var/run:/var/run:rw --volume=/sys/fs/cgroup/:/sys/fs/cgroup:ro --volume=/var/lib/docker/:/var/lib/docker:ro --publish=8080:8080 --name=cadvisor google/cadvisor:latest
+ExecStart=/usr/bin/docker run --volume=/var/run:/var/run:rw --volume=/sys:/sys:ro --volume=/var/lib/docker/:/var/lib/docker:ro --volume=/:/rootfs:ro --publish=8080:8080 --name=cadvisor google/cadvisor:latest
 ExecStop=/usr/bin/docker rm -f cadvisor
 
 [X-Fleet]
