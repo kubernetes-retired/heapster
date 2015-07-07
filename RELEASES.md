@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.16.0 (7-7-2015)
+- Add new sink for GCM autoscaling.
+- Force heapster to use kubernetes v1.0 API.
+- Bug fixes.
+
 ## 0.15.0 (6-26-2015)
 - Use service accounts while running in kubernetes clusters
 - Expose kubernetes system containers with standard names
