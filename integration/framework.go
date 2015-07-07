@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1"
 	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	kclientcmd "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
 	kclientcmdapi "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
@@ -188,7 +188,7 @@ func getKubeClient() (string, *kclient.Client, error) {
 		*c,
 		&kclientcmd.ConfigOverrides{
 			ClusterInfo: kclientcmdapi.Cluster{
-				APIVersion: "v1beta3",
+				APIVersion: "v1",
 			},
 		}).ClientConfig()
 	if err != nil {
@@ -317,7 +317,7 @@ func (self *realKubeFramework) loadObject(filePath string) (runtime.Object, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to read object: %v", err)
 	}
-	return v1beta3.Codec.Decode(data)
+	return v1.Codec.Decode(data)
 }
 
 func (self *realKubeFramework) ParseRC(filePath string) (*api.ReplicationController, error) {

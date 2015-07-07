@@ -32,7 +32,8 @@ import (
 )
 
 const (
-	defaultApiVersion         = "v1"
+	APIVersion = "v1"
+
 	defaultInsecure           = false
 	defaultKubeletPort        = 10255
 	defaultKubeletHttps       = false
@@ -48,7 +49,7 @@ func init() {
 func getConfigOverrides(uri string, options map[string][]string) (*kubeClientCmd.ConfigOverrides, error) {
 	kubeConfigOverride := kubeClientCmd.ConfigOverrides{
 		ClusterInfo: kubeClientCmdApi.Cluster{
-			APIVersion: defaultApiVersion,
+			APIVersion: APIVersion,
 		},
 	}
 	if uri != "" {
@@ -82,6 +83,11 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 		err        error
 	)
 
+	configOverrides, err := getConfigOverrides(uri, options)
+	if err != nil {
+		return nil, err
+	}
+
 	inClusterConfig := defaultInClusterConfig
 	if len(options["inClusterConfig"]) > 0 {
 		inClusterConfig, err = strconv.ParseBool(options["inClusterConfig"][0])
@@ -95,12 +101,9 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		configOverrides, err := getConfigOverrides(uri, options)
-		if err != nil {
-			return nil, err
-		}
 
+		kubeConfig.Version = configOverrides.ClusterInfo.APIVersion
+	} else {
 		authFile := ""
 		if len(options["auth"]) > 0 {
 			authFile = options["auth"][0]

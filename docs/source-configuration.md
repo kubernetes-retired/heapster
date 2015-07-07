@@ -34,7 +34,7 @@ like this:
 
 ```
 cat <EOF | kubectl create -f -
-apiVersion: v1beta3
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: heapster
@@ -44,7 +44,7 @@ EOF
 This will generate a token on the API server. You will then need to reference the service account in your Heapster pod spec like this:
 
 ```
-apiVersion: "v1beta3"
+apiVersion: "v1"
 kind: "ReplicationController"
 metadata:
   labels:

@@ -102,7 +102,7 @@ func (self *realPodsApi) parseAllPods(podNodePairs []podNodePair) []api.Pod {
 func (self *realPodsApi) getNodeSelector(nodeList *nodes.NodeList) (labels.Selector, error) {
 	nodeLabels := []string{}
 	for host := range nodeList.Items {
-		nodeLabels = append(nodeLabels, fmt.Sprintf("spec.host==%s", host))
+		nodeLabels = append(nodeLabels, fmt.Sprintf("spec.nodeName==%s", host))
 	}
 	glog.V(2).Infof("using labels %v to find pods", nodeLabels)
 	return labels.Parse(strings.Join(nodeLabels, ","))
@@ -155,7 +155,7 @@ const resyncPeriod = time.Minute
 func newPodsApi(client *kclient.Client) podsApi {
 	// Extend the selector to include specific nodes to monitor
 	// or provide an API to update the nodes to monitor.
-	selector, err := kSelector.ParseSelector("spec.host!=")
+	selector, err := kSelector.ParseSelector("spec.nodeName!=")
 	if err != nil {
 		panic(err)
 	}
