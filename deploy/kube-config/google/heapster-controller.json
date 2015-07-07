@@ -22,7 +22,7 @@
 		"containers": [
 		    {
 			"name": "heapster",
-			"image": "kubernetes/heapster:v0.15.0",
+			"image": "kubernetes/heapster:v0.16.0",
 			"command": [
 			    "/heapster",
 			    "--source=kubernetes:''",
