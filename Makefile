@@ -37,7 +37,7 @@ grafana:
 
 .PHONY: influxdb
 influxdb:
-	docker build -t $(PREFIX)/heapster_grafana:$(TAG) ./influxdb/
+	docker build -t $(PREFIX)/heapster_influxdb:$(TAG) ./influxdb/
 
 clean:
 	rm -f heapster
