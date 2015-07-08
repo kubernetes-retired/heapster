@@ -43,6 +43,7 @@ type realManager struct {
 	sinkManager sinks.ExternalSinkManager
 	lastSync    time.Time
 	resolution  time.Duration
+	align       bool
 	decoder     sink_api.Decoder
 }
 
@@ -51,20 +52,21 @@ type syncData struct {
 	mutex sync.Mutex
 }
 
-func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration) (Manager, error) {
+func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration, align bool) (Manager, error) {
 	return &realManager{
 		sources:     sources,
 		sinkManager: sinkManager,
 		cache:       cache.NewCache(bufferDuration),
 		lastSync:    time.Now(),
 		resolution:  res,
+		align:       align,
 		decoder:     sink_api.NewDecoder(),
 	}, nil
 }
 
 func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, sd *syncData, errChan chan<- error) {
 	glog.V(2).Infof("attempting to get data from source %q", s.Name())
-	data, err := s.GetInfo(start, end, rm.resolution)
+	data, err := s.GetInfo(start, end, rm.resolution, rm.align)
 	if err != nil {
 		err = fmt.Errorf("failed to get information from source %q - %v", s.Name(), err)
 	} else {

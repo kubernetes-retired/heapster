@@ -35,7 +35,7 @@ func TestWithFuzzInput(t *testing.T) {
 func testWithFuzzInternal() {
 	inputStats := []*cadvisor.ContainerStats{}
 	fuzz.New().Fuzz(&inputStats)
-	_ = sampleContainerStats(inputStats, time.Nanosecond)
+	_ = sampleContainerStats(inputStats, time.Now(), time.Nanosecond, false)
 }
 
 func TestWithNoDownsampling(t *testing.T) {
@@ -55,7 +55,7 @@ func TestWithNoDownsampling(t *testing.T) {
 			Timestamp: start.Add(resolution * 3),
 		},
 	}
-	output := sampleContainerStats(inputStats, resolution)
+	output := sampleContainerStats(inputStats, start, resolution, false)
 	assert.Equal(t, output, inputStats)
 }
 
@@ -66,7 +66,7 @@ func TestWithDownsampling(t *testing.T) {
 		inputStats = append(inputStats, &cadvisor.ContainerStats{Timestamp: start.Add(time.Second * time.Duration(i))})
 	}
 
-	output := sampleContainerStats(inputStats, time.Second*2)
+	output := sampleContainerStats(inputStats, start, time.Second*2, false)
 	assert.Len(t, output, 2)
 }
 
@@ -76,6 +76,6 @@ func TestWithLargeDownsampling(t *testing.T) {
 	for i := 1; i <= 100; i++ {
 		inputStats = append(inputStats, &cadvisor.ContainerStats{Timestamp: start.Add(time.Second * time.Duration(i))})
 	}
-	output := sampleContainerStats(inputStats, time.Minute)
+	output := sampleContainerStats(inputStats, start, time.Minute, false)
 	assert.Len(t, output, 2)
 }

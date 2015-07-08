@@ -35,6 +35,7 @@ import (
 var (
 	argPollDuration    = flag.Duration("poll_duration", 10*time.Second, "The frequency at which heapster will poll for stats")
 	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats. Acceptable values are in the range [1 second, 'poll_duration')")
+	argAlignStats      = flag.Bool("align_stats", false, "Whether to align timestamps of metrics to multiplicity of 'stats_resolution'")
 	argPort            = flag.Int("port", 8082, "port to listen to")
 	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores).")
@@ -93,7 +94,7 @@ func doWork() ([]api.Source, sinks.ExternalSinkManager, manager.Manager, error) 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration)
+	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration, *argAlignStats)
 	if err != nil {
 		return nil, nil, nil, err
 	}
