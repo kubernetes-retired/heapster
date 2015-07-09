@@ -22,6 +22,8 @@ import (
 type ExternalSink interface {
 	// Registers a metric with the backend.
 	Register([]MetricDescriptor) error
+	// Unregisters a metric with the backend.
+	Unregister([]MetricDescriptor) error
 	// Stores input data into the backend.
 	// Support input types are as follows:
 	// 1. []Timeseries

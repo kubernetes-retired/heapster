@@ -27,7 +27,7 @@ const (
 	ValidatePage = "/validate/"
 )
 
-func HandleRequest(w http.ResponseWriter, sources []api.Source, sink sinks.ExternalSinkManager) error {
+func HandleRequest(w http.ResponseWriter, sources []api.Source, sink sinks.Sink) error {
 	out := fmt.Sprintf("Heapster Version: %v\n\n", version.HeapsterVersion)
 	for _, source := range sources {
 		out += source.DebugInfo()

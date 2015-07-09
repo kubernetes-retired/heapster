@@ -274,7 +274,7 @@ func (self *bigquerySink) DebugInfo() string {
 }
 
 // Create a new bigquery storage driver.
-func NewBigQuerySink() (ExternalSinkManager, error) {
+func NewBigQuerySink() (Sink, error) {
 	bqClient, err := bigquery_client.NewClient()
 	if err != nil {
 		return nil, err

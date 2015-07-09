@@ -63,7 +63,7 @@ func (self *MemorySink) DebugInfo() string {
 	return desc
 }
 
-func NewMemorySink() ExternalSinkManager {
+func NewMemorySink() Sink {
 	return &MemorySink{
 		containersData:     list.New(),
 		oldestData:         time.Now(),

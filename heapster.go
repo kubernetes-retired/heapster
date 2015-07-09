@@ -86,16 +86,15 @@ func doWork() ([]api.Source, sinks.ExternalSinkManager, manager.Manager, error) 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	externalSinks, err := newSinks()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	sinkManager, err := sinks.NewExternalSinkManager(externalSinks)
+	sinkManager, err := sinks.NewExternalSinkManager(nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration, *argAlignStats)
 	if err != nil {
+		return nil, nil, nil, err
+	}
+	if err := manager.SetSinkUris(argSinks); err != nil {
 		return nil, nil, nil, err
 	}
 	go util.Until(manager.Housekeep, *argPollDuration, util.NeverStop)

@@ -70,6 +70,11 @@ func (self *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
 	return nil
 }
 
+func (self *influxdbSink) Unregister(metrics []sink_api.MetricDescriptor) error {
+	// Like Register
+	return nil
+}
+
 func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influxdb.Series {
 	columns := []string{}
 	values := []interface{}{}
