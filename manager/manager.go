@@ -80,7 +80,7 @@ func (rm *realManager) Housekeep() {
 	var sd syncData
 	start := rm.lastSync
 	end := time.Now()
-	rm.lastSync = start
+	rm.lastSync = end
 	glog.V(2).Infof("starting to scrape data from sources")
 	for idx := range rm.sources {
 		s := rm.sources[idx]
