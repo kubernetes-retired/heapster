@@ -102,6 +102,9 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 			return nil, err
 		}
 
+		if configOverrides.ClusterInfo.Server != "" {
+			kubeConfig.Host = configOverrides.ClusterInfo.Server
+		}
 		kubeConfig.Version = configOverrides.ClusterInfo.APIVersion
 	} else {
 		authFile := ""
