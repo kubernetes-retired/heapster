@@ -31,11 +31,9 @@ container: build
 	cp ./heapster ./deploy/docker/heapster
 	docker build -t $(PREFIX)/heapster:$(TAG) ./deploy/docker/
 
-.PHONY: grafana
 grafana:
 	docker build -t $(PREFIX)/heapster_grafana:$(TAG) ./grafana/
 
-.PHONY: influxdb
 influxdb:
 	docker build -t $(PREFIX)/heapster_influxdb:$(TAG) ./influxdb/
 
@@ -44,3 +42,4 @@ clean:
 	rm -f ./extpoints/extpoints.go
 	rm -f ./deploy/docker/heapster
 
+.PHONY: all deps build sanitize test-unit test-unit-cov test-integration container grafana influxdb clean
