@@ -372,7 +372,9 @@ func runApiTest() error {
 	}
 	kubeVersionsList := strings.Split(*kubeVersions, ",")
 	for _, kubeVersion := range kubeVersionsList {
-		return apiTest(kubeVersion)
+		if err := apiTest(kubeVersion); err != nil {
+			return err
+		}
 	}
 	return nil
 }
