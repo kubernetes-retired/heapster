@@ -20,7 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -108,7 +108,7 @@ func exists(path string) bool {
 const pathToGCEConfig = "cluster/gce/config-default.sh"
 
 func disableClusterMonitoring(kubeBaseDir string) error {
-	kubeConfigFilePath := path.Join(kubeBaseDir, pathToGCEConfig)
+	kubeConfigFilePath := filepath.Join(kubeBaseDir, pathToGCEConfig)
 	input, err := ioutil.ReadFile(kubeConfigFilePath)
 	if err != nil {
 		return err
@@ -128,7 +128,7 @@ func disableClusterMonitoring(kubeBaseDir string) error {
 }
 
 func runKubeClusterCommand(kubeBaseDir, command string) ([]byte, error) {
-	cmd := exec.Command(path.Join(kubeBaseDir, "cluster", command))
+	cmd := exec.Command(filepath.Join(kubeBaseDir, "cluster", command))
 	glog.V(2).Infof("about to run %v", cmd)
 	return cmd.CombinedOutput()
 }
@@ -162,7 +162,7 @@ func destroyCluster(kubeBaseDir string) error {
 
 func downloadRelease(workDir, version string) error {
 	// Temporary download path.
-	downloadPath := path.Join(workDir, "kube")
+	downloadPath := filepath.Join(workDir, "kube")
 	// Format url.
 	downloadUrl := fmt.Sprintf(imageUrlTemplate, version)
 	glog.V(1).Infof("About to download kube release using url: %q", downloadUrl)
@@ -230,7 +230,7 @@ func requireNewCluster(baseDir, version string) bool {
 
 func downloadAndSetupCluster(version string) (baseDir string, err error) {
 	// Create a temp dir to store the kube release files.
-	tempDir := path.Join(*workDir, version)
+	tempDir := filepath.Join(*workDir, version)
 	if !exists(tempDir) {
 		if err := os.MkdirAll(tempDir, 0700); err != nil {
 			return "", fmt.Errorf("failed to create a temp dir at %s - %q", tempDir, err)
@@ -238,7 +238,7 @@ func downloadAndSetupCluster(version string) (baseDir string, err error) {
 		glog.V(1).Infof("Successfully setup work dir at %s", tempDir)
 	}
 
-	kubeBaseDir := path.Join(tempDir, "kubernetes")
+	kubeBaseDir := filepath.Join(tempDir, "kubernetes")
 
 	if !exists(kubeBaseDir) {
 		if err := downloadRelease(tempDir, version); err != nil {

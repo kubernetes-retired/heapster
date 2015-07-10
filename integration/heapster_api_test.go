@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -99,7 +99,7 @@ func buildAndPushHeapsterImage(hostnames []string) error {
 	if err := os.Chdir(heapsterBuildDir); err != nil {
 		return err
 	}
-	if err := make("build", path.Join(curwd, makefile)); err != nil {
+	if err := make("build", filepath.Join(curwd, makefile)); err != nil {
 		return err
 	}
 	if err := buildDockerImage(*heapsterImage); err != nil {
