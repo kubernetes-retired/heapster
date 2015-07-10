@@ -8,8 +8,10 @@ deps:
 	go get github.com/tools/godep
 	go get github.com/progrium/go-extpoints
 
-build: clean deps
+generate:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go generate
+
+build: clean generate deps
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -a ./...
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -a
 

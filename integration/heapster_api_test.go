@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -37,7 +36,6 @@ const (
 	kTestZone        = "us-central1-b"
 	targetTags       = "kubernetes-minion"
 	heapsterBuildDir = "../deploy/docker"
-	makefile         = "../Makefile"
 )
 
 var (
@@ -97,9 +95,6 @@ func buildAndPushHeapsterImage(hostnames []string) error {
 		return err
 	}
 	if err := os.Chdir(heapsterBuildDir); err != nil {
-		return err
-	}
-	if err := make("build", filepath.Join(curwd, makefile)); err != nil {
 		return err
 	}
 	if err := buildDockerImage(*heapsterImage); err != nil {

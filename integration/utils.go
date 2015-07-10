@@ -22,16 +22,8 @@ import (
 	"path"
 )
 
-func make(command, makefile string) error {
-	out, err := exec.Command("make", "-f", makefile, command).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to build go binary (%q) - %q", err, out)
-	}
-	return nil
-}
-
 func buildDockerImage(imageName string) error {
-	out, err := exec.Command("docker", "build", "-t", imageName, ".").CombinedOutput()
+	out, err := exec.Command("./build.sh", imageName).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to build docker binary (%q) - %q", err, out)
 	}
