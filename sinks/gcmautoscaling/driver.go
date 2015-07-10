@@ -15,6 +15,8 @@
 package gcmautoscaling
 
 import (
+	"time"
+
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
 	"github.com/GoogleCloudPlatform/heapster/sinks/gcm"
 	"github.com/golang/glog"
@@ -68,16 +70,22 @@ var autoscalingMetrics = map[string]utilizationMetric{
 	},
 }
 
+// Since the input may contain data from different time windows we want to support it.
+type hostTime struct {
+	host string
+	time time.Time
+}
+
 type gcmAutocalingSink struct {
 	core *gcm.GcmCore
-	// For given hostname remember its capacity in milicores.
-	cpuCapacity map[string]int64
-	// For given hostname remember amount of reserved cpu in milicores.
-	cpuReservation map[string]int64
-	// Memory capacity in bytes.
-	memCapacity map[string]int64
-	// For given hostname remember amount of reserved memory in bytes.
-	memReservation map[string]int64
+	// For given hostname and time remembers its cpu capacity in milicores.
+	cpuCapacity map[hostTime]int64
+	// For given hostname and time remembers amount of reserved cpu in milicores.
+	cpuReservation map[hostTime]int64
+	// For given hostname and time remembers its memory capacity in bytes.
+	memCapacity map[hostTime]int64
+	// For given hostname and time remembers amount of reserved memory in bytes.
+	memReservation map[hostTime]int64
 }
 
 // Adds the specified metrics or updates them if they already exist.
@@ -105,10 +113,10 @@ func isPodContainer(metric *sink_api.Point) bool {
 }
 
 func (self *gcmAutocalingSink) updateMachineCapacityAndReservation(input []sink_api.Timeseries) {
-	self.cpuCapacity = make(map[string]int64)
-	self.cpuReservation = make(map[string]int64)
-	self.memCapacity = make(map[string]int64)
-	self.memReservation = make(map[string]int64)
+	self.cpuCapacity = make(map[hostTime]int64)
+	self.cpuReservation = make(map[hostTime]int64)
+	self.memCapacity = make(map[hostTime]int64)
+	self.memReservation = make(map[hostTime]int64)
 	for _, entry := range input {
 		metric := entry.Point
 		if metric.Name != "cpu/limit" && metric.Name != "memory/limit" {
@@ -122,15 +130,15 @@ func (self *gcmAutocalingSink) updateMachineCapacityAndReservation(input []sink_
 
 		if isNode(metric) {
 			if metric.Name == "cpu/limit" {
-				self.cpuCapacity[host] = value
+				self.cpuCapacity[hostTime{host, metric.End}] = value
 			} else if metric.Name == "memory/limit" {
-				self.memCapacity[host] = value
+				self.memCapacity[hostTime{host, metric.End}] = value
 			}
 		} else if isPodContainer(metric) {
 			if metric.Name == "cpu/limit" {
-				self.cpuReservation[host] += value
+				self.cpuReservation[hostTime{host, metric.End}] += value
 			} else if metric.Name == "memory/limit" {
-				self.memReservation[host] += value
+				self.memReservation[hostTime{host, metric.End}] += value
 			}
 		}
 	}
@@ -150,27 +158,27 @@ func (self *gcmAutocalingSink) getNewValue(metric *sink_api.Point, ts *gcm.Times
 	var val float64
 	switch metric.Name {
 	case "cpu/usage":
-		capacity, ok := self.cpuCapacity[host]
+		capacity, ok := self.cpuCapacity[hostTime{host, metric.End}]
 		if !ok || capacity < 1 || ts.Point.DoubleValue == nil {
 			return nil
 		}
 		val = *ts.Point.DoubleValue / float64(capacity)
 	case "cpu/limit":
-		reserved, ok := self.cpuReservation[host]
-		capacity, ok2 := self.cpuCapacity[host]
+		reserved, ok := self.cpuReservation[hostTime{host, metric.End}]
+		capacity, ok2 := self.cpuCapacity[hostTime{host, metric.End}]
 		if !ok || !ok2 || capacity < 1 {
 			return nil
 		}
 		val = float64(reserved) / float64(capacity)
 	case "memory/usage":
-		capacity, ok := self.memCapacity[host]
+		capacity, ok := self.memCapacity[hostTime{host, metric.End}]
 		if !ok || capacity < 1 || ts.Point.Int64Value == nil {
 			return nil
 		}
 		val = float64(*ts.Point.Int64Value) / float64(capacity)
 	case "memory/limit":
-		reserved, ok := self.memReservation[host]
-		capacity, ok2 := self.memCapacity[host]
+		reserved, ok := self.memReservation[hostTime{host, metric.End}]
+		capacity, ok2 := self.memCapacity[hostTime{host, metric.End}]
 		if !ok || !ok2 || capacity < 1 {
 			return nil
 		}
@@ -215,6 +223,7 @@ func (self gcmAutocalingSink) StoreTimeseries(input []sink_api.Timeseries) error
 			glog.Infof("Failed to compute new value for metric %v, host %v.", autoscalingMetrics[metric.Name].name, metric.Labels[sink_api.LabelHostname.Key])
 			continue
 		}
+		ts.Point.Int64Value = nil
 		ts.Point.DoubleValue = val
 		name := gcm.FullMetricName(autoscalingMetrics[metric.Name].name)
 		ts.TimeseriesDescriptor.Metric = name
