@@ -15,6 +15,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/store"
@@ -31,16 +32,20 @@ func latestTimestamp(first time.Time, second time.Time) time.Time {
 // newInfoType is an InfoType Constructor, which returns a new InfoType.
 // Initial fields for the new InfoType can be provided as arguments.
 // A nil argument results in a newly-allocated map for that field.
-func newInfoType(metrics map[string]*store.TimeStore, labels map[string]string) InfoType {
+func newInfoType(metrics map[string]*store.TimeStore, labels map[string]string, context map[string]*store.TimePoint) InfoType {
 	if metrics == nil {
 		metrics = make(map[string]*store.TimeStore)
 	}
 	if labels == nil {
 		labels = make(map[string]string)
 	}
+	if context == nil {
+		context = make(map[string]*store.TimePoint)
+	}
 	return InfoType{
 		Metrics: metrics,
 		Labels:  labels,
+		Context: context,
 	}
 }
 
@@ -53,7 +58,7 @@ func addContainerToMap(container_name string, dict map[string]*ContainerInfo) *C
 		container_ptr = val
 	} else {
 		container_ptr = &ContainerInfo{
-			InfoType: newInfoType(nil, nil),
+			InfoType: newInfoType(nil, nil, nil),
 		}
 		dict[container_name] = container_ptr
 	}
@@ -126,4 +131,24 @@ func addMatchingTimeseries(left []store.TimePoint, right []store.TimePoint) []st
 	}
 
 	return result
+}
+
+// instantFromCumulativeMetric calculates the value of an instantaneous metric from two
+// points of a cumulative metric, such as cpu/usage.
+// The inputs are the value and timestamp of the newer cumulative datapoint,
+// and a pointer to a TimePoint holding the previous cumulative datapoint.
+func instantFromCumulativeMetric(value uint64, stamp time.Time, prev *store.TimePoint) (uint64, error) {
+	if prev == nil {
+		return uint64(0), fmt.Errorf("unable to calculate instant metric with nil previous TimePoint")
+	}
+	tdelta := uint64(stamp.Sub(prev.Timestamp).Nanoseconds())
+	if tdelta == 0 {
+		return uint64(0), fmt.Errorf("cumulative metric timestamps are identical")
+	}
+	vdelta := (value - prev.Value.(uint64)) * 1024
+
+	instaVal := vdelta / tdelta
+	prev.Value = value
+	prev.Timestamp = stamp
+	return instaVal, nil
 }

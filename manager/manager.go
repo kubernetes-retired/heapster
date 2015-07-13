@@ -19,11 +19,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
+
+	"github.com/GoogleCloudPlatform/heapster/model"
 	"github.com/GoogleCloudPlatform/heapster/sinks"
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/golang/glog"
+	"github.com/GoogleCloudPlatform/heapster/store"
 )
 
 // Manager provides an interface to control the core of heapster.
@@ -41,11 +44,15 @@ type Manager interface {
 
 	// Get the sinks currently in use
 	SinkUris() Uris
+
+	// Get a reference to the cluster entity of the model, if it exists.
+	GetCluster() model.Cluster
 }
 
 type realManager struct {
 	sources     []source_api.Source
 	cache       cache.Cache
+	model       model.Cluster
 	sinkManager sinks.ExternalSinkManager
 	sinkUris    Uris
 	lastSync    time.Time
@@ -59,16 +66,30 @@ type syncData struct {
 	mutex sync.Mutex
 }
 
-func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration, align bool) (Manager, error) {
+func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration, useModel bool, modelRes time.Duration, align bool) (Manager, error) {
+	// TimeStore constructor passed to the cluster implementation.
+	tsConstructor := func() store.TimeStore {
+		// TODO(afein): determine default analogy of cache duration to Timestore durations.
+		return store.NewGCStore(store.NewCMAStore(), 5*bufferDuration)
+	}
+	var newCluster model.Cluster = nil
+	if useModel {
+		newCluster = model.NewCluster(tsConstructor, modelRes)
+	}
 	return &realManager{
 		sources:     sources,
 		sinkManager: sinkManager,
 		cache:       cache.NewCache(bufferDuration),
+		model:       newCluster,
 		lastSync:    time.Now(),
 		resolution:  res,
 		align:       align,
 		decoder:     sink_api.NewDecoder(),
 	}, nil
+}
+
+func (rm *realManager) GetCluster() model.Cluster {
+	return rm.model
 }
 
 func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, sd *syncData, errChan chan<- error) {
@@ -114,6 +135,13 @@ func (rm *realManager) Housekeep() {
 	if err := rm.sinkManager.Store(sd.data); err != nil {
 		errors = append(errors, err.Error())
 	}
+
+	if rm.model != nil {
+		if err := rm.model.Update(rm.cache); err != nil {
+			errors = append(errors, err.Error())
+		}
+	}
+
 	if len(errors) > 0 {
 		glog.V(1).Infof("housekeeping resulted in following errors: %v", errors)
 	}
