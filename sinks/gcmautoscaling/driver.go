@@ -15,12 +15,14 @@
 package gcmautoscaling
 
 import (
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/sinks/gcm"
 	"github.com/golang/glog"
+
+	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 )
 
 var (
@@ -52,20 +54,38 @@ type utilizationMetric struct {
 var autoscalingMetrics = map[string]utilizationMetric{
 	"cpu/usage": {
 		name:        "cpu/node_utilization",
-		description: "Cpu utilization as a percentage of node capacity",
+		description: "Cpu utilization as a share of node capacity",
+	},
+	"cpu/limit": {
+		name:        "cpu/node_reservation",
+		description: "Share of cpu that is reserved on the node",
 	},
 	"memory/usage": {
 		name:        "memory/node_utilization",
-		description: "Memory utilization as a percentage of memory capacity",
+		description: "Memory utilization as a share of memory capacity",
 	},
+	"memory/limit": {
+		name:        "memory/node_reservation",
+		description: "Share of memory that is reserved on the node",
+	},
+}
+
+// Since the input may contain data from different time windows we want to support it.
+type hostTime struct {
+	host string
+	time time.Time
 }
 
 type gcmAutocalingSink struct {
 	core *gcm.GcmCore
-	// For given hostname remember its capacity in milicores.
-	cpuCapacity map[string]int64
-	// Memory capacity in bytes.
-	memCapacity map[string]int64
+	// For given hostname and time remembers its cpu capacity in milicores.
+	cpuCapacity map[hostTime]int64
+	// For given hostname and time remembers amount of reserved cpu in milicores.
+	cpuReservation map[hostTime]int64
+	// For given hostname and time remembers its memory capacity in bytes.
+	memCapacity map[hostTime]int64
+	// For given hostname and time remembers amount of reserved memory in bytes.
+	memReservation map[hostTime]int64
 }
 
 // Adds the specified metrics or updates them if they already exist.
@@ -88,29 +108,90 @@ func isNode(metric *sink_api.Point) bool {
 	return metric.Labels[sink_api.LabelContainerName.Key] == "/"
 }
 
-func (self gcmAutocalingSink) updateMachineCapacity(input []sink_api.Timeseries) {
+func isPodContainer(metric *sink_api.Point) bool {
+	return len(metric.Labels[sink_api.LabelPodName.Key]) > 0
+}
+
+func (self *gcmAutocalingSink) updateMachineCapacityAndReservation(input []sink_api.Timeseries) {
+	self.cpuCapacity = make(map[hostTime]int64)
+	self.cpuReservation = make(map[hostTime]int64)
+	self.memCapacity = make(map[hostTime]int64)
+	self.memReservation = make(map[hostTime]int64)
 	for _, entry := range input {
 		metric := entry.Point
-		if !isNode(metric) {
+		if metric.Name != "cpu/limit" && metric.Name != "memory/limit" {
+			continue
+		}
+		host := metric.Labels[sink_api.LabelHostname.Key]
+		value, ok := metric.Value.(int64)
+		if !ok || value < 1 {
 			continue
 		}
 
-		host := metric.Labels[sink_api.LabelHostname.Key]
-		value, ok := metric.Value.(int64)
-		if !ok {
-			continue
-		}
-		if metric.Name == "cpu/limit" {
-			self.cpuCapacity[host] = value
-		} else if metric.Name == "memory/limit" {
-			self.memCapacity[host] = value
+		if isNode(metric) {
+			if metric.Name == "cpu/limit" {
+				self.cpuCapacity[hostTime{host, metric.End}] = value
+			} else if metric.Name == "memory/limit" {
+				self.memCapacity[hostTime{host, metric.End}] = value
+			}
+		} else if isPodContainer(metric) {
+			if metric.Name == "cpu/limit" {
+				self.cpuReservation[hostTime{host, metric.End}] += value
+			} else if metric.Name == "memory/limit" {
+				self.memReservation[hostTime{host, metric.End}] += value
+			}
 		}
 	}
 }
 
+func getLabels(metric *sink_api.Point) map[string]string {
+	return map[string]string{
+		LabelHostname.Key:        metric.Labels[sink_api.LabelHostname.Key],
+		LabelGCEResourceID.Key:   metric.Labels[sink_api.LabelHostID.Key],
+		LabelGCEResourceType.Key: "instance",
+	}
+}
+
+func (self *gcmAutocalingSink) getNewValue(metric *sink_api.Point, ts *gcm.Timeseries) *float64 {
+	host := metric.Labels[sink_api.LabelHostname.Key]
+
+	var val float64
+	switch metric.Name {
+	case "cpu/usage":
+		capacity, ok := self.cpuCapacity[hostTime{host, metric.End}]
+		if !ok || capacity < 1 || ts.Point.DoubleValue == nil {
+			return nil
+		}
+		val = *ts.Point.DoubleValue / float64(capacity)
+	case "cpu/limit":
+		reserved, ok := self.cpuReservation[hostTime{host, metric.End}]
+		capacity, ok2 := self.cpuCapacity[hostTime{host, metric.End}]
+		if !ok || !ok2 || capacity < 1 {
+			return nil
+		}
+		val = float64(reserved) / float64(capacity)
+	case "memory/usage":
+		capacity, ok := self.memCapacity[hostTime{host, metric.End}]
+		if !ok || capacity < 1 || ts.Point.Int64Value == nil {
+			return nil
+		}
+		val = float64(*ts.Point.Int64Value) / float64(capacity)
+	case "memory/limit":
+		reserved, ok := self.memReservation[hostTime{host, metric.End}]
+		capacity, ok2 := self.memCapacity[hostTime{host, metric.End}]
+		if !ok || !ok2 || capacity < 1 {
+			return nil
+		}
+		val = float64(reserved) / float64(capacity)
+	default:
+		return nil
+	}
+	return &val
+}
+
 // Pushes the specified metric values in input. The metrics must already exist.
 func (self gcmAutocalingSink) StoreTimeseries(input []sink_api.Timeseries) error {
-	self.updateMachineCapacity(input)
+	self.updateMachineCapacityAndReservation(input)
 
 	// Build a map of metrics by name.
 	metrics := make(map[string][]gcm.Timeseries)
@@ -121,42 +202,31 @@ func (self gcmAutocalingSink) StoreTimeseries(input []sink_api.Timeseries) error
 			continue
 		}
 
-		labels := make(map[string]string, 3)
-		labels[LabelHostname.Key] = metric.Labels[sink_api.LabelHostname.Key]
-		labels[LabelGCEResourceID.Key] = metric.Labels[sink_api.LabelHostID.Key]
-		labels[LabelGCEResourceType.Key] = "instance"
-		metric.Labels = labels
+		metric.Labels = getLabels(metric)
 
 		var ts *gcm.Timeseries
 		var err error
-		var newVal float64
 		if metric.Name == "cpu/usage" {
 			ts, err = self.core.GetEquivalentRateMetric(metric)
-			if err != nil {
-				return err
-			}
-			capacity := self.cpuCapacity[labels[LabelHostname.Key]]
-			if ts == nil || capacity < 1 {
-				continue
-			}
-			newVal = *ts.Point.DoubleValue / float64(capacity)
-		} else if metric.Name == "mem/usage" {
+		} else if metric.Name == "cpu/limit" || metric.Name == "memory/usage" || metric.Name == "memory/limit" {
 			ts, err = self.core.GetMetric(metric)
-			if err != nil {
-				return err
-			}
-			capacity := self.memCapacity[labels[LabelHostname.Key]]
-			if ts == nil || capacity < 1 {
-				continue
-			}
-			newVal = float64(*ts.Point.Int64Value) / float64(capacity)
 		} else {
 			continue
 		}
+		if err != nil || ts == nil {
+			glog.Infof("Failed to create Timeseries for metric %v, host %v. Error %v.", autoscalingMetrics[metric.Name].name, metric.Labels[sink_api.LabelHostname.Key], err)
+			continue
+		}
 
+		val := self.getNewValue(metric, ts)
+		if val == nil {
+			glog.Infof("Failed to compute new value for metric %v, host %v.", autoscalingMetrics[metric.Name].name, metric.Labels[sink_api.LabelHostname.Key])
+			continue
+		}
+		ts.Point.Int64Value = nil
+		ts.Point.DoubleValue = val
 		name := gcm.FullMetricName(autoscalingMetrics[metric.Name].name)
 		ts.TimeseriesDescriptor.Metric = name
-		ts.Point.DoubleValue = &newVal
 
 		metrics[name] = append(metrics[name], *ts)
 	}
@@ -178,11 +248,7 @@ func init() {
 
 func CreateGCMScalingSink(_ string, _ map[string][]string) ([]sink_api.ExternalSink, error) {
 	core, err := gcm.NewCore()
-	sink := gcmAutocalingSink{
-		core:        core,
-		cpuCapacity: make(map[string]int64),
-		memCapacity: make(map[string]int64),
-	}
+	sink := gcmAutocalingSink{core: core}
 	glog.Infof("created GCM Autocaling sink")
 	return []sink_api.ExternalSink{sink}, err
 }
