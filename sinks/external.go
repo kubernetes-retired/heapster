@@ -69,7 +69,7 @@ func (self *externalSinkManager) Store(input interface{}) error {
 		return err
 	}
 	// Format metrics and push them.
-	errorsChan := make(chan error, len(self.externalSinks))
+	errorsChan := make(chan error, 2*len(self.externalSinks))
 	for idx := range self.externalSinks {
 		sink := self.externalSinks[idx]
 		go func(sink sink_api.ExternalSink) {
