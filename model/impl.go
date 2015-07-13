@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package model
 
 import (
 	"fmt"
@@ -272,7 +272,7 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 func (rc *realCluster) Update(c cache.Cache) error {
 	var zero time.Time
 	latest_time := rc.timestamp
-	glog.V(2).Infoln("Schema Update operation started")
+	glog.V(2).Infoln("Model Update operation started")
 
 	// Invoke cache methods using the Cluster timestamp
 	nodes := c.GetNodes(rc.timestamp, zero)
@@ -308,7 +308,7 @@ func (rc *realCluster) Update(c cache.Cache) error {
 	// Update the Cluster timestamp to the latest time found in the new metrics
 	rc.updateTime(latest_time)
 
-	glog.V(2).Infoln("Schema Update operation completed")
+	glog.V(2).Infoln("Model Update operation completed")
 	return nil
 }
 
