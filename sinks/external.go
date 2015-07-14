@@ -93,12 +93,10 @@ func (self *externalSinkManager) Store(input interface{}) error {
 			errors = append(errors, fmt.Sprintf("%v ", err))
 		}
 	}
-	err = nil
 	if len(errors) > 0 {
-		err = fmt.Errorf("encountered the following errors: %s", strings.Join(errors, ";\n"))
+		return fmt.Errorf("encountered the following errors: %s", strings.Join(errors, ";\n"))
 	}
-
-	return err
+	return nil
 }
 
 func (self *externalSinkManager) DebugInfo() string {
