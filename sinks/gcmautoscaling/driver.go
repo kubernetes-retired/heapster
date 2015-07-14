@@ -38,6 +38,10 @@ var (
 		Key:         "compute.googleapis.com/resource_type",
 		Description: "Resource types for nodes specific for GCE.",
 	}
+	cpuUsage = "cpu/usage"
+	cpuLimit = "cpu/limit"
+	memUsage = "memory/usage"
+	memLimit = "memory/limit"
 )
 
 var autoscalingLabels = []sink_api.LabelDescriptor{
@@ -52,19 +56,19 @@ type utilizationMetric struct {
 }
 
 var autoscalingMetrics = map[string]utilizationMetric{
-	"cpu/usage": {
+	cpuUsage: {
 		name:        "cpu/node_utilization",
 		description: "Cpu utilization as a share of node capacity",
 	},
-	"cpu/limit": {
+	cpuLimit: {
 		name:        "cpu/node_reservation",
 		description: "Share of cpu that is reserved on the node",
 	},
-	"memory/usage": {
+	memUsage: {
 		name:        "memory/node_utilization",
 		description: "Memory utilization as a share of memory capacity",
 	},
-	"memory/limit": {
+	memLimit: {
 		name:        "memory/node_reservation",
 		description: "Share of memory that is reserved on the node",
 	},
@@ -128,7 +132,7 @@ func (self *gcmAutocalingSink) updateMachineCapacityAndReservation(input []sink_
 	self.memReservation = make(map[hostTime]int64)
 	for _, entry := range input {
 		metric := entry.Point
-		if metric.Name != "cpu/limit" && metric.Name != "memory/limit" {
+		if metric.Name != cpuLimit && metric.Name != memLimit {
 			continue
 		}
 		host := metric.Labels[sink_api.LabelHostname.Key]
@@ -138,21 +142,23 @@ func (self *gcmAutocalingSink) updateMachineCapacityAndReservation(input []sink_
 		}
 
 		if isNode(metric) {
-			if metric.Name == "cpu/limit" {
+			if metric.Name == cpuLimit {
 				self.cpuCapacity[hostTime{host, metric.End}] = value
-			} else if metric.Name == "memory/limit" {
+			} else if metric.Name == memLimit {
 				self.memCapacity[hostTime{host, metric.End}] = value
 			}
 		} else if isPodContainer(metric) {
-			if metric.Name == "cpu/limit" {
+			if metric.Name == cpuLimit {
 				self.cpuReservation[hostTime{host, metric.End}] += value
-			} else if metric.Name == "memory/limit" {
+			} else if metric.Name == memLimit {
 				self.memReservation[hostTime{host, metric.End}] += value
 			}
 		}
 	}
 }
 
+// For the given metric compute minimal set of labels required by autoscaling.
+// See more: https://cloud.google.com/compute/docs/autoscaler/scaling-cloud-monitoring-metrics#custom_metrics_beta
 func getLabels(metric *sink_api.Point) map[string]string {
 	return map[string]string{
 		LabelHostname.Key:        metric.Labels[sink_api.LabelHostname.Key],
@@ -161,31 +167,33 @@ func getLabels(metric *sink_api.Point) map[string]string {
 	}
 }
 
+// For the given metric compute value of corresponding metric based on
+// the original value and precomputed node stats.
 func (self *gcmAutocalingSink) getNewValue(metric *sink_api.Point, ts *gcm.Timeseries) *float64 {
 	host := metric.Labels[sink_api.LabelHostname.Key]
 
 	var val float64
 	switch metric.Name {
-	case "cpu/usage":
+	case cpuUsage:
 		capacity, ok := self.cpuCapacity[hostTime{host, metric.End}]
 		if !ok || capacity < 1 || ts.Point.DoubleValue == nil {
 			return nil
 		}
 		val = *ts.Point.DoubleValue / float64(capacity)
-	case "cpu/limit":
+	case cpuLimit:
 		reserved, ok := self.cpuReservation[hostTime{host, metric.End}]
 		capacity, ok2 := self.cpuCapacity[hostTime{host, metric.End}]
 		if !ok || !ok2 || capacity < 1 {
 			return nil
 		}
 		val = float64(reserved) / float64(capacity)
-	case "memory/usage":
+	case memUsage:
 		capacity, ok := self.memCapacity[hostTime{host, metric.End}]
 		if !ok || capacity < 1 || ts.Point.Int64Value == nil {
 			return nil
 		}
 		val = float64(*ts.Point.Int64Value) / float64(capacity)
-	case "memory/limit":
+	case memLimit:
 		reserved, ok := self.memReservation[hostTime{host, metric.End}]
 		capacity, ok2 := self.memCapacity[hostTime{host, metric.End}]
 		if !ok || !ok2 || capacity < 1 {
@@ -215,9 +223,9 @@ func (self gcmAutocalingSink) StoreTimeseries(input []sink_api.Timeseries) error
 
 		var ts *gcm.Timeseries
 		var err error
-		if metric.Name == "cpu/usage" {
+		if metric.Name == cpuUsage {
 			ts, err = self.core.GetEquivalentRateMetric(metric)
-		} else if metric.Name == "cpu/limit" || metric.Name == "memory/usage" || metric.Name == "memory/limit" {
+		} else if metric.Name == cpuLimit || metric.Name == memUsage || metric.Name == memLimit {
 			ts, err = self.core.GetMetric(metric)
 		} else {
 			continue
