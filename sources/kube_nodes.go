@@ -49,9 +49,9 @@ var knownContainers = map[string]string{
 }
 
 // Returns the host container, non-Kubernetes containers, and an error (if any).
-func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start, end time.Time, resolution time.Duration) (*api.Container, []api.Container, error) {
+func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start, end time.Time, resolution time.Duration, align bool) (*api.Container, []api.Container, error) {
 	// Get information for all containers.
-	containers, err := self.kubeletApi.GetAllRawContainers(datasource.Host{IP: info.InternalIP, Port: self.kubeletPort}, start, end, resolution)
+	containers, err := self.kubeletApi.GetAllRawContainers(datasource.Host{IP: info.InternalIP, Port: self.kubeletPort}, start, end, resolution, align)
 	if err != nil {
 		glog.V(3).Infof("Failed to get container stats from Kubelet on node %q", host)
 		return nil, []api.Container{}, fmt.Errorf("failed to get container stats from Kubelet on node %q: %v", host, err)
@@ -86,7 +86,7 @@ func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start
 }
 
 // Returns the host containers, non-Kubernetes containers, and an error (if any).
-func (self *kubeNodeMetrics) getNodesInfo(nodeList *nodes.NodeList, start, end time.Time, resolution time.Duration) ([]api.Container, []api.Container, error) {
+func (self *kubeNodeMetrics) getNodesInfo(nodeList *nodes.NodeList, start, end time.Time, resolution time.Duration, align bool) ([]api.Container, []api.Container, error) {
 	var (
 		lock sync.Mutex
 		wg   sync.WaitGroup
@@ -97,7 +97,7 @@ func (self *kubeNodeMetrics) getNodesInfo(nodeList *nodes.NodeList, start, end t
 		wg.Add(1)
 		go func(host nodes.Host, info nodes.Info) {
 			defer wg.Done()
-			if hostContainer, containers, err := self.updateStats(host, info, start, end, resolution); err == nil {
+			if hostContainer, containers, err := self.updateStats(host, info, start, end, resolution, align); err == nil {
 				lock.Lock()
 				defer lock.Unlock()
 				if hostContainers != nil {
@@ -112,13 +112,13 @@ func (self *kubeNodeMetrics) getNodesInfo(nodeList *nodes.NodeList, start, end t
 	return hostContainers, rawContainers, nil
 }
 
-func (self *kubeNodeMetrics) GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error) {
+func (self *kubeNodeMetrics) GetInfo(start, end time.Time, resolution time.Duration, align bool) (api.AggregateData, error) {
 	kubeNodes, err := self.nodesApi.List()
 	if err != nil || len(kubeNodes.Items) == 0 {
 		return api.AggregateData{}, err
 	}
 	glog.V(3).Info("Fetched list of nodes from the master")
-	hostContainers, rawContainers, err := self.getNodesInfo(kubeNodes, start, end, resolution)
+	hostContainers, rawContainers, err := self.getNodesInfo(kubeNodes, start, end, resolution, align)
 	if err != nil {
 		return api.AggregateData{}, err
 	}

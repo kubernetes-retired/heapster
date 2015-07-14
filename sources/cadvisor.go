@@ -49,7 +49,7 @@ func init() {
 	extpoints.SourceFactories.Register(NewCadvisorSources, "cadvisor")
 }
 
-func (self *cadvisorSource) GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error) {
+func (self *cadvisorSource) GetInfo(start, end time.Time, resolution time.Duration, align bool) (api.AggregateData, error) {
 	var (
 		lock sync.Mutex
 		wg   sync.WaitGroup
@@ -68,7 +68,7 @@ func (self *cadvisorSource) GetInfo(start, end time.Time, resolution time.Durati
 				IP:   info.InternalIP,
 				Port: self.cadvisorPort,
 			}
-			rawSubcontainers, node, err := self.cadvisorApi.GetAllContainers(host, start, end, resolution)
+			rawSubcontainers, node, err := self.cadvisorApi.GetAllContainers(host, start, end, resolution, align)
 			if err != nil {
 				glog.Error(err)
 				return

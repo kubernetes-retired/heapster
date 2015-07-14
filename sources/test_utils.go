@@ -39,10 +39,10 @@ type fakeKubeletApi struct {
 	containers []api.Container
 }
 
-func (self *fakeKubeletApi) GetContainer(host datasource.Host, start, end time.Time, resolution time.Duration) (*api.Container, error) {
+func (self *fakeKubeletApi) GetContainer(host datasource.Host, start, end time.Time, resolution time.Duration, align bool) (*api.Container, error) {
 	return self.container, nil
 }
 
-func (self *fakeKubeletApi) GetAllRawContainers(host datasource.Host, start, end time.Time, resolution time.Duration) ([]api.Container, error) {
+func (self *fakeKubeletApi) GetAllRawContainers(host datasource.Host, start, end time.Time, resolution time.Duration, align bool) ([]api.Container, error) {
 	return self.containers, nil
 }

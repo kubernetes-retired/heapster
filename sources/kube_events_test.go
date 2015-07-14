@@ -37,7 +37,7 @@ func TestEventsBasic(t *testing.T) {
 	defer server.Close()
 	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Version()})
 	source := NewKubeEvents(client)
-	_, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
+	_, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, source.DebugInfo())
 }
