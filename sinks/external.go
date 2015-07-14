@@ -15,6 +15,7 @@
 package sinks
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"sync"
@@ -101,27 +102,28 @@ func (self *externalSinkManager) Store(input interface{}) error {
 }
 
 func (self *externalSinkManager) DebugInfo() string {
-	desc := "External Sinks\n"
+	b := &bytes.Buffer{}
+	fmt.Fprintln(b, "External Sinks")
 
 	// Add metrics being exported.
-	desc += "\tExported metrics:\n"
+	fmt.Fprintln(b, "\tExported metrics:")
 	for _, supported := range sink_api.SupportedStatMetrics() {
-		desc += fmt.Sprintf("\t\t%s: %s", supported.Name, supported.Description)
+		fmt.Fprintln(b, "\t\t%s: %s", supported.Name, supported.Description)
 	}
 
 	// Add labels being used.
-	desc += "\n\tExported labels:\n"
+	fmt.Fprintln(b, "\tExported labels:")
 	for _, label := range sink_api.SupportedLabels() {
-		desc += fmt.Sprintf("\t\t%s: %s", label.Key, label.Description)
+		fmt.Fprintln(b, "\t\t%s: %s", label.Key, label.Description)
 	}
-	desc += "\n\tExternal Sinks:\n"
+	fmt.Fprintln(b, "\tExternal Sinks:")
 	self.sinkMutex.RLock()
 	defer self.sinkMutex.RUnlock()
 	for _, externalSink := range self.externalSinks {
-		desc += fmt.Sprintf("\n\t\t%s", externalSink.DebugInfo())
+		fmt.Fprintln(b, "\t\t%s", externalSink.DebugInfo())
 	}
 
-	return desc
+	return b.String()
 }
 
 // inSlice returns whether an external sink is part of a set (list) of sinks
