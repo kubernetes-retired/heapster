@@ -98,6 +98,15 @@ func (self gcmAutocalingSink) Register(_ []sink_api.MetricDescriptor) error {
 	return nil
 }
 
+func (self gcmAutocalingSink) Unregister(_ []sink_api.MetricDescriptor) error {
+	for _, metric := range autoscalingMetrics {
+		if err := self.core.Unregister(metric.name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Stores events into the backend.
 func (self gcmAutocalingSink) StoreEvents([]kube_api.Event) error {
 	// No-op, Google Cloud Monitoring doesn't store events

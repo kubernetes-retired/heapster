@@ -190,6 +190,11 @@ func (self *GcmCore) Register(name, description, metricType, valueType string, l
 	return nil
 }
 
+func (self *GcmCore) Unregister(name string) error {
+	// No-op
+	return nil
+}
+
 // GCM request structures for writing time-series data.
 type timeseriesDescriptor struct {
 	Project string            `json:"project,omitempty"`

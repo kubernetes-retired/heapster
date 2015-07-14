@@ -43,6 +43,9 @@ type hawkularSink struct {
 	models  map[string]metrics.MetricDefinition // Model definitions
 	regLock sync.Mutex
 	reg     map[string]*metrics.MetricDefinition // Real definitions
+
+	uri  string
+	opts map[string][]string
 }
 
 // START: ExternalSink interface implementations
@@ -77,6 +80,12 @@ func (self *hawkularSink) Register(mds []sink_api.MetricDescriptor) error {
 	}
 
 	return nil
+}
+
+func (self *hawkularSink) Unregister(mds []sink_api.MetricDescriptor) error {
+	self.regLock.Lock()
+	defer self.regLock.Unlock()
+	return self.init()
 }
 
 // Checks that stored definition is up to date with the model
@@ -248,11 +257,10 @@ func init() {
 	extpoints.SinkFactories.Register(NewHawkularSink, "hawkular")
 }
 
-func NewHawkularSink(uri string, options map[string][]string) ([]sink_api.ExternalSink, error) {
-
-	parsedUrl, err := url.Parse(os.ExpandEnv(uri))
+func (self *hawkularSink) init() error {
+	parsedUrl, err := url.Parse(os.ExpandEnv(self.uri))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	p := metrics.Parameters{
@@ -265,20 +273,30 @@ func NewHawkularSink(uri string, options map[string][]string) ([]sink_api.Extern
 		p.Path = parsedUrl.Path
 	}
 
-	if v, found := options["tenant"]; found {
+	if v, found := self.opts["tenant"]; found {
 		p.Tenant = v[0]
 	}
 
 	c, err := metrics.NewHawkularClient(p)
 	if err != nil {
+		return err
+	}
+
+	self.client = c
+	self.reg = make(map[string]*metrics.MetricDefinition)
+	self.models = make(map[string]metrics.MetricDefinition)
+
+	glog.Infof("Initialised Hawkular Sink with parameters %v", p)
+	return nil
+}
+
+func NewHawkularSink(uri string, options map[string][]string) ([]sink_api.ExternalSink, error) {
+	sink := &hawkularSink{
+		uri:  uri,
+		opts: options,
+	}
+	if err := sink.init(); err != nil {
 		return nil, err
 	}
-	glog.Infof("Created Hawkular Sink with parameters %v", p)
-
-	hSink := &hawkularSink{client: c,
-		reg:    make(map[string]*metrics.MetricDefinition),
-		models: make(map[string]metrics.MetricDefinition),
-	}
-
-	return []sink_api.ExternalSink{hSink}, nil
+	return []sink_api.ExternalSink{sink}, nil
 }

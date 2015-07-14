@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package manager
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 )
 
-func newSinks() ([]sink_api.ExternalSink, error) {
+func newSinks(sinkUris []string) ([]sink_api.ExternalSink, error) {
 	var sinks []sink_api.ExternalSink
-	for _, sinkFlag := range argSinks {
+	for _, sinkFlag := range sinkUris {
 		uri, err := url.Parse(sinkFlag)
 		if err != nil {
 			return nil, err

@@ -51,6 +51,11 @@ func (sink *gclSink) Register(metrics []sink_api.MetricDescriptor) error {
 	return nil
 }
 
+func (sink *gclSink) Unregister(metrics []sink_api.MetricDescriptor) error {
+	// No-op
+	return nil
+}
+
 // Stores metrics into the backend
 func (sink *gclSink) StoreTimeseries(input []sink_api.Timeseries) error {
 	// No-op, Google Cloud Logging (GCL) doesn't store metrics

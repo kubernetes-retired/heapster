@@ -41,6 +41,20 @@ func (self gcmSink) Register(metrics []sink_api.MetricDescriptor) error {
 	return nil
 }
 
+func (self gcmSink) Unregister(metrics []sink_api.MetricDescriptor) error {
+	for _, metric := range metrics {
+		if err := self.core.Unregister(metric.Name); err != nil {
+			return err
+		}
+		if rateMetric, exists := gcmRateMetrics[metric.Name]; exists {
+			if err := self.core.Unregister(rateMetric.name); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // Stores events into the backend.
 func (self gcmSink) StoreEvents([]kube_api.Event) error {
 	// No-op, Google Cloud Monitoring doesn't store events

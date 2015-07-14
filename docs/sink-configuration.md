@@ -6,7 +6,7 @@ via the `--sink` flag. The flag takes an argument of the form `PREFIX:CONFIG[?OP
 Options (optional!) are specified as URL query parameters, separated by `&` as normal.
 This allows each source to have custom configuration passed to it without needing to
 continually add new flags to Heapster as new sinks are added. This also means
-heapster can store data intomultiple sinks at once.
+heapster can store data into multiple sinks at once.
 
 ## Current sinks
 ### InfluxDB
@@ -75,3 +75,9 @@ If `HAWKULAR_SERVER_URL` includes any path, the default `hawkular/metrics` is ov
 The following options are available:
 
 * `tenant` - Hawkular-Metrics tenantId (default: `heapster`)
+
+## Modifying the sinks at runtime
+
+Using the `/api/v1/sinks` endpoint, it is possible to fetch the sinks
+currently in use via a GET request or to change them via a POST request. The
+format is the same as when passed via command line flags.
