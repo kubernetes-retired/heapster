@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -146,6 +147,7 @@ func buildAndPushDockerImages(fm kubeFramework) error {
 const (
 	metricsEndpoint       = "/api/v1/metric-export"
 	metricsSchemaEndpoint = "/api/v1/metric-export-schema"
+	sinksEndpoint         = "/api/v1/sinks"
 )
 
 func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*heapster_api.Timeseries, error) {
@@ -303,6 +305,63 @@ func expectedItemsExist(expectedItems []string, actualItems map[string]bool) boo
 	return true
 }
 
+func getSinks(fm kubeFramework, svc *kube_api.Service) ([]string, error) {
+	body, err := fm.Client().Get().
+		Namespace(svc.Namespace).
+		Prefix("proxy").
+		Resource("services").
+		Name(svc.Name).
+		Suffix(sinksEndpoint).
+		Do().Raw()
+	if err != nil {
+		return nil, err
+	}
+	var sinks []string
+	if err := json.Unmarshal(body, &sinks); err != nil {
+		glog.V(2).Infof("response body: %v", string(body))
+		return nil, err
+	}
+	return sinks, nil
+}
+
+func setSinks(fm kubeFramework, svc *kube_api.Service, sinks []string) error {
+	data, err := json.Marshal(sinks)
+	if err != nil {
+		return err
+	}
+	return fm.Client().Post().
+		Namespace(svc.Namespace).
+		Prefix("proxy").
+		Resource("services").
+		Name(svc.Name).
+		Suffix(sinksEndpoint).
+		SetHeader("Content-Type", "application/json").
+		Body(data).
+		Do().Error()
+}
+
+func runSinksTest(fm kubeFramework, svc *kube_api.Service) error {
+	for _, newSinks := range [...][]string{
+		[]string{},
+		[]string{
+			"gcm",
+		},
+		[]string{},
+	} {
+		if err := setSinks(fm, svc, newSinks); err != nil {
+			return err
+		}
+		sinks, err := getSinks(fm, svc)
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(sinks, newSinks) {
+			return fmt.Errorf("expected %v sinks, found %v", newSinks, sinks)
+		}
+	}
+	return nil
+}
+
 func apiTest(kubeVersion string) error {
 	fm, err := newKubeFramework(kubeVersion)
 	if err != nil {
@@ -339,9 +398,22 @@ func apiTest(kubeVersion string) error {
 	if err != nil {
 		return err
 	}
+	testFuncs := []func() error{
+		func() error {
+			return runHeapsterMetricsTest(fm, svc, expectedNodes, expectedPods)
+		},
+		func() error {
+			return runSinksTest(fm, svc)
+		},
+	}
 	attempts := *maxRetries
 	for {
-		err := runHeapsterMetricsTest(fm, svc, expectedNodes, expectedPods)
+		var err error
+		for _, testFunc := range testFuncs {
+			if err = testFunc(); err != nil {
+				break
+			}
+		}
 		if *runForever {
 			continue
 		}
