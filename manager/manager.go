@@ -75,13 +75,13 @@ func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, s
 	glog.V(2).Infof("attempting to get data from source %q", s.Name())
 	data, err := s.GetInfo(start, end, rm.resolution, rm.align)
 	if err != nil {
-		err = fmt.Errorf("failed to get information from source %q - %v", s.Name(), err)
-	} else {
-		sd.mutex.Lock()
-		defer sd.mutex.Unlock()
-		sd.data.Merge(&data)
+		errChan <- fmt.Errorf("failed to get information from source %q - %v", s.Name(), err)
+		return
 	}
-	errChan <- err
+	sd.mutex.Lock()
+	defer sd.mutex.Unlock()
+	sd.data.Merge(&data)
+	errChan <- nil
 }
 
 func (rm *realManager) Housekeep() {
