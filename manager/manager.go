@@ -37,17 +37,17 @@ type Manager interface {
 	ExportMetrics() ([]*sink_api.Point, error)
 
 	// Set the sinks to use
-	SetSinkUris([]string) error
+	SetSinkUris(Uris) error
 
 	// Get the sinks currently in use
-	SinkUris() []string
+	SinkUris() Uris
 }
 
 type realManager struct {
 	sources     []source_api.Source
 	cache       cache.Cache
 	sinkManager sinks.ExternalSinkManager
-	sinkUris    []string
+	sinkUris    Uris
 	lastSync    time.Time
 	resolution  time.Duration
 	align       bool
@@ -181,18 +181,18 @@ func onlyKeepLatestStat(cont *cache.ContainerElement) {
 	}
 }
 
-func (rm *realManager) SetSinkUris(sinkUris []string) error {
-	externalSinks, err := newSinks(sinkUris)
+func (rm *realManager) SetSinkUris(sinkUris Uris) error {
+	sinks, err := newSinks(sinkUris)
 	if err != nil {
 		return err
 	}
-	if err := rm.sinkManager.SetSinks(externalSinks); err != nil {
+	if err := rm.sinkManager.SetSinks(sinks); err != nil {
 		return err
 	}
 	rm.sinkUris = sinkUris
 	return nil
 }
 
-func (rm *realManager) SinkUris() []string {
+func (rm *realManager) SinkUris() Uris {
 	return rm.sinkUris
 }

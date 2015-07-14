@@ -15,10 +15,12 @@
 package extpoints
 
 import (
+	"net/url"
+
 	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	sourceApi "github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
-type SourceFactory func(string, map[string][]string) ([]sourceApi.Source, error)
+type SourceFactory func(*url.URL) ([]sourceApi.Source, error)
 
-type SinkFactory func(string, map[string][]string) ([]sinksApi.ExternalSink, error)
+type SinkFactory func(*url.URL) ([]sinksApi.ExternalSink, error)

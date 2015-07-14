@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
@@ -24,20 +23,13 @@ import (
 
 func newSources() ([]api.Source, error) {
 	var sources []api.Source
-	for _, sourceFlag := range argSources {
-		uri, err := url.Parse(sourceFlag)
-		if err != nil {
-			return nil, err
-		}
-		if (uri.Scheme == "" || uri.Opaque == "") && uri.Path == "" {
-			return nil, fmt.Errorf("Invalid source definition: %s", sourceFlag)
-		}
-		factory := extpoints.SourceFactories.Lookup(uri.Scheme)
+	for _, u := range argSources {
+		factory := extpoints.SourceFactories.Lookup(u.Key)
 		if factory == nil {
-			return nil, fmt.Errorf("Unknown source: %s", uri.Scheme)
+			return nil, fmt.Errorf("Unknown source: %s", u.Key)
 		}
 
-		createdSources, err := factory(uri.Opaque, uri.Query())
+		createdSources, err := factory(&u.Val)
 		if err != nil {
 			return nil, err
 		}

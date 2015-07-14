@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
-	"os"
 	"strconv"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
@@ -46,28 +45,24 @@ func init() {
 	extpoints.SourceFactories.Register(CreateKubeSources, "kubernetes")
 }
 
-func getConfigOverrides(uri string, options map[string][]string) (*kubeClientCmd.ConfigOverrides, error) {
+func getConfigOverrides(uri *url.URL) (*kubeClientCmd.ConfigOverrides, error) {
 	kubeConfigOverride := kubeClientCmd.ConfigOverrides{
 		ClusterInfo: kubeClientCmdApi.Cluster{
 			APIVersion: APIVersion,
 		},
 	}
-	if uri != "" {
-		parsedUrl, err := url.Parse(os.ExpandEnv(uri))
-		if err != nil {
-			return nil, err
-		}
-		if len(parsedUrl.Scheme) != 0 && len(parsedUrl.Host) != 0 {
-			kubeConfigOverride.ClusterInfo.Server = fmt.Sprintf("%s://%s", parsedUrl.Scheme, parsedUrl.Host)
-		}
+	if len(uri.Scheme) != 0 && len(uri.Host) != 0 {
+		kubeConfigOverride.ClusterInfo.Server = fmt.Sprintf("%s://%s", uri.Scheme, uri.Host)
 	}
 
-	if len(options["apiVersion"]) >= 1 {
-		kubeConfigOverride.ClusterInfo.APIVersion = options["apiVersion"][0]
+	opts := uri.Query()
+
+	if len(opts["apiVersion"]) >= 1 {
+		kubeConfigOverride.ClusterInfo.APIVersion = opts["apiVersion"][0]
 	}
 
-	if len(options["insecure"]) > 0 {
-		insecure, err := strconv.ParseBool(options["insecure"][0])
+	if len(opts["insecure"]) > 0 {
+		insecure, err := strconv.ParseBool(opts["insecure"][0])
 		if err != nil {
 			return nil, err
 		}
@@ -77,20 +72,21 @@ func getConfigOverrides(uri string, options map[string][]string) (*kubeClientCmd
 	return &kubeConfigOverride, nil
 }
 
-func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, error) {
+func CreateKubeSources(uri *url.URL) ([]api.Source, error) {
 	var (
 		kubeConfig *kube_client.Config
 		err        error
 	)
 
-	configOverrides, err := getConfigOverrides(uri, options)
+	opts := uri.Query()
+	configOverrides, err := getConfigOverrides(uri)
 	if err != nil {
 		return nil, err
 	}
 
 	inClusterConfig := defaultInClusterConfig
-	if len(options["inClusterConfig"]) > 0 {
-		inClusterConfig, err = strconv.ParseBool(options["inClusterConfig"][0])
+	if len(opts["inClusterConfig"]) > 0 {
+		inClusterConfig, err = strconv.ParseBool(opts["inClusterConfig"][0])
 		if err != nil {
 			return nil, err
 		}
@@ -108,8 +104,8 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 		kubeConfig.Version = configOverrides.ClusterInfo.APIVersion
 	} else {
 		authFile := ""
-		if len(options["auth"]) > 0 {
-			authFile = options["auth"][0]
+		if len(opts["auth"]) > 0 {
+			authFile = opts["auth"][0]
 		}
 
 		if authFile != "" {
@@ -134,8 +130,8 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 	}
 
 	useServiceAccount := defaultUseServiceAccount
-	if len(options["useServiceAccount"]) >= 1 {
-		useServiceAccount, err = strconv.ParseBool(options["useServiceAccount"][0])
+	if len(opts["useServiceAccount"]) >= 1 {
+		useServiceAccount, err = strconv.ParseBool(opts["useServiceAccount"][0])
 		if err != nil {
 			return nil, err
 		}
@@ -155,16 +151,16 @@ func CreateKubeSources(uri string, options map[string][]string) ([]api.Source, e
 		return nil, err
 	}
 	kubeletPort := defaultKubeletPort
-	if len(options["kubeletPort"]) >= 1 {
-		kubeletPort, err = strconv.Atoi(options["kubeletPort"][0])
+	if len(opts["kubeletPort"]) >= 1 {
+		kubeletPort, err = strconv.Atoi(opts["kubeletPort"][0])
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	kubeletHttps := defaultKubeletHttps
-	if len(options["kubeletHttps"]) >= 1 {
-		kubeletHttps, err = strconv.ParseBool(options["kubeletHttps"][0])
+	if len(opts["kubeletHttps"]) >= 1 {
+		kubeletHttps, err = strconv.ParseBool(opts["kubeletHttps"][0])
 		if err != nil {
 			return nil, err
 		}

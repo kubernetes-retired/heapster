@@ -20,6 +20,7 @@ package sources
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -111,14 +112,15 @@ func (cs *cadvisorSource) Name() string {
 	return "Cadvisor Source"
 }
 
-func NewCadvisorSources(cadvisorType string, options map[string][]string) ([]api.Source, error) {
-	if cadvisorType == "coreos" || cadvisorType == "fleet" {
-		return newCoreosSources(options)
+func NewCadvisorSources(uri *url.URL) ([]api.Source, error) {
+	switch uri.Path {
+	case "coreos", "fleet":
+		return newCoreosSources(uri.Query())
+	case "external":
+		return newExternalSources(uri.Query())
+	default:
+		return nil, fmt.Errorf("Unknown cadvisor source: %s", uri.Path)
 	}
-	if cadvisorType == "external" {
-		return newExternalSources(options)
-	}
-	return nil, fmt.Errorf("Unknown cadvisor source: %s", cadvisorType)
 }
 
 func newExternalSources(options map[string][]string) ([]api.Source, error) {

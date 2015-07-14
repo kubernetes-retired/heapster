@@ -17,7 +17,6 @@ package hawkular
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 
@@ -44,8 +43,7 @@ type hawkularSink struct {
 	regLock sync.Mutex
 	reg     map[string]*metrics.MetricDefinition // Real definitions
 
-	uri  string
-	opts map[string][]string
+	uri *url.URL
 }
 
 // START: ExternalSink interface implementations
@@ -258,22 +256,19 @@ func init() {
 }
 
 func (self *hawkularSink) init() error {
-	parsedUrl, err := url.Parse(os.ExpandEnv(self.uri))
-	if err != nil {
-		return err
-	}
-
 	p := metrics.Parameters{
 		Tenant: "heapster",
-		Host:   parsedUrl.Host,
+		Host:   self.uri.Host,
 	}
 
 	// Connection parameters
-	if len(parsedUrl.Path) > 0 {
-		p.Path = parsedUrl.Path
+	if len(self.uri.Path) > 0 {
+		p.Path = self.uri.Path
 	}
 
-	if v, found := self.opts["tenant"]; found {
+	opts := self.uri.Query()
+
+	if v, found := opts["tenant"]; found {
 		p.Tenant = v[0]
 	}
 
@@ -290,10 +285,9 @@ func (self *hawkularSink) init() error {
 	return nil
 }
 
-func NewHawkularSink(uri string, options map[string][]string) ([]sink_api.ExternalSink, error) {
+func NewHawkularSink(u *url.URL) ([]sink_api.ExternalSink, error) {
 	sink := &hawkularSink{
-		uri:  uri,
-		opts: options,
+		uri: u,
 	}
 	if err := sink.init(); err != nil {
 		return nil, err

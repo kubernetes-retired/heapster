@@ -15,6 +15,8 @@
 package gcm
 
 import (
+	"net/url"
+
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
@@ -101,7 +103,7 @@ func init() {
 	extpoints.SinkFactories.Register(CreateGCMSink, "gcm")
 }
 
-func CreateGCMSink(_ string, _ map[string][]string) ([]sink_api.ExternalSink, error) {
+func CreateGCMSink(*url.URL) ([]sink_api.ExternalSink, error) {
 	core, err := NewCore()
 	sink := gcmSink{core: core}
 	glog.Infof("created GCM sink")

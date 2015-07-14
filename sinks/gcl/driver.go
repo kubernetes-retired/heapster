@@ -284,7 +284,7 @@ func init() {
 	extpoints.SinkFactories.Register(CreateGCLSink, "gcl")
 }
 
-func CreateGCLSink(_ string, _ map[string][]string) ([]sink_api.ExternalSink, error) {
+func CreateGCLSink(*url.URL) ([]sink_api.ExternalSink, error) {
 	sink, err := new()
 	glog.Infof("creating GCL sink")
 	return []sink_api.ExternalSink{sink}, err

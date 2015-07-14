@@ -26,7 +26,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/heapster/manager"
 	"github.com/GoogleCloudPlatform/heapster/sinks"
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/version"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/golang/glog"
@@ -40,8 +40,8 @@ var (
 	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores).")
 	argCacheDuration   = flag.Duration("cache_duration", 10*time.Minute, "The total duration of the historical data that will be cached by heapster.")
-	argSources         Uris
-	argSinks           Uris
+	argSources         manager.Uris
+	argSinks           manager.Uris
 )
 
 func main() {
@@ -81,7 +81,7 @@ func validateFlags() error {
 	return nil
 }
 
-func doWork() ([]api.Source, sinks.ExternalSinkManager, manager.Manager, error) {
+func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, error) {
 	sources, err := newSources()
 	if err != nil {
 		return nil, nil, nil, err

@@ -15,6 +15,7 @@
 package gcmautoscaling
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
@@ -263,7 +264,7 @@ func init() {
 	extpoints.SinkFactories.Register(CreateGCMScalingSink, "gcmautoscaling")
 }
 
-func CreateGCMScalingSink(_ string, _ map[string][]string) ([]sink_api.ExternalSink, error) {
+func CreateGCMScalingSink(*url.URL) ([]sink_api.ExternalSink, error) {
 	core, err := gcm.NewCore()
 	sink := gcmAutocalingSink{core: core}
 	glog.Infof("created GCM Autocaling sink")
