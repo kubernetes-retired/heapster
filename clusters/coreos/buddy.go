@@ -115,14 +115,12 @@ func validateHostsFile() error {
 func main() {
 	flag.Parse()
 	if err := validateHostsFile(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		glog.Fatal(err)
 	}
 
 	client, err := getFleetRegistryClient()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		glog.Fatal(err)
 	}
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
@@ -131,8 +129,7 @@ func main() {
 		case <-ticker.C:
 			err = doWork(client)
 			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+				glog.Fatal(err)
 			}
 		}
 	}

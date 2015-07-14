@@ -57,14 +57,12 @@ func main() {
 	}
 	sources, sink, manager, err := doWork()
 	if err != nil {
-		glog.Error(err)
-		os.Exit(1)
+		glog.Fatal(err)
 	}
 	handler := setupHandlers(sources, sink, manager)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
 	glog.Fatal(http.ListenAndServe(addr, handler))
-	os.Exit(0)
 }
 
 func validateFlags() error {
