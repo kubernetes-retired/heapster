@@ -77,14 +77,14 @@ func (self *externalSinkManager) Store(input interface{}) error {
 	errorsChan := make(chan error, errorsLen)
 	for idx := range self.externalSinks {
 		sink := self.externalSinks[idx]
-		go func(sink sink_api.ExternalSink) {
+		go func() {
 			glog.V(2).Infof("Storing Timeseries to %q", sink.Name())
 			errorsChan <- sink.StoreTimeseries(timeseries)
-		}(sink)
-		go func(sink sink_api.ExternalSink) {
+		}()
+		go func() {
 			glog.V(2).Infof("Storing Events to %q", sink.Name())
 			errorsChan <- sink.StoreEvents(data.Events)
-		}(sink)
+		}()
 	}
 	var errors []string
 	for i := 0; i < errorsLen; i++ {
