@@ -177,7 +177,7 @@ func trimStatsForContainers(containers []*cache.ContainerElement) []*cache.Conta
 // Only keep the latest stats data point.
 func onlyKeepLatestStat(cont *cache.ContainerElement) {
 	if len(cont.Metrics) > 1 {
-		cont.Metrics = cont.Metrics[len(cont.Metrics)-1:]
+		cont.Metrics = cont.Metrics[0:1]
 	}
 }
 
