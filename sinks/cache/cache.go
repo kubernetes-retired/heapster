@@ -38,6 +38,7 @@ type ContainerMetricElement struct {
 
 type ContainerElement struct {
 	Metadata
+	// Data points are in reverse chronological order (most recent to oldest).
 	Metrics []*ContainerMetricElement
 }
 
