@@ -106,19 +106,19 @@ func (self *externalSinkManager) DebugInfo() string {
 	// Add metrics being exported.
 	fmt.Fprintln(b, "\tExported metrics:")
 	for _, supported := range sink_api.SupportedStatMetrics() {
-		fmt.Fprintln(b, "\t\t%s: %s", supported.Name, supported.Description)
+		fmt.Fprintf(b, "\t\t%s: %s\n", supported.Name, supported.Description)
 	}
 
 	// Add labels being used.
 	fmt.Fprintln(b, "\tExported labels:")
 	for _, label := range sink_api.SupportedLabels() {
-		fmt.Fprintln(b, "\t\t%s: %s", label.Key, label.Description)
+		fmt.Fprintf(b, "\t\t%s: %s\n", label.Key, label.Description)
 	}
 	fmt.Fprintln(b, "\tExternal Sinks:")
 	self.sinkMutex.RLock()
 	defer self.sinkMutex.RUnlock()
 	for _, externalSink := range self.externalSinks {
-		fmt.Fprintln(b, "\t\t%s", externalSink.DebugInfo())
+		fmt.Fprintf(b, "\t\t%s\n", externalSink.DebugInfo())
 	}
 
 	return b.String()
