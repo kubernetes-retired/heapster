@@ -15,6 +15,7 @@
 package gcm
 
 import (
+	"fmt"
 	"net/url"
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
@@ -103,7 +104,10 @@ func init() {
 	extpoints.SinkFactories.Register(CreateGCMSink, "gcm")
 }
 
-func CreateGCMSink(*url.URL) ([]sink_api.ExternalSink, error) {
+func CreateGCMSink(uri *url.URL) ([]sink_api.ExternalSink, error) {
+	if *uri != (url.URL{}) {
+		return nil, fmt.Errorf("gcm sinks don't take arguments")
+	}
 	core, err := NewCore()
 	sink := gcmSink{core: core}
 	glog.Infof("created GCM sink")

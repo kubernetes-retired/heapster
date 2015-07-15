@@ -284,7 +284,10 @@ func init() {
 	extpoints.SinkFactories.Register(CreateGCLSink, "gcl")
 }
 
-func CreateGCLSink(*url.URL) ([]sink_api.ExternalSink, error) {
+func CreateGCLSink(uri *url.URL) ([]sink_api.ExternalSink, error) {
+	if *uri != (url.URL{}) {
+		return nil, fmt.Errorf("gcl sinks don't take arguments")
+	}
 	sink, err := new()
 	glog.Infof("creating GCL sink")
 	return []sink_api.ExternalSink{sink}, err
