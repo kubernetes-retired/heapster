@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -341,7 +340,7 @@ func init() {
 	extpoints.SinkFactories.Register(CreateInfluxdbSink, "influxdb")
 }
 
-func CreateInfluxdbSink(uri string, options map[string][]string) ([]sink_api.ExternalSink, error) {
+func CreateInfluxdbSink(uri *url.URL) ([]sink_api.ExternalSink, error) {
 	defaultConfig := config{
 		user:         "root",
 		password:     "root",
@@ -350,27 +349,23 @@ func CreateInfluxdbSink(uri string, options map[string][]string) ([]sink_api.Ext
 		avoidColumns: false,
 	}
 
-	parsedUrl, err := url.Parse(os.ExpandEnv(uri))
-	if err != nil {
-		return nil, err
+	if len(uri.Host) > 0 {
+		defaultConfig.host = uri.Host
 	}
-
-	if len(parsedUrl.Host) > 0 {
-		defaultConfig.host = parsedUrl.Host
+	opts := uri.Query()
+	if len(opts["user"]) >= 1 {
+		defaultConfig.user = opts["user"][0]
 	}
-	if len(options["user"]) >= 1 {
-		defaultConfig.user = options["user"][0]
+	if len(opts["pw"]) >= 1 {
+		defaultConfig.password = opts["pw"][0]
 	}
-	if len(options["pw"]) >= 1 {
-		defaultConfig.password = options["pw"][0]
+	if len(opts["db"]) >= 1 {
+		defaultConfig.dbName = opts["db"][0]
 	}
-	if len(options["db"]) >= 1 {
-		defaultConfig.dbName = options["db"][0]
-	}
-	if len(options["avoidColumns"]) >= 1 {
-		val, err := strconv.ParseBool(options["avoidColumns"][0])
+	if len(opts["avoidColumns"]) >= 1 {
+		val, err := strconv.ParseBool(opts["avoidColumns"][0])
 		if err != nil {
-			return nil, fmt.Errorf("invalid value %q for option 'avoidColumns' passed to influxdb sink", options["avoidColumns"][0])
+			return nil, fmt.Errorf("invalid value %q for option 'avoidColumns' passed to influxdb sink", opts["avoidColumns"][0])
 		}
 		defaultConfig.avoidColumns = val
 	}

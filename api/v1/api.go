@@ -201,16 +201,23 @@ func (a *Api) setSinks(req *restful.Request, resp *restful.Response) {
 		resp.WriteError(http.StatusBadRequest, err)
 		return
 	}
-	if err := a.manager.SetSinkUris(*sinkUris); err != nil {
+	var uris manager.Uris
+	for _, s := range *sinkUris {
+		if err := uris.Set(s); err != nil {
+			resp.WriteError(http.StatusBadRequest, err)
+			return
+		}
+	}
+	if err := a.manager.SetSinkUris(uris); err != nil {
 		resp.WriteError(http.StatusInternalServerError, err)
 		return
 	}
 }
 
 func (a *Api) getSinks(req *restful.Request, resp *restful.Response) {
-	sinks := a.manager.SinkUris()
-	if sinks == nil {
-		sinks = make([]string, 0)
+	sinkUris := a.manager.SinkUris()
+	if sinkUris == nil {
+		sinkUris = make(manager.Uris, 0)
 	}
-	resp.WriteEntity(sinks)
+	resp.WriteEntity(sinkUris)
 }
