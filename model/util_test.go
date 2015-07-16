@@ -46,6 +46,7 @@ func TestNewInfoType(t *testing.T) {
 	var (
 		metrics = make(map[string]*store.TimeStore)
 		labels  = make(map[string]string)
+		context = make(map[string]*store.TimePoint)
 	)
 	new_store := newTimeStore()
 	metrics["test"] = &new_store
@@ -53,14 +54,15 @@ func TestNewInfoType(t *testing.T) {
 	assert := assert.New(t)
 
 	// Invocation with no parameters
-	new_infotype := newInfoType(nil, nil)
+	new_infotype := newInfoType(nil, nil, nil)
 	assert.Empty(new_infotype.Metrics)
 	assert.Empty(new_infotype.Labels)
 
-	// Invocation with both parameters
-	new_infotype = newInfoType(metrics, labels)
+	// Invocation with all parameters
+	new_infotype = newInfoType(metrics, labels, context)
 	assert.Equal(new_infotype.Metrics, metrics)
 	assert.Equal(new_infotype.Labels, labels)
+	assert.Equal(new_infotype.Context, context)
 }
 
 // TestAddContainerToMap tests all the flows of addContainerToMap.
@@ -240,4 +242,35 @@ func TestAddMatchingTimeseriesEmpty(t *testing.T) {
 	// Third call: both arguments are empty
 	new_ts = addMatchingTimeseries(empty_tps, empty_tps)
 	assert.Equal(new_ts, empty_tps)
+}
+
+// TestInstantFromCumulativeMetric tests all the flows of instantFromCumulativeMetric.
+func TestInstantFromCumulativeMetric(t *testing.T) {
+	var (
+		new_value = uint64(15390000000000)
+		now       = time.Now().Round(time.Second)
+		assert    = assert.New(t)
+	)
+	afterNow := now.Add(3 * time.Second)
+	oldTP := &store.TimePoint{
+		Timestamp: now,
+		Value:     uint64(13851000000000),
+	}
+
+	// Invocation with nil prev argument
+	val, err := instantFromCumulativeMetric(new_value, afterNow, nil)
+	assert.Error(err)
+	assert.Equal(val, uint64(0))
+
+	// Invocation with regular arguments
+	val, err = instantFromCumulativeMetric(new_value, afterNow, oldTP)
+	assert.NoError(err)
+	assert.Equal(val, 513*1024)
+
+	// Second Invocation with regular arguments, prev TP has changed
+	newerVal := uint64(15900000000000)
+	val, err = instantFromCumulativeMetric(newerVal, afterNow.Add(time.Second), oldTP)
+	assert.NoError(err)
+	assert.Equal(val, 510*1024)
+
 }

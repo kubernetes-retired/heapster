@@ -74,6 +74,9 @@ func (a *Api) Register(container *restful.Container) {
 		Operation("getSinks").
 		Writes([]string{}))
 	container.Add(ws)
+
+	// Register the endpoints of the model
+	a.RegisterModel(container)
 }
 
 func compressionFilter(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
