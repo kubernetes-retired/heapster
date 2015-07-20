@@ -30,6 +30,10 @@ type Info struct {
 	InternalIP string
 	// An optional ID assigned to nodes by either the cloud provider or user.
 	ExternalID string
+	// Cpu capacity of node in millicores.
+	CpuCapacity uint64
+	// Memory capacity of node in bytes.
+	MemCapacity uint64
 }
 
 // NodeList contains the nodes that an instance of heapster is required to
