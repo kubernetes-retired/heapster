@@ -26,6 +26,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/heapster/manager"
 	"github.com/GoogleCloudPlatform/heapster/sinks"
+	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/version"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
@@ -85,7 +86,8 @@ func validateFlags() error {
 }
 
 func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, error) {
-	sources, err := newSources()
+	c := cache.NewCache(*argCacheDuration)
+	sources, err := newSources(c)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -93,7 +95,7 @@ func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration, *argUseModel, *argModelResolution, *argAlignStats)
+	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration, c, *argUseModel, *argModelResolution, *argAlignStats)
 	if err != nil {
 		return nil, nil, nil, err
 	}

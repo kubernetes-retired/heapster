@@ -15,6 +15,7 @@
 package cache
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -50,7 +51,11 @@ type realCache struct {
 	pods map[string]*podElement
 	// Map of node hostnames to node cache entry.
 	nodes map[string]*nodeElement
-	lock  sync.RWMutex
+	// Event UIDs. This is required to avoid storing duplicate events.
+	eventUIDs map[string]struct{}
+	// Events store.
+	events store.TimeStore
+	lock   sync.RWMutex
 }
 
 func (rc *realCache) newContainerElement() *containerElement {
@@ -225,10 +230,45 @@ func (rc *realCache) GetFreeContainers(start, end time.Time) []*ContainerElement
 	return result
 }
 
+func (rc *realCache) StoreEvents(e []*Event) error {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+	for idx := range e {
+		uid := e[idx].UID
+		if uid == "" {
+			return fmt.Errorf("failed to store event %v - UID cannot be empty", *e[idx])
+		}
+		if _, exists := rc.eventUIDs[uid]; exists {
+			continue
+		}
+		rc.eventUIDs[e[idx].UID] = struct{}{}
+		if err := rc.events.Put(store.TimePoint{
+			Timestamp: time.Now(),
+			Value:     e[idx],
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (rc *realCache) GetEvents(start, end time.Time) []*Event {
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
+	var result []*Event
+	timePoints := rc.events.Get(start, end)
+	for idx := range timePoints {
+		result = append(result, timePoints[idx].Value.(*Event))
+	}
+	return result
+}
+
 func NewCache(bufferDuration time.Duration) Cache {
 	return &realCache{
 		pods:           make(map[string]*podElement),
 		nodes:          make(map[string]*nodeElement),
+		events:         store.NewGCStore(store.NewTimeStore(), bufferDuration),
+		eventUIDs:      make(map[string]struct{}),
 		bufferDuration: bufferDuration,
 	}
 }

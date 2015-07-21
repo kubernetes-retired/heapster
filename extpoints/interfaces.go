@@ -18,9 +18,10 @@ import (
 	"net/url"
 
 	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
+	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	sourceApi "github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
-type SourceFactory func(*url.URL) ([]sourceApi.Source, error)
+type SourceFactory func(*url.URL, cache.Cache) ([]sourceApi.Source, error)
 
 type SinkFactory func(*url.URL) ([]sinksApi.ExternalSink, error)

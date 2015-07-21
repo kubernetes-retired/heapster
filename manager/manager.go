@@ -69,7 +69,7 @@ type syncData struct {
 	mutex sync.Mutex
 }
 
-func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration, useModel bool, modelRes time.Duration, align bool) (Manager, error) {
+func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration, c cache.Cache, useModel bool, modelRes time.Duration, align bool) (Manager, error) {
 	// TimeStore constructor passed to the cluster implementation.
 	tsConstructor := func() store.TimeStore {
 		// TODO(afein): determine default analogy of cache duration to Timestore durations.
@@ -86,7 +86,7 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 	return &realManager{
 		sources:     sources,
 		sinkManager: sinkManager,
-		cache:       cache.NewCache(bufferDuration),
+		cache:       c,
 		model:       newCluster,
 		lastSync:    firstSync,
 		resolution:  res,

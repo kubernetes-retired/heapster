@@ -119,3 +119,33 @@ func TestRealCacheData(t *testing.T) {
 		assert.NotEmpty(ce.Metrics)
 	}
 }
+
+func TestEvents(t *testing.T) {
+	cache := NewCache(time.Hour)
+	assert := assert.New(t)
+	eventA := &Event{
+		Message:   "test message 1",
+		Source:    "test",
+		Timestamp: time.Now(),
+		Metadata: Metadata{
+			UID: "123",
+		},
+	}
+	assert.NoError(cache.StoreEvents([]*Event{eventA}))
+	// This duplicate event must be ignored.
+	assert.NoError(cache.StoreEvents([]*Event{eventA}))
+	eventB := &Event{
+		Message:   "test message 2",
+		Source:    "test",
+		Timestamp: time.Now(),
+		Metadata: Metadata{
+			UID: "124",
+		},
+	}
+	assert.NoError(cache.StoreEvents([]*Event{eventB}))
+	zeroTime := time.Time{}
+	events := cache.GetEvents(zeroTime, zeroTime)
+	assert.Len(events, 2)
+	assert.Equal(events[0], eventB)
+	assert.Equal(events[1], eventA)
+}
