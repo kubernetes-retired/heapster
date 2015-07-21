@@ -98,9 +98,10 @@ func (ts *cmaStore) Get(start, end time.Time) []TimePoint {
 			continue
 		}
 		// Add all entries whose timestamp is not after end.
-		if (end == time.Time{}) || !entry.Timestamp.After(end) {
-			result = append(result, entry)
+		if end != zeroTime && entry.Timestamp.After(end) {
+			continue
 		}
+		result = append(result, entry)
 	}
 	return result
 }
