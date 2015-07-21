@@ -15,7 +15,6 @@
 package store
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -68,7 +67,6 @@ func TestCMAInsertTime(t *testing.T) {
 
 	// Get Invocation with values 2 and 4
 	actual := store.Get(zeroTime, now)
-	fmt.Println(actual)
 	require.Len(t, actual, 1)
 	assert.Equal(actual[0].Value, uint64(4))
 

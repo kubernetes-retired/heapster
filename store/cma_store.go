@@ -83,24 +83,25 @@ func (ts *cmaStore) Put(tp TimePoint) error {
 }
 
 func (ts *cmaStore) Get(start, end time.Time) []TimePoint {
-	zeroTime := time.Time{}
 	ts.rwLock.RLock()
 	defer ts.rwLock.RUnlock()
 	if ts.buffer.Len() == 0 {
 		return nil
 	}
+	zeroTime := time.Time{}
 	result := []TimePoint{}
 	for elem := ts.buffer.Front(); elem != nil; elem = elem.Next() {
 		tpc := elem.Value.(tpContainer)
 		entry := tpc.TimePoint
 		// Skip entries until the first one after start
-		if (start != zeroTime) && !entry.Timestamp.After(start) {
+		if !entry.Timestamp.After(start) {
 			continue
 		}
 		// Add all entries whose timestamp is not after end.
-		if (end == time.Time{}) || !entry.Timestamp.After(end) {
-			result = append(result, entry)
+		if end != zeroTime && entry.Timestamp.After(end) {
+			continue
 		}
+		result = append(result, entry)
 	}
 	return result
 }
