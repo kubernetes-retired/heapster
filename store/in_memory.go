@@ -82,9 +82,6 @@ func (ts *timeStore) Get(start, end time.Time) []TimePoint {
 		return nil
 	}
 	zeroTime := time.Time{}
-	if start == zeroTime {
-		start = zeroTime
-	}
 	result := []TimePoint{}
 	for elem := ts.buffer.Front(); elem != nil; elem = elem.Next() {
 		entry := elem.Value.(TimePoint)
