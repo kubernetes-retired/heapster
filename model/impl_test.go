@@ -1014,7 +1014,7 @@ func cmeFactory() *cache.ContainerMetricElement {
 		HasFilesystem: true,
 		HasDiskIo:     true,
 	}
-	containerSpec.Cpu.Limit = 1024
+	containerSpec.Cpu.Limit = 1000
 	containerSpec.Memory.Limit = 10000000
 
 	// Create a fuzzed ContainerStats struct
