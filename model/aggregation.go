@@ -186,29 +186,39 @@ func (rc *realCluster) aggregateMetrics(target *InfoType, sources []*InfoType) e
 
 	// Reduce the sources slice with timeseries addition for each metric
 	for _, info := range sources {
-		for key, ts := range info.Metrics {
+		for key, ds := range info.Metrics {
 			_, ok := newMetrics[key]
 			if !ok {
 				// Metric does not exist on target map, create a new timeseries
 				newMetrics[key] = []store.TimePoint{}
 			}
 			// Perform timeseries addition between the accumulator and the current source
-			sourceTS := (*ts).Get(rc.timestamp, zeroTime)
-			newMetrics[key] = addMatchingTimeseries(newMetrics[key], sourceTS)
+			sourceDS := (*ds).Hour.Get(rc.timestamp, zeroTime)
+			newMetrics[key] = addMatchingTimeseries(newMetrics[key], sourceDS)
 		}
 	}
 
-	// Put all the new values in the TimeStores under target
+	// Put all the new values in the DayStores under target
 	for key, tpSlice := range newMetrics {
 		_, ok := target.Metrics[key]
 		if !ok {
 			// Metric does not exist on target InfoType, create TimeStore
-			newTS := rc.tsConstructor()
-			target.Metrics[key] = &newTS
+			newDS := rc.dayConstructor()
+			target.Metrics[key] = &newDS
 		}
 		for _, tp := range tpSlice {
 			(*target.Metrics[key]).Put(tp)
 		}
 	}
+
+	// Set the uptime to the longest one
+	longestUptime := time.Duration(0)
+	for _, info := range sources {
+		if info.Uptime.Nanoseconds() > longestUptime.Nanoseconds() {
+			longestUptime = info.Uptime
+		}
+	}
+	target.Uptime = longestUptime
+
 	return nil
 }

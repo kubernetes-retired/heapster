@@ -27,3 +27,21 @@ type MetricResult struct {
 	Metrics         []MetricPoint `json:"metrics"`
 	LatestTimestamp time.Time     `json:"latestTimestamp"`
 }
+
+type Stats struct {
+	Average    uint64 `json:"average"`
+	Percentile uint64 `json:"percentile"`
+	Max        uint64 `json:"max"`
+}
+
+type ExternalStatBundle struct {
+	Minute Stats `json:"minute"`
+	Hour   Stats `json:"hour"`
+	Day    Stats `json:"day"`
+}
+
+type StatsResponse struct {
+	// Uptime in seconds
+	Uptime uint64                        `json:"uptime"`
+	Stats  map[string]ExternalStatBundle `json:"stats"`
+}

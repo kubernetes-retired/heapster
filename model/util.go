@@ -32,9 +32,9 @@ func latestTimestamp(first time.Time, second time.Time) time.Time {
 // newInfoType is an InfoType Constructor, which returns a new InfoType.
 // Initial fields for the new InfoType can be provided as arguments.
 // A nil argument results in a newly-allocated map for that field.
-func newInfoType(metrics map[string]*store.TimeStore, labels map[string]string, context map[string]*store.TimePoint) InfoType {
+func newInfoType(metrics map[string]*store.DayStore, labels map[string]string, context map[string]*store.TimePoint) InfoType {
 	if metrics == nil {
-		metrics = make(map[string]*store.TimeStore)
+		metrics = make(map[string]*store.DayStore)
 	}
 	if labels == nil {
 		labels = make(map[string]string)
@@ -43,6 +43,7 @@ func newInfoType(metrics map[string]*store.TimeStore, labels map[string]string, 
 		context = make(map[string]*store.TimePoint)
 	}
 	return InfoType{
+		Uptime:  time.Duration(0),
 		Metrics: metrics,
 		Labels:  labels,
 		Context: context,
@@ -149,10 +150,36 @@ func instantFromCumulativeMetric(value uint64, stamp time.Time, prev *store.Time
 	if value < prev.Value.(uint64) {
 		return uint64(0), fmt.Errorf("the provided value %d is less than the previous one %d", value, prev.Value.(uint64))
 	}
+	// Divide metric by nanoseconds that have elapsed, multiply by 1000 to get an unsigned metric
 	vdelta := (value - prev.Value.(uint64)) * 1000
 
 	instaVal := vdelta / tdelta
 	prev.Value = value
 	prev.Timestamp = stamp
 	return instaVal, nil
+}
+
+// getStats extracts derived stats from an InfoType.
+func getStats(info InfoType) map[string]StatBundle {
+	res := make(map[string]StatBundle)
+	for key, ds := range info.Metrics {
+		res[key] = StatBundle{
+			Minute: Stats{
+				Average:    ds.Hour.Last().Value.(uint64),
+				Percentile: ds.Hour.Last().Value.(uint64),
+				Max:        ds.Hour.Last().Value.(uint64),
+			},
+			Hour: Stats{
+				Average:    ds.Hour.Average(),
+				Percentile: ds.Hour.Percentile(0.95),
+				Max:        ds.Hour.Max(),
+			},
+			Day: Stats{
+				Average:    ds.Day.Average(),
+				Percentile: ds.Day.Percentile(0.95),
+				Max:        ds.DayMax(),
+			},
+		}
+	}
+	return res
 }
