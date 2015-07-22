@@ -36,6 +36,9 @@ type Manager interface {
 	// stores the data to all the configured sinks.
 	Housekeep()
 
+	// HousekeepModel performs housekeeping for the Model entity
+	HousekeepModel()
+
 	// Export the latest data point of all metrics.
 	ExportMetrics() ([]*sink_api.Point, error)
 
@@ -105,6 +108,15 @@ func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, s
 	errChan <- nil
 }
 
+// HousekeepModel periodically populates the manager model from the manager cache.
+func (rm *realManager) HousekeepModel() {
+	if rm.model != nil {
+		if err := rm.model.Update(rm.cache); err != nil {
+			glog.V(1).Infof("Model housekeeping returned error: %s", err.Error())
+		}
+	}
+}
+
 func (rm *realManager) Housekeep() {
 	errChan := make(chan error, len(rm.sources))
 	var sd syncData
@@ -134,12 +146,6 @@ func (rm *realManager) Housekeep() {
 	}
 	if err := rm.sinkManager.Store(sd.data); err != nil {
 		errors = append(errors, err.Error())
-	}
-
-	if rm.model != nil {
-		if err := rm.model.Update(rm.cache); err != nil {
-			errors = append(errors, err.Error())
-		}
 	}
 
 	if len(errors) > 0 {

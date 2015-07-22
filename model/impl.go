@@ -414,10 +414,10 @@ func (rc *realCluster) updateInfoType(info *InfoType, ce *cache.ContainerElement
 		return latest_time, fmt.Errorf("cannot update a nil InfoType")
 	}
 
-	for _, cme := range ce.Metrics {
-		stamp, err := rc.parseMetric(cme, info.Metrics, info.Context)
+	for i := len(ce.Metrics) - 1; i >= 0; i-- {
+		stamp, err := rc.parseMetric(ce.Metrics[i], info.Metrics, info.Context)
 		if err != nil {
-			glog.V(2).Infof("failed to parse ContainerMetricElement: %s", err)
+			glog.Warningf("failed to parse ContainerMetricElement: %s", err)
 			continue
 		}
 		latest_time = latestTimestamp(latest_time, stamp)
@@ -466,7 +466,7 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 
 	// Round the timestamp to the nearest resolution
 	timestamp := cme.Stats.Timestamp
-	roundedStamp := timestamp.Round(rc.resolution)
+	roundedStamp := timestamp.Truncate(rc.resolution)
 
 	// TODO(alex): refactor to avoid repetition
 	if cme.Spec.HasCpu {
@@ -488,19 +488,31 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 				Timestamp: timestamp,
 				Value:     cpu_usage,
 			}
-		} else if !roundedStamp.Equal(prevTP.Timestamp.Round(rc.resolution)) {
-			// Context is not empty and the new CPU Usage does not round to the same value
-			// Calculate new instantaneous CPU Usage
-			newCPU, err := instantFromCumulativeMetric(cpu_usage, timestamp, prevTP)
-			if err != nil {
-				return zeroTime, fmt.Errorf("failed to calculate instantaneous CPU usage: %s", err)
-			}
-			context[cpuUsage] = prevTP
+		} else {
+			prevRoundedStamp := prevTP.Timestamp.Truncate(rc.resolution)
 
-			// Add to CPU Usage metric
-			err = rc.addMetricToMap(cpuUsage, roundedStamp, newCPU, dict)
-			if err != nil {
-				return zeroTime, fmt.Errorf("failed to add %s metric: %s", cpuUsage, err)
+			// check if the container was restarted since the last context timestamp
+			if cme.Spec.CreationTime.After(prevTP.Timestamp) {
+				// TODO(afein): mark as a container crash event
+				// Reset the context
+				context[cpuUsage] = &store.TimePoint{
+					Timestamp: timestamp,
+					Value:     cpu_usage,
+				}
+			} else if prevRoundedStamp.Before(roundedStamp) {
+				// Calculate new instantaneous CPU Usage
+				newCPU, err := instantFromCumulativeMetric(cpu_usage, timestamp, prevTP)
+				if err != nil {
+					return zeroTime, fmt.Errorf("failed to calculate instantaneous CPU usage: %s", err)
+				}
+
+				// Add to CPU Usage metric
+				err = rc.addMetricToMap(cpuUsage, roundedStamp, newCPU, dict)
+				if err != nil {
+					return zeroTime, fmt.Errorf("failed to add %s metric: %s", cpuUsage, err)
+				}
+			} else {
+				glog.Warningf("Internal Error: reached unreachable CPU Usage parsing flow")
 			}
 		}
 	}
@@ -558,9 +570,11 @@ func (rc *realCluster) Update(c cache.Cache) error {
 	glog.V(2).Infoln("Schema Update operation started")
 
 	// Invoke cache methods using the Cluster timestamp
+	// Iterate through the results in time-ascending order to maintain the context for cumulative metrics
+
 	nodes := c.GetNodes(rc.timestamp, zero)
-	for _, node := range nodes {
-		timestamp, err := rc.updateNode(node)
+	for i := len(nodes) - 1; i >= 0; i-- {
+		timestamp, err := rc.updateNode(nodes[i])
 		if err != nil {
 			return fmt.Errorf("Failed to Update Node Information: %s", err)
 		}
@@ -568,17 +582,17 @@ func (rc *realCluster) Update(c cache.Cache) error {
 	}
 
 	pods := c.GetPods(rc.timestamp, zero)
-	for _, pod := range pods {
-		timestamp, err := rc.updatePod(pod)
+	for i := len(pods) - 1; i >= 0; i-- {
+		timestamp, err := rc.updatePod(pods[i])
 		if err != nil {
 			return fmt.Errorf("Failed to Update Pod Information: %s", err)
 		}
 		latest_time = latestTimestamp(latest_time, timestamp)
 	}
 
-	free_containers := c.GetFreeContainers(rc.timestamp, zero)
-	for _, ce := range free_containers {
-		timestamp, err := rc.updateFreeContainer(ce)
+	freeConts := c.GetFreeContainers(rc.timestamp, zero)
+	for i := len(freeConts) - 1; i >= 0; i-- {
+		timestamp, err := rc.updateFreeContainer(freeConts[i])
 		if err != nil {
 			return fmt.Errorf("Failed to Update Free Container Information: %s", err)
 		}

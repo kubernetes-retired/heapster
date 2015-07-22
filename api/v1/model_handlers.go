@@ -15,6 +15,7 @@
 package v1
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -24,6 +25,10 @@ import (
 	"github.com/GoogleCloudPlatform/heapster/model"
 	"github.com/GoogleCloudPlatform/heapster/store"
 )
+
+// errModelNotActivated is the error that is returned when manager.cluster
+// has not beed initialized.
+var errModelNotActivated = errors.New("the model is not activated")
 
 // RegisterModel registers the Model API endpoints.
 // All endpoints that end with a {metric-name} also receive a start time query parameter.
@@ -318,18 +323,27 @@ func (a *Api) containerPaths(request *restful.Request, response *restful.Respons
 // allNodes returns a list of all the available node names in the cluster.
 func (a *Api) allNodes(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 	response.WriteEntity(cluster.GetNodes())
 }
 
 // allNamespaces returns a list of all the available namespaces in the cluster.
 func (a *Api) allNamespaces(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 	response.WriteEntity(cluster.GetNamespaces())
 }
 
 // allPods returns a list of all the available pods in the cluster.
 func (a *Api) allPods(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 	namespace := request.PathParameter("namespace-name")
 	response.WriteEntity(cluster.GetPods(namespace))
 }
@@ -337,6 +351,9 @@ func (a *Api) allPods(request *restful.Request, response *restful.Response) {
 // allPodContainers returns a list of all the available pod containers in the cluster.
 func (a *Api) allPodContainers(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 	namespace := request.PathParameter("namespace-name")
 	pod := request.PathParameter("pod-name")
 	response.WriteEntity(cluster.GetPodContainers(namespace, pod))
@@ -345,6 +362,9 @@ func (a *Api) allPodContainers(request *restful.Request, response *restful.Respo
 // allFreeContainers returns a list of all the available free containers in the cluster.
 func (a *Api) allFreeContainers(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 	node := request.PathParameter("node-name")
 	response.WriteEntity(cluster.GetFreeContainers(node))
 }
@@ -353,6 +373,9 @@ func (a *Api) allFreeContainers(request *restful.Request, response *restful.Resp
 // These metric names can be used to extract metrics from the various model entities.
 func (a *Api) availableMetrics(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 	result := cluster.GetAvailableMetrics()
 	response.WriteEntity(result)
 }
@@ -360,6 +383,9 @@ func (a *Api) availableMetrics(request *restful.Request, response *restful.Respo
 // clusterMetrics returns a metric timeseries for a metric of the Cluster entity.
 func (a *Api) clusterMetrics(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 
 	timeseries, new_stamp, err := cluster.GetClusterMetric(model.ClusterRequest{
 		MetricName: request.PathParameter("metric-name"),
@@ -377,6 +403,9 @@ func (a *Api) clusterMetrics(request *restful.Request, response *restful.Respons
 // nodeMetrics returns a metric timeseries for a metric of the Node entity.
 func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 
 	timeseries, new_stamp, err := cluster.GetNodeMetric(model.NodeRequest{
 		NodeName:   request.PathParameter("node-name"),
@@ -395,6 +424,9 @@ func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) 
 // namespaceMetrics returns a metric timeseries for a metric of the Namespace entity.
 func (a *Api) namespaceMetrics(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 
 	timeseries, new_stamp, err := cluster.GetNamespaceMetric(model.NamespaceRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
@@ -413,6 +445,9 @@ func (a *Api) namespaceMetrics(request *restful.Request, response *restful.Respo
 // podMetrics returns a metric timeseries for a metric of the Pod entity.
 func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 
 	timeseries, new_stamp, err := cluster.GetPodMetric(model.PodRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
@@ -433,6 +468,9 @@ func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 // freeContainerMetrics addresses only pod containers, by using the namespace-name/pod-name/container-name path.
 func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 
 	timeseries, new_stamp, err := cluster.GetPodContainerMetric(model.PodContainerRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
@@ -454,6 +492,9 @@ func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Re
 // freeContainerMetrics addresses only free containers, by using the node-name/container-name path.
 func (a *Api) freeContainerMetrics(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
 
 	timeseries, new_stamp, err := cluster.GetFreeContainerMetric(model.FreeContainerRequest{
 		NodeName:      request.PathParameter("node-name"),
