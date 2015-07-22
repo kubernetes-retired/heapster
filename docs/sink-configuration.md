@@ -81,3 +81,12 @@ The following options are available:
 Using the `/api/v1/sinks` endpoint, it is possible to fetch the sinks
 currently in use via a GET request or to change them via a POST request. The
 format is the same as when passed via command line flags.
+
+For example, to set gcm and influxdb as sinks, you may do the following:
+
+```
+echo '["gcm", "influxdb:http://monitoring-influxdb:8086"]' | curl \
+    --insecure -u admin:<password> -X POST -d @- \
+    -H "Accept: application/json" -H "Content-Type: application/json" \
+    https://<master-ip>/api/v1/proxy/namespaces/kube-system/services/monitoring-heapster/api/v1/sinks
+```
