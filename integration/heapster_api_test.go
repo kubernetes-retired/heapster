@@ -383,10 +383,6 @@ func apiTest(kubeVersion string) error {
 	if err := createAll(fm, ns, &svc, &rc); err != nil {
 		return err
 	}
-	defer func() {
-		//		deleteAll(fm, ns, svc, rc)
-		//	removeHeapsterImage(fm)
-	}()
 	if err := fm.WaitUntilPodRunning(ns, rc.Spec.Template.Labels, time.Minute); err != nil {
 		return err
 	}
@@ -421,7 +417,7 @@ func apiTest(kubeVersion string) error {
 			continue
 		}
 		if err == nil {
-			return nil
+			break
 		}
 		if attempts == 0 {
 			return err
@@ -429,6 +425,9 @@ func apiTest(kubeVersion string) error {
 		attempts--
 		time.Sleep(time.Second)
 	}
+	deleteAll(fm, ns, svc, rc)
+	removeHeapsterImage(fm)
+	return nil
 }
 
 func runApiTest() error {
