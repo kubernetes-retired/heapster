@@ -50,14 +50,15 @@ var (
 	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
 )
 
-func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_api.ReplicationController) {
+func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_api.ReplicationController) error {
 	if err := fm.DeleteRC(ns, rc); err != nil {
-		glog.Error(err)
+		return err
 	}
 
 	if err := fm.DeleteService(ns, service); err != nil {
-		glog.Error(err)
+		return err
 	}
+	return nil
 }
 
 func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kube_api.ReplicationController) error {
@@ -376,8 +377,10 @@ func apiTest(kubeVersion string) error {
 		return err
 	}
 	ns := *namespace
-	deleteAll(fm, ns, svc, rc)
-	if err = createAll(fm, ns, &svc, &rc); err != nil {
+	if err := deleteAll(fm, ns, svc, rc); err != nil {
+		return err
+	}
+	if err := createAll(fm, ns, &svc, &rc); err != nil {
 		return err
 	}
 	defer func() {

@@ -378,9 +378,7 @@ func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationContr
 		}).AsSelector()
 		rcList, err := self.kubeClient.ReplicationControllers(ns).List(selector)
 		if err != nil {
-			glog.V(2).Infof("Cannot list RCs by label '%s=%s'. Skipping deletion - %v",
-				labelKey, labelValue, err)
-			return nil
+			return fmt.Errorf("cannot list RCs by label %s=%s: %v", labelKey, labelValue, err)
 		}
 		for i := range rcList.Items {
 			list = append(list, &rcList.Items[i])
@@ -391,7 +389,6 @@ func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationContr
 		return nil
 	}
 	if len(list) > 1 {
-		glog.V(2).Infof("Found multiple RCs identified by '%s'. Skipping deletion.", labelValue)
 		return fmt.Errorf("found multiple RCs identified by '%s'", labelValue)
 	}
 	rc := list[0]
