@@ -346,6 +346,7 @@ func (self *realKubeFramework) ParseService(filePath string) (*api.Service, erro
 }
 
 func (self *realKubeFramework) CreateService(ns string, service *api.Service) (*api.Service, error) {
+	service.Namespace = ns
 	newSvc, err := self.kubeClient.Services(ns).Create(service)
 	return newSvc, err
 }
@@ -360,6 +361,7 @@ func (self *realKubeFramework) DeleteService(ns string, service *api.Service) er
 }
 
 func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController) (*api.ReplicationController, error) {
+	rc.Namespace = ns
 	return self.kubeClient.ReplicationControllers(ns).Create(rc)
 }
 
