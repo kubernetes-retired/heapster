@@ -219,8 +219,14 @@ func (a *Api) setSinks(req *restful.Request, resp *restful.Response) {
 
 func (a *Api) getSinks(req *restful.Request, resp *restful.Response) {
 	sinkUris := a.manager.SinkUris()
+	var strs []string
 	if sinkUris == nil {
-		sinkUris = make(manager.Uris, 0)
+		strs = make([]string, 0)
+	} else {
+		strs = make([]string, 0, len(sinkUris))
+		for _, u := range sinkUris {
+			strs = append(strs, u.String())
+		}
 	}
-	resp.WriteEntity(sinkUris)
+	resp.WriteEntity(strs)
 }

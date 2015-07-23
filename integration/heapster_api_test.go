@@ -50,14 +50,15 @@ var (
 	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
 )
 
-func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_api.ReplicationController) {
+func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_api.ReplicationController) error {
 	if err := fm.DeleteRC(ns, rc); err != nil {
-		glog.Error(err)
+		return err
 	}
 
 	if err := fm.DeleteService(ns, service); err != nil {
-		glog.Error(err)
+		return err
 	}
+	return nil
 }
 
 func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kube_api.ReplicationController) error {
@@ -343,10 +344,10 @@ func setSinks(fm kubeFramework, svc *kube_api.Service, sinks []string) error {
 func runSinksTest(fm kubeFramework, svc *kube_api.Service) error {
 	for _, newSinks := range [...][]string{
 		[]string{},
-		[]string{
-			"gcm",
-		},
-		[]string{},
+		//[]string{
+		//	"gcm",
+		//},
+		//[]string{},
 	} {
 		if err := setSinks(fm, svc, newSinks); err != nil {
 			return err
@@ -376,14 +377,12 @@ func apiTest(kubeVersion string) error {
 		return err
 	}
 	ns := *namespace
-	deleteAll(fm, ns, svc, rc)
-	if err = createAll(fm, ns, &svc, &rc); err != nil {
+	if err := deleteAll(fm, ns, svc, rc); err != nil {
 		return err
 	}
-	defer func() {
-		//		deleteAll(fm, ns, svc, rc)
-		//	removeHeapsterImage(fm)
-	}()
+	if err := createAll(fm, ns, &svc, &rc); err != nil {
+		return err
+	}
 	if err := fm.WaitUntilPodRunning(ns, rc.Spec.Template.Labels, time.Minute); err != nil {
 		return err
 	}
@@ -418,7 +417,7 @@ func apiTest(kubeVersion string) error {
 			continue
 		}
 		if err == nil {
-			return nil
+			break
 		}
 		if attempts == 0 {
 			return err
@@ -426,6 +425,9 @@ func apiTest(kubeVersion string) error {
 		attempts--
 		time.Sleep(time.Second)
 	}
+	deleteAll(fm, ns, svc, rc)
+	removeHeapsterImage(fm)
+	return nil
 }
 
 func runApiTest() error {

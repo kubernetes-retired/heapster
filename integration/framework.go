@@ -346,13 +346,14 @@ func (self *realKubeFramework) ParseService(filePath string) (*api.Service, erro
 }
 
 func (self *realKubeFramework) CreateService(ns string, service *api.Service) (*api.Service, error) {
+	service.Namespace = ns
 	newSvc, err := self.kubeClient.Services(ns).Create(service)
 	return newSvc, err
 }
 
 func (self *realKubeFramework) DeleteService(ns string, service *api.Service) error {
 	if _, err := self.kubeClient.Services(ns).Get(service.Name); err != nil {
-		glog.V(2).Infof("cannot find service %q - %v", service.Name, err)
+		glog.V(2).Infof("cannot find service %q. Skipping deletion.", service.Name)
 		return nil
 	}
 
@@ -360,21 +361,43 @@ func (self *realKubeFramework) DeleteService(ns string, service *api.Service) er
 }
 
 func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController) (*api.ReplicationController, error) {
+	rc.Namespace = ns
 	return self.kubeClient.ReplicationControllers(ns).Create(rc)
 }
 
 func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationController) error {
-	rc, err := self.kubeClient.ReplicationControllers(ns).Get(inputRc.Name)
-	if err != nil {
-		glog.V(2).Infof("Cannot find Replication Controller %q. Skipping deletion - %v", inputRc.Name, err)
+	var list []*api.ReplicationController
+	labelValue := "heapster"
+	labelKeys := []string{"k8s-app", "name"}
+	for _, k := range labelKeys {
+		if val, e := inputRc.Labels[k]; e {
+			labelValue = val
+		}
+	}
+	for _, labelKey := range labelKeys {
+		selector := labels.Set(map[string]string{
+			labelKey: labelValue,
+		}).AsSelector()
+		rcList, err := self.kubeClient.ReplicationControllers(ns).List(selector)
+		if err != nil {
+			return fmt.Errorf("cannot list RCs by label %s=%s: %v", labelKey, labelValue, err)
+		}
+		for i := range rcList.Items {
+			list = append(list, &rcList.Items[i])
+		}
+	}
+	if len(list) < 1 {
+		glog.V(2).Infof("Found no RCs identified by '%s'. Skipping deletion.", labelValue)
 		return nil
 	}
-	rc.Spec.Replicas = 0
-	if _, err := self.kubeClient.ReplicationControllers(ns).Update(rc); err != nil {
-		return fmt.Errorf("unable to modify replica count for rc %v: %v", inputRc.Name, err)
-	}
-	if err := self.kubeClient.ReplicationControllers(ns).Delete(rc.Name); err != nil {
-		return fmt.Errorf("unable to delete rc %v: %v", inputRc.Name, err)
+	for _, rc := range list {
+		rc.Spec.Replicas = 0
+		if _, err := self.kubeClient.ReplicationControllers(ns).Update(rc); err != nil {
+			return fmt.Errorf("unable to modify replica count for rc %v: %v", inputRc.Name, err)
+		}
+		if err := self.kubeClient.ReplicationControllers(ns).Delete(rc.Name); err != nil {
+			return fmt.Errorf("unable to delete rc %v: %v", inputRc.Name, err)
+		}
 	}
 
 	return nil
