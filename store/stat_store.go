@@ -19,6 +19,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/google/cadvisor/summary"
 )
 
 type NthPercentile uint
@@ -92,31 +94,6 @@ func (s *statStore) Last() *TimePoint {
 	return &last
 }
 
-type uint64Slice []uint64
-
-func (a uint64Slice) Len() int           { return len(a) }
-func (a uint64Slice) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a uint64Slice) Less(i, j int) bool { return a[i] < a[j] }
-
-func (a uint64Slice) GetPercentile(n NthPercentile) uint64 {
-	if n > 100 {
-		return 0
-	}
-	count := a.Len()
-	if count == 0 {
-		return 0
-	}
-	sort.Sort(a)
-	f := float64(int(n)*(count+1)) / 100.0
-	idx, frac := math.Modf(f)
-	index := int(idx)
-	percentile := float64(a[index-1]) / 100.0
-	if index > 1 && index < count {
-		percentile += frac * float64(a[index]-a[index-1])
-	}
-	return uint64(percentile)
-}
-
 func (s *statStore) fillCache() {
 	if s.validCache {
 		return
@@ -134,7 +111,7 @@ func (s *statStore) fillCache() {
 		return
 	}
 
-	inc := make(uint64Slice, 0, len(all))
+	inc := make(summary.Uint64Slice, 0, len(all))
 	for _, tp := range all {
 		inc = append(inc, tp.Value.(uint64))
 	}
