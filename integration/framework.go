@@ -353,7 +353,7 @@ func (self *realKubeFramework) CreateService(ns string, service *api.Service) (*
 
 func (self *realKubeFramework) DeleteService(ns string, service *api.Service) error {
 	if _, err := self.kubeClient.Services(ns).Get(service.Name); err != nil {
-		glog.V(2).Infof("cannot find service %q - %v", service.Name, err)
+		glog.V(2).Infof("cannot find service %q. Skipping deletion.", service.Name)
 		return nil
 	}
 
