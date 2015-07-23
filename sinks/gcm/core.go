@@ -170,7 +170,7 @@ func (self *GcmCore) Register(name, description, metricType, valueType string, l
 
 	// Ensure all labels are in the correct format.
 	for i := range labels {
-		labels[i].Key = fullLabelName(labels[i].Key)
+		labels[i].Key = FullLabelName(labels[i].Key)
 	}
 
 	request := metricDescriptor{
@@ -272,7 +272,7 @@ func (self *GcmCore) GetMetric(metric *sink_api.Point) (*Timeseries, error) {
 	// Use full label names.
 	labels := make(map[string]string, len(metric.Labels))
 	for key, value := range metric.Labels {
-		labels[fullLabelName(key)] = value
+		labels[FullLabelName(key)] = value
 	}
 
 	return &Timeseries{
@@ -299,7 +299,7 @@ func (self *GcmCore) GetEquivalentRateMetric(metric *sink_api.Point) (*Timeserie
 	// Use full label names.
 	labels := make(map[string]string, len(metric.Labels))
 	for key, value := range metric.Labels {
-		labels[fullLabelName(key)] = value
+		labels[FullLabelName(key)] = value
 	}
 
 	rateMetric, exists := gcmRateMetrics[metric.Name]
@@ -393,7 +393,7 @@ const (
 	maxTimeseriesPerRequest = 200
 )
 
-func fullLabelName(name string) string {
+func FullLabelName(name string) string {
 	if !strings.Contains(name, "custom.cloudmonitoring.googleapis.com/") && !strings.Contains(name, "compute.googleapis.com") {
 		return fmt.Sprintf("custom.cloudmonitoring.googleapis.com/%s/label/%s", metricDomain, name)
 	}

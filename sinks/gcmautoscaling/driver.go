@@ -163,9 +163,9 @@ func (self *gcmAutocalingSink) updateMachineCapacityAndReservation(input []sink_
 // See more: https://cloud.google.com/compute/docs/autoscaler/scaling-cloud-monitoring-metrics#custom_metrics_beta
 func getLabels(metric *sink_api.Point) map[string]string {
 	return map[string]string{
-		LabelHostname.Key:        metric.Labels[sink_api.LabelHostname.Key],
-		LabelGCEResourceID.Key:   metric.Labels[sink_api.LabelHostID.Key],
-		LabelGCEResourceType.Key: "instance",
+		gcm.FullLabelName(LabelHostname.Key):        metric.Labels[sink_api.LabelHostname.Key],
+		gcm.FullLabelName(LabelGCEResourceID.Key):   metric.Labels[sink_api.LabelHostID.Key],
+		gcm.FullLabelName(LabelGCEResourceType.Key): "instance",
 	}
 }
 
@@ -221,8 +221,6 @@ func (self gcmAutocalingSink) StoreTimeseries(input []sink_api.Timeseries) error
 			continue
 		}
 
-		metric.Labels = getLabels(metric)
-
 		var ts *gcm.Timeseries
 		var err error
 		if metric.Name == cpuUsage {
@@ -246,6 +244,7 @@ func (self gcmAutocalingSink) StoreTimeseries(input []sink_api.Timeseries) error
 		ts.Point.DoubleValue = val
 		name := gcm.FullMetricName(autoscalingMetrics[metric.Name].name)
 		ts.TimeseriesDescriptor.Metric = name
+		ts.TimeseriesDescriptor.Labels = getLabels(metric)
 
 		metrics[name] = append(metrics[name], *ts)
 	}
