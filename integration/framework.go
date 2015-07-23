@@ -388,16 +388,14 @@ func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationContr
 		glog.V(2).Infof("Found no RCs identified by '%s'. Skipping deletion.", labelValue)
 		return nil
 	}
-	if len(list) > 1 {
-		return fmt.Errorf("found multiple RCs identified by '%s'", labelValue)
-	}
-	rc := list[0]
-	rc.Spec.Replicas = 0
-	if _, err := self.kubeClient.ReplicationControllers(ns).Update(rc); err != nil {
-		return fmt.Errorf("unable to modify replica count for rc %v: %v", inputRc.Name, err)
-	}
-	if err := self.kubeClient.ReplicationControllers(ns).Delete(rc.Name); err != nil {
-		return fmt.Errorf("unable to delete rc %v: %v", inputRc.Name, err)
+	for _, rc := range list {
+		rc.Spec.Replicas = 0
+		if _, err := self.kubeClient.ReplicationControllers(ns).Update(rc); err != nil {
+			return fmt.Errorf("unable to modify replica count for rc %v: %v", inputRc.Name, err)
+		}
+		if err := self.kubeClient.ReplicationControllers(ns).Delete(rc.Name); err != nil {
+			return fmt.Errorf("unable to delete rc %v: %v", inputRc.Name, err)
+		}
 	}
 
 	return nil
