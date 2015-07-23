@@ -364,11 +364,37 @@ func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController
 }
 
 func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationController) error {
-	rc, err := self.kubeClient.ReplicationControllers(ns).Get(inputRc.Name)
-	if err != nil {
-		glog.V(2).Infof("Cannot find Replication Controller %q. Skipping deletion - %v", inputRc.Name, err)
+	var list []*api.ReplicationController
+	labelValue := "heapster"
+	labelKeys := []string{"k8s-app", "name"}
+	for _, k := range labelKeys {
+		if val, e := inputRc.Labels[k]; e {
+			labelValue = val
+		}
+	}
+	for _, labelKey := range labelKeys {
+		selector := labels.Set(map[string]string{
+			labelKey: labelValue,
+		}).AsSelector()
+		rcList, err := self.kubeClient.ReplicationControllers(ns).List(selector)
+		if err != nil {
+			glog.V(2).Infof("Cannot list RCs by label '%s=%s'. Skipping deletion - %v",
+				labelKey, labelValue, err)
+			return nil
+		}
+		for i := range rcList.Items {
+			list = append(list, &rcList.Items[i])
+		}
+	}
+	if len(list) < 1 {
+		glog.V(2).Infof("Found no RCs identified by '%s'. Skipping deletion.", labelValue)
 		return nil
 	}
+	if len(list) > 1 {
+		glog.V(2).Infof("Found multiple RCs identified by '%s'. Skipping deletion.", labelValue)
+		return fmt.Errorf("found multiple RCs identified by '%s'", labelValue)
+	}
+	rc := list[0]
 	rc.Spec.Replicas = 0
 	if _, err := self.kubeClient.ReplicationControllers(ns).Update(rc); err != nil {
 		return fmt.Errorf("unable to modify replica count for rc %v: %v", inputRc.Name, err)
