@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -m
+set -e -m
 
 CONFIG_FILE="/config/config.toml"
 API_URL="http://localhost:8086"

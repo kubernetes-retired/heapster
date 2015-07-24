@@ -1,5 +1,6 @@
 #!/bin/bash
-set -x
+
+set -e -x
 
 export GOPATH="$JENKINS_HOME/workspace/project"
 export GOBIN="$GOPATH/bin"
