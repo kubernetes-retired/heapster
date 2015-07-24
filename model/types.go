@@ -26,15 +26,22 @@ type Cluster interface {
 	// The Update operation populates the Cluster from a cache.
 	Update(cache.Cache) error
 
-	// The Get operations extract internal types from the Cluster.
+	// The GetXMetric operations extract timeseries from the Cluster.
 	// The returned time.Time values signify the latest metric timestamp in the cluster.
+	GetClusterMetric(ClusterRequest) ([]store.TimePoint, time.Time, error)
+	GetNodeMetric(NodeRequest) ([]store.TimePoint, time.Time, error)
+	GetNamespaceMetric(NamespaceRequest) ([]store.TimePoint, time.Time, error)
+	GetPodMetric(PodRequest) ([]store.TimePoint, time.Time, error)
+	GetPodContainerMetric(PodContainerRequest) ([]store.TimePoint, time.Time, error)
+	GetFreeContainerMetric(FreeContainerRequest) ([]store.TimePoint, time.Time, error)
+
+	// The normal Get operations extract information from the Cluster structure.
 	GetAvailableMetrics() []string
-	GetClusterMetric(string, time.Time) ([]store.TimePoint, time.Time, error)
-	GetNodeMetric(string, string, time.Time) ([]store.TimePoint, time.Time, error)
-	GetNamespaceMetric(string, string, time.Time) ([]store.TimePoint, time.Time, error)
-	GetPodMetric(string, string, string, time.Time) ([]store.TimePoint, time.Time, error)
-	GetPodContainerMetric(string, string, string, string, time.Time) ([]store.TimePoint, time.Time, error)
-	GetFreeContainerMetric(string, string, string, time.Time) ([]store.TimePoint, time.Time, error)
+	GetNodes() []string
+	GetNamespaces() []string
+	GetPods(string) []string
+	GetPodContainers(string, string) []string
+	GetFreeContainers(string) []string
 }
 
 // realCluster is an implementation of the Cluster interface.
@@ -48,9 +55,63 @@ type realCluster struct {
 	ClusterInfo
 }
 
-// Internal Types
-// REST consumption requires conversion to the corresponding external API types.
+// Supported metric names, used as keys for all map[string]*store.TimeStore
+const cpuLimit = "cpu-limit"
+const cpuUsage = "cpu-usage"
+const memLimit = "memory-limit"
+const memUsage = "memory-usage"
+const memWorking = "memory-working"
+const fsLimit = "fs-limit"
+const fsUsage = "fs-usage"
 
+// Request Types.
+// Used as parameters to all the Get methods of the model.
+type ClusterRequest struct {
+	MetricName string
+	Start      time.Time
+	End        time.Time
+}
+
+type NodeRequest struct {
+	NodeName   string
+	MetricName string
+	Start      time.Time
+	End        time.Time
+}
+
+type NamespaceRequest struct {
+	NamespaceName string
+	MetricName    string
+	Start         time.Time
+	End           time.Time
+}
+
+type PodRequest struct {
+	NamespaceName string
+	PodName       string
+	MetricName    string
+	Start         time.Time
+	End           time.Time
+}
+
+type PodContainerRequest struct {
+	NamespaceName string
+	PodName       string
+	ContainerName string
+	MetricName    string
+	Start         time.Time
+	End           time.Time
+}
+
+type FreeContainerRequest struct {
+	NodeName      string
+	ContainerName string
+	MetricName    string
+	Start         time.Time
+	End           time.Time
+}
+
+// Internal Types
 type InfoType struct {
 	Metrics map[string]*store.TimeStore // key: Metric Name
 	Labels  map[string]string           // key: Label
@@ -85,12 +146,3 @@ type PodInfo struct {
 type ContainerInfo struct {
 	InfoType
 }
-
-// Supported metric names, used as keys for all map[string]*store.TimeStore
-const cpuLimit = "cpu-limit"
-const cpuUsage = "cpu-usage"
-const memLimit = "memory-limit"
-const memUsage = "memory-usage"
-const memWorking = "memory-working"
-const fsLimit = "fs-limit"
-const fsUsage = "fs-usage"

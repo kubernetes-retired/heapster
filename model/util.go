@@ -145,7 +145,8 @@ func instantFromCumulativeMetric(value uint64, stamp time.Time, prev *store.Time
 	if tdelta == 0 {
 		return uint64(0), fmt.Errorf("cumulative metric timestamps are identical")
 	}
-	vdelta := (value - prev.Value.(uint64)) * 1024
+	// Divide metric by nanoseconds that have elapsed, multiply by 1000 to get an unsigned metric
+	vdelta := (value - prev.Value.(uint64)) * 1000
 
 	instaVal := vdelta / tdelta
 	prev.Value = value

@@ -265,12 +265,12 @@ func TestInstantFromCumulativeMetric(t *testing.T) {
 	// Invocation with regular arguments
 	val, err = instantFromCumulativeMetric(new_value, afterNow, oldTP)
 	assert.NoError(err)
-	assert.Equal(val, 513*1024)
+	assert.Equal(val, 513*1000)
 
 	// Second Invocation with regular arguments, prev TP has changed
 	newerVal := uint64(15900000000000)
 	val, err = instantFromCumulativeMetric(newerVal, afterNow.Add(time.Second), oldTP)
 	assert.NoError(err)
-	assert.Equal(val, 510*1024)
+	assert.Equal(val, 510*1000)
 
 }
