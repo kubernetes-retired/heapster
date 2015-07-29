@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.17.0
+- Fixes service account handling.
+- New APIs that provide insight into a kubernetes cluster - usage distribution across nodes, namespaces, pods, etc.
+
 ## 0.16.0 (7-7-2015)
 - Add new sink for GCM autoscaling.
 - Force heapster to use kubernetes v1.0 API.
