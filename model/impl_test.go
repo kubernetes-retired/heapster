@@ -374,7 +374,8 @@ func TestUpdateInfoTypeNormal(t *testing.T) {
 	// Invocation with an empty InfoType argument
 	// The new ContainerElement adds one TimePoint to each of 7 Metrics
 	newer_cme := cmeFactory()
-	newer_cme.Stats.Timestamp = new_cme.Stats.Timestamp.Add(-time.Hour)
+	newer_cme.Stats.Timestamp = new_cme.Stats.Timestamp.Add(time.Hour)
+	newer_cme.Stats.Cpu.Usage.Total = new_cme.Stats.Cpu.Usage.Total + uint64(3600000000)
 	new_ce := containerElementFactory([]*cache.ContainerMetricElement{newer_cme})
 	stamp, err = cluster.updateInfoType(&new_infotype, new_ce)
 	assert.NoError(err)
@@ -392,7 +393,13 @@ func TestUpdateInfoTypeNormal(t *testing.T) {
 
 	// Invocation with an existing infotype as argument
 	// The new ContainerElement adds two TimePoints to each Metric
-	new_ce = containerElementFactory(nil)
+	newer_cme2 := cmeFactory()
+	newer_cme2.Stats.Timestamp = newer_cme.Stats.Timestamp.Add(time.Hour)
+	newer_cme2.Stats.Cpu.Usage.Total = newer_cme.Stats.Cpu.Usage.Total + uint64(3600000000)
+	newer_cme3 := cmeFactory()
+	newer_cme3.Stats.Timestamp = newer_cme2.Stats.Timestamp.Add(time.Hour)
+	newer_cme3.Stats.Cpu.Usage.Total = newer_cme2.Stats.Cpu.Usage.Total + uint64(360000000)
+	new_ce = containerElementFactory([]*cache.ContainerMetricElement{newer_cme3, newer_cme2})
 	stamp, err = cluster.updateInfoType(&new_infotype, new_ce)
 	assert.NoError(err)
 	assert.Empty(new_infotype.Labels)
@@ -535,18 +542,18 @@ func TestUpdate(t *testing.T) {
 	actual := mem_work_ts.Get(zeroTime, zeroTime)
 	assert.Len(actual, 2)
 	// Datapoint present in both nodes, added up to 1024
-	assert.Equal(actual[0].Value.(uint64), uint64(1204))
+	assert.Equal(actual[1].Value.(uint64), uint64(1204))
 	// Datapoint present in only one node
-	assert.Equal(actual[1].Value.(uint64), uint64(602))
+	assert.Equal(actual[0].Value.(uint64), uint64(602))
 
 	assert.NotNil(cluster.Metrics[memUsage])
 	mem_usage_ts := *(cluster.Metrics[memUsage])
 	actual = mem_usage_ts.Get(zeroTime, zeroTime)
 	assert.Len(actual, 2)
 	// Datapoint present in both nodes, added up to 10000
-	assert.Equal(actual[0].Value.(uint64), uint64(10000))
+	assert.Equal(actual[1].Value.(uint64), uint64(10000))
 	// Datapoint present in only one node
-	assert.Equal(actual[1].Value.(uint64), uint64(5000))
+	assert.Equal(actual[0].Value.(uint64), uint64(5000))
 
 	// Assert Kubernetes Metric aggregation up to namespaces
 	ns := cluster.Namespaces["test"]
@@ -1075,9 +1082,9 @@ func containerElementFactory(cmes []*cache.ContainerMetricElement) *cache.Contai
 		// If the argument is nil, generate two CMEs
 		cme_1 := cmeFactory()
 		cme_2 := cmeFactory()
-		for cme_1.Stats.Timestamp == cme_2.Stats.Timestamp {
+		if !cme_1.Stats.Timestamp.After(cme_2.Stats.Timestamp) {
 			// Ensure random but different timestamps
-			cme_2 = cmeFactory()
+			cme_2.Stats.Timestamp = cme_1.Stats.Timestamp.Add(-2 * time.Minute)
 		}
 		metrics = []*cache.ContainerMetricElement{cme_1, cme_2}
 	} else {
@@ -1150,6 +1157,8 @@ func cacheFactory() cache.Cache {
 	cme_4.Stats.Timestamp = cme_3.Stats.Timestamp
 
 	cme_5 := cmeFactory()
+	cme_5.Stats.Timestamp = cme_4.Stats.Timestamp.Add(time.Hour)
+	cme_5.Stats.Cpu.Usage.Total = cme_4.Stats.Cpu.Usage.Total + uint64(3600000000000)
 
 	// Generate a pod with two containers, and a pod without any containers
 	container1 := source_api.Container{
@@ -1200,7 +1209,7 @@ func cacheFactory() cache.Cache {
 		Name:     "/",
 		Hostname: "hostname3",
 		Spec:     *cme_4.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_4.Stats, cme_5.Stats},
+		Stats:    []*cadvisor.ContainerStats{cme_5.Stats, cme_4.Stats},
 	}
 	// Generate a free container
 	free_container := source_api.Container{

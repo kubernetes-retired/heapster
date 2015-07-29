@@ -94,7 +94,7 @@ func popTPSlice(tps_ptr *[]store.TimePoint) *store.TimePoint {
 }
 
 // addMatchingTimeseries performs addition over two timeseries with unique timestamps.
-// addMatchingTimeseries returns a []TimePoint of the resulting aggregated.
+// addMatchingTimeseries returns a []TimePoint of the resulting aggregated timeseries.
 // Assumes time-descending order of both []TimePoint parameters and the return slice.
 func addMatchingTimeseries(left []store.TimePoint, right []store.TimePoint) []store.TimePoint {
 	var cur_left *store.TimePoint
@@ -141,11 +141,14 @@ func instantFromCumulativeMetric(value uint64, stamp time.Time, prev *store.Time
 	if prev == nil {
 		return uint64(0), fmt.Errorf("unable to calculate instant metric with nil previous TimePoint")
 	}
-	tdelta := uint64(stamp.Sub(prev.Timestamp).Nanoseconds())
-	if tdelta == 0 {
-		return uint64(0), fmt.Errorf("cumulative metric timestamps are identical")
+	if !stamp.After(prev.Timestamp) {
+		return uint64(0), fmt.Errorf("the previous TimePoint is not earlier in time than the newer one")
 	}
+	tdelta := uint64(stamp.Sub(prev.Timestamp).Nanoseconds())
 	// Divide metric by nanoseconds that have elapsed, multiply by 1000 to get an unsigned metric
+	if value < prev.Value.(uint64) {
+		return uint64(0), fmt.Errorf("the provided value %d is less than the previous one %d", value, prev.Value.(uint64))
+	}
 	vdelta := (value - prev.Value.(uint64)) * 1000
 
 	instaVal := vdelta / tdelta
