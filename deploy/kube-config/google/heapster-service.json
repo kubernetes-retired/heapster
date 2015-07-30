@@ -1,22 +1,23 @@
 {
-  "kind": "Service",
-  "apiVersion": "v1",
-  "metadata": {
-    "name": "monitoring-heapster",
-    "labels": {
-      "kubernetes.io/cluster-service": "true",
-      "name": "monitoring-heapster"
+    "apiVersion": "v1",
+    "kind": "Service",
+    "metadata": {
+	"labels": {
+	    "kubernetes.io/cluster-service": "true",
+	    "kubernetes.io/name": "Heapster"
+	},
+	"name": "heapster",
+	"namespace": "kube-system"
+    },
+    "spec": {
+	"ports": [
+	    {
+		"port": 80,
+		"targetPort": 8082
+	    }
+	],
+	"selector": {
+	    "k8s-app": "heapster"
+	}
     }
-  },
-  "spec": {
-    "ports": [
-      {
-        "port": 80,
-        "targetPort": 8082
-      }
-    ],
-    "selector": {
-      "name": "heapster"
-    }
-  }
 }

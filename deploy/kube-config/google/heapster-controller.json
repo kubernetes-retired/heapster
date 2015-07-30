@@ -1,28 +1,33 @@
 {
-    "kind": "ReplicationController",
     "apiVersion": "v1",
+    "kind": "ReplicationController",
     "metadata": {
-	"name": "monitoring-heapster-controller",
 	"labels": {
-	    "name": "heapster"
-	}
+	    "k8s-app" : "heapster",
+	    "name": "heapster",
+	    "version": "v6"
+	},
+	"name": "heapster",
+	"namespace": "kube-system"
     },
     "spec": {
 	"replicas": 1,
 	"selector": {
-	    "name": "heapster"
+	    "k8s-app": "heapster",
+	    "version": "v6"
 	},
 	"template": {
 	    "metadata": {
 		"labels": {
-		    "name": "heapster"
+		    "k8s-app": "heapster",
+		    "version": "v6"
 		}
 	    },
 	    "spec": {
 		"containers": [
 		    {
-			"name": "heapster",
 			"image": "kubernetes/heapster:v0.17.0",
+			"name": "heapster",
 			"command": [
 			    "/heapster",
 			    "--source=kubernetes:''",
