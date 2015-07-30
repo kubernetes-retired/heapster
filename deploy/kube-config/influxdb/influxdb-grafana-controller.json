@@ -1,59 +1,47 @@
 {
-  "apiVersion": "v1",
-  "kind": "ReplicationController",
-  "metadata": {
-    "labels": {
-      "name": "influxGrafana"
+    "apiVersion": "v1",
+    "kind": "ReplicationController",
+    "metadata": {
+	"labels": {
+	    "name": "influxGrafana"
+	},
+	"name": "infludb-grafana",
+	"namespace": "kube-system"
     },
-    "name": "monitoring-influx-grafana-controller"
-  },
-  "spec": {
-    "replicas": 1,
-    "selector": {
-      "name": "influxGrafana"
-    },
-    "template": {
-      "metadata": {
-        "labels": {
-          "name": "influxGrafana"
-        }
-      },
-      "spec": {
-        "containers": [
-          {
-            "image": "kubernetes/heapster_influxdb:v0.3",
-            "name": "influxdb",
-            "ports": [
-              {
-                "containerPort": 8083,
-                "hostPort": 8083
-              },
-              {
-                "containerPort": 8086,
-                "hostPort": 8086
-              }
-            ]
-          },
-          {
-            "env": [
-              {
-                "name": "INFLUXDB_EXTERNAL_URL",
-                "value": "/api/v1/proxy/namespaces/default/services/monitoring-grafana/db/"
-              },
-              {
-                "name": "INFLUXDB_HOST",
-                "value": "monitoring-influxdb"
-              },
-              {
-                "name": "INFLUXDB_PORT",
-                "value": "80"
-              }
-            ],
-            "image": "kubernetes/heapster_grafana:v0.7",
-            "name": "grafana"
-          }
-        ]
-      }
+    "spec": {
+	"replicas": 1,
+	"selector": {
+	    "name": "influxGrafana"
+	},
+	"template": {
+	    "metadata": {
+		"labels": {
+		    "name": "influxGrafana"
+		}
+	    },
+	    "spec": {
+		"containers": [
+		    {
+			"image": "kubernetes/heapster_influxdb:v0.3",
+			"name": "influxdb",
+			"ports": [
+			    {
+				"containerPort": 8083,
+				"hostPort": 8083
+			    },
+			    {
+				"containerPort": 8086,
+				"hostPort": 8086
+			    }
+			]
+		    },
+		    {
+			"image": "grafana/grafana:2.1.0",
+			"name": "grafana"
+		    }
+		]
+	    }          
+	}
     }
-  }
 }
+
