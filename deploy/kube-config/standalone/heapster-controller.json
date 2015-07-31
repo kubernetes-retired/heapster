@@ -30,7 +30,7 @@
 			"name": "heapster",
 			"command": [
 			    "/heapster",
-			    "--source=kubernetes:''"
+			    "--source=kubernetes"
 			]
 		    }
 		]
