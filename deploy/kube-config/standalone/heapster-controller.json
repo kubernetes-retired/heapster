@@ -3,19 +3,24 @@
     "kind": "ReplicationController",
     "metadata": {
 	"labels": {
-	    "name": "heapster"
+	    "k8s-app" : "heapster",
+	    "name": "heapster",
+	    "version": "v6"
 	},
-	"name": "monitoring-heapster"
+	"name": "heapster",
+	"namespace": "kube-system"
     },
     "spec": {
 	"replicas": 1,
 	"selector": {
-	    "name": "heapster"
+	    "k8s-app": "heapster",
+	    "version": "v6"
 	},
 	"template": {
 	    "metadata": {
 		"labels": {
-		    "name": "heapster"
+		    "k8s-app": "heapster",
+		    "version": "v6"
 		}
 	    },
 	    "spec": {
