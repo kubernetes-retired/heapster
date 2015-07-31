@@ -37,8 +37,7 @@ func (ds *DayStore) DayMax() uint64 {
 	allTPs := ds.DayMaxima.Get(zeroTime, zeroTime)
 	curMax := uint64(0)
 	for _, tp := range allTPs {
-		newVal := tp.Value.(uint64)
-		if newVal > curMax {
+		if newVal := tp.Value.(uint64); newVal > curMax {
 			curMax = newVal
 		}
 	}
