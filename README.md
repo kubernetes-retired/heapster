@@ -1,4 +1,7 @@
 # Heapster
+
+[![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/heapster?status.svg)](https://godoc.org/github.com/GoogleCloudPlatform/heapster) [![Build Status](https://travis-ci.org/GoogleCloudPlatform/heapster.svg?branch=master)](https://travis-ci.org/GoogleCloudPlatform/heapster)
+
 Heapster enables Container Cluster Monitoring. 
 
 Internally, heapster uses [cAdvisor](https://github.com/google/cadvisor) for compute resource usage metrics.
