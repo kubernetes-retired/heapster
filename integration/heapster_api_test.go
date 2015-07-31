@@ -344,10 +344,10 @@ func setSinks(fm kubeFramework, svc *kube_api.Service, sinks []string) error {
 func runSinksTest(fm kubeFramework, svc *kube_api.Service) error {
 	for _, newSinks := range [...][]string{
 		[]string{},
-		//[]string{
-		//	"gcm",
-		//},
-		//[]string{},
+		[]string{
+			"gcm",
+		},
+		[]string{},
 	} {
 		if err := setSinks(fm, svc, newSinks); err != nil {
 			return err
