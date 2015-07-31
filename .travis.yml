@@ -4,7 +4,7 @@ go:
  - 1.4
 install:
  - go get golang.org/x/tools/cmd/vet
- - go get github.com/kr/godep
+ - go get github.com/tools/godep
  - go get github.com/axw/gocov/gocov
  - go get golang.org/x/tools/cmd/cover
  - go get github.com/mattn/goveralls
