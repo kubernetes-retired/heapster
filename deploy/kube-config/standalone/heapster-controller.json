@@ -24,6 +24,14 @@
 		}
 	    },
 	    "spec": {
+		"volumes": [
+		    {
+			"name": "ssl-certs",
+			"hostPath": {
+			    "path": "/etc/ssl/certs"
+			}
+		    }
+		],
 		"containers": [
 		    {
 			"image": "kubernetes/heapster:v0.17.0",
@@ -31,6 +39,13 @@
 			"command": [
 			    "/heapster",
 			    "--source=kubernetes"
+			],
+			"volumeMounts": [
+			    {
+				"name": "ssl-certs",
+				"readOnly": true,
+				"mountPath": "/etc/ssl/certs"
+			    }
 			]
 		    }
 		]
