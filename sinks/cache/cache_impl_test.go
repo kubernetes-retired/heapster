@@ -42,6 +42,27 @@ func TestFuzz(t *testing.T) {
 	assert.NotEmpty(cache.GetPods(zeroTime, zeroTime))
 }
 
+func TestGC(t *testing.T) {
+	cache := NewCache(time.Millisecond)
+	var (
+		pods       []source_api.Pod
+		containers []source_api.Container
+	)
+	f := fuzz.New().NumElements(2, 10).NilChance(0)
+	f.Fuzz(&pods)
+	f.Fuzz(&containers)
+	assert := assert.New(t)
+	assert.NoError(cache.StorePods(pods))
+	assert.NoError(cache.StoreContainers(containers))
+	zeroTime := time.Time{}
+	assert.NotEmpty(cache.GetFreeContainers(zeroTime, zeroTime))
+	assert.NotEmpty(cache.GetPods(zeroTime, zeroTime))
+	// Expect all data to be deleted after 2 seconds.
+	time.Sleep(10 * time.Second)
+	assert.Empty(cache.GetFreeContainers(zeroTime, zeroTime))
+	assert.Empty(cache.GetPods(zeroTime, zeroTime))
+}
+
 func getContainer(name string) source_api.Container {
 	f := fuzz.New().NumElements(2, 10).NilChance(0)
 	containerSpec := cadvisor.ContainerSpec{
