@@ -23,6 +23,7 @@ import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
@@ -560,7 +561,7 @@ func TestUpdate(t *testing.T) {
 	mem_work_ts = *(ns.Metrics[memWorking])
 	actual = mem_work_ts.Get(zeroTime, zeroTime)
 	assert.Len(actual, 1)
-	assert.Equal(actual[0].Value.(uint64), uint64(1204))
+	assert.Equal(actual[0].Value.(uint64), uint64(2408))
 
 	// Invocation with no fresh data - expect no change in cluster
 	assert.NoError(cluster.Update(source_cache))
@@ -999,11 +1000,13 @@ func verifyCacheFactoryCluster(clinfo *ClusterInfo, t *testing.T) {
 
 	assert.NotNil(namespace.Pods)
 	pod1_ptr := namespace.Pods["pod1"]
+	require.NotNil(t, pod1_ptr)
 	assert.Equal(pod1_ptr, node2.Pods["pod1"])
 	assert.Len(pod1_ptr.Containers, 2)
 	pod2_ptr := namespace.Pods["pod2"]
+	require.NotNil(t, pod2_ptr)
 	assert.Equal(pod2_ptr, node3.Pods["pod2"])
-	assert.Len(pod2_ptr.Containers, 0)
+	assert.Len(pod2_ptr.Containers, 2)
 }
 
 // Factory Functions
@@ -1194,7 +1197,7 @@ func cacheFactory() cache.Cache {
 				Hostname:  "hostname3",
 				Status:    "Running",
 			},
-			Containers: []source_api.Container{},
+			Containers: containers,
 		},
 	}
 

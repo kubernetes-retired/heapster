@@ -21,11 +21,13 @@ import (
 
 	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/store"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 )
 
 const rootContainer = "/"
 
 type containerElement struct {
+	lastUpdated time.Time
 	Metadata
 	metrics store.TimeStore
 }
@@ -55,7 +57,7 @@ type realCache struct {
 	eventUIDs map[string]struct{}
 	// Events store.
 	events store.TimeStore
-	lock   sync.RWMutex
+	sync.RWMutex
 }
 
 func (rc *realCache) newContainerElement() *containerElement {
@@ -64,13 +66,49 @@ func (rc *realCache) newContainerElement() *containerElement {
 	}
 }
 
-func (rc *realCache) newpodElement() *podElement {
+func (rc *realCache) isTooOld(c *containerElement) bool {
+	if time.Now().Sub(c.lastUpdated) >= rc.bufferDuration {
+		return true
+	}
+	return false
+}
+
+func (rc *realCache) runGC() {
+	rc.Lock()
+	defer rc.Unlock()
+	for podName, podElem := range rc.pods {
+		for contName, contElem := range podElem.containers {
+			if rc.isTooOld(contElem) {
+				delete(podElem.containers, contName)
+			}
+		}
+		if len(podElem.containers) == 0 {
+			delete(rc.pods, podName)
+		}
+	}
+
+	for nodeName, nodeElem := range rc.nodes {
+		if rc.isTooOld(nodeElem.node) {
+			delete(rc.nodes, nodeName)
+			// There is nothing to do for this node, since the entire node element
+			// has been deleted.
+			continue
+		}
+		for contName, contElem := range nodeElem.freeContainers {
+			if rc.isTooOld(contElem) {
+				delete(nodeElem.freeContainers, contName)
+			}
+		}
+	}
+}
+
+func (rc *realCache) newPodElement() *podElement {
 	return &podElement{
 		containers: make(map[string]*containerElement),
 	}
 }
 
-func (rc *realCache) newnodeElement() *nodeElement {
+func (rc *realCache) newNodeElement() *nodeElement {
 	return &nodeElement{
 		node:           rc.newContainerElement(),
 		freeContainers: make(map[string]*containerElement),
@@ -97,12 +135,12 @@ func storeSpecAndStats(ce *containerElement, c *source_api.Container) {
 }
 
 func (rc *realCache) StorePods(pods []source_api.Pod) error {
-	rc.lock.Lock()
-	defer rc.lock.Unlock()
+	rc.Lock()
+	defer rc.Unlock()
 	for _, pod := range pods {
 		pe, ok := rc.pods[pod.ID]
 		if !ok {
-			pe = rc.newpodElement()
+			pe = rc.newPodElement()
 			pe.Metadata = Metadata{
 				Name:         pod.Name,
 				Namespace:    pod.Namespace,
@@ -126,20 +164,21 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 				Hostname: cont.Hostname,
 			}
 			storeSpecAndStats(ce, cont)
+			ce.lastUpdated = time.Now()
 		}
 	}
 	return nil
 }
 
 func (rc *realCache) StoreContainers(containers []source_api.Container) error {
-	rc.lock.Lock()
-	defer rc.lock.Unlock()
+	rc.Lock()
+	defer rc.Unlock()
 
 	for idx := range containers {
 		cont := &containers[idx]
 		ne, ok := rc.nodes[cont.Hostname]
 		if !ok {
-			ne = rc.newnodeElement()
+			ne = rc.newNodeElement()
 			rc.nodes[cont.Hostname] = ne
 		}
 		var ce *containerElement
@@ -163,13 +202,14 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 			}
 		}
 		storeSpecAndStats(ce, cont)
+		ce.lastUpdated = time.Now()
 	}
 	return nil
 }
 
 func (rc *realCache) GetPods(start, end time.Time) []*PodElement {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
+	rc.RLock()
+	defer rc.RUnlock()
 	var result []*PodElement
 	for _, pe := range rc.pods {
 		podElement := &PodElement{
@@ -193,8 +233,8 @@ func (rc *realCache) GetPods(start, end time.Time) []*PodElement {
 }
 
 func (rc *realCache) GetNodes(start, end time.Time) []*ContainerElement {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
+	rc.RLock()
+	defer rc.RUnlock()
 	var result []*ContainerElement
 	for _, ne := range rc.nodes {
 		ce := &ContainerElement{
@@ -211,8 +251,8 @@ func (rc *realCache) GetNodes(start, end time.Time) []*ContainerElement {
 }
 
 func (rc *realCache) GetFreeContainers(start, end time.Time) []*ContainerElement {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
+	rc.RLock()
+	defer rc.RUnlock()
 	var result []*ContainerElement
 	for _, ne := range rc.nodes {
 		for _, ce := range ne.freeContainers {
@@ -231,8 +271,8 @@ func (rc *realCache) GetFreeContainers(start, end time.Time) []*ContainerElement
 }
 
 func (rc *realCache) StoreEvents(e []*Event) error {
-	rc.lock.Lock()
-	defer rc.lock.Unlock()
+	rc.Lock()
+	defer rc.Unlock()
 	for idx := range e {
 		uid := e[idx].UID
 		if uid == "" {
@@ -253,8 +293,8 @@ func (rc *realCache) StoreEvents(e []*Event) error {
 }
 
 func (rc *realCache) GetEvents(start, end time.Time) []*Event {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
+	rc.RLock()
+	defer rc.RUnlock()
 	var result []*Event
 	timePoints := rc.events.Get(start, end)
 	for idx := range timePoints {
@@ -264,11 +304,13 @@ func (rc *realCache) GetEvents(start, end time.Time) []*Event {
 }
 
 func NewCache(bufferDuration time.Duration) Cache {
-	return &realCache{
+	rc := &realCache{
 		pods:           make(map[string]*podElement),
 		nodes:          make(map[string]*nodeElement),
 		events:         store.NewGCStore(store.NewTimeStore(), bufferDuration),
 		eventUIDs:      make(map[string]struct{}),
 		bufferDuration: bufferDuration,
 	}
+	go util.Until(rc.runGC, time.Second, util.NeverStop)
+	return rc
 }
