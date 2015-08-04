@@ -521,7 +521,7 @@ func TestUpdate(t *testing.T) {
 		cluster      = newRealCluster(newTimeStore, time.Minute)
 		source_cache = cacheFactory()
 		assert       = assert.New(t)
-		empty_cache  = cache.NewCache(24 * time.Hour)
+		empty_cache  = cache.NewCache(24*time.Hour, time.Hour)
 		zeroTime     = time.Time{}
 	)
 
@@ -1147,7 +1147,7 @@ func podElementFactory() *cache.PodElement {
 // The cache contains two pods, one with two containers and one without any containers.
 // The cache also contains a free container and a "machine"-tagged container.
 func cacheFactory() cache.Cache {
-	source_cache := cache.NewCache(24 * time.Hour)
+	source_cache := cache.NewCache(24*time.Hour, time.Hour)
 
 	// Generate Container CMEs - same timestamp for aggregation
 	cme_1 := cmeFactory()
