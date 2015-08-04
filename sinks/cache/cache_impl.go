@@ -32,6 +32,7 @@ type containerElement struct {
 }
 
 type podElement struct {
+	lastUpdated time.Time
 	Metadata
 	// map of container name to container element.
 	containers map[string]*containerElement
@@ -61,8 +62,8 @@ func (rc *realCache) newContainerElement() *containerElement {
 	}
 }
 
-func (rc *realCache) isTooOld(c *containerElement) bool {
-	if time.Now().Sub(c.lastUpdated) >= rc.bufferDuration {
+func (rc *realCache) isTooOld(lastUpdated time.Time) bool {
+	if time.Now().Sub(lastUpdated) >= rc.bufferDuration {
 		return true
 	}
 	return false
@@ -73,24 +74,24 @@ func (rc *realCache) runGC() {
 	defer rc.Unlock()
 	for podName, podElem := range rc.pods {
 		for contName, contElem := range podElem.containers {
-			if rc.isTooOld(contElem) {
+			if rc.isTooOld(contElem.lastUpdated) {
 				delete(podElem.containers, contName)
 			}
 		}
-		if len(podElem.containers) == 0 {
+		if rc.isTooOld(podElem.lastUpdated) {
 			delete(rc.pods, podName)
 		}
 	}
 
 	for nodeName, nodeElem := range rc.nodes {
-		if rc.isTooOld(nodeElem.node) {
+		if rc.isTooOld(nodeElem.node.lastUpdated) {
 			delete(rc.nodes, nodeName)
 			// There is nothing to do for this node, since the entire node element
 			// has been deleted.
 			continue
 		}
 		for contName, contElem := range nodeElem.freeContainers {
-			if rc.isTooOld(contElem) {
+			if rc.isTooOld(contElem.lastUpdated) {
 				delete(nodeElem.freeContainers, contName)
 			}
 		}
@@ -161,6 +162,7 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 			storeSpecAndStats(ce, cont)
 			ce.lastUpdated = time.Now()
 		}
+		pe.lastUpdated = time.Now()
 	}
 	return nil
 }
@@ -265,12 +267,12 @@ func (rc *realCache) GetFreeContainers(start, end time.Time) []*ContainerElement
 	return result
 }
 
-func NewCache(bufferDuration time.Duration) Cache {
+func NewCache(bufferDuration, gcDuration time.Duration) Cache {
 	rc := &realCache{
 		pods:           make(map[string]*podElement),
 		nodes:          make(map[string]*nodeElement),
 		bufferDuration: bufferDuration,
 	}
-	go util.Until(rc.runGC, time.Second, util.NeverStop)
+	go util.Until(rc.runGC, gcDuration, util.NeverStop)
 	return rc
 }

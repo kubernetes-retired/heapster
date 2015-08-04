@@ -55,7 +55,7 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 	return &realManager{
 		sources:     sources,
 		sinkManager: sinkManager,
-		cache:       cache.NewCache(bufferDuration),
+		cache:       cache.NewCache(bufferDuration, time.Minute),
 		lastSync:    time.Now(),
 		resolution:  res,
 		decoder:     sink_api.NewDecoder(),
