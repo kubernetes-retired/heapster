@@ -29,6 +29,7 @@ import (
 	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	apiErrors "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 )
@@ -341,15 +342,28 @@ func setSinks(fm kubeFramework, svc *kube_api.Service, sinks []string) error {
 		Do().Error()
 }
 
+func getErrorCauses(err error) string {
+	serr, ok := err.(*apiErrors.StatusError)
+	if !ok {
+		return ""
+	}
+	var causes []string
+	for _, c := range serr.ErrStatus.Details.Causes {
+		causes = append(causes, c.Message)
+	}
+	return strings.Join(causes, ", ")
+}
+
 func runSinksTest(fm kubeFramework, svc *kube_api.Service) error {
 	for _, newSinks := range [...][]string{
 		[]string{},
-		//[]string{
-		//	"gcm",
-		//},
-		//[]string{},
+		[]string{
+			"gcm",
+		},
+		[]string{},
 	} {
 		if err := setSinks(fm, svc, newSinks); err != nil {
+			glog.Errorf("Could not set sinks. Causes: %s", getErrorCauses(err))
 			return err
 		}
 		sinks, err := getSinks(fm, svc)
