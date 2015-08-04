@@ -31,6 +31,16 @@ type Metadata struct {
 	ExternalID   string
 }
 
+type Event struct {
+	Metadata
+	// Detailed description of the event.
+	Message string
+	// The source component that generated the event.
+	Source string
+	// The timestamp at which the event was generated.
+	Timestamp time.Time
+}
+
 type ContainerMetricElement struct {
 	Spec  *cadvisor_api.ContainerSpec
 	Stats *cadvisor_api.ContainerStats
@@ -52,7 +62,12 @@ type PodElement struct {
 // NodeContainerName is the container name assigned to node level metrics.
 const NodeContainerName = "machine"
 
+type EventsCache interface {
+	StoreEvents([]*Event) error
+}
+
 type Cache interface {
+	EventsCache
 	StorePods([]source_api.Pod) error
 	StoreContainers([]source_api.Container) error
 	// TODO: Handle events.
@@ -73,4 +88,9 @@ type Cache interface {
 	// If 'end' is zero, it returns all the elements from 'start'.
 	// If both 'start' and 'end' are zero, it returns all the elements in the cache.
 	GetFreeContainers(start, end time.Time) []*ContainerElement
+	// GetEvents returns a list of events in the cache between 'start' and 'end.
+	// If 'start' is zero, it returns all the events up until 'end'.
+	// If 'end' is zero, it returns all the events from 'start'.
+	// If both 'start' and 'end' are zero, it returns all the events in the cache.
+	GetEvents(start, end time.Time) []*Event
 }

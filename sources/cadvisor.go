@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
+	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
@@ -112,7 +113,7 @@ func (cs *cadvisorSource) Name() string {
 	return "Cadvisor Source"
 }
 
-func NewCadvisorSources(uri *url.URL) ([]api.Source, error) {
+func NewCadvisorSources(uri *url.URL, _ cache.Cache) ([]api.Source, error) {
 	switch uri.Path {
 	case "coreos", "fleet":
 		return newCoreosSources(uri.Query())

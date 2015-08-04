@@ -28,6 +28,8 @@ type TimeStore interface {
 	// If 'start' is zero, it returns all the elements up until 'end'.
 	// If 'end' is zero, it returns all the elements from 'start'.
 	// If both 'start' and 'end' are zero, it returns all the elements in the store.
+	// Note: Returns data in reverse chronological order -
+	// Latest element will be the first element in the slice.
 	Get(start, end time.Time) []TimePoint
 	// Delete removes all elements that were previously stored with timestamps
 	// between 'start' and 'end'.

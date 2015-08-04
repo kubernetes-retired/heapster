@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/testapi"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
@@ -36,7 +37,8 @@ func TestEventsBasic(t *testing.T) {
 	server := httptest.NewServer(&handler)
 	defer server.Close()
 	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Version()})
-	source := NewKubeEvents(client)
+	cache := cache.NewCache(time.Hour)
+	source := NewKubeEvents(client, cache)
 	_, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, source.DebugInfo())

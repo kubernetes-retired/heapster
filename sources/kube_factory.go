@@ -21,6 +21,7 @@ import (
 	"strconv"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
+	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
 	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
@@ -72,7 +73,7 @@ func getConfigOverrides(uri *url.URL) (*kubeClientCmd.ConfigOverrides, error) {
 	return &kubeConfigOverride, nil
 }
 
-func CreateKubeSources(uri *url.URL) ([]api.Source, error) {
+func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 	var (
 		kubeConfig *kube_client.Config
 		err        error
@@ -181,7 +182,7 @@ func CreateKubeSources(uri *url.URL) ([]api.Source, error) {
 
 	kubePodsSource := NewKubePodMetrics(kubeletPort, kubeletApi, nodesApi, newPodsApi(kubeClient))
 	kubeNodeSource := NewKubeNodeMetrics(kubeletPort, kubeletApi, nodesApi)
-	kubeEventsSource := NewKubeEvents(kubeClient)
+	kubeEventsSource := NewKubeEvents(kubeClient, c)
 
 	return []api.Source{kubePodsSource, kubeNodeSource, kubeEventsSource}, nil
 }

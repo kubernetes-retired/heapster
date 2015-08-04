@@ -18,10 +18,11 @@ import (
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/heapster/extpoints"
+	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	"github.com/GoogleCloudPlatform/heapster/sources/api"
 )
 
-func newSources() ([]api.Source, error) {
+func newSources(c cache.Cache) ([]api.Source, error) {
 	var sources []api.Source
 	for _, u := range argSources {
 		factory := extpoints.SourceFactories.Lookup(u.Key)
@@ -29,7 +30,7 @@ func newSources() ([]api.Source, error) {
 			return nil, fmt.Errorf("Unknown source: %s", u.Key)
 		}
 
-		createdSources, err := factory(&u.Val)
+		createdSources, err := factory(&u.Val, c)
 		if err != nil {
 			return nil, err
 		}
