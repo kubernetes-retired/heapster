@@ -37,7 +37,7 @@ var (
 	argPollDuration    = flag.Duration("poll_duration", 10*time.Second, "The frequency at which heapster will poll for stats")
 	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats. Acceptable values are in the range [1 second, 'poll_duration')")
 	argAlignStats      = flag.Bool("align_stats", false, "Whether to align timestamps of metrics to multiplicity of 'stats_resolution'")
-	argCacheDuration   = flag.Duration("cache_duration", 10*time.Minute, "The total duration of the historical data that will be cached by heapster.")
+	argCacheDuration   = flag.Duration("cache_duration", 5*time.Minute, "The total duration of the historical data that will be cached by heapster.")
 	argUseModel        = flag.Bool("use_model", false, "When true, the internal model representation will be used")
 	argModelResolution = flag.Duration("model_resolution", 2*time.Minute, "The resolution of the timeseries stored in the model. Applies only if use_model is true")
 	argPort            = flag.Int("port", 8082, "port to listen to")
@@ -86,7 +86,7 @@ func validateFlags() error {
 }
 
 func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, error) {
-	c := cache.NewCache(*argCacheDuration)
+	c := cache.NewCache(*argCacheDuration, time.Minute)
 	sources, err := newSources(c)
 	if err != nil {
 		return nil, nil, nil, err
