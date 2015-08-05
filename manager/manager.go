@@ -55,7 +55,7 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 	return &realManager{
 		sources:     sources,
 		sinkManager: sinkManager,
-		cache:       cache.NewCache(bufferDuration),
+		cache:       cache.NewCache(bufferDuration, time.Minute),
 		lastSync:    time.Now(),
 		resolution:  res,
 		decoder:     sink_api.NewDecoder(),
@@ -168,6 +168,6 @@ func trimStatsForContainers(containers []*cache.ContainerElement) []*cache.Conta
 // Only keep the latest stats data point.
 func onlyKeepLatestStat(cont *cache.ContainerElement) {
 	if len(cont.Metrics) > 1 {
-		cont.Metrics = cont.Metrics[len(cont.Metrics)-1:]
+		cont.Metrics = cont.Metrics[0:1]
 	}
 }

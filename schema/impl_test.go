@@ -555,7 +555,7 @@ func podElementFactory() *cache.PodElement {
 // The cache contains two pods, one with two containers and one without any containers.
 // The cache also contains a free container and a "machine"-tagged container.
 func cacheFactory() cache.Cache {
-	source_cache := cache.NewCache(time.Hour)
+	source_cache := cache.NewCache(time.Hour, time.Hour)
 
 	// Generate 4 ContainerMetricElements
 	cme_1 := cmeFactory()

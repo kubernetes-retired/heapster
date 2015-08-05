@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.16.1 (8-4-2015)
+- Fix metrics API to export the latest point.
+- Garbage collect old elements from the cache.
+
 ## 0.16.0 (7-7-2015)
 - Add new sink for GCM autoscaling.
 - Force heapster to use kubernetes v1.0 API.

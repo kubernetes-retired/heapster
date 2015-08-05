@@ -26,7 +26,24 @@ import (
 )
 
 func TestFuzz(t *testing.T) {
-	cache := NewCache(time.Hour)
+	cache := NewCache(time.Hour, time.Second)
+	var (
+		pods       []source_api.Pod
+		containers []source_api.Container
+	)
+	f := fuzz.New().NumElements(2, 10).NilChance(0)
+	f.Fuzz(&pods)
+	f.Fuzz(&containers)
+	assert := assert.New(t)
+	assert.NoError(cache.StorePods(pods))
+	assert.NoError(cache.StoreContainers(containers))
+	time.Sleep(5 * time.Second)
+	zeroTime := time.Time{}
+	assert.NotEmpty(cache.GetPods(zeroTime, zeroTime))
+}
+
+func TestGC(t *testing.T) {
+	cache := NewCache(time.Millisecond, time.Second)
 	var (
 		pods       []source_api.Pod
 		containers []source_api.Container
@@ -40,6 +57,10 @@ func TestFuzz(t *testing.T) {
 	zeroTime := time.Time{}
 	assert.NotEmpty(cache.GetFreeContainers(zeroTime, zeroTime))
 	assert.NotEmpty(cache.GetPods(zeroTime, zeroTime))
+	// Expect all data to be deleted after 2 seconds.
+	time.Sleep(10 * time.Second)
+	assert.Empty(cache.GetFreeContainers(zeroTime, zeroTime))
+	assert.Empty(cache.GetPods(zeroTime, zeroTime))
 }
 
 func getContainer(name string) source_api.Container {
@@ -92,7 +113,7 @@ func TestRealCacheData(t *testing.T) {
 			Containers: containers,
 		},
 	}
-	cache := NewCache(time.Hour)
+	cache := NewCache(time.Hour, time.Hour)
 	assert := assert.New(t)
 	assert.NoError(cache.StorePods(pods))
 	assert.NoError(cache.StoreContainers(containers))
@@ -116,6 +137,7 @@ func TestRealCacheData(t *testing.T) {
 	for _, expectedContainer := range containers {
 		ce, exists := actualContainerMap[expectedContainer.Name]
 		assert.True(exists)
+		assert.NotNil(ce.Metrics)
 		assert.NotEmpty(ce.Metrics)
 	}
 }
