@@ -44,11 +44,11 @@ func TestLatestTimestamp(t *testing.T) {
 // TestNewInfoType tests both flows of the InfoType constructor.
 func TestNewInfoType(t *testing.T) {
 	var (
-		metrics = make(map[string]*store.TimeStore)
+		metrics = make(map[string]*store.DayStore)
 		labels  = make(map[string]string)
 		context = make(map[string]*store.TimePoint)
 	)
-	new_store := newTimeStore()
+	new_store := newDayStore()
 	metrics["test"] = &new_store
 	labels["name"] = "test"
 	assert := assert.New(t)
@@ -273,4 +273,44 @@ func TestInstantFromCumulativeMetric(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(val, 510*1000)
 
+}
+
+// TestGetStats tests all flows of getStats.
+func TestGetStats(t *testing.T) {
+	var (
+		metrics = make(map[string]*store.DayStore)
+		now     = time.Now()
+		assert  = assert.New(t)
+	)
+	newDS := newDayStore()
+	metrics[cpuLimit] = &newDS
+	metrics[cpuLimit].Put(store.TimePoint{
+		Timestamp: now,
+		Value:     uint64(50),
+	})
+	metrics[cpuLimit].Put(store.TimePoint{
+		Timestamp: now.Add(5 * time.Minute),
+		Value:     uint64(1000),
+	})
+	newDS = newDayStore()
+	metrics[memUsage] = &newDS
+	metrics[memUsage].Put(store.TimePoint{
+		Timestamp: now,
+		Value:     uint64(50),
+	})
+	metrics[memUsage].Put(store.TimePoint{
+		Timestamp: now.Add(5 * time.Minute),
+		Value:     uint64(1000),
+	})
+	info := newInfoType(metrics, nil, nil)
+
+	res := getStats(info)
+	assert.Len(res, 2)
+	assert.Equal(res[cpuLimit].Minute.Average, uint64(50))
+	assert.Equal(res[cpuLimit].Minute.Max, uint64(50))
+	assert.Equal(res[cpuLimit].Minute.Percentile, uint64(50))
+	assert.Equal(res[cpuLimit].Hour.Average, uint64(525))
+	assert.Equal(res[cpuLimit].Hour.Max, uint64(1000))
+	assert.Equal(res[cpuLimit].Hour.Percentile, uint64(1000))
+	assert.Equal(res[cpuLimit].Day.Max, res[cpuLimit].Hour.Max)
 }

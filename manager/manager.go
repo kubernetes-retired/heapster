@@ -70,14 +70,18 @@ type syncData struct {
 }
 
 func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration, c cache.Cache, useModel bool, modelRes time.Duration, align bool) (Manager, error) {
-	// TimeStore constructor passed to the cluster implementation.
-	tsConstructor := func() store.TimeStore {
-		// TODO(afein): determine default analogy of cache duration to Timestore durations.
-		return store.NewGCStore(store.NewCMAStore(), 5*bufferDuration)
-	}
 	var newCluster model.Cluster = nil
 	if useModel {
-		newCluster = model.NewCluster(tsConstructor, modelRes)
+		// TimeStore and DayStore constructors passed to the model.
+		tsConstructor := func() store.TimeStore {
+			// TODO(afein): determine default analogy of cache duration to Timestore durations.
+			return store.NewGCStore(store.NewCMAStore(), time.Hour)
+		}
+		dayConstructor := func() store.DayStore {
+			return store.NewDayStore(20 * time.Minute) // TODO(afein): fine-tune this value
+		}
+
+		newCluster = model.NewCluster(dayConstructor, tsConstructor, modelRes)
 	}
 	firstSync := time.Now()
 	if align {

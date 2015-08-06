@@ -27,280 +27,25 @@ import (
 
 // NewCluster returns a new Cluster.
 // Receives a TimeStore constructor function and a Duration resolution for stored data.
-func NewCluster(tsConstructor func() store.TimeStore, resolution time.Duration) Cluster {
-	return newRealCluster(tsConstructor, resolution)
+func NewCluster(dayConstructor func() store.DayStore, tsConstructor func() store.TimeStore, resolution time.Duration) Cluster {
+	return newRealCluster(dayConstructor, tsConstructor, resolution)
 }
 
 // newRealCluster returns a realCluster, given a TimeStore constructor and a Duration resolution.
-func newRealCluster(tsConstructor func() store.TimeStore, resolution time.Duration) *realCluster {
+func newRealCluster(dayConstructor func() store.DayStore, tsConstructor func() store.TimeStore, resolution time.Duration) *realCluster {
 	cinfo := ClusterInfo{
 		InfoType:   newInfoType(nil, nil, nil),
 		Namespaces: make(map[string]*NamespaceInfo),
 		Nodes:      make(map[string]*NodeInfo),
 	}
 	cluster := &realCluster{
-		timestamp:     time.Time{},
-		ClusterInfo:   cinfo,
-		tsConstructor: tsConstructor,
-		resolution:    resolution,
+		timestamp:      time.Time{},
+		ClusterInfo:    cinfo,
+		dayConstructor: dayConstructor,
+		tsConstructor:  tsConstructor,
+		resolution:     resolution,
 	}
 	return cluster
-}
-
-// GetClusterMetric returns a metric of the cluster entity, along with the latest timestamp.
-// GetClusterMetric returns a slice of TimePoints for that metric, with times starting AFTER the starting timestamp.
-func (rc *realCluster) GetClusterMetric(req ClusterRequest) ([]store.TimePoint, time.Time, error) {
-	var zeroTime time.Time
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	if len(rc.Metrics) == 0 {
-		return nil, zeroTime, fmt.Errorf("cluster metrics are not populated yet")
-	}
-
-	ts, ok := rc.Metrics[req.MetricName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested metric is not present")
-	}
-	res := (*ts).Get(req.Start, req.End)
-	return res, rc.timestamp, nil
-}
-
-// GetNodeMetric returns a metric of a node entity, along with the latest timestamp.
-// GetNodeMetric returns a slice of TimePoints for that metric, with times starting AFTER the starting timestamp.
-func (rc *realCluster) GetNodeMetric(req NodeRequest) ([]store.TimePoint, time.Time, error) {
-	var zeroTime time.Time
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	if len(rc.Nodes) == 0 {
-		return nil, zeroTime, fmt.Errorf("the model is not populated yet")
-	}
-	if _, ok := rc.Nodes[req.NodeName]; !ok {
-		return nil, zeroTime, fmt.Errorf("the requested node is not present in the cluster")
-	}
-	if len(rc.Nodes[req.NodeName].Metrics) == 0 {
-		return nil, zeroTime, fmt.Errorf("the requested node is not populated with metrics yet")
-	}
-	ts, ok := rc.Nodes[req.NodeName].Metrics[req.MetricName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested node metric is not present in the model")
-	}
-
-	res := (*ts).Get(req.Start, req.End)
-	return res, rc.timestamp, nil
-}
-
-// GetNamespaceMetric returns a metric of a namespace entity, along with the latest timestamp.
-// GetNamespaceMetric receives as arguments the namespace, the metric name and a start time.
-// GetNamespaceMetric returns a slice of TimePoints for that metric, with times starting AFTER the starting timestamp.
-func (rc *realCluster) GetNamespaceMetric(req NamespaceRequest) ([]store.TimePoint, time.Time, error) {
-	var zeroTime time.Time
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	if len(rc.Namespaces) == 0 {
-		return nil, zeroTime, fmt.Errorf("the model is not populated yet")
-	}
-	ns, ok := rc.Namespaces[req.NamespaceName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested namespace is not present in the cluster")
-	}
-	if len(ns.Metrics) == 0 {
-		return nil, zeroTime, fmt.Errorf("the requested namespace is not populated with metrics yet")
-	}
-	ts, ok := ns.Metrics[req.MetricName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested namespace metric is not present in the model")
-	}
-
-	res := (*ts).Get(req.Start, req.End)
-	return res, rc.timestamp, nil
-}
-
-// GetPodMetric returns a metric of a Pod entity, along with the latest timestamp.
-// GetPodMetric receives as arguments the namespace, the pod name, the metric name and a start time.
-// GetPodMetric returns a slice of TimePoints for that metric, with times starting AFTER the starting timestamp.
-func (rc *realCluster) GetPodMetric(req PodRequest) ([]store.TimePoint, time.Time, error) {
-	var zeroTime time.Time
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	if len(rc.Namespaces) == 0 {
-		return nil, zeroTime, fmt.Errorf("the model is not populated yet")
-	}
-	ns, ok := rc.Namespaces[req.NamespaceName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the specified namespace is not present in the cluster")
-	}
-	pod, ok := ns.Pods[req.PodName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested pod is not present in the specified namespace")
-	}
-	if len(pod.Metrics) == 0 {
-		return nil, zeroTime, fmt.Errorf("the requested pod is not populated with metrics yet")
-	}
-	ts, ok := pod.Metrics[req.MetricName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested pod metric is not present in the model")
-	}
-
-	res := (*ts).Get(req.Start, req.End)
-	return res, rc.timestamp, nil
-}
-
-// GetPodContainerMetric returns a metric of a container entity that belongs in a Pod, along with the latest timestamp.
-// GetPodContainerMetric receives as arguments the namespace, the pod name, the container name, the metric name and a start time.
-// GetPodContainerMetric returns a slice of TimePoints for that metric, with times starting AFTER the starting timestamp.
-func (rc *realCluster) GetPodContainerMetric(req PodContainerRequest) ([]store.TimePoint, time.Time, error) {
-	var zeroTime time.Time
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	if len(rc.Namespaces) == 0 {
-		return nil, zeroTime, fmt.Errorf("the model is not populated yet")
-	}
-	ns, ok := rc.Namespaces[req.NamespaceName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the specified namespace is not present in the cluster")
-	}
-	pod, ok := ns.Pods[req.PodName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the specified pod is not present in the specified namespace")
-	}
-	ctr, ok := pod.Containers[req.ContainerName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested container is not present under the specified pod")
-	}
-	ts, ok := ctr.Metrics[req.MetricName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested container metric is not present in the model")
-	}
-
-	res := (*ts).Get(req.Start, req.End)
-	return res, rc.timestamp, nil
-}
-
-// GetFreeContainerMetric returns a metric of a free container entity, along with the latest timestamp.
-// GetFreeContainerMetric receives as arguments the host name, the container name, the metric name and a start time.
-// GetFreeContainerMetric returns a slice of TimePoints for that metric, with times starting AFTER the starting timestamp.
-func (rc *realCluster) GetFreeContainerMetric(req FreeContainerRequest) ([]store.TimePoint, time.Time, error) {
-	var zeroTime time.Time
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-	if len(rc.Nodes) == 0 {
-		return nil, zeroTime, fmt.Errorf("the model is not populated yet")
-	}
-	node, ok := rc.Nodes[req.NodeName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested node is not present in the cluster")
-	}
-	ctr, ok := node.FreeContainers[req.ContainerName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested container is not present under the specified node")
-	}
-	ts, ok := ctr.Metrics[req.MetricName]
-	if !ok {
-		return nil, zeroTime, fmt.Errorf("the requested container metric is not present in the model")
-	}
-
-	res := (*ts).Get(req.Start, req.End)
-	return res, rc.timestamp, nil
-}
-
-// GetNodes returns the names (hostnames) of all the nodes that are available on the cluster.
-func (rc *realCluster) GetNodes() []string {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	res := make([]string, 0)
-	for key := range rc.Nodes {
-		res = append(res, key)
-	}
-	return res
-}
-
-// GetNamespaces returns the names of all the namespaces that are available on the cluster.
-func (rc *realCluster) GetNamespaces() []string {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	res := make([]string, 0)
-	for key := range rc.Namespaces {
-		res = append(res, key)
-	}
-	return res
-}
-
-// GetPods returns the names of all the pods that are available on the cluster, under a specific namespace.
-func (rc *realCluster) GetPods(namespace string) []string {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	res := make([]string, 0)
-	ns, ok := rc.Namespaces[namespace]
-	if !ok {
-		return res
-	}
-
-	for key := range ns.Pods {
-		res = append(res, key)
-	}
-	return res
-}
-
-// GetPodContainers returns the names of all the containers that are available on the cluster,
-// under a specific namespace and pod.
-func (rc *realCluster) GetPodContainers(namespace string, pod string) []string {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	res := make([]string, 0)
-	ns, ok := rc.Namespaces[namespace]
-	if !ok {
-		return res
-	}
-
-	podref, ok := ns.Pods[pod]
-	if !ok {
-		return res
-	}
-
-	for key := range podref.Containers {
-		res = append(res, key)
-	}
-	return res
-}
-
-// GetFreeContainers returns the names of all the containers that are available on the cluster,
-// under a specific node.
-func (rc *realCluster) GetFreeContainers(node string) []string {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	res := make([]string, 0)
-	noderef, ok := rc.Nodes[node]
-	if !ok {
-		return res
-	}
-
-	for key := range noderef.FreeContainers {
-		res = append(res, key)
-	}
-	return res
-}
-
-// GetAvailableMetrics returns the names of all metrics that are available on the cluster.
-// Due to metric propagation, all entities of the cluster have the same metrics.
-func (rc *realCluster) GetAvailableMetrics() []string {
-	rc.lock.RLock()
-	defer rc.lock.RUnlock()
-
-	res := make([]string, 0)
-	for key := range rc.Metrics {
-		res = append(res, key)
-	}
-	return res
 }
 
 // updateTime updates the Cluster timestamp to the specified time.
@@ -406,6 +151,7 @@ func (rc *realCluster) addPod(pod_name string, pod_uid string, namespace *Namesp
 // updateInfoType does not fail if a single ContainerMetricElement cannot be parsed.
 func (rc *realCluster) updateInfoType(info *InfoType, ce *cache.ContainerElement) (time.Time, error) {
 	var latest_time time.Time
+	var latest_creation time.Time
 
 	if ce == nil {
 		return latest_time, fmt.Errorf("cannot update InfoType from nil ContainerElement")
@@ -415,20 +161,26 @@ func (rc *realCluster) updateInfoType(info *InfoType, ce *cache.ContainerElement
 	}
 
 	for i := len(ce.Metrics) - 1; i >= 0; i-- {
-		stamp, err := rc.parseMetric(ce.Metrics[i], info.Metrics, info.Context)
+		cme := ce.Metrics[i]
+		if cme == nil {
+			continue
+		}
+		latest_creation = latestTimestamp(latest_creation, cme.Spec.CreationTime)
+		stamp, err := rc.parseMetric(cme, info.Metrics, info.Context)
 		if err != nil {
 			glog.Warningf("failed to parse ContainerMetricElement: %s", err)
 			continue
 		}
 		latest_time = latestTimestamp(latest_time, stamp)
 	}
+	info.Uptime = latest_time.Sub(latest_creation)
 	return latest_time, nil
 }
 
 // addMetricToMap adds a new metric (time-value pair) to a map of TimeStores.
 // addMetricToMap accepts as arguments the metric name, timestamp, value and the TimeStore map.
 // The timestamp argument needs to be already rounded to the cluster resolution.
-func (rc *realCluster) addMetricToMap(metric string, timestamp time.Time, value uint64, dict map[string]*store.TimeStore) error {
+func (rc *realCluster) addMetricToMap(metric string, timestamp time.Time, value uint64, dict map[string]*store.DayStore) error {
 	point := store.TimePoint{
 		Timestamp: timestamp,
 		Value:     value,
@@ -440,7 +192,7 @@ func (rc *realCluster) addMetricToMap(metric string, timestamp time.Time, value 
 			return fmt.Errorf("failed to add metric to TimeStore: %s", err)
 		}
 	} else {
-		new_ts := rc.tsConstructor()
+		new_ts := rc.dayConstructor()
 		err := new_ts.Put(point)
 		if err != nil {
 			return fmt.Errorf("failed to add metric to TimeStore: %s", err)
@@ -452,7 +204,7 @@ func (rc *realCluster) addMetricToMap(metric string, timestamp time.Time, value 
 
 // parseMetric populates a map[string]*TimeStore from a ContainerMetricElement.
 // parseMetric returns the ContainerMetricElement timestamp, iff successful.
-func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[string]*store.TimeStore, context map[string]*store.TimePoint) (time.Time, error) {
+func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[string]*store.DayStore, context map[string]*store.TimePoint) (time.Time, error) {
 	zeroTime := time.Time{}
 	if cme == nil {
 		return zeroTime, fmt.Errorf("cannot parse nil ContainerMetricElement")
@@ -471,7 +223,7 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 	// TODO(alex): refactor to avoid repetition
 	if cme.Spec.HasCpu {
 		// Append to CPU Limit metric
-		cpu_limit := cme.Spec.Cpu.Limit
+		cpu_limit := cme.Spec.Cpu.Limit * 1000 / 1024 // convert to millicores
 		err := rc.addMetricToMap(cpuLimit, roundedStamp, cpu_limit, dict)
 		if err != nil {
 			return zeroTime, fmt.Errorf("failed to add %s metric: %s", cpuLimit, err)
@@ -491,8 +243,8 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 		} else {
 			prevRoundedStamp := prevTP.Timestamp.Truncate(rc.resolution)
 
-			// check if the container was restarted since the last context timestamp
 			if cme.Spec.CreationTime.After(prevTP.Timestamp) {
+				// check if the container was restarted since the last context timestamp
 				// TODO(afein): mark as a container crash event
 				// Reset the context
 				context[cpuUsage] = &store.TimePoint{
@@ -511,8 +263,6 @@ func (rc *realCluster) parseMetric(cme *cache.ContainerMetricElement, dict map[s
 				if err != nil {
 					return zeroTime, fmt.Errorf("failed to add %s metric: %s", cpuUsage, err)
 				}
-			} else {
-				glog.Warningf("Internal Error: reached unreachable CPU Usage parsing flow")
 			}
 		}
 	}
