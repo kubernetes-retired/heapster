@@ -75,8 +75,8 @@ func TestPodsParsing(t *testing.T) {
 				Spec: kube_api.PodSpec{
 					NodeName: "test-machine-a",
 					Containers: []kube_api.Container{
-						{Name: "test1"},
-						{Name: "test2"},
+						{Name: "test1", Image: "gcr.io/test1"},
+						{Name: "test2", Image: "gcr.io/test2"},
 					},
 				},
 			},
@@ -98,8 +98,8 @@ func TestPodsParsing(t *testing.T) {
 				Spec: kube_api.PodSpec{
 					NodeName: "test-machine-b",
 					Containers: []kube_api.Container{
-						{Name: "test1"},
-						{Name: "test2"},
+						{Name: "test1", Image: "gcr.io/test1"},
+						{Name: "test2", Image: "gcr.io/test2"},
 					},
 				},
 			},
@@ -133,6 +133,7 @@ func TestPodsParsing(t *testing.T) {
 		assert.Equal(t, pod.Labels, podList.Items[i].Labels)
 		for idx, container := range pod.Containers {
 			assert.Equal(t, container.Name, podList.Items[i].Spec.Containers[idx].Name)
+			assert.Equal(t, container.Image, podList.Items[i].Spec.Containers[idx].Image)
 		}
 	}
 }

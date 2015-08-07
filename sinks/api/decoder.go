@@ -98,6 +98,8 @@ func (self *defaultDecoder) getContainerMetrics(container *source_api.Container,
 		return nil
 	}
 	labels[sinksV1Api.LabelContainerName.Key] = container.Name
+	labels[sinksV1Api.LabelContainerBaseImage.Key] = container.Image
+
 	// One metric value per data point.
 	var result []sinksV1Api.Timeseries
 	labelsAsString := util.LabelsToString(labels, ",")

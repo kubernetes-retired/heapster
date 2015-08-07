@@ -82,6 +82,7 @@ func getContainer(name string) source_api.Container {
 		Name:  name,
 		Spec:  containerSpec,
 		Stats: containerStats,
+		Image: "gcr.io/" + name,
 	}
 }
 
@@ -137,6 +138,7 @@ func TestRealCacheData(t *testing.T) {
 	for _, expectedContainer := range containers {
 		ce, exists := actualContainerMap[expectedContainer.Name]
 		assert.True(exists)
+		assert.True("gcr.io/"+expectedContainer.Name == ce.Image)
 		assert.NotNil(ce.Metrics)
 		assert.NotEmpty(ce.Metrics)
 	}

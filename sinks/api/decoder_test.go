@@ -71,6 +71,7 @@ func getContainer(name string) source_api.Container {
 	f.Fuzz(&containerStats)
 	return source_api.Container{
 		Name:  name,
+		Image: "gcr.io/" + name,
 		Spec:  containerSpec,
 		Stats: containerStats,
 	}
@@ -241,11 +242,12 @@ func TestPodLabelsProcessing(t *testing.T) {
 	}
 
 	expectedLabels := map[string]string{
-		sink_api.LabelPodId.Key:         "123",
-		sink_api.LabelPodNamespace.Key:  "test",
-		sink_api.LabelLabels.Key:        getLabelsAsString(podLabels),
-		sink_api.LabelHostname.Key:      "1.2.3.4",
-		sink_api.LabelContainerName.Key: "blah",
+		sink_api.LabelPodId.Key:              "123",
+		sink_api.LabelPodNamespace.Key:       "test",
+		sink_api.LabelLabels.Key:             getLabelsAsString(podLabels),
+		sink_api.LabelHostname.Key:           "1.2.3.4",
+		sink_api.LabelContainerName.Key:      "blah",
+		sink_api.LabelContainerBaseImage.Key: "gcr.io/blah",
 	}
 	input := source_api.AggregateData{
 		Pods: pods,
@@ -263,8 +265,9 @@ func TestPodLabelsProcessing(t *testing.T) {
 
 func TestContainerLabelsProcessing(t *testing.T) {
 	expectedLabels := map[string]string{
-		sink_api.LabelHostname.Key:      "1.2.3.4",
-		sink_api.LabelContainerName.Key: "blah",
+		sink_api.LabelHostname.Key:           "1.2.3.4",
+		sink_api.LabelContainerName.Key:      "blah",
+		sink_api.LabelContainerBaseImage.Key: "gcr.io/blah",
 	}
 	container := getContainer("blah")
 	container.Hostname = "1.2.3.4"

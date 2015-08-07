@@ -93,6 +93,8 @@ func (self *decoder) getContainerMetrics(container *cache.ContainerElement, labe
 		return nil
 	}
 	labels[LabelContainerName.Key] = container.Name
+	labels[LabelContainerBaseImage.Key] = container.Image
+
 	if _, exists := labels[LabelHostID.Key]; !exists {
 		labels[LabelHostID.Key] = container.ExternalID
 	}

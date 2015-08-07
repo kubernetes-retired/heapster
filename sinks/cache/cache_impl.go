@@ -29,6 +29,7 @@ const rootContainer = "/"
 type containerElement struct {
 	lastUpdated time.Time
 	Metadata
+	Image   string
 	metrics store.TimeStore
 }
 
@@ -200,6 +201,7 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 					Hostname:   cont.Hostname,
 					ExternalID: cont.ExternalID,
 				}
+				ce.Image = cont.Image
 				ne.freeContainers[cont.Name] = ce
 			}
 		}
@@ -260,6 +262,7 @@ func (rc *realCache) GetFreeContainers(start, end time.Time) []*ContainerElement
 		for _, ce := range ne.freeContainers {
 			containerElement := &ContainerElement{
 				Metadata: ce.Metadata,
+				Image:    ce.Image,
 			}
 			metrics := ce.metrics.Get(start, end)
 			for idx := range metrics {

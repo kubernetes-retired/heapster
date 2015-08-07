@@ -54,12 +54,17 @@ var (
 		Key:         "host_id",
 		Description: "Identifier specific to a host. Set by cloud provider or user",
 	}
+	LabelContainerBaseImage = LabelDescriptor{
+		Key:         "container_base_image",
+		Description: "User-defined image name that is run inside the container",
+	}
 )
 
 var commonLabels = []LabelDescriptor{
 	LabelHostname,
 	LabelHostID,
 	LabelContainerName,
+	LabelContainerBaseImage,
 }
 
 var podLabels = []LabelDescriptor{
