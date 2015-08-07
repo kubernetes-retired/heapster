@@ -30,13 +30,8 @@
 			"name": "heapster",
 			"command": [
 			    "/heapster",
-<<<<<<< HEAD
-			    "--source=kubernetes",
-			    "--sink=influxdb:http://monitoring-influxdb:80"
-=======
 			    "--source=kubernetes:https://kubernetes",
 			    "--sink=influxdb:http://monitoring-influxdb:8086"
->>>>>>> 83d9477... Updating Grafana to 2.0.
 			]
 		    }
 		]
