@@ -13,6 +13,7 @@
 // limitations under the License.
 
 //go:generate go-extpoints
+//go:generate gofmt -w extpoints/extpoints.go
 package main
 
 import (

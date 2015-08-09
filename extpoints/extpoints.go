@@ -55,7 +55,6 @@ func UnregisterExtension(name string) []string {
 	return ifaces
 }
 
-
 // Base extension point
 
 type extensionPoint struct {
@@ -177,7 +176,6 @@ func (ep *sourceFactoryExt) Names() []string {
 	return names
 }
 
-
 // SinkFactory
 
 var SinkFactories = &sinkFactoryExt{
@@ -227,5 +225,3 @@ func (ep *sinkFactoryExt) Names() []string {
 	}
 	return names
 }
-
-
