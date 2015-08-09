@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/GoogleCloudPlatform/heapster",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.4",
 	"Packages": [
 		"./..."
 	],
@@ -31,78 +31,78 @@
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/api",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "3f62e420cb2e12a491121850993abf97fbcfb5e2"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/auth/user",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "3f62e420cb2e12a491121850993abf97fbcfb5e2"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/client",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/clientauth",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/controller/framework",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/conversion",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/fields",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/labels",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/probe",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/runtime",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/types",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/util",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/version",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/watch",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/third_party/forked/reflect",
-			"Comment": "v0.19.0-312-g3f62e42",
-			"Rev": "9fa8ef2a3159a9c721c176cc696da6a6bfac0813"
+			"Comment": "v0.20.2-457-g0947b27",
+			"Rev": "0947b2715a608660079e35062f4fc65854a389b4"
 		},
 		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
@@ -249,6 +249,10 @@
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
 			"Rev": "3f831b65b61282ba6bece21b91beea2edc4c887a"
+		},
+		{
+			"ImportPath": "github.com/juju/ratelimit",
+			"Rev": "772f5c38e468398c4511514f4f6aa9a4185bc0a0"
 		},
 		{
 			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/pbutil",
