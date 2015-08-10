@@ -61,6 +61,7 @@ type Container struct {
 	Hostname   string
 	ExternalID string
 	Name       string
+	Image      string
 	// TODO(vishh): Consider defining an internal Spec and Stats API to guard against
 	// changes to cadvisor API.
 	Spec  cadvisor.ContainerSpec

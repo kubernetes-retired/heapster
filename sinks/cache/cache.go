@@ -48,6 +48,8 @@ type ContainerMetricElement struct {
 
 type ContainerElement struct {
 	Metadata
+	// Container base image.
+	Image string
 	// Data points are in reverse chronological order (most recent to oldest).
 	Metrics []*ContainerMetricElement
 }

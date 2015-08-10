@@ -82,6 +82,7 @@ func (self *realPodsApi) parsePod(podNodePair *podNodePair) *api.Pod {
 	for _, container := range pod.Spec.Containers {
 		localContainer := api.Container{}
 		localContainer.Name = container.Name
+		localContainer.Image = container.Image
 		localPod.Containers = append(localPod.Containers, localContainer)
 	}
 	glog.V(5).Infof("parsed kube pod: %+v", localPod)
