@@ -10,7 +10,7 @@ pushd ../..
 make generate
 popd
 
-godep go build -a github.com/GoogleCloudPlatform/heapster
+godep go build -a k8s.io/heapster
 
 docker build -t $IMAGE .
 popd
