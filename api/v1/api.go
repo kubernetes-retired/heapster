@@ -93,14 +93,15 @@ func compressionFilter(req *restful.Request, resp *restful.Response, chain *rest
 
 // Labels used by the target schema. A target schema uniquely identifies a container.
 var targetLabelNames = map[string]struct{}{
-	sinksApi.LabelPodId.Key:           struct{}{},
-	sinksApi.LabelPodName.Key:         struct{}{},
-	sinksApi.LabelPodNamespace.Key:    struct{}{},
-	sinksApi.LabelContainerName.Key:   struct{}{},
-	sinksApi.LabelLabels.Key:          struct{}{},
-	sinksApi.LabelHostname.Key:        struct{}{},
-	sinksApi.LabelHostID.Key:          struct{}{},
-	sinksApi.LabelPodNamespaceUID.Key: struct{}{},
+	sinksApi.LabelPodId.Key:              struct{}{},
+	sinksApi.LabelPodName.Key:            struct{}{},
+	sinksApi.LabelPodNamespace.Key:       struct{}{},
+	sinksApi.LabelContainerName.Key:      struct{}{},
+	sinksApi.LabelLabels.Key:             struct{}{},
+	sinksApi.LabelHostname.Key:           struct{}{},
+	sinksApi.LabelHostID.Key:             struct{}{},
+	sinksApi.LabelPodNamespaceUID.Key:    struct{}{},
+	sinksApi.LabelContainerBaseImage.Key: struct{}{},
 }
 
 // Separates target schema labels from other labels.
