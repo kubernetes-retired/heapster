@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/store"
+	"k8s.io/heapster/store"
 )
 
 // latestTimestamp returns its largest time.Time argument

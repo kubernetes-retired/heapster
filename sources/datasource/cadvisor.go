@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
 	cadvisorClient "github.com/google/cadvisor/client"
 	cadvisor "github.com/google/cadvisor/info/v1"
+	"k8s.io/heapster/sources/api"
 )
 
 type cadvisorSource struct{}

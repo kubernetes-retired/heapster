@@ -25,13 +25,13 @@ import (
 	"testing"
 	"time"
 
-	heapster_api "github.com/GoogleCloudPlatform/heapster/api/v1"
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
-	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	apiErrors "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
+	heapster_api "k8s.io/heapster/api/v1"
+	sink_api "k8s.io/heapster/sinks/api/v1"
+	"k8s.io/heapster/sinks/cache"
 )
 
 const (

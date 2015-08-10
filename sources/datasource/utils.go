@@ -17,7 +17,7 @@ package datasource
 import (
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	"k8s.io/heapster/sources/api"
 
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"

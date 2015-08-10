@@ -17,9 +17,9 @@ package extpoints
 import (
 	"net/url"
 
-	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
-	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	sourceApi "github.com/GoogleCloudPlatform/heapster/sources/api"
+	sinksApi "k8s.io/heapster/sinks/api/v1"
+	"k8s.io/heapster/sinks/cache"
+	sourceApi "k8s.io/heapster/sources/api"
 )
 
 type SourceFactory func(*url.URL, cache.Cache) ([]sourceApi.Source, error)

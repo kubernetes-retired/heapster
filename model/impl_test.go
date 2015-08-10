@@ -25,9 +25,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/store"
+	"k8s.io/heapster/sinks/cache"
+	source_api "k8s.io/heapster/sources/api"
+	"k8s.io/heapster/store"
 )
 
 // newTimeStore creates a new GCStore and returns it as a TimeStore.

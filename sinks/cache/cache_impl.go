@@ -19,9 +19,9 @@ import (
 	"sync"
 	"time"
 
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/store"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	source_api "k8s.io/heapster/sources/api"
+	"k8s.io/heapster/store"
 )
 
 const rootContainer = "/"

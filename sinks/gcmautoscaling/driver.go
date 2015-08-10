@@ -19,12 +19,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/extpoints"
-	"github.com/GoogleCloudPlatform/heapster/sinks/gcm"
 	"github.com/golang/glog"
+	"k8s.io/heapster/extpoints"
+	"k8s.io/heapster/sinks/gcm"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	sink_api "k8s.io/heapster/sinks/api/v1"
 )
 
 var (

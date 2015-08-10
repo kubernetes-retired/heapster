@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/store"
+	"k8s.io/heapster/store"
 )
 
 // aggregationStep performs a Metric Aggregation step on the cluster.

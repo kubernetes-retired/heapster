@@ -18,9 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	"github.com/stretchr/testify/require"
+	"k8s.io/heapster/sources/api"
+	"k8s.io/heapster/sources/nodes"
 )
 
 type fakePodsApi struct {

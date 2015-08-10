@@ -25,12 +25,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	fleetClient "github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/etcd"
 	fleetPkg "github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/golang/glog"
+	"k8s.io/heapster/sources/api"
 )
 
 var argEndpoints = flag.String("endpoints", "http://127.0.0.1:4001", "Comma separated list of fleet server endpoints")

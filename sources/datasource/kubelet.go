@@ -25,10 +25,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
+	"k8s.io/heapster/sources/api"
 )
 
 // TODO(vmarmol): Use Kubernetes' if we export it as an API.

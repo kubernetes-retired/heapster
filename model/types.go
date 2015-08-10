@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	"github.com/GoogleCloudPlatform/heapster/store"
+	"k8s.io/heapster/sinks/cache"
+	"k8s.io/heapster/store"
 )
 
 type Cluster interface {

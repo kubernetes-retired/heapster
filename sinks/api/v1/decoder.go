@@ -17,8 +17,8 @@ package v1
 import (
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	"github.com/GoogleCloudPlatform/heapster/util"
+	"k8s.io/heapster/sinks/cache"
+	"k8s.io/heapster/util"
 )
 
 type Decoder interface {

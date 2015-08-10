@@ -21,12 +21,12 @@ import (
 	"testing"
 	"time"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sink_api "k8s.io/heapster/sinks/api/v1"
+	source_api "k8s.io/heapster/sources/api"
 )
 
 const (

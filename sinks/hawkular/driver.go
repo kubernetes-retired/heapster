@@ -20,12 +20,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/GoogleCloudPlatform/heapster/extpoints"
 	"github.com/golang/glog"
 	"github.com/hawkular/hawkular-client-go/metrics"
+	"k8s.io/heapster/extpoints"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	sink_api "k8s.io/heapster/sinks/api/v1"
 )
 
 const (

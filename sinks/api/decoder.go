@@ -17,9 +17,9 @@ package api
 import (
 	"time"
 
-	sinksV1Api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/util"
+	sinksV1Api "k8s.io/heapster/sinks/api/v1"
+	source_api "k8s.io/heapster/sources/api"
+	"k8s.io/heapster/util"
 )
 
 // Codec represents an engine that translated from sources.api to sink.api objects.

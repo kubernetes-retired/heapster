@@ -21,8 +21,8 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	"github.com/GoogleCloudPlatform/heapster/store"
+	"k8s.io/heapster/sinks/cache"
+	"k8s.io/heapster/store"
 )
 
 // NewCluster returns a new Cluster.
