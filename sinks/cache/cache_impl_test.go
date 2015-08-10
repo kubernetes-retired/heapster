@@ -128,6 +128,9 @@ func TestRealCacheData(t *testing.T) {
 	for _, expectedPod := range pods {
 		pod, exists := actualPodsMap[expectedPod.Name]
 		require.True(t, exists)
+		if pod == nil {
+			continue
+		}
 		require.NotEmpty(t, pod.Containers)
 		assert.NotEmpty(pod.Containers[0].Metrics)
 	}
@@ -138,6 +141,9 @@ func TestRealCacheData(t *testing.T) {
 	for _, expectedContainer := range containers {
 		ce, exists := actualContainerMap[expectedContainer.Name]
 		assert.True(exists)
+		if ce == nil {
+			continue
+		}
 		assert.True("gcr.io/"+expectedContainer.Name == ce.Image)
 		assert.NotNil(ce.Metrics)
 		assert.NotEmpty(ce.Metrics)
