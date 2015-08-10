@@ -18,11 +18,11 @@ import (
 	"testing"
 	"time"
 
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	source_api "k8s.io/heapster/sources/api"
 )
 
 func TestFuzz(t *testing.T) {

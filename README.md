@@ -1,6 +1,6 @@
 # Heapster
 
-[![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/heapster?status.svg)](https://godoc.org/github.com/GoogleCloudPlatform/heapster) [![Build Status](https://travis-ci.org/GoogleCloudPlatform/heapster.svg?branch=master)](https://travis-ci.org/GoogleCloudPlatform/heapster)
+[![GoDoc](https://godoc.org/k8s.io/heapster?status.svg)](https://godoc.org/k8s.io/heapster) [![Build Status](https://travis-ci.org/GoogleCloudPlatform/heapster.svg?branch=master)](https://travis-ci.org/GoogleCloudPlatform/heapster)
 
 Heapster enables Container Cluster Monitoring. 
 

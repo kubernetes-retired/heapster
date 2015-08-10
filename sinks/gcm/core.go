@@ -26,12 +26,12 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
-	"github.com/GoogleCloudPlatform/heapster/util"
-	"github.com/GoogleCloudPlatform/heapster/util/gce"
-	"github.com/GoogleCloudPlatform/heapster/util/gcstore"
 	"github.com/golang/glog"
+	"k8s.io/heapster/util"
+	"k8s.io/heapster/util/gce"
+	"k8s.io/heapster/util/gcstore"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api/v1"
 )
 
 const GCLAuthScope = "https://www.googleapis.com/auth/monitoring"

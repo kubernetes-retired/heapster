@@ -19,8 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	kcache "github.com/GoogleCloudPlatform/kubernetes/pkg/client/cache"
@@ -29,6 +27,8 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/golang/glog"
+	"k8s.io/heapster/sources/api"
+	"k8s.io/heapster/sources/nodes"
 )
 
 // podsApi provides an interface to access all the pods that an instance of heapster

@@ -22,8 +22,8 @@ import (
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 
-	"github.com/GoogleCloudPlatform/heapster/model"
-	"github.com/GoogleCloudPlatform/heapster/store"
+	"k8s.io/heapster/model"
+	"k8s.io/heapster/store"
 )
 
 // errModelNotActivated is the error that is returned when manager.cluster

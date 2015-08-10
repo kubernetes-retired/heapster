@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	"github.com/hawkular/hawkular-client-go/metrics"
+	sink_api "k8s.io/heapster/sinks/api/v1"
 
 	assert "github.com/stretchr/testify/require"
 )

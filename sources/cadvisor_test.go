@@ -19,11 +19,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
-	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/heapster/sources/api"
+	"k8s.io/heapster/sources/datasource"
+	"k8s.io/heapster/sources/nodes"
 )
 
 type fakeDataSource struct {

@@ -17,8 +17,8 @@ package manager
 import (
 	"fmt"
 
-	"github.com/GoogleCloudPlatform/heapster/extpoints"
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
+	"k8s.io/heapster/extpoints"
+	sink_api "k8s.io/heapster/sinks/api/v1"
 )
 
 func newSinks(sinkUris Uris) ([]sink_api.ExternalSink, error) {

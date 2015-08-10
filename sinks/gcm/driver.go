@@ -20,9 +20,9 @@ import (
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 
-	"github.com/GoogleCloudPlatform/heapster/extpoints"
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	"github.com/golang/glog"
+	"k8s.io/heapster/extpoints"
+	sink_api "k8s.io/heapster/sinks/api/v1"
 )
 
 type gcmSink struct {

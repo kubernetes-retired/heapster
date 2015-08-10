@@ -15,7 +15,7 @@
 // This package implements the various storage backends supported by heapster.
 package sinks
 
-import "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
+import "k8s.io/heapster/sinks/api/v1"
 
 // TODO: Once in-memory storage is implemented, make the manager extract data from the in-memory store periodically.
 type Sink interface {

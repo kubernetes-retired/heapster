@@ -19,9 +19,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	sink_api "k8s.io/heapster/sinks/api/v1"
+	source_api "k8s.io/heapster/sources/api"
 )
 
 type DummySink struct {

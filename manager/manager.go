@@ -21,12 +21,12 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/GoogleCloudPlatform/heapster/model"
-	"github.com/GoogleCloudPlatform/heapster/sinks"
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
-	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/store"
+	"k8s.io/heapster/model"
+	"k8s.io/heapster/sinks"
+	sink_api "k8s.io/heapster/sinks/api/v1"
+	"k8s.io/heapster/sinks/cache"
+	source_api "k8s.io/heapster/sources/api"
+	"k8s.io/heapster/store"
 )
 
 // Manager provides an interface to control the core of heapster.

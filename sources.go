@@ -17,9 +17,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/GoogleCloudPlatform/heapster/extpoints"
-	"github.com/GoogleCloudPlatform/heapster/sinks/cache"
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
+	"k8s.io/heapster/extpoints"
+	"k8s.io/heapster/sinks/cache"
+	"k8s.io/heapster/sources/api"
 )
 
 func newSources(c cache.Cache) ([]api.Source, error) {

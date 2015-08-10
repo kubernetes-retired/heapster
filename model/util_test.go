@@ -20,7 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/GoogleCloudPlatform/heapster/store"
+	"k8s.io/heapster/store"
 )
 
 // newTimePoint is a helper function that constructs TimePoints for other unit tests.

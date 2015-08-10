@@ -17,9 +17,9 @@ package sources
 import (
 	"time"
 
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/sources/datasource"
-	"github.com/GoogleCloudPlatform/heapster/sources/nodes"
+	"k8s.io/heapster/sources/api"
+	"k8s.io/heapster/sources/datasource"
+	"k8s.io/heapster/sources/nodes"
 )
 
 type fakeNodesApi struct {

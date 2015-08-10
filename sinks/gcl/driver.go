@@ -24,12 +24,12 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
-	"github.com/GoogleCloudPlatform/heapster/extpoints"
-	"github.com/GoogleCloudPlatform/heapster/util/gce"
 	"github.com/golang/glog"
+	"k8s.io/heapster/extpoints"
+	"k8s.io/heapster/util/gce"
 
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	sink_api "k8s.io/heapster/sinks/api/v1"
 )
 
 const (

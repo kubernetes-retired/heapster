@@ -17,11 +17,11 @@ package v1
 import (
 	"net/http"
 
-	"github.com/GoogleCloudPlatform/heapster/manager"
-	sinksApi "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
-	"github.com/GoogleCloudPlatform/heapster/util"
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
+	"k8s.io/heapster/manager"
+	sinksApi "k8s.io/heapster/sinks/api/v1"
+	"k8s.io/heapster/util"
 )
 
 type Api struct {

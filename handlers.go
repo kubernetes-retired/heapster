@@ -20,12 +20,12 @@ import (
 	"net/http/pprof"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/heapster/api/v1"
-	"github.com/GoogleCloudPlatform/heapster/manager"
-	"github.com/GoogleCloudPlatform/heapster/sinks"
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/validate"
 	restful "github.com/emicklei/go-restful"
+	"k8s.io/heapster/api/v1"
+	"k8s.io/heapster/manager"
+	"k8s.io/heapster/sinks"
+	"k8s.io/heapster/sources/api"
+	"k8s.io/heapster/validate"
 )
 
 const pprofBasePath = "/debug/pprof/"

@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/GoogleCloudPlatform/heapster/sinks"
-	"github.com/GoogleCloudPlatform/heapster/sources/api"
-	"github.com/GoogleCloudPlatform/heapster/version"
+	"k8s.io/heapster/sinks"
+	"k8s.io/heapster/sources/api"
+	"k8s.io/heapster/version"
 )
 
 const (

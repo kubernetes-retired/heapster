@@ -20,10 +20,10 @@ import (
 	"strings"
 	"sync"
 
-	sink_api_old "github.com/GoogleCloudPlatform/heapster/sinks/api"
-	sink_api "github.com/GoogleCloudPlatform/heapster/sinks/api/v1"
-	source_api "github.com/GoogleCloudPlatform/heapster/sources/api"
 	"github.com/golang/glog"
+	sink_api_old "k8s.io/heapster/sinks/api"
+	sink_api "k8s.io/heapster/sinks/api/v1"
+	source_api "k8s.io/heapster/sources/api"
 )
 
 type externalSinkManager struct {

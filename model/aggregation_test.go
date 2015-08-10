@@ -20,7 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/GoogleCloudPlatform/heapster/store"
+	"k8s.io/heapster/store"
 )
 
 // TestAggregateNodeMetricsEmpty tests the empty flow of aggregateNodeMetrics.
