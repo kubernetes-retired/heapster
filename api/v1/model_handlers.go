@@ -325,6 +325,7 @@ func (a *Api) allNodes(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 	response.WriteEntity(cluster.GetNodes())
 }
@@ -334,6 +335,7 @@ func (a *Api) allNamespaces(request *restful.Request, response *restful.Response
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 	response.WriteEntity(cluster.GetNamespaces())
 }
@@ -343,6 +345,7 @@ func (a *Api) allPods(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 	namespace := request.PathParameter("namespace-name")
 	response.WriteEntity(cluster.GetPods(namespace))
@@ -353,6 +356,7 @@ func (a *Api) allPodContainers(request *restful.Request, response *restful.Respo
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 	namespace := request.PathParameter("namespace-name")
 	pod := request.PathParameter("pod-name")
@@ -364,6 +368,7 @@ func (a *Api) allFreeContainers(request *restful.Request, response *restful.Resp
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 	node := request.PathParameter("node-name")
 	response.WriteEntity(cluster.GetFreeContainers(node))
@@ -375,6 +380,7 @@ func (a *Api) availableMetrics(request *restful.Request, response *restful.Respo
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 	result := cluster.GetAvailableMetrics()
 	response.WriteEntity(result)
@@ -385,6 +391,7 @@ func (a *Api) clusterMetrics(request *restful.Request, response *restful.Respons
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 
 	timeseries, new_stamp, err := cluster.GetClusterMetric(model.ClusterRequest{
@@ -405,6 +412,7 @@ func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) 
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 
 	timeseries, new_stamp, err := cluster.GetNodeMetric(model.NodeRequest{
@@ -426,6 +434,7 @@ func (a *Api) namespaceMetrics(request *restful.Request, response *restful.Respo
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 
 	timeseries, new_stamp, err := cluster.GetNamespaceMetric(model.NamespaceRequest{
@@ -447,6 +456,7 @@ func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 
 	timeseries, new_stamp, err := cluster.GetPodMetric(model.PodRequest{
@@ -470,6 +480,7 @@ func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Re
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 
 	timeseries, new_stamp, err := cluster.GetPodContainerMetric(model.PodContainerRequest{
@@ -494,6 +505,7 @@ func (a *Api) freeContainerMetrics(request *restful.Request, response *restful.R
 	cluster := a.manager.GetCluster()
 	if cluster == nil {
 		response.WriteError(400, errModelNotActivated)
+		return
 	}
 
 	timeseries, new_stamp, err := cluster.GetFreeContainerMetric(model.FreeContainerRequest{
