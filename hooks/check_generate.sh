@@ -14,20 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-REF_FILE="./hooks/boilerplate.go.txt"
-if [ ! -e $REF_FILE ]; then
-  echo "Missing reference file: " ${REF_FILE}
-  exit 1
-fi
+GEN_FILES="extpoints/extpoints.go"
 
-LINES=$(cat "${REF_FILE}" | wc -l | tr -d ' ')
-GO_FILES=$(find . -name "*.go" | grep -v -e "Godeps" -e "extpoints/extpoints.go")
+md5sums=""
 
-for FILE in ${GO_FILES}; do
-  DIFFER=$(cat "${FILE}" | sed 's/2015/2014/g' | head "-${LINES}" | diff -q - "${REF_FILE}")
+for f in $GEN_FILES; do
+	md5sums="${md5sums}$(md5sum $f)\n"
+done
 
-  if [[ ! -z "${DIFFER}" ]]; then
-    echo "${FILE} does not have the correct copyright notice."
-    exit 1
-  fi
+go generate 2>/dev/null || exit 1
+
+echo -ne "$md5sums" | while read sum f; do
+	newsum=$(md5sum $f | awk '{ print $1 }')
+	if [[ ! $newsum == $sum ]]; then
+		echo "go generate was not run, $f needs to be generated again"
+		exit 1
+	fi
 done

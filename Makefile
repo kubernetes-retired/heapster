@@ -6,12 +6,8 @@ FLAGS =
 
 deps:
 	go get github.com/tools/godep
-	go get github.com/progrium/go-extpoints
 
-generate:
-	go generate
-
-build: clean generate deps
+build: clean deps
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -a ./...
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -a
 
@@ -19,6 +15,7 @@ sanitize:
 	hooks/check_boilerplate.sh
 	hooks/check_gofmt.sh
 	hooks/run_vet.sh
+	hooks/check_generate.sh
 
 test-unit: clean deps sanitize build
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go test --test.short ./... $(FLAGS)
@@ -41,7 +38,6 @@ influxdb:
 
 clean:
 	rm -f heapster
-	rm -f ./extpoints/extpoints.go
 	rm -f ./deploy/docker/heapster
 
 .PHONY: all deps build sanitize test-unit test-unit-cov test-integration container grafana influxdb clean

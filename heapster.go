@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate go-extpoints
+//go:generate ./hooks/run_extpoints.sh
+
 package main
 
 import (
@@ -31,6 +32,8 @@ import (
 	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
 	"k8s.io/heapster/version"
+
+	_ "github.com/progrium/go-extpoints"
 )
 
 var (
