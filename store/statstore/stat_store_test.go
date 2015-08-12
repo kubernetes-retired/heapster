@@ -76,7 +76,7 @@ func TestLast(t *testing.T) {
 	last, err = store.Last()
 	assert.NoError(err)
 	assert.Equal(last.Timestamp, now)
-	assert.Equal(last.Value.(uint64), uint64(10030)) // closest bucket to 10029
+	assert.Equal(last.Value, uint64(10030)) // closest bucket to 10029
 
 	// Put one value from two more minutes later
 	assert.NoError(store.Put(TimePoint{
@@ -88,7 +88,7 @@ func TestLast(t *testing.T) {
 	last, err = store.Last()
 	assert.NoError(err)
 	assert.Equal(last.Timestamp, now.Add(2*time.Minute))
-	assert.Equal(last.Value.(uint64), uint64(100)) // closest bucket to 92
+	assert.Equal(last.Value, uint64(100)) // closest bucket to 92
 }
 
 // TestMax tests all flows of the Max method.
