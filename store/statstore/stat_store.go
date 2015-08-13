@@ -160,6 +160,19 @@ type putState struct {
 	stamp       time.Time
 }
 
+// IsEmpty returns true if the StatStore is empty
+func (ss *StatStore) IsEmpty() bool {
+	if ss.buffer.Front() == nil {
+		return true
+	}
+	return false
+}
+
+// MaxSize returns the total duration of data that can be stored in the StatStore.
+func (ss *StatStore) MaxSize() time.Duration {
+	return time.Duration(ss.windowDuration) * ss.resolution
+}
+
 func (ss *StatStore) Put(tp TimePoint) error {
 	ss.Lock()
 	defer ss.Unlock()
@@ -208,7 +221,7 @@ func (ss *StatStore) Put(tp TimePoint) error {
 	}
 
 	// Create a new bucket if the buffer is empty
-	if ss.buffer.Front() == nil {
+	if ss.IsEmpty() {
 		ss.newBucket(numRes)
 		ss.resetLastPut(ts, tp.Value)
 		for ss.tpCount > ss.windowDuration {
@@ -259,9 +272,14 @@ func (ss *StatStore) resetLastPut(timestamp time.Time, value uint64) {
 // numRes represents the number of resolutions from the newest TimePoint to the lastPut.
 // numRes resolutions will be represented in the newly created bucket.
 func (ss *StatStore) newBucket(numRes uint8) {
+	// Calculate the value of the new bucket based on the average of lastPut.
+	newVal := (uint64(ss.lastPut.average) / ss.epsilon) * ss.epsilon
+	if (uint64(ss.lastPut.average) % ss.epsilon) != 0 {
+		newVal += ss.epsilon
+	}
 	newEntry := tpBucket{
 		count:  numRes,
-		value:  ((uint64(ss.lastPut.average) / ss.epsilon) + 1) * ss.epsilon,
+		value:  newVal,
 		max:    ss.lastPut.max,
 		maxIdx: 0,
 	}
@@ -309,7 +327,7 @@ func (ss *StatStore) Get(start, end time.Time) []TimePoint {
 
 	var result []TimePoint
 
-	if ss.buffer.Len() == 0 || (start.After(end) && end.After(time.Time{})) {
+	if ss.IsEmpty() || (start.After(end) && end.After(time.Time{})) {
 		return result
 	}
 
@@ -427,8 +445,7 @@ func (ss *StatStore) Average() (uint64, error) {
 	ss.Lock()
 	defer ss.Unlock()
 
-	lastElem := ss.buffer.Front()
-	if lastElem == nil {
+	if ss.IsEmpty() {
 		return uint64(0), fmt.Errorf("the StatStore is empty")
 	}
 
@@ -444,7 +461,7 @@ func (ss *StatStore) Max() (uint64, error) {
 	ss.Lock()
 	defer ss.Unlock()
 
-	if ss.buffer.Front() == nil {
+	if ss.IsEmpty() {
 		return uint64(0), fmt.Errorf("the StatStore is empty")
 	}
 
@@ -459,7 +476,7 @@ func (ss *StatStore) Percentile(p float64) (uint64, error) {
 	ss.Lock()
 	defer ss.Unlock()
 
-	if ss.buffer.Front() == nil {
+	if ss.IsEmpty() {
 		return uint64(0), fmt.Errorf("the StatStore is empty")
 	}
 

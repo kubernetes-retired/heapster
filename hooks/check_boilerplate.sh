@@ -21,7 +21,7 @@ if [ ! -e $REF_FILE ]; then
 fi
 
 LINES=$(cat "${REF_FILE}" | wc -l | tr -d ' ')
-GO_FILES=$(find . -name "*.go" | grep -v -e "Godeps" -e "extpoints/extpoints.go")
+GO_FILES=$(find . -name "*.go" | grep -v -e "Godeps" -e "third_party" -e "extpoints/extpoints.go")
 
 for FILE in ${GO_FILES}; do
   DIFFER=$(cat "${FILE}" | sed 's/2015/2014/g' | head "-${LINES}" | diff -q - "${REF_FILE}")
