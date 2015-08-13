@@ -31,7 +31,7 @@ import (
 	"k8s.io/heapster/util/gce"
 	"k8s.io/heapster/util/gcstore"
 
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api"
 )
 
 const GCLAuthScope = "https://www.googleapis.com/auth/monitoring"

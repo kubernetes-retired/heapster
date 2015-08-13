@@ -19,17 +19,22 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
+	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/golang/glog"
-	sink_api_old "k8s.io/heapster/sinks/api"
-	sink_api "k8s.io/heapster/sinks/api/v1"
-	source_api "k8s.io/heapster/sources/api"
+	sink_api "k8s.io/heapster/sinks/api"
+	"k8s.io/heapster/sinks/cache"
 )
 
 type externalSinkManager struct {
-	decoder       sink_api_old.Decoder
+	cache         cache.Cache
+	lastSync      time.Time
+	syncFrequency time.Duration
+	decoder       sink_api.Decoder
 	externalSinks []sink_api.ExternalSink
-	sinkMutex     sync.RWMutex // Protects externalSinks
+	sync.RWMutex  // Protects externalSinks
 }
 
 func supportedMetricsDescriptors() []sink_api.MetricDescriptor {
@@ -49,9 +54,12 @@ func supportedMetricsDescriptors() []sink_api.MetricDescriptor {
 
 // NewExternalSinkManager returns an external sink manager that will manage pushing data to all
 // the sinks in 'externalSinks', which is a map of sink name to ExternalSink object.
-func NewExternalSinkManager(externalSinks []sink_api.ExternalSink) (ExternalSinkManager, error) {
+func NewExternalSinkManager(externalSinks []sink_api.ExternalSink, cache cache.Cache, syncFrequency time.Duration) (ExternalSinkManager, error) {
 	m := &externalSinkManager{
-		decoder: sink_api_old.NewDecoder(),
+		decoder:       sink_api.NewDecoder(),
+		cache:         cache,
+		lastSync:      time.Time{},
+		syncFrequency: syncFrequency,
 	}
 	if externalSinks != nil {
 		if err := m.SetSinks(externalSinks); err != nil {
@@ -61,31 +69,65 @@ func NewExternalSinkManager(externalSinks []sink_api.ExternalSink) (ExternalSink
 	return m, nil
 }
 
-func (self *externalSinkManager) Store(input interface{}) error {
-	data, ok := input.(source_api.AggregateData)
-	if !ok {
-		return fmt.Errorf("unknown input type %T", input)
+func (esm *externalSinkManager) Sync() chan<- struct{} {
+	stopChan := make(chan struct{})
+	go util.Until(esm.sync, esm.syncFrequency, stopChan)
+	return stopChan
+}
+
+func (esm *externalSinkManager) sync() {
+	if err := esm.store(); err != nil {
+		glog.Errorf("failed to sync data to sinks - %v", err)
 	}
+}
+
+// TODO(vmarmol): Paralellize this.
+func (esm *externalSinkManager) store() error {
+	lastSync := esm.lastSync
+	now := time.Now()
+	esm.lastSync = now
+	pods := esm.cache.GetPods(lastSync, now)
+	containers := esm.cache.GetNodes(lastSync, now)
+	containers = append(containers, esm.cache.GetFreeContainers(lastSync, now)...)
 	// TODO: Store data in cache.
-	timeseries, err := self.decoder.Timeseries(data)
+	timeseries, err := esm.decoder.TimeseriesFromPods(pods)
 	if err != nil {
 		return err
 	}
+	containerTimeseries, err := esm.decoder.TimeseriesFromContainers(containers)
+	if err != nil {
+		return err
+	}
+	timeseries = append(timeseries, containerTimeseries...)
+
+	if len(timeseries) == 0 {
+		glog.V(3).Info("no timeseries data between %v and %v", lastSync, now)
+		// Continue here to push events data.
+	}
+	events := esm.cache.GetEvents(lastSync, now)
+	var kEvents []kube_api.Event
+	for _, event := range events {
+		kEvents = append(kEvents, event.Raw)
+	}
+	if len(timeseries) == 0 && len(events) == 0 {
+		glog.V(5).Infof("Skipping sync loop")
+		return nil
+	}
 	// Format metrics and push them.
-	self.sinkMutex.RLock()
-	defer self.sinkMutex.RUnlock()
-	errorsLen := 2 * len(self.externalSinks)
+	esm.RLock()
+	defer esm.RUnlock()
+	errorsLen := 2 * len(esm.externalSinks)
 	errorsChan := make(chan error, errorsLen)
-	for idx := range self.externalSinks {
-		sink := self.externalSinks[idx]
-		go func() {
+	for idx := range esm.externalSinks {
+		sink := esm.externalSinks[idx]
+		go func(sink sink_api.ExternalSink) {
 			glog.V(2).Infof("Storing Timeseries to %q", sink.Name())
 			errorsChan <- sink.StoreTimeseries(timeseries)
-		}()
-		go func() {
+		}(sink)
+		go func(sink sink_api.ExternalSink) {
 			glog.V(2).Infof("Storing Events to %q", sink.Name())
-			errorsChan <- sink.StoreEvents(data.Events)
-		}()
+			errorsChan <- sink.StoreEvents(kEvents)
+		}(sink)
 	}
 	var errors []string
 	for i := 0; i < errorsLen; i++ {
@@ -99,10 +141,9 @@ func (self *externalSinkManager) Store(input interface{}) error {
 	return nil
 }
 
-func (self *externalSinkManager) DebugInfo() string {
+func (esm *externalSinkManager) DebugInfo() string {
 	b := &bytes.Buffer{}
 	fmt.Fprintln(b, "External Sinks")
-
 	// Add metrics being exported.
 	fmt.Fprintln(b, "\tExported metrics:")
 	for _, supported := range sink_api.SupportedStatMetrics() {
@@ -115,9 +156,9 @@ func (self *externalSinkManager) DebugInfo() string {
 		fmt.Fprintf(b, "\t\t%s: %s\n", label.Key, label.Description)
 	}
 	fmt.Fprintln(b, "\tExternal Sinks:")
-	self.sinkMutex.RLock()
-	defer self.sinkMutex.RUnlock()
-	for _, externalSink := range self.externalSinks {
+	esm.RLock()
+	defer esm.RUnlock()
+	for _, externalSink := range esm.externalSinks {
 		fmt.Fprintf(b, "\t\t%s\n", externalSink.DebugInfo())
 	}
 
@@ -134,10 +175,10 @@ func inSlice(sink sink_api.ExternalSink, sinks []sink_api.ExternalSink) bool {
 	return false
 }
 
-func (self *externalSinkManager) SetSinks(newSinks []sink_api.ExternalSink) error {
-	self.sinkMutex.Lock()
-	defer self.sinkMutex.Unlock()
-	oldSinks := self.externalSinks
+func (esm *externalSinkManager) SetSinks(newSinks []sink_api.ExternalSink) error {
+	esm.Lock()
+	defer esm.Unlock()
+	oldSinks := esm.externalSinks
 	descriptors := supportedMetricsDescriptors()
 	for _, sink := range oldSinks {
 		if inSlice(sink, newSinks) {
@@ -155,6 +196,7 @@ func (self *externalSinkManager) SetSinks(newSinks []sink_api.ExternalSink) erro
 			return err
 		}
 	}
-	self.externalSinks = newSinks
+	esm.externalSinks = newSinks
+	glog.V(2).Infof("Updated sinks: %+v", esm.externalSinks)
 	return nil
 }

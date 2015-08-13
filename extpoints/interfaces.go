@@ -17,7 +17,7 @@ package extpoints
 import (
 	"net/url"
 
-	sinksApi "k8s.io/heapster/sinks/api/v1"
+	sinksApi "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
 	sourceApi "k8s.io/heapster/sources/api"
 )

@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"k8s.io/heapster/extpoints"
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api"
 )
 
 func newSinks(sinkUris Uris) ([]sink_api.ExternalSink, error) {

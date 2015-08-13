@@ -23,7 +23,7 @@ import (
 
 	"k8s.io/heapster/model"
 	"k8s.io/heapster/sinks"
-	sink_api "k8s.io/heapster/sinks/api/v1"
+	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
 	"k8s.io/heapster/store"
@@ -53,15 +53,16 @@ type Manager interface {
 }
 
 type realManager struct {
-	sources     []source_api.Source
-	cache       cache.Cache
-	model       model.Cluster
-	sinkManager sinks.ExternalSinkManager
-	sinkUris    Uris
-	lastSync    time.Time
-	resolution  time.Duration
-	align       bool
-	decoder     sink_api.Decoder
+	sources      []source_api.Source
+	cache        cache.Cache
+	model        model.Cluster
+	sinkManager  sinks.ExternalSinkManager
+	sinkUris     Uris
+	lastSync     time.Time
+	resolution   time.Duration
+	align        bool
+	decoder      sink_api.Decoder
+	sinkStopChan chan<- struct{}
 }
 
 type syncData struct {
@@ -84,14 +85,15 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 		firstSync = firstSync.Truncate(res).Add(res)
 	}
 	return &realManager{
-		sources:     sources,
-		sinkManager: sinkManager,
-		cache:       c,
-		model:       newCluster,
-		lastSync:    firstSync,
-		resolution:  res,
-		align:       align,
-		decoder:     sink_api.NewDecoder(),
+		sources:      sources,
+		sinkManager:  sinkManager,
+		cache:        c,
+		model:        newCluster,
+		lastSync:     firstSync,
+		resolution:   res,
+		align:        align,
+		decoder:      sink_api.NewDecoder(),
+		sinkStopChan: sinkManager.Sync(),
 	}, nil
 }
 
@@ -154,10 +156,6 @@ func (rm *realManager) Housekeep() {
 	if err := rm.cache.StoreContainers(sd.data.Containers); err != nil {
 		errors = append(errors, err.Error())
 	}
-	if err := rm.sinkManager.Store(sd.data); err != nil {
-		errors = append(errors, err.Error())
-	}
-
 	if len(errors) > 0 {
 		glog.V(1).Infof("housekeeping resulted in following errors: %v", errors)
 	}
