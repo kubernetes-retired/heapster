@@ -32,6 +32,7 @@ type Cluster interface {
 	GetNodeMetric(NodeRequest) ([]store.TimePoint, time.Time, error)
 	GetNamespaceMetric(NamespaceRequest) ([]store.TimePoint, time.Time, error)
 	GetPodMetric(PodRequest) ([]store.TimePoint, time.Time, error)
+	GetBatchPodMetric(req BatchPodRequest) ([][]store.TimePoint, time.Time, error)
 	GetPodContainerMetric(PodContainerRequest) ([]store.TimePoint, time.Time, error)
 	GetFreeContainerMetric(FreeContainerRequest) ([]store.TimePoint, time.Time, error)
 
@@ -89,6 +90,14 @@ type NamespaceRequest struct {
 type PodRequest struct {
 	NamespaceName string
 	PodName       string
+	MetricName    string
+	Start         time.Time
+	End           time.Time
+}
+
+type BatchPodRequest struct {
+	NamespaceName string
+	PodNames      []string
 	MetricName    string
 	Start         time.Time
 	End           time.Time

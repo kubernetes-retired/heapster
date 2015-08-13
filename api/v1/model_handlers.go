@@ -17,6 +17,7 @@ package v1
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	restful "github.com/emicklei/go-restful"
@@ -272,6 +273,20 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 		Writes(MetricResult{}))
 
+	// The /namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name} endpoint exposes
+	// metrics for a list od pods of the model.
+	ws.Route(ws.GET("/namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name}").
+		To(a.podListMetrics).
+		Filter(compressionFilter).
+		Doc("Export a metric for all pods from the given list").
+		Operation("podListMetric").
+		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+		Param(ws.PathParameter("pod-list", "Comma separated list of pod names to lookup").DataType("string")).
+		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
+		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
+		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+		Writes(MetricResult{}))
+
 	container.Add(ws)
 }
 
@@ -472,6 +487,33 @@ func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 		return
 	}
 	response.WriteEntity(exportTimeseries(timeseries, new_stamp))
+}
+
+func (a *Api) podListMetrics(request *restful.Request, response *restful.Response) {
+	cluster := a.manager.GetCluster()
+	if cluster == nil {
+		response.WriteError(400, errModelNotActivated)
+		return
+	}
+	batchResult, new_stamp, err := cluster.GetBatchPodMetric(model.BatchPodRequest{
+		NamespaceName: request.PathParameter("namespace-name"),
+		PodNames:      strings.Split(request.PathParameter("pod-list"), ","),
+		MetricName:    request.PathParameter("metric-name"),
+		Start:         parseRequestParam("start", request, response),
+		End:           parseRequestParam("end", request, response),
+	})
+	if err != nil {
+		response.WriteError(http.StatusInternalServerError, err)
+		glog.Errorf("unable to get pod list metric: %s", err)
+		return
+	}
+	metricResultList := MetricResultList{
+		Items: make([]MetricResult, len(batchResult)),
+	}
+	for i, metrics := range batchResult {
+		metricResultList.Items[i] = exportTimeseries(metrics, new_stamp)
+	}
+	response.WriteEntity(metricResultList)
 }
 
 // podContainerMetrics returns a metric timeseries for a metric of the Container entity.
