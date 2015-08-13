@@ -414,6 +414,7 @@ func (rc *realCluster) updateInfoType(info *InfoType, ce *cache.ContainerElement
 		return latest_time, fmt.Errorf("cannot update a nil InfoType")
 	}
 
+	// call parseMetric in a time-ascending order
 	for i := len(ce.Metrics) - 1; i >= 0; i-- {
 		stamp, err := rc.parseMetric(ce.Metrics[i], info.Metrics, info.Context)
 		if err != nil {
