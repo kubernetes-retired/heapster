@@ -20,6 +20,9 @@ To run Heapster on a Kubernetes cluster with,
 
 Take a look at the storage schema [here](docs/storage-schema.md).
 
+When Heapster is running on a Kubernetes cluster, the [Heapster Model](docs/model.md)
+can be used to extract aggregated metrics and derived stats for various Kubernetes cluster entities.
+
 ### Running Heapster on CoreOS
 Heapster communicates with the local fleet server to get cluster information. It expected cAdvisor to be running on all the nodes. Refer to [this guide](docs/coreos.md).
 
