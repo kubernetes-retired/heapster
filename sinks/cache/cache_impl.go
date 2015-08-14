@@ -165,6 +165,7 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 				Name:     cont.Name,
 				Hostname: cont.Hostname,
 			}
+			ce.Image = cont.Image
 			storeSpecAndStats(ce, cont)
 			ce.lastUpdated = time.Now()
 		}
@@ -201,10 +202,10 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 					Hostname:   cont.Hostname,
 					ExternalID: cont.ExternalID,
 				}
-				ce.Image = cont.Image
 				ne.freeContainers[cont.Name] = ce
 			}
 		}
+		ce.Image = cont.Image
 		storeSpecAndStats(ce, cont)
 		ce.lastUpdated = time.Now()
 	}
@@ -222,6 +223,7 @@ func (rc *realCache) GetPods(start, end time.Time) []*PodElement {
 		for _, ce := range pe.containers {
 			containerElement := &ContainerElement{
 				Metadata: ce.Metadata,
+				Image:    ce.Image,
 			}
 			metrics := ce.metrics.Get(start, end)
 			for idx := range metrics {
