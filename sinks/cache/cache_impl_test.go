@@ -64,7 +64,7 @@ func TestGC(t *testing.T) {
 }
 
 func getContainer(name string) source_api.Container {
-	f := fuzz.New().NumElements(2, 10).NilChance(0)
+	f := fuzz.New().NumElements(2, 2).NilChance(0)
 	containerSpec := cadvisor.ContainerSpec{
 		CreationTime:  time.Now(),
 		HasCpu:        true,
@@ -119,8 +119,8 @@ func TestRealCacheData(t *testing.T) {
 	assert.NoError(cache.StorePods(pods))
 	assert.NoError(cache.StoreContainers(containers))
 	actualPods := cache.GetPods(time.Time{}, time.Time{})
-	actualContainer := cache.GetNodes(time.Time{}, time.Now())
-	actualContainer = append(actualContainer, cache.GetFreeContainers(time.Time{}, time.Now())...)
+	actualContainer := cache.GetNodes(time.Time{}, time.Time{})
+	actualContainer = append(actualContainer, cache.GetFreeContainers(time.Time{}, time.Time{})...)
 	actualPodsMap := map[string]*PodElement{}
 	for _, pod := range actualPods {
 		actualPodsMap[pod.Name] = pod
@@ -140,11 +140,11 @@ func TestRealCacheData(t *testing.T) {
 	}
 	for _, expectedContainer := range containers {
 		ce, exists := actualContainerMap[expectedContainer.Name]
-		assert.True(exists)
+		assert.True(exists, "container %q does not exist", expectedContainer.Name)
 		if ce == nil {
 			continue
 		}
-		assert.True("gcr.io/"+expectedContainer.Name == ce.Image)
+		assert.Equal(expectedContainer.Image, ce.Image)
 		assert.NotNil(ce.Metrics)
 		assert.NotEmpty(ce.Metrics)
 	}
