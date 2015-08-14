@@ -8,7 +8,7 @@ deps:
 	go get github.com/tools/godep
 
 build: clean deps
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -a ./...
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -a ./... 
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -a
 
 sanitize:

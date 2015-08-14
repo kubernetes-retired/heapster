@@ -129,11 +129,26 @@ func TestSetSinksRegisterAgain(t *testing.T) {
 	as.Equal(2, s1.Unregistered)
 }
 
+func newExternalSinkManager(externalSinks []sink_api.ExternalSink, cache cache.Cache, syncFrequency time.Duration) (*externalSinkManager, error) {
+	m := &externalSinkManager{
+		decoder:       sink_api.NewDecoder(),
+		cache:         cache,
+		lastSync:      time.Time{},
+		syncFrequency: syncFrequency,
+	}
+	if externalSinks != nil {
+		if err := m.SetSinks(externalSinks); err != nil {
+			return nil, err
+		}
+	}
+	return m, nil
+}
+
 func TestSetSinksStore(t *testing.T) {
 	as := assert.New(t)
 	s1 := &DummySink{}
 	c := cache.NewCache(time.Minute, time.Hour)
-	m, err := NewExternalSinkManager([]sink_api.ExternalSink{s1}, c, time.Microsecond)
+	m, err := newExternalSinkManager([]sink_api.ExternalSink{s1}, c, time.Microsecond)
 	as.Nil(err)
 	as.Equal(0, s1.StoredTimeseries)
 	as.Equal(0, s1.StoredEvents)
@@ -149,16 +164,12 @@ func TestSetSinksStore(t *testing.T) {
 	c.StorePods(pods)
 	c.StoreContainers(containers)
 	c.StoreEvents(events)
-	stopChan := m.Sync()
-	as.NotNil(stopChan)
-	time.Sleep(time.Second)
+	m.sync()
 	as.Equal(1, s1.StoredTimeseries)
 	as.Equal(1, s1.StoredEvents)
-	stopChan <- struct{}{}
 	err = m.SetSinks([]sink_api.ExternalSink{})
 	as.Nil(err)
-	stopChan = m.Sync()
-	as.NotNil(stopChan)
+	m.sync()
 	as.Equal(1, s1.StoredTimeseries)
 	as.Equal(1, s1.StoredEvents)
 
@@ -172,10 +183,8 @@ func TestSetSinksStore(t *testing.T) {
 	c.StorePods(pods)
 	c.StoreContainers(containers)
 	c.StoreEvents(events)
-	stopChan = m.Sync()
-	as.NotNil(stopChan)
+	m.sync()
 	time.Sleep(time.Second)
 	as.Equal(2, s1.StoredTimeseries)
 	as.Equal(2, s1.StoredEvents)
-	stopChan <- struct{}{}
 }
