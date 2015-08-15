@@ -22,15 +22,18 @@ If you're running Heapster in a Kubernetes pod you can use the following flag:
 ```
 --source=kubernetes
 ```
-Heapster requires access to `token-system-monitoring` secret to connect with the master securely.
-To run without auth file, use the following config:
+Heapster requires an authentication token to connect with the apiserver securely. By default, Heapster will use the inClusterConfig system to configure the secure connection. This requires kubernetes version `v1.0.3` or higher and a couple extra kubernetes configuration steps. Firstly, for your apiserver you must create a SSL certificate pair with a SAN that includes the ClusterIP of the kubernetes service. Look [here](https://github.com/kubernetes/kubernetes/blob/e4fde6d2cae2d924a4eb72d1e3b2639f057bb8c1/cluster/gce/util.sh#L497-L559) for an example of how to properly generate certs. Secondly, you need to pass the `ca.crt` that you generated to the `--root-ca-file` option of the controller-manager. This will distribute the root CA to `/var/run/secrets/kubernetes.io/serviceaccount/` of all pods. If you are using `ABAC` authorization (as opposed to `AllowAll` which is the default), you will also need to give the `system:serviceaccount:<namespace-of-heapster>:default` readonly access to the cluster (look [here](https://github.com/kubernetes/kubernetes/blob/master/docs/admin/authorization.md#a-quick-note-on-service-accounts) for more info).
+
+If you don't want to setup inClusterConfig, you can still use heapster! To run without auth, use the following config:
 ```
---source=kubernetes:http://kubernetes-ro?auth=""
+--source=kubernetes:http://<address-of-kubernetes-master>:<http-port>?inClusterConfig=false&auth=""
 ```
+
+This requires the apiserver to be setup completely without auth, which can be done by binding the insecure port to all interfaces (see the apiserver `--insecure-bind-address` option) but *WARNING* be aware of the security repercussions. Only do this if you trust *EVERYONE* on your network.
+
 *Note: Remove "monitoring-token" volume from heaspter controller config if you are running without auth.*
 
-Alternatively, create a [service account](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/docs/design/service_accounts.md)
-like this:
+Alternatively, you can use a heapster-only serviceaccount like this:
 
 ```
 cat <EOF | kubectl create -f -
@@ -66,7 +69,7 @@ spec:
           name: "heapster"
           command:
             - "/heapster"
-            - "--source=kubernetes:http://kubernetes-ro?useServiceAccount=true&auth="
+            - "--source=kubernetes:http://kubernetes-ro?inClusterConfig=false&useServiceAccount=true&auth="
             - "--sink=influxdb:http://monitoring-influxdb:80"
 ```
 
