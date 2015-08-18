@@ -35,8 +35,7 @@ func TestWithFuzzInput(t *testing.T) {
 func testWithFuzzInternal() {
 	inputStats := []*cadvisor.ContainerStats{}
 	fuzz.New().Fuzz(&inputStats)
-	_ = sampleContainerStats(inputStats, time.Now(), time.Nanosecond, false)
-	_ = sampleContainerStats(inputStats, time.Now(), time.Nanosecond, true)
+	_ = sampleContainerStats(inputStats, time.Nanosecond)
 }
 
 func TestWithNoDownsampling(t *testing.T) {
@@ -56,7 +55,7 @@ func TestWithNoDownsampling(t *testing.T) {
 			Timestamp: start.Add(resolution * 3),
 		},
 	}
-	output := sampleContainerStats(inputStats, start, resolution, false)
+	output := sampleContainerStats(inputStats, resolution)
 	assert.Equal(t, output, inputStats)
 }
 
@@ -67,7 +66,7 @@ func TestWithDownsampling(t *testing.T) {
 		inputStats = append(inputStats, &cadvisor.ContainerStats{Timestamp: start.Add(time.Second * time.Duration(i))})
 	}
 
-	output := sampleContainerStats(inputStats, start, time.Second*2, false)
+	output := sampleContainerStats(inputStats, time.Second*2)
 	assert.Len(t, output, 2)
 }
 
@@ -77,106 +76,6 @@ func TestWithLargeDownsampling(t *testing.T) {
 	for i := 1; i <= 100; i++ {
 		inputStats = append(inputStats, &cadvisor.ContainerStats{Timestamp: start.Add(time.Second * time.Duration(i))})
 	}
-	output := sampleContainerStats(inputStats, start, time.Minute, false)
+	output := sampleContainerStats(inputStats, time.Minute)
 	assert.Len(t, output, 2)
-}
-
-func getTime(h, m, s int) time.Time {
-	return time.Date(2015, time.July, 10, h, m, s, 0, time.UTC)
-}
-
-func TestWithNoDownsamplingAndAligning(t *testing.T) {
-	resolution := time.Minute
-	start := getTime(10, 0, 5)
-	inputStats := []*cadvisor.ContainerStats{
-		{
-			Timestamp: getTime(10, 1, 5),
-		},
-		{
-			Timestamp: getTime(10, 2, 5),
-		},
-	}
-	outputStats := []*cadvisor.ContainerStats{
-		{
-			Timestamp: getTime(10, 1, 0),
-		},
-		{
-			Timestamp: getTime(10, 2, 0),
-		},
-	}
-	output := sampleContainerStats(inputStats, start, resolution, true)
-	assert.Equal(t, output, outputStats)
-}
-
-func TestWithDownsamplingAndAligning(t *testing.T) {
-	resolution := time.Minute
-	start := getTime(10, 0, 5)
-	inputStats := []*cadvisor.ContainerStats{
-		{
-			Timestamp: getTime(10, 0, 1),
-		},
-		{
-			Timestamp: getTime(10, 0, 10),
-		},
-		{
-			Timestamp: getTime(10, 1, 1),
-		},
-		{
-			Timestamp: getTime(10, 1, 10),
-		},
-		{
-			Timestamp: getTime(10, 2, 1),
-		},
-		{
-			Timestamp: getTime(10, 2, 10),
-		},
-	}
-	outputStats := []*cadvisor.ContainerStats{
-		{
-			Timestamp: getTime(10, 1, 0),
-		},
-		{
-			Timestamp: getTime(10, 2, 0),
-		},
-	}
-	output := sampleContainerStats(inputStats, start, resolution, true)
-	assert.Equal(t, output, outputStats)
-}
-
-func TestWithAligningAndAlignedStart(t *testing.T) {
-	resolution := time.Minute
-	start := getTime(10, 0, 0)
-	inputStats := []*cadvisor.ContainerStats{
-		{
-			Timestamp: getTime(10, 0, 1),
-		},
-		{
-			Timestamp: getTime(10, 0, 10),
-		},
-		{
-			Timestamp: getTime(10, 1, 1),
-		},
-		{
-			Timestamp: getTime(10, 1, 10),
-		},
-		{
-			Timestamp: getTime(10, 2, 1),
-		},
-		{
-			Timestamp: getTime(10, 2, 10),
-		},
-	}
-	outputStats := []*cadvisor.ContainerStats{
-		{
-			Timestamp: getTime(10, 0, 0),
-		},
-		{
-			Timestamp: getTime(10, 1, 0),
-		},
-		{
-			Timestamp: getTime(10, 2, 0),
-		},
-	}
-	output := sampleContainerStats(inputStats, start, resolution, true)
-	assert.Equal(t, output, outputStats)
 }
