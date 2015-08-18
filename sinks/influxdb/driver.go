@@ -29,6 +29,7 @@ import (
 	"k8s.io/heapster/extpoints"
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/util"
+	"k8s.io/heapster/version"
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
@@ -36,7 +37,6 @@ type influxDBClient interface {
 	WriteSeriesWithTimePrecision(series []*influxdb.Series, timePrecision influxdb.TimePrecision) error
 	GetDatabaseList() ([]map[string]interface{}, error)
 	CreateDatabase(name string) error
-	DisableCompression()
 }
 
 type influxdbSink struct {
@@ -305,19 +305,25 @@ func createDatabase(databaseName string, client *influxdb.Client) error {
 
 // Returns a thread-compatible implementation of influxdb interactions.
 func new(c config) (sink_api.ExternalSink, error) {
-	var err error
-	iConfig := &influxdb.ClientConfig{
-		Host:     c.host,
-		Username: c.user,
-		Password: c.password,
-		Database: c.dbName,
-		IsSecure: false,
+	url := &url.URL{
+		Scheme: "http",
+		Host:   c.host,
 	}
-	client, err := influxdb.NewClient(iConfig)
+	// if isSecure {
+	// 	url.Scheme = "https"
+	// }
+
+	iConfig := &influxdb.Config{
+		URL:       *url,
+		Username:  c.user,
+		Password:  c.password,
+		UserAgent: fmt.Sprintf("%v/%v", "heapster", version.HeapsterVersion),
+	}
+	client, err := influxdb.NewClient(*iConfig)
+
 	if err != nil {
 		return nil, err
 	}
-	client.DisableCompression()
 	for i := 0; i < maxRetries; i++ {
 		err = createDatabase(c.dbName, client)
 		if err == nil {
