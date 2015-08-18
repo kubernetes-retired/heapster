@@ -29,7 +29,7 @@ func TestLast(t *testing.T) {
 	assert := assert.New(t)
 	now := time.Now().Truncate(time.Minute)
 
-	// Invocation with nothing in the statStore - no result
+	// Invocation with nothing in the StatStore - no result
 	last, err := store.Last()
 	assert.Error(err)
 	assert.Equal(last, TimePoint{})
@@ -98,7 +98,7 @@ func TestMax(t *testing.T) {
 	assert := assert.New(t)
 	now := time.Now().Truncate(time.Minute)
 
-	// Invocation with nothing in the statStore - no result
+	// Invocation with nothing in the StatStore - no result
 	max, err := store.Max()
 	assert.Error(err)
 	assert.Equal(max, uint64(0))
@@ -191,7 +191,7 @@ func TestGet(t *testing.T) {
 	now := time.Now().Truncate(time.Minute)
 	zeroTime := time.Time{}
 
-	// Invocation with nothing in the statStore - empty result
+	// Invocation with nothing in the StatStore - empty result
 	res := store.Get(zeroTime, zeroTime)
 	assert.Len(res, 0)
 
@@ -215,7 +215,7 @@ func TestGet(t *testing.T) {
 		Value:     uint64(599),
 	}))
 
-	// Invocation with one element in the statStore
+	// Invocation with one element in the StatStore
 	res = store.Get(zeroTime, zeroTime)
 	require.Len(res, 1)
 	assert.Equal(res[0], TimePoint{
@@ -235,7 +235,7 @@ func TestGet(t *testing.T) {
 		Value:     uint64(100000),
 	}))
 
-	// Invocation with two elements in the statStore
+	// Invocation with two elements in the StatStore
 	res = store.Get(zeroTime, zeroTime)
 	require.Len(res, 2)
 	assert.Equal(res[0], TimePoint{
@@ -259,7 +259,7 @@ func TestGet(t *testing.T) {
 		Value:     uint64(511),
 	}))
 
-	// Invocation with three elements in the statStore
+	// Invocation with three elements in the StatStore
 	res = store.Get(zeroTime, zeroTime)
 	require.Len(res, 3)
 	assert.Equal(res[0], TimePoint{
@@ -287,7 +287,7 @@ func TestGet(t *testing.T) {
 		Value:     uint64(550),
 	}))
 
-	// Invocation with a full statStore and a multi-resolution bucket
+	// Invocation with a full StatStore and a multi-resolution bucket
 	res = store.Get(zeroTime, zeroTime)
 	require.Len(res, 5)
 	assert.Equal(res[0], TimePoint{
@@ -418,7 +418,7 @@ func TestGet(t *testing.T) {
 	assert.Len(res, 0)
 
 	// Put one value from 10 minutes since the last Put.
-	// This Put should force the entire statStore to be filled with 1000.
+	// This Put should force the entire StatStore to be filled with 1000.
 	assert.NoError(store.Put(TimePoint{
 		Timestamp: now.Add(25 * time.Minute),
 		Value:     uint64(1500),
@@ -457,12 +457,12 @@ func TestAverage(t *testing.T) {
 	assert := assert.New(t)
 	now := time.Now().Truncate(time.Minute)
 
-	// Invocation with nothing in the statStore - error
+	// Invocation with nothing in the StatStore - error
 	avg, err := store.Average()
 	assert.Error(err)
 	assert.Equal(avg, uint64(0))
 
-	// Populate statStore
+	// Populate StatStore
 	assert.NoError(store.Put(TimePoint{
 		Timestamp: now,
 		Value:     uint64(190),
@@ -474,7 +474,7 @@ func TestAverage(t *testing.T) {
 		Value:     uint64(199),
 	}))
 
-	// Invocation with one element in the statStore
+	// Invocation with one element in the StatStore
 	avg, err = store.Average()
 	assert.NoError(err)
 	assert.Equal(avg, 200)
@@ -497,13 +497,13 @@ func TestAverage(t *testing.T) {
 		Value:     uint64(599),
 	}))
 
-	// Put one point in the next minute. statStore is full now
+	// Put one point in the next minute. StatStore is full now
 	assert.NoError(store.Put(TimePoint{
 		Timestamp: now.Add(5 * time.Minute),
 		Value:     uint64(1081),
 	}))
 
-	// Invocation with five elements in the statStore
+	// Invocation with five elements in the StatStore
 	avg, err = store.Average()
 	assert.NoError(err)
 	assert.Equal(avg, uint64(360))
@@ -516,17 +516,17 @@ func TestAverage(t *testing.T) {
 
 // TestPercentile tests all flows of the Percentile method.
 func TestPercentile(t *testing.T) {
-	// epsilon: 50, resolution: 1 minute, total: 5 minutes, no percentiles
+	// epsilon: 50, resolution: 1 minute, total: 5 minutes, two percentiles
 	store := NewStatStore(50, time.Minute, 5, []float64{0.5, 0.95})
 	assert := assert.New(t)
 	now := time.Now().Truncate(time.Minute)
 
-	// Invocation with nothing in the statStore - error
+	// Invocation with nothing in the StatStore - error
 	pc, err := store.Percentile(0.95)
 	assert.Error(err)
 	assert.Equal(pc, uint64(0))
 
-	// Populate statStore
+	// Populate StatStore
 	assert.NoError(store.Put(TimePoint{
 		Timestamp: now,
 		Value:     uint64(190),
@@ -543,7 +543,7 @@ func TestPercentile(t *testing.T) {
 	assert.Error(err)
 	assert.Equal(pc, uint64(0))
 
-	// Invocation with one element in the statStore
+	// Invocation with one element in the StatStore
 	pc, err = store.Percentile(0.5)
 	assert.NoError(err)
 	assert.Equal(pc, 200)
@@ -569,13 +569,13 @@ func TestPercentile(t *testing.T) {
 		Value:     uint64(30),
 	}))
 
-	// Put one point in the next minute. statStore is full now
+	// Put one point in the next minute. StatStore is full now
 	assert.NoError(store.Put(TimePoint{
 		Timestamp: now.Add(5 * time.Minute),
 		Value:     uint64(50),
 	}))
 
-	// Invocation with five elements in the statStore
+	// Invocation with five elements in the StatStore
 	pc, err = store.Percentile(0.5)
 	assert.NoError(err)
 	assert.Equal(pc, uint64(200))
@@ -590,4 +590,55 @@ func TestPercentile(t *testing.T) {
 	pc, err = store.Percentile(0.95)
 	assert.NoError(err)
 	assert.Equal(pc, uint64(550))
+}
+
+// TestIsEmpty tests all flows of the IsEmpty method.
+func TestIsEmpty(t *testing.T) {
+	// epsilon: 50, resolution: 1 minute, total: 5 minutes, no percentiles
+	store := NewStatStore(50, time.Minute, 5, []float64{})
+	assert := assert.New(t)
+	now := time.Now().Truncate(time.Minute)
+
+	// Invocation with nothing in the StatStore
+	assert.True(store.IsEmpty())
+
+	// Put one point in the StatStore.
+	assert.NoError(store.Put(TimePoint{
+		Timestamp: now,
+		Value:     uint64(30),
+	}))
+
+	// Invocation with values only in the lastPut field.
+	assert.True(store.IsEmpty())
+
+	// Put one point in the next minute. StatStore is not empty now
+	assert.NoError(store.Put(TimePoint{
+		Timestamp: now.Add(1 * time.Minute),
+		Value:     uint64(50),
+	}))
+
+	// Invocation with a value in the StatStore
+	assert.False(store.IsEmpty())
+}
+
+// TestMaxSize tests all flows of the MaxSize method.
+func TestMaxSize(t *testing.T) {
+	assert := assert.New(t)
+
+	// Invocation with a StatStore of 5 minutes, 1 min resolution.
+	store := NewStatStore(50, time.Minute, 5, []float64{})
+	assert.Equal(5*time.Minute, store.MaxSize())
+
+	// Invocation with a StatStore of 1 hour, 5 min resolution.
+	store = NewStatStore(50, 5*time.Minute, 12, []float64{})
+	assert.Equal(time.Hour, store.MaxSize())
+
+	// Invocation with a StatStore of 1 hour, 1 hour resolution.
+	store = NewStatStore(50, time.Hour, 1, []float64{})
+	assert.Equal(time.Hour, store.MaxSize())
+
+	// Invocation with a StatStore of 1 minute, 10 second resolution.
+	store = NewStatStore(50, 10*time.Second, 6, []float64{})
+	assert.Equal(time.Minute, store.MaxSize())
+
 }
