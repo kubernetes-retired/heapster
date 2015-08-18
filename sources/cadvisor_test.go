@@ -30,7 +30,7 @@ type fakeDataSource struct {
 	f func(host datasource.Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error)
 }
 
-func (self *fakeDataSource) GetAllContainers(host datasource.Host, start, end time.Time, resolution time.Duration, align bool) (subcontainers []*api.Container, root *api.Container, err error) {
+func (self *fakeDataSource) GetAllContainers(host datasource.Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error) {
 	return self.f(host, start, end, resolution)
 }
 
@@ -46,7 +46,7 @@ func TestBasicSuccess(t *testing.T) {
 		cadvisorPort: 8080,
 		cadvisorApi:  cadvisorApi,
 	}
-	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second, false)
+	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	require.Equal(t, api.AggregateData{Pods: nil, Containers: nil, Machine: nil}, data)
 }
@@ -88,7 +88,7 @@ func TestWorkflowSuccess(t *testing.T) {
 		cadvisorPort: 8080,
 		cadvisorApi:  cadvisorApi,
 	}
-	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second, false)
+	data, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute), time.Second)
 	require.NoError(t, err)
 	assert.Len(t, data.Containers, 2)
 	assert.Len(t, data.Machine, 2)

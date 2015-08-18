@@ -196,7 +196,7 @@ func NewKubeEvents(client *kubeclient.Client, ec cache.EventsCache) api.Source {
 	return es
 }
 
-func (eventSource *eventsSourceImpl) GetInfo(start, end time.Time, resolution time.Duration, align bool) (api.AggregateData, error) {
+func (eventSource *eventsSourceImpl) GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error) {
 	events, watchLoopTerminated, err := eventSource.getEvents()
 	if err != nil {
 		if watchLoopTerminated {

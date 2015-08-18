@@ -60,7 +60,6 @@ type realManager struct {
 	sinkUris     Uris
 	lastSync     time.Time
 	resolution   time.Duration
-	align        bool
 	decoder      sink_api.Decoder
 	sinkStopChan chan<- struct{}
 }
@@ -70,7 +69,7 @@ type syncData struct {
 	mutex sync.Mutex
 }
 
-func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration, c cache.Cache, useModel bool, modelRes time.Duration, align bool) (Manager, error) {
+func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration, c cache.Cache, useModel bool, modelRes time.Duration) (Manager, error) {
 	// TimeStore constructor passed to the cluster implementation.
 	tsConstructor := func() store.TimeStore {
 		// TODO(afein): determine default analogy of cache duration to Timestore durations.
@@ -80,18 +79,13 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 	if useModel {
 		newCluster = model.NewCluster(tsConstructor, modelRes)
 	}
-	firstSync := time.Now()
-	if align {
-		firstSync = firstSync.Truncate(res).Add(res)
-	}
 	return &realManager{
 		sources:      sources,
 		sinkManager:  sinkManager,
 		cache:        c,
 		model:        newCluster,
-		lastSync:     firstSync,
+		lastSync:     time.Now(),
 		resolution:   res,
-		align:        align,
 		decoder:      sink_api.NewDecoder(),
 		sinkStopChan: sinkManager.Sync(),
 	}, nil
@@ -103,7 +97,7 @@ func (rm *realManager) GetCluster() model.Cluster {
 
 func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, sd *syncData, errChan chan<- error) {
 	glog.V(2).Infof("attempting to get data from source %q", s.Name())
-	data, err := s.GetInfo(start, end, rm.resolution, rm.align)
+	data, err := s.GetInfo(start, end, rm.resolution)
 	if err != nil {
 		errChan <- fmt.Errorf("failed to get information from source %q - %v", s.Name(), err)
 		return
@@ -128,14 +122,8 @@ func (rm *realManager) Housekeep() {
 	var sd syncData
 	start := rm.lastSync
 	end := time.Now()
-	if rm.align {
-		end = end.Truncate(rm.resolution)
-		if start.After(end) {
-			return
-		}
-	}
 	rm.lastSync = end
-	glog.V(2).Infof("starting to scrape data from sources start:%v end:%v", start, end)
+	glog.V(2).Infof("starting to scrape data from sources")
 	for idx := range rm.sources {
 		s := rm.sources[idx]
 		go rm.scrapeSource(s, start, end, &sd, errChan)
