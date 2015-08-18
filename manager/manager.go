@@ -80,16 +80,12 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 	if useModel {
 		newCluster = model.NewCluster(tsConstructor, modelRes)
 	}
-	firstSync := time.Now()
-	if align {
-		firstSync = firstSync.Truncate(res).Add(res)
-	}
 	return &realManager{
 		sources:      sources,
 		sinkManager:  sinkManager,
 		cache:        c,
 		model:        newCluster,
-		lastSync:     firstSync,
+		lastSync:     time.Now(),
 		resolution:   res,
 		align:        align,
 		decoder:      sink_api.NewDecoder(),
@@ -128,14 +124,8 @@ func (rm *realManager) Housekeep() {
 	var sd syncData
 	start := rm.lastSync
 	end := time.Now()
-	if rm.align {
-		end = end.Truncate(rm.resolution)
-		if start.After(end) {
-			return
-		}
-	}
 	rm.lastSync = end
-	glog.V(2).Infof("starting to scrape data from sources start:%v end:%v", start, end)
+	glog.V(2).Infof("starting to scrape data from sources")
 	for idx := range rm.sources {
 		s := rm.sources[idx]
 		go rm.scrapeSource(s, start, end, &sd, errChan)
