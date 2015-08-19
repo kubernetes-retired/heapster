@@ -149,6 +149,44 @@ func (rc *realCluster) GetPodMetric(req PodRequest) ([]store.TimePoint, time.Tim
 	return res, rc.timestamp, nil
 }
 
+// GetPodMetric returns metrics of a batch of Pod entities, along with the latest timestamp.
+// GetPodMetric receives as arguments the namespace, the pod names, the metric name and a start time.
+// GetPodMetric returns, for ach of the pods, slice of TimePoints for that metric, with times starting AFTER the starting timestamp
+// (possibly empty if )
+func (rc *realCluster) GetBatchPodMetric(req BatchPodRequest) ([][]store.TimePoint, time.Time, error) {
+	var zeroTime time.Time
+	rc.lock.RLock()
+	defer rc.lock.RUnlock()
+
+	if len(rc.Namespaces) == 0 {
+		return nil, zeroTime, fmt.Errorf("the model is not populated yet")
+	}
+	ns, ok := rc.Namespaces[req.NamespaceName]
+	if !ok {
+		return nil, zeroTime, fmt.Errorf("the specified namespace is not present in the cluster")
+	}
+	result := make([][]store.TimePoint, len(req.PodNames))
+	for i, podName := range req.PodNames {
+		pod, ok := ns.Pods[podName]
+		if !ok {
+			result[i] = []store.TimePoint{}
+			continue
+		}
+		if len(pod.Metrics) == 0 {
+			result[i] = []store.TimePoint{}
+			continue
+		}
+		ts, ok := pod.Metrics[req.MetricName]
+		if !ok {
+			result[i] = []store.TimePoint{}
+			continue
+		}
+		res := (*ts).Get(req.Start, req.End)
+		result[i] = res
+	}
+	return result, rc.timestamp, nil
+}
+
 // GetPodContainerMetric returns a metric of a container entity that belongs in a Pod, along with the latest timestamp.
 // GetPodContainerMetric receives as arguments the namespace, the pod name, the container name, the metric name and a start time.
 // GetPodContainerMetric returns a slice of TimePoints for that metric, with times starting AFTER the starting timestamp.

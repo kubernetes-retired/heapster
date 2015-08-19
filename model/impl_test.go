@@ -742,6 +742,63 @@ func TestGetPodMetric(t *testing.T) {
 	assert.NotNil(res)
 }
 
+// TestGetPodMetric tests all flows of GetPodMetric.
+func TestGetBatchPodMetric(t *testing.T) {
+	var (
+		zeroTime     = time.Time{}
+		cluster      = newRealCluster(newTimeStore, time.Minute)
+		source_cache = cacheFactory()
+		assert       = assert.New(t)
+		namespace    = "test"
+		pod          = "pod1"
+		node         = "hostname2"
+	)
+
+	// Invocation with no namespaces in cluster
+	res, stamp, err := cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{pod}, cpuUsage, zeroTime, zeroTime})
+	assert.Error(err)
+	assert.Equal(stamp, zeroTime)
+	assert.Nil(res)
+
+	// Populate cluster
+	assert.NoError(cluster.Update(source_cache))
+
+	// Invocation with non-existant namespace
+	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{"doesnotexist", []string{pod}, cpuUsage, zeroTime, zeroTime})
+	assert.Error(err)
+	assert.Equal(stamp, zeroTime)
+	assert.Nil(res)
+
+	// Invocation with non-existant pod
+	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{"otherpod"}, cpuUsage, zeroTime, zeroTime})
+	assert.NoError(err)
+	assert.NotEqual(stamp, zeroTime)
+	assert.NotNil(res)
+	assert.Equal(len(res[0]), 0)
+
+	// Invocation with new pod - no metrics
+	cluster.addPod(pod, "1234", cluster.Namespaces[namespace], cluster.Nodes[node])
+	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{pod}, cpuUsage, zeroTime, zeroTime})
+	assert.NoError(err)
+	assert.NotEqual(stamp, zeroTime)
+	assert.NotNil(res)
+	assert.Equal(len(res[0]), 0)
+
+	// Invocation with non-existant metric
+	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{pod}, "doesnotexist", zeroTime, zeroTime})
+	assert.NoError(err)
+	assert.NotEqual(stamp, zeroTime)
+	assert.NotNil(res)
+	assert.Equal(len(res[0]), 0)
+
+	// Normal Invocation - memoryUsage
+	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{pod}, memUsage, zeroTime, zeroTime})
+	assert.NoError(err)
+	assert.NotEqual(stamp, zeroTime)
+	assert.NotNil(res)
+	assert.Equal(len(res[0]), 1)
+}
+
 // TestGetPodContainerMetric tests all flows of GetPodContainerMetric.
 func TestGetPodContainerMetric(t *testing.T) {
 	var (

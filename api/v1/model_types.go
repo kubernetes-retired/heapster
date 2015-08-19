@@ -27,3 +27,7 @@ type MetricResult struct {
 	Metrics         []MetricPoint `json:"metrics"`
 	LatestTimestamp time.Time     `json:"latestTimestamp"`
 }
+
+type MetricResultList struct {
+	Items []MetricResult `json:"items"`
+}
