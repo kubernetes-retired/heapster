@@ -33,14 +33,8 @@ import (
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
-type influxDBClient interface {
-	WriteSeriesWithTimePrecision(series []*influxdb.Series, timePrecision influxdb.TimePrecision) error
-	GetDatabaseList() ([]map[string]interface{}, error)
-	CreateDatabase(name string) error
-}
-
 type influxdbSink struct {
-	client    influxDBClient
+	client    *influxdb.Client
 	stateLock sync.RWMutex
 	// TODO(rjnagal): switch to atomic if writeFailures is the only protected data.
 	writeFailures int // guarded by stateLock
@@ -64,17 +58,17 @@ const (
 	waitDuration = 30 * time.Second
 )
 
-func (self *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
+func (sink *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
 	// Create tags once influxDB v0.9.0 is released.
 	return nil
 }
 
-func (self *influxdbSink) Unregister(metrics []sink_api.MetricDescriptor) error {
+func (sink *influxdbSink) Unregister(metrics []sink_api.MetricDescriptor) error {
 	// Like Register
 	return nil
 }
 
-func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influxdb.Series {
+func (sink *influxdbSink) metricToPoint(timeseries *sink_api.Timeseries) *influxdb.Point {
 	columns := []string{}
 	values := []interface{}{}
 	// TODO: move labels to tags once v0.9.0 is released.
@@ -90,7 +84,7 @@ func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influ
 	columns = append(columns, "value")
 	values = append(values, timeseries.Point.Value)
 	// Append labels.
-	if !self.c.avoidColumns {
+	if !sink.c.avoidColumns {
 		for key, value := range timeseries.Point.Labels {
 			columns = append(columns, key)
 			values = append(values, value)
@@ -104,9 +98,9 @@ func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influ
 	values = append(values, timeseries.Point.End.Unix())
 	// Ass sequence number
 	columns = append(columns, "sequence_number")
-	values = append(values, self.seqNum.Get(seriesName))
+	values = append(values, sink.seqNum.Get(seriesName))
 
-	return self.newSeries(seriesName, columns, values)
+	return sink.newSeries(seriesName, columns, values)
 }
 
 var eventColumns = []string{
@@ -120,7 +114,7 @@ var eventColumns = []string{
 
 // Stores events into the backend.
 func (sink *influxdbSink) StoreEvents(events []kube_api.Event) error {
-	dataPoints := []*influxdb.Series{}
+	points := []influxdb.Point{}
 	if events == nil || len(events) <= 0 {
 		return nil
 	}
@@ -130,7 +124,7 @@ func (sink *influxdbSink) StoreEvents(events []kube_api.Event) error {
 			glog.Errorf("failed to parse events: %v", err)
 			return err
 		}
-		dataPoints = append(dataPoints, dataPoint)
+		points = append(points, *dataPoint)
 	} else {
 		for _, event := range events {
 			dataPoint, err := sink.storeEventNoColumns(event)
@@ -138,10 +132,15 @@ func (sink *influxdbSink) StoreEvents(events []kube_api.Event) error {
 				glog.Errorf("failed to parse events: %v", err)
 				return err
 			}
-			dataPoints = append(dataPoints, dataPoint)
+			points = append(points, *dataPoint)
 		}
 	}
-	err := sink.client.WriteSeriesWithTimePrecision(dataPoints, influxdb.Millisecond)
+	bp := influxdb.BatchPoints{
+		Points:   points,
+		Database: sink.c.dbName,
+		Time:     time.Now(),
+	}
+	_, err := sink.client.Write(bp)
 	if err != nil {
 		glog.Errorf("failed to write events to influxDB - %s", err)
 		sink.recordWriteFailure()
@@ -152,7 +151,7 @@ func (sink *influxdbSink) StoreEvents(events []kube_api.Event) error {
 
 }
 
-func (sink *influxdbSink) storeEventsColumns(events []kube_api.Event) (*influxdb.Series, error) {
+func (sink *influxdbSink) storeEventsColumns(events []kube_api.Event) (*influxdb.Point, error) {
 	if events == nil || len(events) <= 0 {
 		return nil, nil
 	}
@@ -188,7 +187,7 @@ func hashUID(s string) uint64 {
 	return h.Sum64()
 }
 
-func (sink *influxdbSink) storeEventNoColumns(event kube_api.Event) (*influxdb.Series, error) {
+func (sink *influxdbSink) storeEventNoColumns(event kube_api.Event) (*influxdb.Point, error) {
 	// Append labels to seriesName instead of adding extra columns
 	seriesName := strings.Replace(eventsSeriesName, "/", "_", -1)
 	labels := make(map[string]string)
@@ -223,17 +222,17 @@ func (sink *influxdbSink) storeEventNoColumns(event kube_api.Event) (*influxdb.S
 
 }
 
-func (self *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) error {
-	dataPoints := []*influxdb.Series{}
+func (sink *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) error {
+	dataPoints := []influxdb.Point{}
 	for index := range timeseries {
-		dataPoints = append(dataPoints, self.metricToSeries(&timeseries[index]))
+		dataPoints = append(dataPoints, sink.metricToSeries(&timeseries[index]))
 	}
 	// TODO: Group all datapoints belonging to a metric into a single series.
 	// TODO: Record the average time taken to flush data.
-	err := self.client.WriteSeriesWithTimePrecision(dataPoints, influxdb.Second)
+	err := sink.client.WriteSeriesWithTimePrecision(dataPoints, influxdb.Second)
 	if err != nil {
 		glog.Errorf("failed to write stats to influxDB - %s", err)
-		self.recordWriteFailure()
+		sink.recordWriteFailure()
 	}
 	glog.V(1).Info("flushed stats to influxDB")
 	return err
@@ -249,7 +248,7 @@ func getEventValue(event *kube_api.Event) (string, error) {
 }
 
 // Returns a new influxdb series.
-func (self *influxdbSink) newSeries(seriesName string, columns []string, points []interface{}) *influxdb.Series {
+func (sink *influxdbSink) newSeries(seriesName string, columns []string, points []interface{}) *influxdb.Series {
 	out := &influxdb.Series{
 		Name:    seriesName,
 		Columns: columns,
@@ -260,27 +259,27 @@ func (self *influxdbSink) newSeries(seriesName string, columns []string, points 
 	return out
 }
 
-func (self *influxdbSink) recordWriteFailure() {
-	self.stateLock.Lock()
-	defer self.stateLock.Unlock()
-	self.writeFailures++
+func (sink *influxdbSink) recordWriteFailure() {
+	sink.stateLock.Lock()
+	defer sink.stateLock.Unlock()
+	sink.writeFailures++
 }
 
-func (self *influxdbSink) getState() string {
-	self.stateLock.RLock()
-	defer self.stateLock.RUnlock()
-	return fmt.Sprintf("\tNumber of write failures: %d\n", self.writeFailures)
+func (sink *influxdbSink) getState() string {
+	sink.stateLock.RLock()
+	defer sink.stateLock.RUnlock()
+	return fmt.Sprintf("\tNumber of write failures: %d\n", sink.writeFailures)
 }
 
-func (self *influxdbSink) DebugInfo() string {
+func (sink *influxdbSink) DebugInfo() string {
 	desc := "Sink Type: InfluxDB\n"
-	desc += fmt.Sprintf("\tclient: Host %q, Database %q\n", self.c.host, self.c.dbName)
-	desc += self.getState()
+	desc += fmt.Sprintf("\tclient: Host %q, Database %q\n", sink.c.host, sink.c.dbName)
+	desc += sink.getState()
 	desc += "\n"
 	return desc
 }
 
-func (self *influxdbSink) Name() string {
+func (sink *influxdbSink) Name() string {
 	return "InfluxDB Sink"
 }
 
@@ -336,9 +335,9 @@ func new(c config) (sink_api.ExternalSink, error) {
 		return nil, err
 	}
 	return &influxdbSink{
-		client: client,
-		seqNum: newMetricSequenceNum(),
-		c:      c,
+		client:   client,
+		seqNum:   newMetricSequenceNum(),
+		c:        c,
 	}, nil
 }
 
