@@ -21,10 +21,10 @@ import (
 	"strings"
 	"testing"
 
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	kube_time "github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/stretchr/testify/assert"
 	sink_api "k8s.io/heapster/sinks/api"
+	kube_api "k8s.io/kubernetes/pkg/api"
+	kube_time "k8s.io/kubernetes/pkg/util"
 )
 
 type fakeHttpClient struct {
@@ -108,7 +108,7 @@ func TestStoreEventsSingleEventInput(t *testing.T) {
 	fakeSink := NewFakeSink()
 	eventTime := kube_time.Unix(12345, 0)
 	events := []kube_api.Event{
-		kube_api.Event{
+		{
 			Reason:         "event1",
 			FirstTimestamp: eventTime,
 			LastTimestamp:  eventTime,
@@ -145,7 +145,7 @@ func TestStoreEventsMultipleEventInput(t *testing.T) {
 	event1Time := kube_time.Unix(12345, 0)
 	event2Time := kube_time.Unix(12366, 0)
 	events := []kube_api.Event{
-		kube_api.Event{
+		{
 			Reason:         "event1",
 			FirstTimestamp: event1Time,
 			LastTimestamp:  event1Time,
@@ -153,7 +153,7 @@ func TestStoreEventsMultipleEventInput(t *testing.T) {
 				Host: "event1HostName",
 			},
 		},
-		kube_api.Event{
+		{
 			Reason:         "event2",
 			FirstTimestamp: event2Time,
 			LastTimestamp:  event2Time,

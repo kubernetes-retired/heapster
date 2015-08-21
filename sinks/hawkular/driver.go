@@ -24,8 +24,8 @@ import (
 	"github.com/hawkular/hawkular-client-go/metrics"
 	"k8s.io/heapster/extpoints"
 
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	sink_api "k8s.io/heapster/sinks/api"
+	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
 const (
@@ -89,7 +89,7 @@ func (self *hawkularSink) Unregister(mds []sink_api.MetricDescriptor) error {
 // Checks that stored definition is up to date with the model
 func (self *hawkularSink) recent(live *metrics.MetricDefinition, model *metrics.MetricDefinition) bool {
 	recent := true
-	for k, _ := range model.Tags {
+	for k := range model.Tags {
 		if v, found := live.Tags[k]; !found {
 			// There's a label that wasn't in our stored definition
 			live.Tags[k] = v

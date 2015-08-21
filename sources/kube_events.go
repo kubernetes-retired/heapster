@@ -19,14 +19,14 @@ import (
 	"fmt"
 	"time"
 
-	kubeapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	kubeclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	kubefields "github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
-	kubelabels "github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
-	kubewatch "github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
 	"github.com/golang/glog"
 	"k8s.io/heapster/sinks/cache"
 	"k8s.io/heapster/sources/api"
+	kubeapi "k8s.io/kubernetes/pkg/api"
+	kubeclient "k8s.io/kubernetes/pkg/client"
+	kubefields "k8s.io/kubernetes/pkg/fields"
+	kubelabels "k8s.io/kubernetes/pkg/labels"
+	kubewatch "k8s.io/kubernetes/pkg/watch"
 )
 
 const kubeEventsSource = "kube-events"

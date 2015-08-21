@@ -17,9 +17,9 @@ package cache
 import (
 	"time"
 
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	source_api "k8s.io/heapster/sources/api"
+	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
 type Metadata struct {

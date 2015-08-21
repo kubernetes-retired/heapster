@@ -25,13 +25,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/golang/glog"
 	"k8s.io/heapster/manager"
 	"k8s.io/heapster/sinks"
 	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
 	"k8s.io/heapster/version"
+	"k8s.io/kubernetes/pkg/util"
 
 	_ "github.com/progrium/go-extpoints"
 )

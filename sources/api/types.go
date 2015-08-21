@@ -17,8 +17,8 @@ package api
 import (
 	"time"
 
-	kubeapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	cadvisor "github.com/google/cadvisor/info/v1"
+	kubeapi "k8s.io/kubernetes/pkg/api"
 )
 
 type PodMetadata struct {

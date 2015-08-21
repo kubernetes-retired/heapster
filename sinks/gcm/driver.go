@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"net/url"
 
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	kube_api "k8s.io/kubernetes/pkg/api"
 
 	"github.com/golang/glog"
 	"k8s.io/heapster/extpoints"

@@ -18,8 +18,8 @@ import (
 	"net/http"
 	"time"
 
-	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"k8s.io/heapster/sources/api"
+	kube_client "k8s.io/kubernetes/pkg/client"
 )
 
 type Host struct {

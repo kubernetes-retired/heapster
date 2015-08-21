@@ -21,11 +21,11 @@ import (
 	"sync"
 	"time"
 
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/golang/glog"
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
+	kube_api "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 type externalSinkManager struct {
