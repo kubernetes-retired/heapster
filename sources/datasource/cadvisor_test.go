@@ -20,12 +20,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/google/cadvisor/client"
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/heapster/sources/api"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 func TestBasicCadvisor(t *testing.T) {

@@ -6,7 +6,7 @@ Heapster enables Container Cluster Monitoring.
 
 Internally, heapster uses [cAdvisor](https://github.com/google/cadvisor) for compute resource usage metrics.
 
-Heapster currently supports [Kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) and CoreOS natively. It can be extended to support other cluster management solutions easily.
+Heapster currently supports [Kubernetes](https://github.com/kubernetes/kubernetes) and CoreOS natively. It can be extended to support other cluster management solutions easily.
 While running in a Kube cluster, heapster collects compute resource usage of all pods and nodes.
 
 Source configuration is documented [here](docs/source-configuration.md).

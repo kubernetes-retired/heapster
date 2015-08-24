@@ -24,12 +24,12 @@ import (
 	"sync"
 	"time"
 
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/golang/glog"
 	influxdb "github.com/influxdb/influxdb/client"
 	"k8s.io/heapster/extpoints"
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/util"
+	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
 type influxDBClient interface {

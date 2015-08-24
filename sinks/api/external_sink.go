@@ -14,7 +14,7 @@
 
 package v1
 
-import kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+import kube_api "k8s.io/kubernetes/pkg/api"
 
 // ExternalSink is the interface that needs to be implemented by all external storage backends.
 type ExternalSink interface {

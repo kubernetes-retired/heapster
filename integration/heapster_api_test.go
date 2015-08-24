@@ -25,13 +25,13 @@ import (
 	"testing"
 	"time"
 
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	apiErrors "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 	api_v1 "k8s.io/heapster/api/v1/types"
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
+	kube_api "k8s.io/kubernetes/pkg/api"
+	apiErrors "k8s.io/kubernetes/pkg/api/errors"
 )
 
 const (
@@ -191,11 +191,11 @@ func getSchema(fm kubeFramework, svc *kube_api.Service) (*api_v1.TimeseriesSchem
 }
 
 var expectedSystemContainers = map[string]struct{}{
-	"machine":       struct{}{},
-	"kubelet":       struct{}{},
-	"kube-proxy":    struct{}{},
-	"system":        struct{}{},
-	"docker-daemon": struct{}{},
+	"machine":       {},
+	"kubelet":       {},
+	"kube-proxy":    {},
+	"system":        {},
+	"docker-daemon": {},
 }
 
 func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNodes, expectedPods []string) error {
@@ -356,11 +356,11 @@ func getErrorCauses(err error) string {
 
 func runSinksTest(fm kubeFramework, svc *kube_api.Service) error {
 	for _, newSinks := range [...][]string{
-		[]string{},
-		[]string{
+		{},
+		{
 			"gcm",
 		},
-		[]string{},
+		{},
 	} {
 		if err := setSinks(fm, svc, newSinks); err != nil {
 			glog.Errorf("Could not set sinks. Causes: %s", getErrorCauses(err))

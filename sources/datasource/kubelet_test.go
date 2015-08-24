@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/heapster/sources/api"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 func checkContainer(t *testing.T, expected api.Container, actual api.Container) {

@@ -17,11 +17,11 @@ package influxdb
 import (
 	"testing"
 
-	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	kube_time "github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	influxdb "github.com/influxdb/influxdb/client"
 	"github.com/stretchr/testify/assert"
 	sink_api "k8s.io/heapster/sinks/api"
+	kube_api "k8s.io/kubernetes/pkg/api"
+	kube_time "k8s.io/kubernetes/pkg/util"
 )
 
 type capturedWriteCall struct {
@@ -109,7 +109,7 @@ func TestStoreEventsSingleEventInput(t *testing.T) {
 	eventSourceHostname := "event1HostName"
 	eventReason := "event1"
 	events := []kube_api.Event{
-		kube_api.Event{
+		{
 			Reason:        eventReason,
 			LastTimestamp: eventTime,
 			Source: kube_api.EventSource{
@@ -147,14 +147,14 @@ func TestStoreEventsMultipleEventsInput(t *testing.T) {
 	event1Reason := "event1"
 	event2Reason := "event2"
 	events := []kube_api.Event{
-		kube_api.Event{
+		{
 			Reason:        event1Reason,
 			LastTimestamp: event1Time,
 			Source: kube_api.EventSource{
 				Host: event1SourceHostname,
 			},
 		},
-		kube_api.Event{
+		{
 			Reason:        event2Reason,
 			LastTimestamp: event2Time,
 			Source: kube_api.EventSource{
