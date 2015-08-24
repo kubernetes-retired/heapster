@@ -3,7 +3,7 @@
 The Google Cloud Monitoring and Logging backends only works in Google Compute Engine today.
 
 ### Setup a Kubernetes cluster
-[Bring up a Kubernetes cluster](https://github.com/GoogleCloudPlatform/kubernetes), if you haven't already. Ensure that `kubecfg.sh` is exported.
+[Bring up a Kubernetes cluster](https://github.com/kubernetes/kubernetes), if you haven't already. Ensure that `kubecfg.sh` is exported.
 
 ### Start all of the pods and services
 
