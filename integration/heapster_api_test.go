@@ -29,7 +29,7 @@ import (
 	apiErrors "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
-	heapster_api "k8s.io/heapster/api/v1"
+	api_v1 "k8s.io/heapster/api/v1/types"
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
 )
@@ -152,7 +152,7 @@ const (
 	sinksEndpoint         = "/api/v1/sinks"
 )
 
-func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*heapster_api.Timeseries, error) {
+func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*api_v1.Timeseries, error) {
 	body, err := fm.Client().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
@@ -163,7 +163,7 @@ func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*heapster_api.Tim
 	if err != nil {
 		return nil, err
 	}
-	var timeseries []*heapster_api.Timeseries
+	var timeseries []*api_v1.Timeseries
 	if err := json.Unmarshal(body, &timeseries); err != nil {
 		glog.V(2).Infof("response body: %v", string(body))
 		return nil, err
@@ -171,7 +171,7 @@ func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*heapster_api.Tim
 	return timeseries, nil
 }
 
-func getSchema(fm kubeFramework, svc *kube_api.Service) (*heapster_api.TimeseriesSchema, error) {
+func getSchema(fm kubeFramework, svc *kube_api.Service) (*api_v1.TimeseriesSchema, error) {
 	body, err := fm.Client().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
@@ -182,7 +182,7 @@ func getSchema(fm kubeFramework, svc *kube_api.Service) (*heapster_api.Timeserie
 	if err != nil {
 		return nil, err
 	}
-	var timeseriesSchema heapster_api.TimeseriesSchema
+	var timeseriesSchema api_v1.TimeseriesSchema
 	if err := json.Unmarshal(body, &timeseriesSchema); err != nil {
 		glog.V(2).Infof("response body: %v", string(body))
 		return nil, err
@@ -211,7 +211,7 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service, expectedNod
 		return err
 	}
 	// Build a map of metric names to metric descriptors.
-	mdMap := map[string]*heapster_api.MetricDescriptor{}
+	mdMap := map[string]*api_v1.MetricDescriptor{}
 	for idx := range schema.Metrics {
 		mdMap[schema.Metrics[idx].Name] = &schema.Metrics[idx]
 	}
