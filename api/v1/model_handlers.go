@@ -23,6 +23,7 @@ import (
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 
+	"k8s.io/heapster/api/v1/types"
 	"k8s.io/heapster/model"
 	"k8s.io/heapster/store"
 )
@@ -65,7 +66,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metric").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(MetricResult{}))
+		Writes(types.MetricResult{}))
 
 	// The /nodes/ endpoint returns a list of all Node entities in the cluster.
 	ws.Route(ws.GET("/nodes/").
@@ -73,7 +74,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Filter(compressionFilter).
 		Doc("Get a list of all Nodes in the model").
 		Operation("allNodes").
-		Writes(MetricResult{}))
+		Writes(types.MetricResult{}))
 
 	// The /nodes/{node-name} endpoint returns a list of all available API paths for a Node entity.
 	ws.Route(ws.GET("/nodes/{node-name}").
@@ -102,7 +103,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metric").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(MetricResult{}))
+		Writes(types.MetricResult{}))
 
 	// The /namespaces/ endpoint returns a list of all Namespace entities in the cluster.
 	ws.Route(ws.GET("/namespaces/").
@@ -138,7 +139,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(MetricResult{}))
+		Writes(types.MetricResult{}))
 
 	// The /namespaces/{namespace-name}/pods endpoint returns a list of all Pod entities in the cluster,
 	// under a specified namespace.
@@ -180,7 +181,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(MetricResult{}))
+		Writes(types.MetricResult{}))
 	// The /namespaces/{namespace-name}/pods/{pod-name}/containers endpoint returns a list of all Container entities,
 	// under a specified namespace and pod.
 	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers").
@@ -226,7 +227,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(MetricResult{}))
+		Writes(types.MetricResult{}))
 
 	// The /nodes/{node-name}/freecontainers/ endpoint returns a list of all free Container entities,
 	// under a specified node.
@@ -246,7 +247,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Operation("freeContainerMetrics").
 		Param(ws.PathParameter("node-name", "The name of the node to use").DataType("string")).
 		Param(ws.PathParameter("container-name", "The name of the container to use").DataType("string")).
-		Writes(MetricResult{}))
+		Writes(types.MetricResult{}))
 
 	// The /nodes/{node-name}/freecontainers/{container-name}/metrics endpoint
 	// returns a list of all available metrics for a Free Container entity.
@@ -271,7 +272,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(MetricResult{}))
+		Writes(types.MetricResult{}))
 
 	// The /namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name} endpoint exposes
 	// metrics for a list od pods of the model.
@@ -285,7 +286,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(MetricResult{}))
+		Writes(types.MetricResult{}))
 
 	container.Add(ws)
 }
@@ -507,8 +508,8 @@ func (a *Api) podListMetrics(request *restful.Request, response *restful.Respons
 		glog.Errorf("unable to get pod list metric: %s", err)
 		return
 	}
-	metricResultList := MetricResultList{
-		Items: make([]MetricResult, len(batchResult)),
+	metricResultList := types.MetricResultList{
+		Items: make([]types.MetricResult, len(batchResult)),
 	}
 	for i, metrics := range batchResult {
 		metricResultList.Items[i] = exportTimeseries(metrics, new_stamp)
@@ -583,19 +584,19 @@ func parseRequestParam(param string, request *restful.Request, response *restful
 	return req_stamp
 }
 
-// exportTimeseries renders a []store.TimePoint and a timestamp into a MetricResult.
-func exportTimeseries(ts []store.TimePoint, stamp time.Time) MetricResult {
-	// Convert each store.TimePoint to a MetricPoint
-	res_metrics := []MetricPoint{}
+// exportTimeseries renders a []store.TimePoint and a timestamp into a types.MetricResult.
+func exportTimeseries(ts []store.TimePoint, stamp time.Time) types.MetricResult {
+	// Convert each store.TimePoint to a types.MetricPoint
+	res_metrics := []types.MetricPoint{}
 	for _, metric := range ts {
-		newMP := MetricPoint{
+		newMP := types.MetricPoint{
 			Timestamp: metric.Timestamp,
 			Value:     metric.Value.(uint64),
 		}
 		res_metrics = append(res_metrics, newMP)
 	}
 
-	result := MetricResult{
+	result := types.MetricResult{
 		Metrics:         res_metrics,
 		LatestTimestamp: stamp,
 	}

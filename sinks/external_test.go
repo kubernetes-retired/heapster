@@ -22,6 +22,7 @@ import (
 
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	fuzz "github.com/google/gofuzz"
+	_ "k8s.io/heapster/api/v1/types"
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
