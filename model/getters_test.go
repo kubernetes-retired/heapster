@@ -645,3 +645,227 @@ func TestGetAvailableMetrics(t *testing.T) {
 	res = model.GetAvailableMetrics()
 	assert.Len(res, 7)
 }
+
+// TestGetClusterStats tests all flows of GetClusterStats.
+func TestGetClusterStats(t *testing.T) {
+	var (
+		model        = newRealModel(time.Minute)
+		source_cache = cacheFactory()
+		assert       = assert.New(t)
+	)
+
+	// Invocation with no cluster stats
+	res, uptime, err := model.GetClusterStats()
+	assert.Len(res, 0)
+	assert.Equal(uptime, time.Duration(0))
+	assert.NoError(err)
+
+	// Invocation with cluster stats
+	model.Update(source_cache)
+	res, uptime, err = model.GetClusterStats()
+	assert.True(len(res) >= 6)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
+	assert.Equal(res[memUsage].Minute.Average, uint64(10000))
+	assert.Equal(res[memUsage].Hour.Max, 2*memUsageEpsilon)
+	assert.Equal(res[memUsage].Hour.Average, 2*memUsageEpsilon)
+	assert.Equal(res[memUsage].Hour.NinetyFifth, 2*memUsageEpsilon)
+	assert.NotEqual(uptime, time.Duration(0))
+	assert.NoError(err)
+}
+
+// TestGetNodeStats tests all flows of GetNodeStats.
+func TestGetNodeStats(t *testing.T) {
+	var (
+		model        = newRealModel(time.Minute)
+		source_cache = cacheFactory()
+		assert       = assert.New(t)
+	)
+	model.Update(source_cache)
+
+	// Invocation with nonexistant node
+	res, uptime, err := model.GetNodeStats(NodeRequest{
+		NodeName: "nonexistant",
+	})
+	assert.Nil(res)
+	assert.Equal(uptime, time.Duration(0))
+	assert.Error(err)
+
+	// Invocation with normal node
+	res, uptime, err = model.GetNodeStats(NodeRequest{
+		NodeName: "hostname2",
+	})
+	assert.True(len(res) >= 6)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
+	assert.NoError(err)
+}
+
+// TestGetNamespaceStats tests all flows of GetNamespaceStats.
+func TestGetNamespaceStats(t *testing.T) {
+	var (
+		model        = newRealModel(time.Minute)
+		source_cache = cacheFactory()
+		assert       = assert.New(t)
+	)
+	model.Update(source_cache)
+
+	// Invocation with nonexistant namespace
+	res, uptime, err := model.GetNamespaceStats(NamespaceRequest{
+		NamespaceName: "nonexistant",
+	})
+	assert.Nil(res)
+	assert.Equal(uptime, time.Duration(0))
+	assert.Error(err)
+
+	// Invocation with normal namespace
+	res, uptime, err = model.GetNamespaceStats(NamespaceRequest{
+		NamespaceName: "test",
+	})
+	assert.True(len(res) >= 6)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
+	assert.NotEqual(res[memUsage].Hour.Average, uint64(0))
+	assert.NoError(err)
+}
+
+// TestGetPodStats tests all flows of GetPodStats.
+func TestGetPodStats(t *testing.T) {
+	var (
+		model        = newRealModel(time.Minute)
+		source_cache = cacheFactory()
+		assert       = assert.New(t)
+	)
+	model.Update(source_cache)
+
+	// Invocation with nonexistant namespace
+	res, uptime, err := model.GetPodStats(PodRequest{
+		NamespaceName: "nonexistant",
+		PodName:       "pod1",
+	})
+	assert.Nil(res)
+	assert.Equal(uptime, time.Duration(0))
+	assert.Error(err)
+
+	// Invocation with normal namespace and nonexistant pod
+	res, uptime, err = model.GetPodStats(PodRequest{
+		NamespaceName: "test",
+		PodName:       "nonexistant",
+	})
+	assert.Nil(res)
+	assert.Equal(uptime, time.Duration(0))
+	assert.Error(err)
+
+	// Normal Invocation
+	res, uptime, err = model.GetPodStats(PodRequest{
+		NamespaceName: "test",
+		PodName:       "pod1",
+	})
+	assert.True(len(res) >= 6)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
+	assert.NotEqual(res[memUsage].Hour.Average, uint64(0))
+
+	assert.Equal(res[cpuLimit].Minute.Average, res[cpuLimit].Minute.Max)
+	assert.Equal(res[cpuLimit].Minute.Average, res[cpuLimit].Minute.NinetyFifth)
+	assert.NotEqual(res[cpuLimit].Minute.Average, uint64(0))
+	assert.NotEqual(res[cpuLimit].Hour.Average, uint64(0))
+	assert.NoError(err)
+}
+
+// TestGetPodContainerStats tests all flows of GetPodContainerStats.
+func TestGetPodContainerStats(t *testing.T) {
+	var (
+		model        = newRealModel(time.Minute)
+		source_cache = cacheFactory()
+		assert       = assert.New(t)
+	)
+	model.Update(source_cache)
+
+	// Invocation with nonexistant namespace
+	res, uptime, err := model.GetPodContainerStats(PodContainerRequest{
+		NamespaceName: "nonexistant",
+		PodName:       "pod1",
+		ContainerName: "container1",
+	})
+	assert.Nil(res)
+	assert.Equal(uptime, time.Duration(0))
+	assert.Error(err)
+
+	// Invocation with normal namespace and nonexistant pod
+	res, uptime, err = model.GetPodContainerStats(PodContainerRequest{
+		NamespaceName: "test",
+		PodName:       "nonexistant",
+		ContainerName: "container1",
+	})
+	assert.Nil(res)
+	assert.Equal(uptime, time.Duration(0))
+	assert.Error(err)
+
+	// Invocation with normal namespace and pod, but nonexistant container
+	res, uptime, err = model.GetPodContainerStats(PodContainerRequest{
+		NamespaceName: "test",
+		PodName:       "pod1",
+		ContainerName: "nonexistant",
+	})
+	assert.Nil(res)
+	assert.Equal(uptime, time.Duration(0))
+	assert.Error(err)
+
+	// Normal Invocation
+	res, uptime, err = model.GetPodContainerStats(PodContainerRequest{
+		NamespaceName: "test",
+		PodName:       "pod1",
+		ContainerName: "container1",
+	})
+	assert.True(len(res) >= 6)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
+	assert.NotEqual(res[memUsage].Minute.Max, uint64(0))
+	assert.NotEqual(res[memUsage].Minute.NinetyFifth, uint64(0))
+	assert.NoError(err)
+}
+
+// TestGetFreeContainerStats tests all flows of GetFreeContainerStats.
+func TestGetFreeContainerStats(t *testing.T) {
+	var (
+		model        = newRealModel(time.Minute)
+		source_cache = cacheFactory()
+		assert       = assert.New(t)
+	)
+	model.Update(source_cache)
+
+	// Invocation with nonexistant node
+	res, uptime, err := model.GetFreeContainerStats(FreeContainerRequest{
+		NodeName:      "nonexistant",
+		ContainerName: "free_container1",
+	})
+	assert.Nil(res)
+	assert.Equal(uptime, time.Duration(0))
+	assert.Error(err)
+
+	// Invocation with normal node and nonexistant container
+	res, uptime, err = model.GetFreeContainerStats(FreeContainerRequest{
+		NodeName:      "hostname2",
+		ContainerName: "nonexistant",
+	})
+	assert.Nil(res)
+	assert.Equal(uptime, time.Duration(0))
+	assert.Error(err)
+
+	// Normal Invocation
+	res, uptime, err = model.GetFreeContainerStats(FreeContainerRequest{
+		NodeName:      "hostname2",
+		ContainerName: "free_container1",
+	})
+	assert.True(len(res) >= 6)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
+	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
+	assert.NotEqual(res[memUsage].Hour.Average, uint64(0))
+	assert.NoError(err)
+}

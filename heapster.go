@@ -112,6 +112,7 @@ func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, 
 	// Spawn the Model Housekeeping goroutine even if the model is not enabled.
 	// This will allow the model to be activated/deactivated in runtime.
 	// Set the housekeeping period to 2 * argModelResolution + 25 sec
+	// TODO(afein): select a more well-defined housekeeping interval
 	modelDuration := 2 * *argModelResolution
 	modelDuration = time.Time{}.Add(modelDuration).Add(25 * time.Second).Sub(time.Time{})
 	if (*argCacheDuration).Nanoseconds() < modelDuration.Nanoseconds() {

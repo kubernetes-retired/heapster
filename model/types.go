@@ -45,6 +45,14 @@ type Model interface {
 	GetBatchPodMetric(req BatchPodRequest) ([][]statstore.TimePoint, time.Time, error)
 	GetPodContainerMetric(PodContainerMetricRequest) ([]statstore.TimePoint, time.Time, error)
 	GetFreeContainerMetric(FreeContainerMetricRequest) ([]statstore.TimePoint, time.Time, error)
+
+	// The GetXStats operations extract all derived stats for a single entity of the cluster.
+	GetClusterStats() (map[string]StatBundle, time.Duration, error)
+	GetNodeStats(NodeRequest) (map[string]StatBundle, time.Duration, error)
+	GetNamespaceStats(NamespaceRequest) (map[string]StatBundle, time.Duration, error)
+	GetPodStats(PodRequest) (map[string]StatBundle, time.Duration, error)
+	GetPodContainerStats(PodContainerRequest) (map[string]StatBundle, time.Duration, error)
+	GetFreeContainerStats(FreeContainerRequest) (map[string]StatBundle, time.Duration, error)
 }
 
 // realModel is an implementation of the Model interface.
@@ -152,6 +160,20 @@ type FreeContainerMetricRequest struct {
 	NodeName      string
 	ContainerName string
 	MetricRequest
+}
+
+// Derived Stats Types
+
+type Stats struct {
+	Average     uint64
+	NinetyFifth uint64
+	Max         uint64
+}
+
+type StatBundle struct {
+	Minute Stats
+	Hour   Stats
+	Day    Stats
 }
 
 // Listing Types

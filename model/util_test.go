@@ -279,3 +279,72 @@ func TestInstantFromCumulativeMetric(t *testing.T) {
 	assert.Equal(val, 510*1000)
 
 }
+
+// TestGetStats tests all flows of getStats.
+func TestGetStats(t *testing.T) {
+	var (
+		metrics = make(map[string]*daystore.DayStore)
+		now     = time.Now()
+		assert  = assert.New(t)
+	)
+	// Populate a new DayStore with two hours of data
+	metrics[cpuLimit] = newDayStore()
+	for i := 0; i < 2; i++ {
+		metrics[cpuLimit].Put(statstore.TimePoint{
+			Timestamp: now.Add(time.Duration(i) * time.Hour),
+			Value:     uint64(50),
+		})
+		metrics[cpuLimit].Put(statstore.TimePoint{
+			Timestamp: now.Add(time.Duration(i) * time.Hour).Add(15 * time.Minute),
+			Value:     uint64(500),
+		})
+		metrics[cpuLimit].Put(statstore.TimePoint{
+			Timestamp: now.Add(time.Duration(i) * time.Hour).Add(30 * time.Minute),
+			Value:     uint64(2000),
+		})
+		metrics[cpuLimit].Put(statstore.TimePoint{
+			Timestamp: now.Add(time.Duration(i) * time.Hour).Add(45 * time.Minute),
+			Value:     uint64(1000),
+		})
+		metrics[cpuLimit].Put(statstore.TimePoint{
+			Timestamp: now.Add(time.Duration(i) * time.Hour).Add(59 * time.Minute),
+			Value:     uint64(15000),
+		})
+	}
+
+	// flushes the latest TimePoint to the last Hour
+	metrics[cpuLimit].Put(statstore.TimePoint{
+		Timestamp: now.Add(2 * time.Hour),
+		Value:     uint64(300000),
+	})
+
+	metrics[memUsage] = newDayStore()
+	metrics[memUsage].Put(statstore.TimePoint{
+		Timestamp: now,
+		Value:     uint64(50),
+	})
+	metrics[memUsage].Put(statstore.TimePoint{
+		Timestamp: now.Add(30 * time.Minute),
+		Value:     uint64(2000),
+	})
+	metrics[memUsage].Put(statstore.TimePoint{
+		// flushes the previous TimePoint to the last Hour
+		Timestamp: now.Add(60 * time.Minute),
+		Value:     uint64(1000),
+	})
+	info := newInfoType(metrics, nil, nil)
+
+	res := getStats(info)
+	assert.Len(res, 2)
+	assert.Equal(res[cpuLimit].Minute.Average, uint64(300000))
+	assert.Equal(res[cpuLimit].Minute.Max, uint64(300000))
+	assert.Equal(res[cpuLimit].Minute.NinetyFifth, uint64(300000))
+
+	assert.Equal(res[cpuLimit].Hour.Average, uint64(1133))
+	assert.Equal(res[cpuLimit].Hour.Max, uint64(300000))
+	assert.Equal(res[cpuLimit].Hour.NinetyFifth, uint64(2000))
+
+	assert.Equal(res[cpuLimit].Day.Max, res[cpuLimit].Hour.Max)
+	assert.Equal(res[cpuLimit].Day.Average, res[cpuLimit].Hour.Average)
+	assert.Equal(res[cpuLimit].Day.NinetyFifth, res[cpuLimit].Hour.NinetyFifth)
+}
