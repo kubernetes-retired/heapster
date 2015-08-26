@@ -24,12 +24,12 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/heapster/api/v1/types"
-	"k8s.io/heapster/model"
-	"k8s.io/heapster/store"
+	model_api "k8s.io/heapster/model"
+	"k8s.io/heapster/store/statstore"
 )
 
-// errModelNotActivated is the error that is returned when manager.cluster
-// has not beed initialized.
+// errModelNotActivated is the error that is returned by the API handlers
+// when manager.model has not been initialized.
 var errModelNotActivated = errors.New("the model is not activated")
 
 // RegisterModel registers the Model API endpoints.
@@ -43,7 +43,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Consumes("*/*").
 		Produces(restful.MIME_JSON)
 
-	// The / endpoint returns a list of all the entities that are available in the cluster
+	// The / endpoint returns a list of all the entities that are available in the model
 	ws.Route(ws.GET("/").
 		To(a.allEntities).
 		Filter(compressionFilter).
@@ -105,7 +105,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
-	// The /namespaces/ endpoint returns a list of all Namespace entities in the cluster.
+	// The /namespaces/ endpoint returns a list of all Namespace entities in the model.
 	ws.Route(ws.GET("/namespaces/").
 		To(a.allNamespaces).
 		Filter(compressionFilter).
@@ -141,7 +141,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
-	// The /namespaces/{namespace-name}/pods endpoint returns a list of all Pod entities in the cluster,
+	// The /namespaces/{namespace-name}/pods endpoint returns a list of all Pod entities in the model,
 	// under a specified namespace.
 	ws.Route(ws.GET("/namespaces/{namespace-name}/pods").
 		To(a.allPods).
@@ -192,7 +192,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
 		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
 
-	// The /namespaces/{namespace-name}/pods/{pod-name}/containers/metrics/{container-name} endpoint
+	// The /namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name} endpoint
 	// returns a list of all API paths available for a Pod Container
 	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}").
 		To(a.containerPaths).
@@ -229,6 +229,14 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
+	// The /nodes/{node-name}/pods/ endpoint returns a list of all Pods entities under a specified node.
+	ws.Route(ws.GET("/nodes/{node-name}/pods/").
+		To(a.nodePods).
+		Filter(compressionFilter).
+		Doc("Get a list of all Pods belonging to a specified Node in the model").
+		Operation("nodePods").
+		Param(ws.PathParameter("node-name", "The name of the namespace to lookup").DataType("string")))
+
 	// The /nodes/{node-name}/freecontainers/ endpoint returns a list of all free Container entities,
 	// under a specified node.
 	ws.Route(ws.GET("/nodes/{node-name}/freecontainers/").
@@ -256,8 +264,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Filter(compressionFilter).
 		Doc("Get a list of all available metrics for a free Container entity").
 		Operation("availableMetrics").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
+		Param(ws.PathParameter("node-name", "The name of the namespace to lookup").DataType("string")).
 		Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")))
 
 	// The /nodes/{node-name}/freecontainers/{container-name}/metrics/{metric-name} endpoint exposes
@@ -314,6 +321,7 @@ func (a *Api) namespacePaths(request *restful.Request, response *restful.Respons
 func (a *Api) nodePaths(request *restful.Request, response *restful.Response) {
 	entities := []string{
 		"freecontainers/",
+		"pods/",
 		"metrics/",
 	}
 	response.WriteEntity(entities)
@@ -336,84 +344,106 @@ func (a *Api) containerPaths(request *restful.Request, response *restful.Respons
 	response.WriteEntity(entities)
 }
 
-// allNodes returns a list of all the available node names in the cluster.
+// makeExternalEntityList converts the result of model's getX methods to the external type.
+func makeExternalEntityList(list []model_api.EntityListEntry) []types.ExternalEntityListEntry {
+	res := make([]types.ExternalEntityListEntry, 0, len(list))
+	for _, item := range list {
+		newItem := types.ExternalEntityListEntry{
+			Name:     item.Name,
+			CPUUsage: item.CPUUsage,
+			MemUsage: item.MemUsage,
+		}
+		res = append(res, newItem)
+	}
+	return res
+}
+
+// allNodes returns a list of all the available node names in the model.
 func (a *Api) allNodes(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
-	response.WriteEntity(cluster.GetNodes())
+	response.WriteEntity(makeExternalEntityList(model.GetNodes()))
 }
 
-// allNamespaces returns a list of all the available namespaces in the cluster.
+// allNamespaces returns a list of all the available namespaces in the model.
 func (a *Api) allNamespaces(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
-	response.WriteEntity(cluster.GetNamespaces())
+	response.WriteEntity(makeExternalEntityList(model.GetNamespaces()))
 }
 
-// allPods returns a list of all the available pods in the cluster.
+// allPods returns a list of all the available pods in the model.
 func (a *Api) allPods(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
 	namespace := request.PathParameter("namespace-name")
-	response.WriteEntity(cluster.GetPods(namespace))
+	response.WriteEntity(makeExternalEntityList(model.GetPods(namespace)))
 }
 
-// allPodContainers returns a list of all the available pod containers in the cluster.
+// allPodContainers returns a list of all the available pod containers in the model.
 func (a *Api) allPodContainers(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
 	namespace := request.PathParameter("namespace-name")
 	pod := request.PathParameter("pod-name")
-	response.WriteEntity(cluster.GetPodContainers(namespace, pod))
+	response.WriteEntity(makeExternalEntityList(model.GetPodContainers(namespace, pod)))
 }
 
 // allFreeContainers returns a list of all the available free containers in the cluster.
 func (a *Api) allFreeContainers(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
 	node := request.PathParameter("node-name")
-	response.WriteEntity(cluster.GetFreeContainers(node))
+	response.WriteEntity(makeExternalEntityList(model.GetFreeContainers(node)))
+}
+
+// nodePods returns a list of all the available API paths that are available for a node.
+func (a *Api) nodePods(request *restful.Request, response *restful.Response) {
+	model := a.manager.GetModel()
+	if model == nil {
+		response.WriteError(400, errModelNotActivated)
+	}
+	node := request.PathParameter("node-name")
+	response.WriteEntity(makeExternalEntityList(model.GetNodePods(node)))
 }
 
 // availableMetrics returns a list of available metric names.
 // These metric names can be used to extract metrics from the various model entities.
 func (a *Api) availableMetrics(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
-	result := cluster.GetAvailableMetrics()
+	result := model.GetAvailableMetrics()
 	response.WriteEntity(result)
 }
 
 // clusterMetrics returns a metric timeseries for a metric of the Cluster entity.
 func (a *Api) clusterMetrics(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
 
-	timeseries, new_stamp, err := cluster.GetClusterMetric(model.ClusterRequest{
-		MetricName: request.PathParameter("metric-name"),
-		Start:      parseRequestParam("start", request, response),
-		End:        parseRequestParam("end", request, response),
+	timeseries, new_stamp, err := model.GetClusterMetric(model_api.ClusterMetricRequest{
+		MetricRequest: parseMetricRequest(request, response),
 	})
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
@@ -425,17 +455,15 @@ func (a *Api) clusterMetrics(request *restful.Request, response *restful.Respons
 
 // nodeMetrics returns a metric timeseries for a metric of the Node entity.
 func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
 
-	timeseries, new_stamp, err := cluster.GetNodeMetric(model.NodeRequest{
-		NodeName:   request.PathParameter("node-name"),
-		MetricName: request.PathParameter("metric-name"),
-		Start:      parseRequestParam("start", request, response),
-		End:        parseRequestParam("end", request, response),
+	timeseries, new_stamp, err := model.GetNodeMetric(model_api.NodeMetricRequest{
+		NodeName:      request.PathParameter("node-name"),
+		MetricRequest: parseMetricRequest(request, response),
 	})
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
@@ -447,17 +475,15 @@ func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) 
 
 // namespaceMetrics returns a metric timeseries for a metric of the Namespace entity.
 func (a *Api) namespaceMetrics(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
 
-	timeseries, new_stamp, err := cluster.GetNamespaceMetric(model.NamespaceRequest{
+	timeseries, new_stamp, err := model.GetNamespaceMetric(model_api.NamespaceMetricRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
-		MetricName:    request.PathParameter("metric-name"),
-		Start:         parseRequestParam("start", request, response),
-		End:           parseRequestParam("end", request, response),
+		MetricRequest: parseMetricRequest(request, response),
 	})
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
@@ -469,18 +495,16 @@ func (a *Api) namespaceMetrics(request *restful.Request, response *restful.Respo
 
 // podMetrics returns a metric timeseries for a metric of the Pod entity.
 func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
 
-	timeseries, new_stamp, err := cluster.GetPodMetric(model.PodRequest{
+	timeseries, new_stamp, err := model.GetPodMetric(model_api.PodMetricRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
 		PodName:       request.PathParameter("pod-name"),
-		MetricName:    request.PathParameter("metric-name"),
-		Start:         parseRequestParam("start", request, response),
-		End:           parseRequestParam("end", request, response),
+		MetricRequest: parseMetricRequest(request, response),
 	})
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
@@ -491,12 +515,12 @@ func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 }
 
 func (a *Api) podListMetrics(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
-	batchResult, new_stamp, err := cluster.GetBatchPodMetric(model.BatchPodRequest{
+	batchResult, new_stamp, err := model.GetBatchPodMetric(model_api.BatchPodRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
 		PodNames:      strings.Split(request.PathParameter("pod-list"), ","),
 		MetricName:    request.PathParameter("metric-name"),
@@ -517,22 +541,20 @@ func (a *Api) podListMetrics(request *restful.Request, response *restful.Respons
 	response.WriteEntity(metricResultList)
 }
 
-// podContainerMetrics returns a metric timeseries for a metric of the Container entity.
-// freeContainerMetrics addresses only pod containers, by using the namespace-name/pod-name/container-name path.
+// podContainerMetrics returns a metric timeseries for a metric of a Pod Container entity.
+// podContainerMetrics uses the namespace-name/pod-name/container-name path.
 func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
 
-	timeseries, new_stamp, err := cluster.GetPodContainerMetric(model.PodContainerRequest{
+	timeseries, new_stamp, err := model.GetPodContainerMetric(model_api.PodContainerMetricRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
 		PodName:       request.PathParameter("pod-name"),
 		ContainerName: request.PathParameter("container-name"),
-		MetricName:    request.PathParameter("metric-name"),
-		Start:         parseRequestParam("start", request, response),
-		End:           parseRequestParam("end", request, response),
+		MetricRequest: parseMetricRequest(request, response),
 	})
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
@@ -545,18 +567,16 @@ func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Re
 // freeContainerMetrics returns a metric timeseries for a metric of the Container entity.
 // freeContainerMetrics addresses only free containers, by using the node-name/container-name path.
 func (a *Api) freeContainerMetrics(request *restful.Request, response *restful.Response) {
-	cluster := a.manager.GetCluster()
-	if cluster == nil {
+	model := a.manager.GetModel()
+	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 		return
 	}
 
-	timeseries, new_stamp, err := cluster.GetFreeContainerMetric(model.FreeContainerRequest{
+	timeseries, new_stamp, err := model.GetFreeContainerMetric(model_api.FreeContainerMetricRequest{
 		NodeName:      request.PathParameter("node-name"),
 		ContainerName: request.PathParameter("container-name"),
-		MetricName:    request.PathParameter("metric-name"),
-		Start:         parseRequestParam("start", request, response),
-		End:           parseRequestParam("end", request, response),
+		MetricRequest: parseMetricRequest(request, response),
 	})
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
@@ -566,7 +586,16 @@ func (a *Api) freeContainerMetrics(request *restful.Request, response *restful.R
 	response.WriteEntity(exportTimeseries(timeseries, new_stamp))
 }
 
-// parseRequestParam parses a time.Time from a named QueryParam.
+// parseMetricRequest returns a MetricRequest from the metric-related query and path parameters of the request.
+func parseMetricRequest(request *restful.Request, response *restful.Response) model_api.MetricRequest {
+	return model_api.MetricRequest{
+		MetricName: request.PathParameter("metric-name"),
+		Start:      parseRequestParam("start", request, response),
+		End:        parseRequestParam("end", request, response),
+	}
+}
+
+// parseRequestParam parses a time.Time from a named QueryParam, using the RFC3339 format.
 // parseRequestParam receives a request and a response as inputs, and returns the parsed time.
 func parseRequestParam(param string, request *restful.Request, response *restful.Response) time.Time {
 	var err error
@@ -584,14 +613,14 @@ func parseRequestParam(param string, request *restful.Request, response *restful
 	return req_stamp
 }
 
-// exportTimeseries renders a []store.TimePoint and a timestamp into a types.MetricResult.
-func exportTimeseries(ts []store.TimePoint, stamp time.Time) types.MetricResult {
-	// Convert each store.TimePoint to a types.MetricPoint
+// exportTimeseries renders a []statstore.TimePoint and a timestamp into a MetricResult.
+func exportTimeseries(ts []statstore.TimePoint, stamp time.Time) types.MetricResult {
+	// Convert each statstore.TimePoint to a MetricPoint
 	res_metrics := []types.MetricPoint{}
 	for _, metric := range ts {
 		newMP := types.MetricPoint{
 			Timestamp: metric.Timestamp,
-			Value:     metric.Value.(uint64),
+			Value:     metric.Value,
 		}
 		res_metrics = append(res_metrics, newMP)
 	}

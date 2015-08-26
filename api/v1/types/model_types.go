@@ -31,3 +31,9 @@ type MetricResult struct {
 type MetricResultList struct {
 	Items []MetricResult `json:"items"`
 }
+
+type ExternalEntityListEntry struct {
+	Name     string `json:"name"`
+	CPUUsage uint64 `json:"cpuUsage"`
+	MemUsage uint64 `json:"memUsage"`
+}
