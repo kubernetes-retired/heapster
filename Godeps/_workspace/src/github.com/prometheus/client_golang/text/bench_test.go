@@ -16,10 +16,10 @@ package text
 import (
 	"bytes"
 	"compress/gzip"
-	dto "github.com/prometheus/client_model/go"
 	"io"
 	"io/ioutil"
 	"testing"
+	dto "github.com/prometheus/client_model/go"
 
 	"github.com/matttproud/golang_protobuf_extensions/pbutil"
 )
