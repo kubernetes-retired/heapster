@@ -18,7 +18,8 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/heapster/store"
+	"k8s.io/heapster/store/daystore"
+	"k8s.io/heapster/store/statstore"
 )
 
 // latestTimestamp returns its largest time.Time argument
@@ -32,20 +33,21 @@ func latestTimestamp(first time.Time, second time.Time) time.Time {
 // newInfoType is an InfoType Constructor, which returns a new InfoType.
 // Initial fields for the new InfoType can be provided as arguments.
 // A nil argument results in a newly-allocated map for that field.
-func newInfoType(metrics map[string]*store.TimeStore, labels map[string]string, context map[string]*store.TimePoint) InfoType {
+func newInfoType(metrics map[string]*daystore.DayStore, labels map[string]string, context map[string]*statstore.TimePoint) InfoType {
 	if metrics == nil {
-		metrics = make(map[string]*store.TimeStore)
+		metrics = make(map[string]*daystore.DayStore)
 	}
 	if labels == nil {
 		labels = make(map[string]string)
 	}
 	if context == nil {
-		context = make(map[string]*store.TimePoint)
+		context = make(map[string]*statstore.TimePoint)
 	}
 	return InfoType{
-		Metrics: metrics,
-		Labels:  labels,
-		Context: context,
+		Creation: time.Time{},
+		Metrics:  metrics,
+		Labels:   labels,
+		Context:  context,
 	}
 }
 
@@ -68,16 +70,20 @@ func addContainerToMap(container_name string, dict map[string]*ContainerInfo) *C
 // addTimePoints adds the values of two TimePoints as uint64.
 // addTimePoints returns a new TimePoint with the added Value fields
 // and the Timestamp of the first TimePoint.
-func addTimePoints(tp1 store.TimePoint, tp2 store.TimePoint) store.TimePoint {
-	return store.TimePoint{
-		Timestamp: tp1.Timestamp,
-		Value:     tp1.Value.(uint64) + tp2.Value.(uint64),
+func addTimePoints(tp1 statstore.TimePoint, tp2 statstore.TimePoint) statstore.TimePoint {
+	maxTS := tp1.Timestamp
+	if maxTS.Before(tp2.Timestamp) {
+		maxTS = tp2.Timestamp
+	}
+	return statstore.TimePoint{
+		Timestamp: maxTS,
+		Value:     tp1.Value + tp2.Value,
 	}
 }
 
 // popTPSlice pops the first element of a TimePoint Slice, removing it from the slice.
 // popTPSlice receives a *[]TimePoint and returns its first element.
-func popTPSlice(tps_ptr *[]store.TimePoint) *store.TimePoint {
+func popTPSlice(tps_ptr *[]statstore.TimePoint) *statstore.TimePoint {
 	if tps_ptr == nil {
 		return nil
 	}
@@ -96,24 +102,22 @@ func popTPSlice(tps_ptr *[]store.TimePoint) *store.TimePoint {
 // addMatchingTimeseries performs addition over two timeseries with unique timestamps.
 // addMatchingTimeseries returns a []TimePoint of the resulting aggregated timeseries.
 // Assumes time-descending order of both []TimePoint parameters and the return slice.
-func addMatchingTimeseries(left []store.TimePoint, right []store.TimePoint) []store.TimePoint {
-	var cur_left *store.TimePoint
-	var cur_right *store.TimePoint
-	result := []store.TimePoint{}
+func addMatchingTimeseries(left []statstore.TimePoint, right []statstore.TimePoint) []statstore.TimePoint {
+	var cur_left *statstore.TimePoint
+	var cur_right *statstore.TimePoint
+	result := []statstore.TimePoint{}
 
 	// Merge timeseries into result until either one is empty
 	cur_left = popTPSlice(&left)
 	cur_right = popTPSlice(&right)
 	for cur_left != nil && cur_right != nil {
+		result = append(result, addTimePoints(*cur_left, *cur_right))
 		if cur_left.Timestamp.Equal(cur_right.Timestamp) {
-			result = append(result, addTimePoints(*cur_left, *cur_right))
 			cur_left = popTPSlice(&left)
 			cur_right = popTPSlice(&right)
 		} else if cur_left.Timestamp.After(cur_right.Timestamp) {
-			result = append(result, *cur_left)
 			cur_left = popTPSlice(&left)
 		} else {
-			result = append(result, *cur_right)
 			cur_right = popTPSlice(&right)
 		}
 	}
@@ -137,7 +141,7 @@ func addMatchingTimeseries(left []store.TimePoint, right []store.TimePoint) []st
 // points of a cumulative metric, such as cpu/usage.
 // The inputs are the value and timestamp of the newer cumulative datapoint,
 // and a pointer to a TimePoint holding the previous cumulative datapoint.
-func instantFromCumulativeMetric(value uint64, stamp time.Time, prev *store.TimePoint) (uint64, error) {
+func instantFromCumulativeMetric(value uint64, stamp time.Time, prev *statstore.TimePoint) (uint64, error) {
 	if prev == nil {
 		return uint64(0), fmt.Errorf("unable to calculate instant metric with nil previous TimePoint")
 	}
@@ -146,13 +150,69 @@ func instantFromCumulativeMetric(value uint64, stamp time.Time, prev *store.Time
 	}
 	tdelta := uint64(stamp.Sub(prev.Timestamp).Nanoseconds())
 	// Divide metric by nanoseconds that have elapsed, multiply by 1000 to get an unsigned metric
-	if value < prev.Value.(uint64) {
-		return uint64(0), fmt.Errorf("the provided value %d is less than the previous one %d", value, prev.Value.(uint64))
+	if value < prev.Value {
+		return uint64(0), fmt.Errorf("the provided value %d is less than the previous one %d", value, prev.Value)
 	}
-	vdelta := (value - prev.Value.(uint64)) * 1000
+	// Divide metric by nanoseconds that have elapsed, multiply by 1000 to get an unsigned metric
+	vdelta := (value - prev.Value) * 1000
 
 	instaVal := vdelta / tdelta
 	prev.Value = value
 	prev.Timestamp = stamp
 	return instaVal, nil
+}
+
+// getStats extracts derived stats from an InfoType.
+func getStats(info InfoType) map[string]StatBundle {
+	res := make(map[string]StatBundle)
+	for key, ds := range info.Metrics {
+		last, lastMax, _ := ds.Hour.Last()
+		minAvg := last.Value
+		minPct := lastMax
+		minMax := lastMax
+		hourAvg, _ := ds.Hour.Average()
+		hourPct, _ := ds.Hour.Percentile(0.95)
+		hourMax, _ := ds.Hour.Max()
+		dayAvg, _ := ds.Average()
+		dayPct, _ := ds.NinetyFifth()
+		dayMax, _ := ds.Max()
+
+		res[key] = StatBundle{
+			Minute: Stats{
+				Average:     minAvg,
+				NinetyFifth: minPct,
+				Max:         minMax,
+			},
+			Hour: Stats{
+				Average:     hourAvg,
+				NinetyFifth: hourPct,
+				Max:         hourMax,
+			},
+			Day: Stats{
+				Average:     dayAvg,
+				NinetyFifth: dayPct,
+				Max:         dayMax,
+			},
+		}
+	}
+	return res
+}
+
+func epsilonFromMetric(metric string) uint64 {
+	// TODO: dynamic epsilon configuration, instead of statically allocating it during init
+	// TODO(afein): handle FS epsilon
+	switch metric {
+	case cpuLimit:
+		return cpuLimitEpsilon
+	case cpuUsage:
+		return cpuUsageEpsilon
+	case memLimit:
+		return memLimitEpsilon
+	case memUsage:
+		return memUsageEpsilon
+	case memWorking:
+		return memWorkingEpsilon
+	default:
+		return defaultEpsilon
+	}
 }
