@@ -32,8 +32,6 @@ import (
 	source_api "k8s.io/heapster/sources/api"
 	"k8s.io/heapster/version"
 	"k8s.io/kubernetes/pkg/util"
-
-	_ "github.com/progrium/go-extpoints"
 )
 
 var (
