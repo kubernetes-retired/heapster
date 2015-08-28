@@ -1,8 +1,9 @@
 {
 	"ImportPath": "k8s.io/heapster",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5",
 	"Packages": [
-		"./..."
+		"./...",
+		"github.com/progrium/go-extpoints"
 	],
 	"Deps": [
 		{
@@ -14,20 +15,6 @@
 			"ImportPath": "code.google.com/p/go-uuid/uuid",
 			"Comment": "null-12",
 			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
-		},
-		{
-			"ImportPath": "code.google.com/p/google-api-go-client/bigquery/v2",
-			"Comment": "release-101",
-			"Rev": "e1c259484b495133836706f46319f5897f1e9bf6"
-		},
-		{
-			"ImportPath": "code.google.com/p/google-api-go-client/googleapi",
-			"Comment": "release-101",
-			"Rev": "e1c259484b495133836706f46319f5897f1e9bf6"
-		},
-		{
-			"ImportPath": "github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata",
-			"Rev": "542bfb014d8e28df6e27be847dfdc40c510dab1a"
 		},
 		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
@@ -153,11 +140,6 @@
 			"Rev": "b0684c2457c8201fabeb536ceb2b1319eed475dc"
 		},
 		{
-			"ImportPath": "github.com/google/cadvisor/storage/bigquery/client",
-			"Comment": "0.16.0-55-gb0684c2",
-			"Rev": "b0684c2457c8201fabeb536ceb2b1319eed475dc"
-		},
-		{
 			"ImportPath": "github.com/google/gofuzz",
 			"Rev": "95919286de1ca5a30261fac83b070e736286aae8"
 		},
@@ -237,12 +219,12 @@
 			"Rev": "67f25490433376b5f7da086c0b9283fcdeca3a7b"
 		},
 		{
-			"ImportPath": "golang.org/x/oauth2",
-			"Rev": "2e66694fea36dc820636630792a55cdc6987e05b"
-		},
-		{
 			"ImportPath": "google.golang.org/api/googleapi",
 			"Rev": "aa91ac681e18e52b1a0dfe29b9d8354e88c0dcf5"
+		},
+		{
+			"ImportPath": "google.golang.org/cloud/compute/metadata",
+			"Rev": "542bfb014d8e28df6e27be847dfdc40c510dab1a"
 		},
 		{
 			"ImportPath": "google.golang.org/cloud/internal",

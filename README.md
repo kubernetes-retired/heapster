@@ -12,6 +12,7 @@ While running in a Kube cluster, heapster collects compute resource usage of all
 Source configuration is documented [here](docs/source-configuration.md).
 
 ### Running Heapster on Kubernetes
+
 Heapster supports a pluggable storage backend. It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/) and [Google Cloud Logging](https://cloud.google.com/logging/). We welcome patches that add additional storage backends.
 
 To run Heapster on a Kubernetes cluster with,
@@ -24,6 +25,7 @@ When Heapster is running on a Kubernetes cluster, the [Heapster Model](docs/mode
 can be used to extract aggregated metrics and derived stats for various Kubernetes cluster entities.
 
 ### Running Heapster on CoreOS
+
 Heapster communicates with the local fleet server to get cluster information. It expected cAdvisor to be running on all the nodes. Refer to [this guide](docs/coreos.md).
 
 ### Running in other cluster management systems.
@@ -37,4 +39,5 @@ It is also possible to run Heapster standalone on a host with cAdvisor using [th
 #### Troubleshooting guide [here](docs/debugging.md)
 
 ### Community
+
 Contributions, questions, and comments are all welcomed and encouraged! Heapster and cAdvisor developers hang out in the [#google-containers](http://webchat.freenode.net/?channels=google-containers) room on freenode.net.  You can also reach us on the [google-containers Google Groups mailing list](https://groups.google.com/forum/#!forum/google-containers).
