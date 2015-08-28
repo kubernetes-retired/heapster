@@ -16,4 +16,5 @@ install:
 
 script:
  - export PATH=$PATH:$HOME/gopath/bin
+ - make test-unit
  - make test-unit-cov
