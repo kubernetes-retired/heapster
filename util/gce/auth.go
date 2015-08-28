@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
+	"google.golang.org/cloud/compute/metadata"
 )
 
 type AuthToken struct {

@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
 	"github.com/golang/glog"
+	"google.golang.org/cloud/compute/metadata"
 	"k8s.io/heapster/util"
 	"k8s.io/heapster/util/gce"
 	"k8s.io/heapster/util/gcstore"

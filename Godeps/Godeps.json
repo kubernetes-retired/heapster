@@ -26,7 +26,7 @@
 			"Rev": "e1c259484b495133836706f46319f5897f1e9bf6"
 		},
 		{
-			"ImportPath": "github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata",
+			"ImportPath": "google.golang.org/cloud/compute/metadata",
 			"Rev": "542bfb014d8e28df6e27be847dfdc40c510dab1a"
 		},
 		{

@@ -23,8 +23,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/GoogleCloudPlatform/gcloud-golang/compute/metadata"
 	"github.com/golang/glog"
+	"google.golang.org/cloud/compute/metadata"
 	"k8s.io/heapster/extpoints"
 	"k8s.io/heapster/util/gce"
 
