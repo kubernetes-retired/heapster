@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package store
+package daystore
 
 import (
 	"fmt"
@@ -30,6 +30,7 @@ import (
 // DayStore holds 24 hours of derived stats, plus an hour-long StatStore that holds -
 // historical data on the current hour.
 // DayStore can calculate the Average, Max and 95th Percentile over the past 24 hours.
+// The DayStore needs to be populated in a chronological order.
 
 // Note on how derived stats are extracted:
 // If the DayStore holds less than 1 hour of data, then the average, max and 95th are -
@@ -79,7 +80,8 @@ func NewDayStore(epsilon uint64, resolution time.Duration) *DayStore {
 	// Calculate how many resolutions correspond to an hour
 	hourNS := time.Hour.Nanoseconds()
 	resNS := resolution.Nanoseconds()
-	intervals := uint8(hourNS / resNS)
+	intervals := uint(hourNS / resNS)
+
 	if hourNS%resNS != 0 {
 		intervals++
 	}
@@ -92,6 +94,7 @@ func NewDayStore(epsilon uint64, resolution time.Duration) *DayStore {
 
 // Put stores a TimePoint into the Hour StatStore, while checking whether it -
 // is time to flush the last hour's stats in the window.
+// Put operations need to be performed in a chronological (time-ascending) order
 func (ds *DayStore) Put(tp statstore.TimePoint) error {
 	ds.Lock()
 	defer ds.Unlock()
@@ -101,9 +104,11 @@ func (ds *DayStore) Put(tp statstore.TimePoint) error {
 		return err
 	}
 
-	ds.validMax = false
+	if tp.Value > ds.cachedMax {
+		ds.validMax = false
+	}
 
-	// Check if this is the first TimePoint ever, in which case flush in one hour.
+	// Check if this is the first TimePoint ever, in which case flush in one hour from now.
 	if ds.lastFlush.Equal(time.Time{}) {
 		ds.lastFlush = tp.Timestamp
 		return nil
@@ -114,7 +119,7 @@ func (ds *DayStore) Put(tp statstore.TimePoint) error {
 		return nil
 	}
 
-	// flush the current hour to the window.
+	// create an hourEntry for the existing hour
 	ds.validAvgPct = false
 	avg, _ := ds.Hour.Average()
 	max, _ := ds.Hour.Max()
@@ -124,11 +129,20 @@ func (ds *DayStore) Put(tp statstore.TimePoint) error {
 		max:         max,
 		ninetyFifth: nf,
 	}
-	if ds.size < 24 {
-		ds.size += 1
+
+	// check if the TimePoint is multiple hours in the future
+	// insert the hourEntry the appropriate amount of hours
+	distance := tp.Timestamp.Sub(ds.lastFlush)
+	nextflush := tp.Timestamp
+	for distance.Nanoseconds() >= time.Hour.Nanoseconds() {
+		ds.lastFlush = nextflush
+		nextflush = ds.lastFlush.Add(time.Hour)
+		if ds.size < 24 {
+			ds.size += 1
+		}
+		ds.window.PushBack(newEntry)
+		distance = time.Time{}.Add(distance).Add(-time.Hour).Sub(time.Time{})
 	}
-	ds.window.PushBack(newEntry)
-	ds.lastFlush = tp.Timestamp
 	return nil
 }
 
