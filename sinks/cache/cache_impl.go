@@ -64,7 +64,8 @@ type realCache struct {
 
 func (rc *realCache) newContainerElement() *containerElement {
 	return &containerElement{
-		metrics: store.NewGCStore(store.NewTimeStore(), rc.bufferDuration),
+		metrics:     store.NewGCStore(store.NewTimeStore(), rc.bufferDuration),
+		lastUpdated: time.Now(),
 	}
 }
 
@@ -106,7 +107,8 @@ func (rc *realCache) runGC() {
 
 func (rc *realCache) newPodElement() *podElement {
 	return &podElement{
-		containers: make(map[string]*containerElement),
+		containers:  make(map[string]*containerElement),
+		lastUpdated: time.Now(),
 	}
 }
 
