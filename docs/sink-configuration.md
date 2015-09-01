@@ -75,6 +75,7 @@ If `HAWKULAR_SERVER_URL` includes any path, the default `hawkular/metrics` is ov
 The following options are available:
 
 * `tenant` - Hawkular-Metrics tenantId (default: `heapster`)
+* `labelToTenant` - Hawkular-Metrics uses given label's value as tenant value when storing data
 
 ## Modifying the sinks at runtime
 
