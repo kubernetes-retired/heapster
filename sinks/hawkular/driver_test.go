@@ -15,7 +15,13 @@
 package hawkular
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,7 +34,7 @@ import (
 func dummySink() *hawkularSink {
 	return &hawkularSink{
 		reg:    make(map[string]*metrics.MetricDefinition),
-		models: make(map[string]metrics.MetricDefinition),
+		models: make(map[string]*metrics.MetricDefinition),
 	}
 }
 
@@ -51,10 +57,15 @@ func TestDescriptorTransform(t *testing.T) {
 	md := hSink.descriptorToDefinition(&smd)
 
 	assert.Equal(t, smd.Name, md.Id)
-	assert.Equal(t, 4, len(md.Tags)) // descriptorTag, unitsTag, typesTag, k1
+	assert.Equal(t, 3, len(md.Tags)) // descriptorTag, unitsTag, typesTag, k1
 
 	assert.Equal(t, smd.Units.String(), md.Tags[unitsTag])
 	assert.Equal(t, "d1", md.Tags["k1_description"])
+
+	smd.Type = sink_api.MetricCumulative
+
+	md = hSink.descriptorToDefinition(&smd)
+	assert.Equal(t, md.Type, metrics.Counter)
 }
 
 func TestMetricTransform(t *testing.T) {
@@ -126,4 +137,192 @@ func TestRecentTest(t *testing.T) {
 
 	assert.False(t, hSink.recent(&live, &model), "Tags are not equal, live isn't recent")
 
+}
+
+// Integration tests
+
+func integSink(uri string) (*hawkularSink, error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return nil, err
+	}
+
+	p := metrics.Parameters{
+		Tenant: "test-heapster",
+		Host:   u.Host,
+	}
+
+	c, err := metrics.NewHawkularClient(p)
+	if err != nil {
+		return nil, err
+	}
+
+	hSink := &hawkularSink{
+		reg:    make(map[string]*metrics.MetricDefinition),
+		models: make(map[string]*metrics.MetricDefinition),
+		client: c,
+	}
+	return hSink, nil
+}
+
+// Test that Definitions is called for Gauges & Counters
+// Test that we have single registered model
+// Test that the tags for metric is updated..
+func TestRegister(t *testing.T) {
+	definitionsCalled := make(map[string]bool)
+	updateTagsCalled := false
+
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if strings.Contains(r.RequestURI, "metrics?type=") {
+			typ := r.RequestURI[strings.Index(r.RequestURI, "type=")+5:]
+			definitionsCalled[typ] = true
+			if typ == "gauge" {
+				fmt.Fprintln(w, `[{ "id": "test.create.gauge.1", "tenantId": "test-heapster", "type": "gauge", "tags": { "descriptor_name": "test/metric/1" } }]`)
+			} else {
+				w.WriteHeader(http.StatusNoContent)
+			}
+		} else if strings.Contains(r.RequestURI, "/tags") && r.Method == "PUT" {
+			updateTagsCalled = true
+			// assert.True(t, strings.Contains(r.RequestURI, "k1:d1"), "Tag k1 was not updated with value d1")
+			defer r.Body.Close()
+			b, err := ioutil.ReadAll(r.Body)
+			assert.NoError(t, err)
+
+			tags := make(map[string]string)
+			err = json.Unmarshal(b, &tags)
+			assert.NoError(t, err)
+
+			_, kt1 := tags["k1_description"]
+			_, dt := tags["descriptor_name"]
+
+			assert.True(t, kt1, "k1_description tag is missing")
+			assert.True(t, dt, "descriptor_name is missing")
+
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer s.Close()
+
+	hSink, err := integSink(s.URL)
+	assert.NoError(t, err)
+
+	md := make([]sink_api.MetricDescriptor, 0, 1)
+	ld := sink_api.LabelDescriptor{
+		Key:         "k1",
+		Description: "d1",
+	}
+	smd := sink_api.MetricDescriptor{
+		Name:      "test/metric/1",
+		Units:     sink_api.UnitsBytes,
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricGauge,
+		Labels:    []sink_api.LabelDescriptor{ld},
+	}
+	md = append(md, smd)
+
+	err = hSink.Register(md)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(hSink.models))
+	assert.Equal(t, 1, len(hSink.reg))
+
+	assert.True(t, definitionsCalled["gauge"], "Gauge definitions were not fetched")
+	assert.True(t, definitionsCalled["counter"], "Counter definitions were not fetched")
+	assert.True(t, updateTagsCalled, "Updating outdated tags was not called")
+}
+
+// Store timeseries with both gauges and cumulatives
+func TestStoreTimeseries(t *testing.T) {
+	var calls int
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+
+		typ := r.RequestURI[strings.Index(r.RequestURI, "hawkular/metrics/")+17:]
+		typ = typ[:len(typ)-5]
+
+		switch typ {
+		case "counters":
+			assert.Equal(t, "test-label", r.Header.Get("Hawkular-Tenant"))
+			break
+		case "gauges":
+			assert.Equal(t, "test-heapster", r.Header.Get("Hawkular-Tenant"))
+			break
+		default:
+			assert.FailNow(t, "Unrecognized type "+typ)
+		}
+
+		defer r.Body.Close()
+		b, err := ioutil.ReadAll(r.Body)
+		assert.NoError(t, err)
+
+		mH := []metrics.MetricHeader{}
+		err = json.Unmarshal(b, &mH)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(mH))
+		assert.Equal(t, "test-container/test-podid/test/metric/", mH[0].Id[:len(mH[0].Id)-1])
+	}))
+	defer s.Close()
+
+	hSink, err := integSink(s.URL)
+	assert.NoError(t, err)
+
+	hSink.labelTenant = "projectId"
+
+	l := make(map[string]string)
+	l["projectId"] = "test-label"
+	l[sink_api.LabelContainerName.Key] = "test-container"
+	l[sink_api.LabelPodId.Key] = "test-podid"
+
+	lg := make(map[string]string)
+	lg[sink_api.LabelContainerName.Key] = "test-container"
+	lg[sink_api.LabelPodId.Key] = "test-podid"
+
+	p := sink_api.Point{
+		Name:   "test/metric/1",
+		Labels: l,
+		Start:  time.Now(),
+		End:    time.Now(),
+		Value:  int64(123456),
+	}
+	pg := sink_api.Point{
+		Name:   "test/metric/2",
+		Labels: lg,
+		Start:  time.Now(),
+		End:    time.Now(),
+		Value:  float64(123.456),
+	}
+
+	smd := sink_api.MetricDescriptor{
+		Name:      "test/metric/1",
+		Units:     sink_api.UnitsCount,
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricCumulative,
+		Labels:    []sink_api.LabelDescriptor{},
+	}
+
+	smdg := sink_api.MetricDescriptor{
+		Name:      "test/metric/2",
+		Units:     sink_api.UnitsBytes,
+		ValueType: sink_api.ValueDouble,
+		Type:      sink_api.MetricGauge,
+		Labels:    []sink_api.LabelDescriptor{},
+	}
+
+	ts := sink_api.Timeseries{
+		MetricDescriptor: &smd,
+		Point:            &p,
+	}
+
+	tsg := sink_api.Timeseries{
+		MetricDescriptor: &smdg,
+		Point:            &pg,
+	}
+
+	err = hSink.StoreTimeseries([]sink_api.Timeseries{ts, tsg})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, calls)
 }
