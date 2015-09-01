@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package store
+package statstore
 
 import (
 	"container/list"
@@ -65,7 +65,7 @@ import (
 // arrived. Due to this assumption, the data extraction methods of the StatStore ignore values -
 // currently in the putState struct.
 
-func NewStatStore(epsilon uint64, resolution time.Duration, windowDuration uint8, supportedPercentiles []float64) *StatStore {
+func NewStatStore(epsilon uint64, resolution time.Duration, windowDuration uint, supportedPercentiles []float64) *StatStore {
 	return &StatStore{
 		buffer:               list.New(),
 		epsilon:              epsilon,
@@ -105,11 +105,11 @@ type StatStore struct {
 
 	// windowDuration is the maximum number of time resolutions that is stored in the StatStore
 	// e.g. windowDuration 60, with a resolution of time.Minute represents an 1-hour window
-	windowDuration uint8
+	windowDuration uint
 
 	// tpCount is the number of TimePoints that are represented in the StatStore.
-	// Ff tpCount is equal to windowDuration, then the StatStore window is considered full.
-	tpCount uint8
+	// If tpCount is equal to windowDuration, then the StatStore window is considered full.
+	tpCount uint
 
 	// lastPut maintains the state of values inserted within the last resolution.
 	// When values of a later resolution are added to the StatStore, lastPut is flushed to
@@ -138,7 +138,7 @@ type StatStore struct {
 // tpBucket essentially represents a time window with a constant value.
 type tpBucket struct {
 	// count is the number of TimePoints represented in the tpBucket.
-	count uint8
+	count uint
 
 	// value is the approximate value of all in the tpBucket, +- epsilon.
 	value uint64
@@ -147,14 +147,14 @@ type tpBucket struct {
 	max uint64
 
 	// maxIdx is the number of resolutions after the start time where the max value is located.
-	maxIdx uint8
+	maxIdx uint
 }
 
 // putState is a structure that maintains context of the values in the resolution that is currently
 // being inserted.
 // Assumes that Puts are performed in a time-ascending order.
 type putState struct {
-	actualCount uint16
+	actualCount uint
 	average     float64
 	max         uint64
 	stamp       time.Time
@@ -206,55 +206,7 @@ func (ss *StatStore) Put(tp TimePoint) error {
 		return nil
 	}
 
-	// The new point is in the future, lastPut needs to be flushed to the StatStore.
-	ss.validCache = false
-
-	// Determine how many resolutions in the future the new point is at.
-	// The StatStore always represents values up until 1 resolution from lastPut.
-	// If the TimePoint is more than one resolutions in the future, the last bucket is -
-	// extended to be exactly one resolution behind the new lastPut timestamp.
-	numRes := uint8(0)
-	curr := ts
-	for curr.After(ss.lastPut.stamp) {
-		curr = curr.Add(-ss.resolution)
-		numRes++
-	}
-
-	// Create a new bucket if the buffer is empty
-	if ss.IsEmpty() {
-		ss.newBucket(numRes)
-		ss.resetLastPut(ts, tp.Value)
-		for ss.tpCount > ss.windowDuration {
-			ss.rewind()
-		}
-		return nil
-	}
-
-	lastEntry := ss.buffer.Front().Value.(tpBucket)
-	lastAvg := ss.lastPut.average
-
-	// Place lastPut in the latest bucket if the difference from its average
-	// is less than epsilon
-	if uint64(math.Abs(float64(lastEntry.value)-lastAvg)) < ss.epsilon {
-		lastEntry.count += numRes
-		ss.tpCount += numRes
-		if ss.lastPut.max > lastEntry.max {
-			lastEntry.max = ss.lastPut.max
-			lastEntry.maxIdx = lastEntry.count - 1
-		}
-		// update in list
-		ss.buffer.Front().Value = lastEntry
-	} else {
-		// Create a new bucket
-		ss.newBucket(numRes)
-	}
-
-	// Delete the earliest represented TimePoints if the window is full
-	for ss.tpCount > ss.windowDuration {
-		ss.rewind()
-	}
-
-	ss.resetLastPut(ts, tp.Value)
+	ss.flush(ts, tp.Value)
 	return nil
 }
 
@@ -271,7 +223,7 @@ func (ss *StatStore) resetLastPut(timestamp time.Time, value uint64) {
 // newBuckets are created by rounding up the lastPut average to the closest epsilon.
 // numRes represents the number of resolutions from the newest TimePoint to the lastPut.
 // numRes resolutions will be represented in the newly created bucket.
-func (ss *StatStore) newBucket(numRes uint8) {
+func (ss *StatStore) newBucket(numRes uint) {
 	// Calculate the value of the new bucket based on the average of lastPut.
 	newVal := (uint64(ss.lastPut.average) / ss.epsilon) * ss.epsilon
 	if (uint64(ss.lastPut.average) % ss.epsilon) != 0 {
@@ -292,6 +244,61 @@ func (ss *StatStore) newBucket(numRes uint8) {
 	}
 }
 
+// flush causes the lastPut struct to be flushed to the StatStore list.
+func (ss *StatStore) flush(ts time.Time, val uint64) {
+	// The new point is in the future, lastPut needs to be flushed to the StatStore.
+	ss.validCache = false
+
+	// Determine how many resolutions in the future the new point is at.
+	// The StatStore always represents values up until 1 resolution from lastPut.
+	// If the TimePoint is more than one resolutions in the future, the last bucket is -
+	// extended to be exactly one resolution behind the new lastPut timestamp.
+	numRes := uint(0)
+	curr := ts
+	for curr.After(ss.lastPut.stamp) {
+		curr = curr.Add(-ss.resolution)
+		numRes++
+	}
+
+	// Create a new bucket if the buffer is empty
+	if ss.IsEmpty() {
+		ss.newBucket(numRes)
+		ss.resetLastPut(ts, val)
+		for ss.tpCount > ss.windowDuration {
+			ss.rewind()
+		}
+		return
+	}
+
+	lastElem := ss.buffer.Front()
+	lastEntry := lastElem.Value.(tpBucket)
+	lastAvg := ss.lastPut.average
+
+	// Place lastPut in the latest bucket if the difference from its average
+	// is less than epsilon
+	if uint64(math.Abs(float64(lastEntry.value)-lastAvg)) < ss.epsilon {
+		lastEntry.count += numRes
+		ss.tpCount += numRes
+		if ss.lastPut.max > lastEntry.max {
+			lastEntry.max = ss.lastPut.max
+			lastEntry.maxIdx = lastEntry.count - 1
+		}
+
+		// update in list
+		lastElem.Value = lastEntry
+	} else {
+		// Create a new bucket
+		ss.newBucket(numRes)
+	}
+
+	// Delete the earliest represented TimePoints if the window is full
+	for ss.tpCount > ss.windowDuration {
+		ss.rewind()
+	}
+
+	ss.resetLastPut(ts, val)
+}
+
 // rewind deletes the oldest one resolution of data in the StatStore.
 func (ss *StatStore) rewind() {
 	firstElem := ss.buffer.Back()
@@ -300,6 +307,8 @@ func (ss *StatStore) rewind() {
 	firstEntry.count--
 	// Decrement total number of TimePoints in the StatStore
 	ss.tpCount--
+
+	// Update the max
 	if firstEntry.maxIdx == 0 {
 		// The Max value was just removed, lose precision for other maxes in this bucket
 		firstEntry.max = firstEntry.value
@@ -307,6 +316,7 @@ func (ss *StatStore) rewind() {
 	} else {
 		firstEntry.maxIdx--
 	}
+
 	if firstEntry.count == 0 {
 		// Delete the entry if no TimePoints are represented any more
 		ss.buffer.Remove(firstElem)
@@ -327,10 +337,26 @@ func (ss *StatStore) Get(start, end time.Time) []TimePoint {
 
 	var result []TimePoint
 
-	if ss.IsEmpty() || (start.After(end) && end.After(time.Time{})) {
+	if start.After(end) && end.After(time.Time{}) {
 		return result
 	}
 
+	// Generate a TimePoint for the lastPut, if within range
+	low := start.Equal(time.Time{}) || start.Before(ss.lastPut.stamp)
+	hi := end.Equal(time.Time{}) || !end.Before(ss.lastPut.stamp)
+	if ss.lastPut.actualCount > 0 && low && hi {
+		newTP := TimePoint{
+			Timestamp: ss.lastPut.stamp,
+			Value:     uint64(ss.lastPut.max), // expose the max to avoid conflicts when viewing derived stats
+		}
+		result = append(result, newTP)
+	}
+
+	if ss.IsEmpty() {
+		return result
+	}
+
+	// Generate TimePoints from the buckets in the buffer
 	skipped := 0
 	for elem := ss.buffer.Front(); elem != nil; elem = elem.Next() {
 		entry := elem.Value.(tpBucket)
@@ -374,32 +400,27 @@ func (ss *StatStore) Get(start, end time.Time) []TimePoint {
 		}
 		skipped += newSkip
 	}
-	return result
 
+	return result
 }
 
-// Last returns the latest TimePoint represented in the StatStore,
-// or an error if the StatStore is empty.
-// Note: the lastPut field is not used, as we are not confident of its final value.
-func (ss *StatStore) Last() (TimePoint, error) {
+// Last returns the latest TimePoint, representing the average value of lastPut.
+// Last also returns the max value of all Puts represented in lastPut.
+// Last returns an error if no Put operations have been performed on the StatStore.
+func (ss *StatStore) Last() (TimePoint, uint64, error) {
 	ss.RLock()
 	defer ss.RUnlock()
 
-	// Obtain latest tpBucket
-	lastElem := ss.buffer.Front()
-	if lastElem == nil {
-		return TimePoint{}, fmt.Errorf("the StatStore is empty")
+	if ss.lastPut.stamp.Equal(time.Time{}) {
+		return TimePoint{}, uint64(0), fmt.Errorf("the StatStore is empty")
 	}
 
-	lastEntry := lastElem.Value.(tpBucket)
-
-	// create the latest TimePoint from lastEntry
-	lastTP := TimePoint{
-		Timestamp: ss.start.Add(time.Duration(ss.tpCount-1) * ss.resolution),
-		Value:     lastEntry.value,
+	tp := TimePoint{
+		Timestamp: ss.lastPut.stamp,
+		Value:     uint64(ss.lastPut.average),
 	}
 
-	return lastTP, nil
+	return tp, ss.lastPut.max, nil
 }
 
 // fillCache caches the average, max and percentiles of the StatStore.
@@ -407,7 +428,7 @@ func (ss *StatStore) Last() (TimePoint, error) {
 func (ss *StatStore) fillCache() {
 	// Calculate the average and max, flatten values into a slice
 	sum := uint64(0)
-	curMax := uint64(0)
+	curMax := ss.lastPut.max
 	vals := []float64{}
 	for elem := ss.buffer.Front(); elem != nil; elem = elem.Next() {
 		entry := elem.Value.(tpBucket)
@@ -415,13 +436,13 @@ func (ss *StatStore) fillCache() {
 		// Calculate the weighted sum of all tpBuckets
 		sum += uint64(entry.count) * entry.value
 
-		// Compare the bucket max with the total max
-		if entry.max > curMax {
-			curMax = entry.max
+		// Compare the bucket value with the current max
+		if entry.value > curMax {
+			curMax = entry.value
 		}
 
 		// Create a slice of values to generate percentiles
-		for i := uint8(0); i < entry.count; i++ {
+		for i := uint(0); i < entry.count; i++ {
 			vals = append(vals, float64(entry.value))
 		}
 	}

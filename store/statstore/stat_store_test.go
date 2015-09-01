@@ -11,8 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-package store
+package statstore
 
 import (
 	"testing"
@@ -30,9 +29,10 @@ func TestLast(t *testing.T) {
 	now := time.Now().Truncate(time.Minute)
 
 	// Invocation with nothing in the StatStore - no result
-	last, err := store.Last()
+	last, max, err := store.Last()
 	assert.Error(err)
 	assert.Equal(last, TimePoint{})
+	assert.Equal(max, uint64(0))
 
 	// Put 5 Points in the same minute. Average: 10029, Max: 50000
 	assert.NoError(store.Put(TimePoint{
@@ -62,10 +62,11 @@ func TestLast(t *testing.T) {
 		Value:     uint64(100000),
 	}))
 
-	// Invocation with all values in the same resolution - no result
-	last, err = store.Last()
-	assert.Error(err)
-	assert.Equal(last, TimePoint{})
+	last, max, err = store.Last()
+	assert.NoError(err)
+	assert.Equal(last.Timestamp, now)
+	assert.Equal(last.Value, uint64(10029))
+	assert.Equal(max, uint64(50000))
 
 	// Put one value from the next minute
 	assert.NoError(store.Put(TimePoint{
@@ -73,10 +74,12 @@ func TestLast(t *testing.T) {
 		Value:     uint64(92),
 	}))
 
-	last, err = store.Last()
+	// Invocation where Last is a "fake" point added because of a missed resolution.
+	last, max, err = store.Last()
 	assert.NoError(err)
-	assert.Equal(last.Timestamp, now)
-	assert.Equal(last.Value, uint64(10030)) // closest bucket to 10029
+	assert.Equal(last.Timestamp, now.Add(time.Minute))
+	assert.Equal(last.Value, uint64(92))
+	assert.Equal(max, uint64(92))
 
 	// Put one value from two more minutes later
 	assert.NoError(store.Put(TimePoint{
@@ -84,11 +87,11 @@ func TestLast(t *testing.T) {
 		Value:     uint64(10000),
 	}))
 
-	// Invocation where Last is a "fake" point added because of a missed resolution.
-	last, err = store.Last()
+	last, max, err = store.Last()
 	assert.NoError(err)
-	assert.Equal(last.Timestamp, now.Add(2*time.Minute))
-	assert.Equal(last.Value, uint64(100)) // closest bucket to 92
+	assert.Equal(last.Timestamp, now.Add(3*time.Minute))
+	assert.Equal(last.Value, uint64(10000))
+	assert.Equal(max, uint64(10000))
 }
 
 // TestMax tests all flows of the Max method.
@@ -131,7 +134,7 @@ func TestMax(t *testing.T) {
 	// Invocation where the previous minute is now accessible
 	max, err = store.Max()
 	assert.NoError(err)
-	assert.Equal(max, uint64(88))
+	assert.Equal(max, uint64(199))
 
 	// Put 1 Point in the next minute.
 	assert.NoError(store.Put(TimePoint{
@@ -153,7 +156,7 @@ func TestMax(t *testing.T) {
 
 	// Put one point in the next minute.
 	// Even though the max is greater, this minute is currently in lastPut,
-	// so it is excluded from the max
+	// so it is excluded from the max.
 	assert.NoError(store.Put(TimePoint{
 		Timestamp: now.Add(3 * time.Minute),
 		Value:     uint64(511),
@@ -162,7 +165,7 @@ func TestMax(t *testing.T) {
 	// Invocation with three minutes in three different buckets
 	max, err = store.Max()
 	assert.NoError(err)
-	assert.Equal(max, uint64(199))
+	assert.Equal(max, uint64(511))
 
 	// Put one value from the next minute
 	assert.NoError(store.Put(TimePoint{
@@ -173,12 +176,12 @@ func TestMax(t *testing.T) {
 	// Invocation with four minutes
 	max, err = store.Max()
 	assert.NoError(err)
-	assert.Equal(max, uint64(511))
+	assert.Equal(max, uint64(550))
 
 	// Call again to assert validity of the cache
 	max, err = store.Max()
 	assert.NoError(err)
-	assert.Equal(max, uint64(511))
+	assert.Equal(max, uint64(550))
 }
 
 // TestGet tests all flows of the Get method.
@@ -217,12 +220,15 @@ func TestGet(t *testing.T) {
 
 	// Invocation with one element in the StatStore
 	res = store.Get(zeroTime, zeroTime)
-	require.Len(res, 1)
+	require.Len(res, 2)
 	assert.Equal(res[0], TimePoint{
+		Timestamp: now.Add(time.Minute),
+		Value:     uint64(599),
+	})
+	assert.Equal(res[1], TimePoint{
 		Timestamp: now,
 		Value:     uint64(200),
 	})
-
 	// Put 1 Point in the next minute.
 	assert.NoError(store.Put(TimePoint{
 		Timestamp: now.Add(2 * time.Minute),
@@ -237,12 +243,16 @@ func TestGet(t *testing.T) {
 
 	// Invocation with two elements in the StatStore
 	res = store.Get(zeroTime, zeroTime)
-	require.Len(res, 2)
+	require.Len(res, 3)
 	assert.Equal(res[0], TimePoint{
+		Timestamp: now.Add(2 * time.Minute),
+		Value:     uint64(22),
+	})
+	assert.Equal(res[1], TimePoint{
 		Timestamp: now.Add(time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[1], TimePoint{
+	assert.Equal(res[2], TimePoint{
 		Timestamp: now,
 		Value:     uint64(200),
 	})
@@ -261,16 +271,20 @@ func TestGet(t *testing.T) {
 
 	// Invocation with three elements in the StatStore
 	res = store.Get(zeroTime, zeroTime)
-	require.Len(res, 3)
+	require.Len(res, 4)
 	assert.Equal(res[0], TimePoint{
+		Timestamp: now.Add(3 * time.Minute),
+		Value:     uint64(511),
+	})
+	assert.Equal(res[1], TimePoint{
 		Timestamp: now.Add(2 * time.Minute),
 		Value:     uint64(100),
 	})
-	assert.Equal(res[1], TimePoint{
+	assert.Equal(res[2], TimePoint{
 		Timestamp: now.Add(time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[2], TimePoint{
+	assert.Equal(res[3], TimePoint{
 		Timestamp: now,
 		Value:     uint64(200),
 	})
@@ -289,24 +303,28 @@ func TestGet(t *testing.T) {
 
 	// Invocation with a full StatStore and a multi-resolution bucket
 	res = store.Get(zeroTime, zeroTime)
-	require.Len(res, 5)
+	require.Len(res, 6)
 	assert.Equal(res[0], TimePoint{
+		Timestamp: now.Add(5 * time.Minute),
+		Value:     uint64(550),
+	})
+	assert.Equal(res[1], TimePoint{
 		Timestamp: now.Add(4 * time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[1], TimePoint{
+	assert.Equal(res[2], TimePoint{
 		Timestamp: now.Add(3 * time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[2], TimePoint{
+	assert.Equal(res[3], TimePoint{
 		Timestamp: now.Add(2 * time.Minute),
 		Value:     uint64(100),
 	})
-	assert.Equal(res[3], TimePoint{
+	assert.Equal(res[4], TimePoint{
 		Timestamp: now.Add(time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[4], TimePoint{
+	assert.Equal(res[5], TimePoint{
 		Timestamp: now,
 		Value:     uint64(200),
 	})
@@ -320,24 +338,28 @@ func TestGet(t *testing.T) {
 
 	// Invocation after one rewind
 	res = store.Get(zeroTime, zeroTime)
-	require.Len(res, 5)
+	require.Len(res, 6)
 	assert.Equal(res[0], TimePoint{
+		Timestamp: now.Add(6 * time.Minute),
+		Value:     uint64(750),
+	})
+	assert.Equal(res[1], TimePoint{
 		Timestamp: now.Add(5 * time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[1], TimePoint{
+	assert.Equal(res[2], TimePoint{
 		Timestamp: now.Add(4 * time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[2], TimePoint{
+	assert.Equal(res[3], TimePoint{
 		Timestamp: now.Add(3 * time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[3], TimePoint{
+	assert.Equal(res[4], TimePoint{
 		Timestamp: now.Add(2 * time.Minute),
 		Value:     uint64(100),
 	})
-	assert.Equal(res[4], TimePoint{
+	assert.Equal(res[5], TimePoint{
 		Timestamp: now.Add(time.Minute),
 		Value:     uint64(600),
 	})
@@ -350,24 +372,28 @@ func TestGet(t *testing.T) {
 
 	// Invocation after second rewind
 	res = store.Get(zeroTime, zeroTime)
-	require.Len(res, 5)
+	require.Len(res, 6)
 	assert.Equal(res[0], TimePoint{
+		Timestamp: now.Add(7 * time.Minute),
+		Value:     uint64(998),
+	})
+	assert.Equal(res[1], TimePoint{
 		Timestamp: now.Add(6 * time.Minute),
 		Value:     uint64(800),
 	})
-	assert.Equal(res[1], TimePoint{
+	assert.Equal(res[2], TimePoint{
 		Timestamp: now.Add(5 * time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[2], TimePoint{
+	assert.Equal(res[3], TimePoint{
 		Timestamp: now.Add(4 * time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[3], TimePoint{
+	assert.Equal(res[4], TimePoint{
 		Timestamp: now.Add(3 * time.Minute),
 		Value:     uint64(600),
 	})
-	assert.Equal(res[4], TimePoint{
+	assert.Equal(res[5], TimePoint{
 		Timestamp: now.Add(2 * time.Minute),
 		Value:     uint64(100),
 	})
@@ -426,24 +452,28 @@ func TestGet(t *testing.T) {
 
 	// Invocation after a future Put. Everything in between is placed in the last bucket
 	res = store.Get(zeroTime, zeroTime)
-	require.Len(res, 5)
+	require.Len(res, 6)
 	assert.Equal(res[0], TimePoint{
+		Timestamp: now.Add(25 * time.Minute),
+		Value:     uint64(1500),
+	})
+	assert.Equal(res[1], TimePoint{
 		Timestamp: now.Add(24 * time.Minute),
 		Value:     uint64(1000),
 	})
-	assert.Equal(res[1], TimePoint{
+	assert.Equal(res[2], TimePoint{
 		Timestamp: now.Add(23 * time.Minute),
 		Value:     uint64(1000),
 	})
-	assert.Equal(res[2], TimePoint{
+	assert.Equal(res[3], TimePoint{
 		Timestamp: now.Add(22 * time.Minute),
 		Value:     uint64(1000),
 	})
-	assert.Equal(res[3], TimePoint{
+	assert.Equal(res[4], TimePoint{
 		Timestamp: now.Add(21 * time.Minute),
 		Value:     uint64(1000),
 	})
-	assert.Equal(res[4], TimePoint{
+	assert.Equal(res[5], TimePoint{
 		Timestamp: now.Add(20 * time.Minute),
 		Value:     uint64(1000),
 	})
@@ -640,5 +670,4 @@ func TestMaxSize(t *testing.T) {
 	// Invocation with a StatStore of 1 minute, 10 second resolution.
 	store = NewStatStore(50, 10*time.Second, 6, []float64{})
 	assert.Equal(time.Minute, store.MaxSize())
-
 }
