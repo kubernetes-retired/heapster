@@ -85,7 +85,6 @@ func (esm *externalSinkManager) sync() {
 func (esm *externalSinkManager) store() error {
 	lastSync := esm.lastSync
 	now := time.Now()
-	esm.lastSync = now
 	pods := esm.cache.GetPods(lastSync, now)
 	containers := esm.cache.GetNodes(lastSync, now)
 	containers = append(containers, esm.cache.GetFreeContainers(lastSync, now)...)
@@ -113,6 +112,7 @@ func (esm *externalSinkManager) store() error {
 		glog.V(5).Infof("Skipping sync loop")
 		return nil
 	}
+	esm.lastSync = now
 	// Format metrics and push them.
 	esm.RLock()
 	defer esm.RUnlock()
