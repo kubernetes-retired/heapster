@@ -35,8 +35,7 @@ import (
 )
 
 var (
-	argPollDuration    = flag.Duration("poll_duration", 10*time.Second, "The frequency at which heapster will poll for stats")
-	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats. Acceptable values are in the range [1 second, 'poll_duration')")
+	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats.")
 	argSinkFrequency   = flag.Duration("sink_frequency", 10*time.Second, "Frequency at which data will be pushed to sinks")
 	argCacheDuration   = flag.Duration("cache_duration", 4*time.Minute, "The total duration of the historical data that will be cached by heapster.")
 	argUseModel        = flag.Bool("use_model", false, "When true, the internal model representation will be used")
@@ -70,20 +69,11 @@ func main() {
 }
 
 func validateFlags() error {
-	if *argPollDuration <= time.Second {
-		return fmt.Errorf("poll duration is invalid '%d'. Set it to a duration greater than a second", *argPollDuration)
-	}
 	if *argStatsResolution < time.Second {
 		return fmt.Errorf("stats resolution needs to be greater than a second - %d", *argStatsResolution)
 	}
-	if *argStatsResolution >= *argPollDuration {
-		return fmt.Errorf("stats resolution '%d' is not less than poll duration '%d'", *argStatsResolution, *argPollDuration)
-	}
 	if *argUseModel && (*argStatsResolution >= *argModelResolution) {
 		return fmt.Errorf("stats resolution '%d' is not less than model resolution '%d'", *argStatsResolution, *argModelResolution)
-	}
-	if *argCacheDuration <= *argPollDuration {
-		return fmt.Errorf("pollling duration '%d' is not lesser than cache duration '%d'", *argPollDuration, *argCacheDuration)
 	}
 	if *argSinkFrequency >= *argCacheDuration {
 		return fmt.Errorf("sink frequency '%d' is expected to be lesser than cache duration '%d'", *argSinkFrequency, *argCacheDuration)
@@ -120,7 +110,7 @@ func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, 
 	}
 	go util.Until(manager.HousekeepModel, modelDuration, util.NeverStop)
 
-	go util.Until(manager.Housekeep, *argPollDuration, util.NeverStop)
+	go manager.Housekeep()
 	return sources, sinkManager, manager, nil
 }
 
