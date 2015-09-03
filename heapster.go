@@ -38,7 +38,7 @@ var (
 	argPollDuration    = flag.Duration("poll_duration", 10*time.Second, "The frequency at which heapster will poll for stats")
 	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats. Acceptable values are in the range [1 second, 'poll_duration')")
 	argSinkFrequency   = flag.Duration("sink_frequency", 10*time.Second, "Frequency at which data will be pushed to sinks")
-	argCacheDuration   = flag.Duration("cache_duration", 5*time.Minute, "The total duration of the historical data that will be cached by heapster.")
+	argCacheDuration   = flag.Duration("cache_duration", 4*time.Minute, "The total duration of the historical data that will be cached by heapster.")
 	argUseModel        = flag.Bool("use_model", false, "When true, the internal model representation will be used")
 	argModelResolution = flag.Duration("model_resolution", 2*time.Minute, "The resolution of the timeseries stored in the model. Applies only if use_model is true")
 	argPort            = flag.Int("port", 8082, "port to listen to")
@@ -82,7 +82,12 @@ func validateFlags() error {
 	if *argUseModel && (*argStatsResolution >= *argModelResolution) {
 		return fmt.Errorf("stats resolution '%d' is not less than model resolution '%d'", *argStatsResolution, *argModelResolution)
 	}
-
+	if *argCacheDuration <= *argPollDuration {
+		return fmt.Errorf("pollling duration '%d' is not lesser than cache duration '%d'", *argPollDuration, *argCacheDuration)
+	}
+	if *argSinkFrequency >= *argCacheDuration {
+		return fmt.Errorf("sink frequency '%d' is expected to be lesser than cache duration '%d'", *argSinkFrequency, *argCacheDuration)
+	}
 	return nil
 }
 

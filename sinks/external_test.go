@@ -148,7 +148,7 @@ func newExternalSinkManager(externalSinks []sink_api.ExternalSink, cache cache.C
 func TestSetSinksStore(t *testing.T) {
 	as := assert.New(t)
 	s1 := &DummySink{}
-	c := cache.NewCache(time.Minute, time.Hour)
+	c := cache.NewCache(time.Hour, time.Minute)
 	m, err := newExternalSinkManager([]sink_api.ExternalSink{s1}, c, time.Microsecond)
 	as.Nil(err)
 	as.Equal(0, s1.StoredTimeseries)
