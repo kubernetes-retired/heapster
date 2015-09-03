@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/heapster/extpoints"
+	"k8s.io/heapster/sinks/cache"
 	"k8s.io/heapster/sinks/gcm"
 
 	sink_api "k8s.io/heapster/sinks/api"
@@ -120,7 +121,7 @@ func (self gcmAutocalingSink) StoreEvents([]kube_api.Event) error {
 }
 
 func isNode(metric *sink_api.Point) bool {
-	return metric.Labels[sink_api.LabelContainerName.Key] == "/"
+	return metric.Labels[sink_api.LabelContainerName.Key] == cache.NodeContainerName
 }
 
 func isPodContainer(metric *sink_api.Point) bool {
