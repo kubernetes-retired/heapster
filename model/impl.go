@@ -244,33 +244,35 @@ func (rc *realModel) parseMetric(cme *cache.ContainerMetricElement, dict map[str
 
 		// use the context to store a TimePoint of the previous cumulative cpuUsage.
 		prevTP, ok := context[cpuUsage]
-		if !ok && cpu_usage != 0 {
-			// Context is empty, add the first TimePoint for cumulative cpuUsage.
-			context[cpuUsage] = &statstore.TimePoint{
-				Timestamp: timestamp,
-				Value:     cpu_usage,
-			}
-		} else {
-			prevRoundedStamp := prevTP.Timestamp.Truncate(rc.resolution)
-
-			if cme.Spec.CreationTime.After(prevTP.Timestamp) {
-				// check if the container was restarted since the last context timestamp
-				// Reset the context
+		if cpu_usage != 0 {
+			if !ok {
+				// Context is empty, add the first TimePoint for cumulative cpuUsage.
 				context[cpuUsage] = &statstore.TimePoint{
 					Timestamp: timestamp,
 					Value:     cpu_usage,
 				}
-			} else if prevRoundedStamp.Before(roundedStamp) {
-				// Calculate new instantaneous CPU Usage
-				newCPU, err := instantFromCumulativeMetric(cpu_usage, timestamp, prevTP)
-				if err != nil {
-					return zeroTime, fmt.Errorf("failed to calculate instantaneous CPU usage: %s", err)
-				}
+			} else {
+				prevRoundedStamp := prevTP.Timestamp.Truncate(rc.resolution)
 
-				// Add to CPU Usage metric
-				err = rc.addMetricToMap(cpuUsage, roundedStamp, newCPU, dict)
-				if err != nil {
-					return zeroTime, fmt.Errorf("failed to add %s metric: %s", cpuUsage, err)
+				if cme.Spec.CreationTime.After(prevTP.Timestamp) {
+					// check if the container was restarted since the last context timestamp
+					// Reset the context
+					context[cpuUsage] = &statstore.TimePoint{
+						Timestamp: timestamp,
+						Value:     cpu_usage,
+					}
+				} else if prevRoundedStamp.Before(roundedStamp) {
+					// Calculate new instantaneous CPU Usage
+					newCPU, err := instantFromCumulativeMetric(cpu_usage, timestamp, prevTP)
+					if err != nil {
+						return zeroTime, fmt.Errorf("failed to calculate instantaneous CPU usage: %s", err)
+					}
+
+					// Add to CPU Usage metric
+					err = rc.addMetricToMap(cpuUsage, roundedStamp, newCPU, dict)
+					if err != nil {
+						return zeroTime, fmt.Errorf("failed to add %s metric: %s", cpuUsage, err)
+					}
 				}
 			}
 		}
