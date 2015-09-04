@@ -43,7 +43,19 @@ func TestFuzz(t *testing.T) {
 }
 
 func TestGC(t *testing.T) {
+	var podEvictedCount int
+	var containerEvictedCount int
+
 	cache := NewCache(time.Millisecond, time.Second)
+	cache.AddCacheListener(CacheListener{
+		PodEvicted: func(namespace string, name string) {
+			podEvictedCount += 1
+		},
+		FreeContainerEvicted: func(hostname string, name string) {
+			containerEvictedCount += 1
+		},
+	})
+
 	var (
 		pods       []source_api.Pod
 		containers []source_api.Container
@@ -61,6 +73,9 @@ func TestGC(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	assert.Empty(cache.GetFreeContainers(zeroTime, zeroTime))
 	assert.Empty(cache.GetPods(zeroTime, zeroTime))
+
+	assert.Equal(len(pods), podEvictedCount)
+	assert.Equal(len(containers), containerEvictedCount)
 }
 
 func getContainer(name string) source_api.Container {
