@@ -71,6 +71,14 @@ type EventsCache interface {
 	StoreEvents([]*Event) error
 }
 
+type CacheListener struct {
+	NodeEvicted          func(hostName string)
+	NamespaceEvicted     func(namespace string)
+	PodEvicted           func(namespace string, podName string)
+	PodContainerEvicted  func(namespace string, podName string, containerName string)
+	FreeContainerEvicted func(hostName string, containerName string)
+}
+
 type Cache interface {
 	EventsCache
 	StorePods([]source_api.Pod) error
@@ -98,4 +106,8 @@ type Cache interface {
 	// If 'end' is zero, it returns all the events from 'start'.
 	// If both 'start' and 'end' are zero, it returns all the events in the cache.
 	GetEvents(start, end time.Time) []*Event
+
+	// Adds eviction listener to the list of listeners. The listeners
+	// will be triggered when the correspoinding eviction events occur.
+	AddCacheListener(listener CacheListener)
 }

@@ -59,6 +59,9 @@ type realCache struct {
 	eventUIDs map[string]struct{}
 	// Events store.
 	events store.TimeStore
+
+	cacheListeners []CacheListener
+
 	sync.RWMutex
 }
 
@@ -76,6 +79,12 @@ func (rc *realCache) isTooOld(lastUpdated time.Time) bool {
 	return false
 }
 
+func (rc *realCache) AddCacheListener(cacheListener CacheListener) {
+	rc.Lock()
+	defer rc.Unlock()
+	rc.cacheListeners = append(rc.cacheListeners, cacheListener)
+}
+
 func (rc *realCache) runGC() {
 	rc.Lock()
 	defer rc.Unlock()
@@ -83,23 +92,41 @@ func (rc *realCache) runGC() {
 		for contName, contElem := range podElem.containers {
 			if rc.isTooOld(contElem.lastUpdated) {
 				delete(podElem.containers, contName)
+				for _, listener := range rc.cacheListeners {
+					if listener.PodContainerEvicted != nil {
+						listener.PodContainerEvicted(podElem.Namespace, podElem.Name, contName)
+					}
+				}
 			}
 		}
 		if rc.isTooOld(podElem.lastUpdated) {
 			delete(rc.pods, podName)
+			for _, listener := range rc.cacheListeners {
+				if listener.PodEvicted != nil {
+					listener.PodEvicted(podElem.Namespace, podElem.Name)
+				}
+			}
 		}
 	}
 
 	for nodeName, nodeElem := range rc.nodes {
-		if rc.isTooOld(nodeElem.node.lastUpdated) {
-			delete(rc.nodes, nodeName)
-			// There is nothing to do for this node, since the entire node element
-			// has been deleted.
-			continue
-		}
 		for contName, contElem := range nodeElem.freeContainers {
 			if rc.isTooOld(contElem.lastUpdated) {
 				delete(nodeElem.freeContainers, contName)
+				for _, listener := range rc.cacheListeners {
+					if listener.FreeContainerEvicted != nil {
+						listener.FreeContainerEvicted(nodeName, contName)
+					}
+				}
+			}
+		}
+
+		if rc.isTooOld(nodeElem.node.lastUpdated) {
+			delete(rc.nodes, nodeName)
+			for _, listener := range rc.cacheListeners {
+				if listener.NodeEvicted != nil {
+					listener.NodeEvicted(nodeName)
+				}
 			}
 		}
 	}
