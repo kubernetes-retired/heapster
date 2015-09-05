@@ -67,14 +67,19 @@ const fsLimit = "fs-limit"
 const fsUsage = "fs-usage"
 
 // epsilon values for the underlying in-memory stores
-const cpuLimitEpsilon = 10
-const cpuUsageEpsilon = 10
+// Epsilon values for CPU metrics are expressed in millicores
+const cpuLimitEpsilon = 10 // 10 millicores
+const cpuUsageEpsilon = 10 // 10 millicores
+
+// Epsilon values for memory and filesystem metrics are expressed in bytes
 const memLimitEpsilon = 4194304   // 4 MB
 const memUsageEpsilon = 4194304   // 4 MB
 const memWorkingEpsilon = 4194304 // 4 MB
 const fsLimitEpsilon = 10485760   // 10 MB
 const fsUsageEpsilon = 10485760   // 10 MB
-const defaultEpsilon = 100        // used for testing
+
+// TODO(afein): move defaultEpsilon to impl_test after handling FS epsilon
+const defaultEpsilon = 100 // used for testing
 
 // Simple Request Types.
 type MetricRequest struct {

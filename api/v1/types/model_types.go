@@ -32,6 +32,8 @@ type MetricResultList struct {
 	Items []MetricResult `json:"items"`
 }
 
+// An ExternalEntityListEntry represents the latest CPU and Memory usage of a model entity.
+// A model entity can be a Pod, a Container, a Namespace or a Node.
 type ExternalEntityListEntry struct {
 	Name     string `json:"name"`
 	CPUUsage uint64 `json:"cpuUsage"`
