@@ -31,7 +31,7 @@ type Host struct {
 type Cadvisor interface {
 	// GetAllContainers returns container spec and stats for the root cgroup as 'root' and
 	// and all containers on the 'host' as 'subcontainers'.
-	GetAllContainers(host Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error)
+	GetAllContainers(host Host, start, end time.Time) (subcontainers []*api.Container, root *api.Container, err error)
 }
 
 func NewCadvisor() Cadvisor {
@@ -41,10 +41,10 @@ func NewCadvisor() Cadvisor {
 type Kubelet interface {
 	// GetContainer returns container spec and stats for the container pointed to by 'host.Resource', running on the kubelet specified in 'host.IP'.
 	// TODO(vishh): Once kubelet exposes a get all stats API, modify this API to return stats for all Pods.
-	GetContainer(host Host, start, end time.Time, resolution time.Duration) (containers *api.Container, err error)
+	GetContainer(host Host, start, end time.Time) (containers *api.Container, err error)
 
 	// Get stats for all non-Kubernetes containers.
-	GetAllRawContainers(host Host, start, end time.Time, resolution time.Duration) ([]api.Container, error)
+	GetAllRawContainers(host Host, start, end time.Time) ([]api.Container, error)
 }
 
 func NewKubelet(kubeletConfig *kube_client.KubeletConfig) (Kubelet, error) {

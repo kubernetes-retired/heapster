@@ -93,7 +93,7 @@ func (rm *realManager) GetModel() model.Model {
 
 func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, sd *syncData, errChan chan<- error) {
 	glog.V(2).Infof("attempting to get data from source %q", s.Name())
-	data, err := s.GetInfo(start, end, rm.resolution)
+	data, err := s.GetInfo(start, end)
 	if err != nil {
 		errChan <- fmt.Errorf("failed to get information from source %q - %v", s.Name(), err)
 		return

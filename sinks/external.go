@@ -113,7 +113,7 @@ func (esm *externalSinkManager) store() error {
 	timeseries = append(timeseries, containerTimeseries...)
 
 	if len(timeseries) == 0 {
-		glog.V(3).Info("no timeseries data between %v and %v", esm.lastSync.nodeSync, zeroTime)
+		glog.V(3).Infof("no timeseries data between %v and %v", esm.lastSync.nodeSync, zeroTime)
 		// Continue here to push events data.
 	}
 	events := esm.cache.GetEvents(esm.lastSync.eventsSync, zeroTime)

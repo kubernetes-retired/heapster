@@ -80,16 +80,16 @@ func (self *kubePodsSource) getState() string {
 	return state
 }
 
-func (self *kubePodsSource) getStatsFromKubelet(pod *api.Pod, containerName string, start, end time.Time, resolution time.Duration) (*api.Container, error) {
+func (self *kubePodsSource) getStatsFromKubelet(pod *api.Pod, containerName string, start, end time.Time) (*api.Container, error) {
 	resource := filepath.Join("stats", pod.Namespace, pod.Name, pod.ID, containerName)
 	if containerName == "/" {
 		resource += "/"
 	}
 
-	return self.kubeletApi.GetContainer(datasource.Host{IP: pod.HostInternalIP, Port: self.kubeletPort, Resource: resource}, start, end, resolution)
+	return self.kubeletApi.GetContainer(datasource.Host{IP: pod.HostInternalIP, Port: self.kubeletPort, Resource: resource}, start, end)
 }
 
-func (self *kubePodsSource) getPodInfo(nodeList *nodes.NodeList, start, end time.Time, resolution time.Duration) ([]api.Pod, error) {
+func (self *kubePodsSource) getPodInfo(nodeList *nodes.NodeList, start, end time.Time) ([]api.Pod, error) {
 	pods, err := self.podsApi.List(nodeList)
 	if err != nil {
 		return []api.Pod{}, err
@@ -102,7 +102,7 @@ func (self *kubePodsSource) getPodInfo(nodeList *nodes.NodeList, start, end time
 		go func(pod *api.Pod) {
 			defer wg.Done()
 			for index, container := range pod.Containers {
-				rawContainer, err := self.getStatsFromKubelet(pod, container.Name, start, end, resolution)
+				rawContainer, err := self.getStatsFromKubelet(pod, container.Name, start, end)
 				if err != nil {
 					// Containers could be in the process of being setup or restarting while the pod is alive.
 					glog.V(2).Infof("failed to get stats for container %q in pod %q/%q", container.Name, pod.Namespace, pod.Name)
@@ -125,12 +125,12 @@ func (self *kubePodsSource) getPodInfo(nodeList *nodes.NodeList, start, end time
 	return pods, nil
 }
 
-func (self *kubePodsSource) GetInfo(start, end time.Time, resolution time.Duration) (api.AggregateData, error) {
+func (self *kubePodsSource) GetInfo(start, end time.Time) (api.AggregateData, error) {
 	kubeNodes, err := self.nodesApi.List()
 	if err != nil || len(kubeNodes.Items) == 0 {
 		return api.AggregateData{}, err
 	}
-	podsInfo, err := self.getPodInfo(kubeNodes, start, end, resolution)
+	podsInfo, err := self.getPodInfo(kubeNodes, start, end)
 	if err != nil {
 		return api.AggregateData{}, err
 	}

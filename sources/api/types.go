@@ -89,10 +89,9 @@ type ExternalNodeList struct {
 type Source interface {
 	// GetInfo Fetches information about pods or containers.
 	// start, end: Represents the time range for stats
-	// resolution: Represents the intervals at which samples are collected.
 	// Returns:
 	// AggregateData
-	GetInfo(start, end time.Time, resolution time.Duration) (AggregateData, error)
+	GetInfo(start, end time.Time) (AggregateData, error)
 	// Returns debug information for the source.
 	DebugInfo() string
 	// Returns a user friendly string that describes the source.
