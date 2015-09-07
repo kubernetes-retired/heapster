@@ -64,6 +64,37 @@ func TestAddNamespace(t *testing.T) {
 	assert.Equal(new_namespace, namespace)
 }
 
+// TestDeleteNamespace tests all flows of deleteNode.
+func TestDeleteNamespace(t *testing.T) {
+	var (
+		cluster   = newRealModel(time.Minute)
+		hostname  = "kubernetes-minion-xkhz"
+		namespace = "testns"
+		podName   = "mypod"
+		assert    = assert.New(t)
+	)
+
+	// First call : node does not exist
+	cluster.addNode("other")
+	otherNs := cluster.addNamespace("other")
+	nodeInfo := cluster.addNode(hostname)
+	namespaceInfo := cluster.addNamespace(namespace)
+	cluster.addPod(podName, "123", namespaceInfo, nodeInfo)
+	cluster.addPod(podName, "123", otherNs, nodeInfo)
+
+	cluster.deleteNamespace(namespace)
+
+	assert.Equal(2, len(cluster.Nodes))
+	assert.Equal(1, len(cluster.Namespaces))
+	assert.NotNil(cluster.Nodes[hostname])
+	assert.Equal(1, len(cluster.Nodes[hostname].Pods))
+	assert.Nil(cluster.Namespaces[namespace])
+
+	// Second call: already deleted
+	cluster.deleteNamespace(namespace)
+	// No panic etc.
+}
+
 // TestAddNode tests all flows of addNode.
 func TestAddNode(t *testing.T) {
 	var (
@@ -87,6 +118,37 @@ func TestAddNode(t *testing.T) {
 	assert.Equal(new_node, node)
 }
 
+// TestDeleteNode tests all flows of deleteNode.
+func TestDeleteNode(t *testing.T) {
+	var (
+		cluster   = newRealModel(time.Minute)
+		hostname  = "kubernetes-minion-xkhz"
+		namespace = "testns"
+		podName   = "mypod"
+		assert    = assert.New(t)
+	)
+
+	// First call : node does not exist
+	cluster.addNode("other")
+	cluster.addNamespace("other")
+
+	nodeInfo := cluster.addNode(hostname)
+	namespaceInfo := cluster.addNamespace(namespace)
+	cluster.addPod(podName, "123", namespaceInfo, nodeInfo)
+
+	cluster.deleteNode(hostname)
+
+	assert.Equal(0, len(namespaceInfo.Pods))
+	assert.Equal(1, len(cluster.Nodes))
+	assert.Equal(2, len(cluster.Namespaces))
+	assert.Nil(cluster.Nodes[hostname])
+	assert.NotNil(cluster.Namespaces[namespace])
+
+	// Second call: already deleted
+	cluster.deleteNode(hostname)
+	// No panic etc.
+}
+
 // TestAddPod tests all flows of addPod.
 func TestAddPod(t *testing.T) {
 	var (
@@ -102,7 +164,7 @@ func TestAddPod(t *testing.T) {
 	pod := cluster.addPod(pod_name, pod_uid, namespace, node)
 
 	assert.NotNil(pod)
-	assert.Equal(node.Pods[pod_name], pod)
+	assert.Equal(node.Pods[getPodKey(namespace.Name, pod_name)], pod)
 	assert.Equal(namespace.Pods[pod_name], pod)
 	assert.Equal(pod.UID, pod_uid)
 	assert.NotNil(pod.Metrics)
@@ -121,6 +183,39 @@ func TestAddPod(t *testing.T) {
 	// Fourth call : Nil node
 	new_pod = cluster.addPod(pod_name, pod_uid, namespace, nil)
 	assert.Nil(new_pod)
+}
+
+// TestDeleteNode tests all flows of deleteNode.
+func TestDeletePod(t *testing.T) {
+	var (
+		cluster   = newRealModel(time.Minute)
+		hostname  = "kubernetes-minion-xkhz"
+		namespace = "testns"
+		podName   = "mypod"
+		assert    = assert.New(t)
+	)
+
+	// First call : node does not exist
+	cluster.addNode("other")
+	cluster.addNamespace("other")
+
+	nodeInfo := cluster.addNode(hostname)
+	namespaceInfo := cluster.addNamespace(namespace)
+	cluster.addPod(podName, "123", namespaceInfo, nodeInfo)
+	cluster.addPod("other", "123", namespaceInfo, nodeInfo)
+
+	cluster.deletePod(namespace, podName)
+
+	assert.Equal(1, len(namespaceInfo.Pods))
+	assert.Equal(2, len(cluster.Nodes))
+	assert.Equal(2, len(cluster.Namespaces))
+	assert.Nil(namespaceInfo.Pods[podName])
+	assert.Nil(nodeInfo.Pods[getPodKey(namespace, podName)])
+	assert.NotNil(cluster.Namespaces[namespace])
+
+	// Second call: already deleted
+	cluster.deletePod(namespace, podName)
+	// No panic etc.
 }
 
 // TestUpdateTime tests the sanity of updateTime.
@@ -544,7 +639,7 @@ func TestUpdatePodNormal(t *testing.T) {
 	assert.NoError(err)
 	assert.NotEqual(stamp, time.Time{})
 	assert.NotNil(cluster.Nodes[pod_elem.Hostname])
-	pod_ptr := cluster.Nodes[pod_elem.Hostname].Pods[pod_elem.Name]
+	pod_ptr := cluster.Nodes[pod_elem.Hostname].Pods[getPodKey(pod_elem.Namespace, pod_elem.Name)]
 	assert.NotNil(cluster.Namespaces[pod_elem.Namespace])
 	assert.Equal(pod_ptr, cluster.Namespaces[pod_elem.Namespace].Pods[pod_elem.Name])
 	assert.Equal(pod_ptr.Labels, pod_elem.Labels)
@@ -672,11 +767,11 @@ func verifyCacheFactoryCluster(clinfo *ClusterInfo, t *testing.T) {
 	assert.NotNil(namespace.Pods)
 	pod1_ptr := namespace.Pods["pod1"]
 	require.NotNil(t, pod1_ptr)
-	assert.Equal(pod1_ptr, node2.Pods["pod1"])
+	assert.Equal(pod1_ptr, node2.Pods[getPodKey(namespace.Name, "pod1")])
 	assert.Len(pod1_ptr.Containers, 2)
 	pod2_ptr := namespace.Pods["pod2"]
 	require.NotNil(t, pod2_ptr)
-	assert.Equal(pod2_ptr, node3.Pods["pod2"])
+	assert.Equal(pod2_ptr, node3.Pods[getPodKey(namespace.Name, "pod2")])
 	assert.Len(pod2_ptr.Containers, 2)
 }
 

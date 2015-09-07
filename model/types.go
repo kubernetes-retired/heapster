@@ -179,11 +179,13 @@ type ClusterInfo struct {
 
 type NamespaceInfo struct {
 	InfoType
+	Name string
 	Pods map[string]*PodInfo // key: Pod Name
 }
 
 type NodeInfo struct {
 	InfoType
+	Name           string
 	Pods           map[string]*PodInfo       // key: Pod Name
 	FreeContainers map[string]*ContainerInfo // key: Container Name
 }
@@ -191,6 +193,9 @@ type NodeInfo struct {
 type PodInfo struct {
 	InfoType
 	UID        string
+	Name       string
+	Namespace  string
+	Hostname   string
 	Containers map[string]*ContainerInfo // key: Container Name
 }
 

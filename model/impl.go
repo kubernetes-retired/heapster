@@ -57,6 +57,10 @@ func (rc *realModel) updateTime(new_time time.Time) {
 	rc.timestamp = new_time
 }
 
+func getPodKey(namespace, name string) string {
+	return namespace + "/" + name
+}
+
 // addNode creates or finds a NodeInfo element for the provided (internal) hostname.
 // addNode returns a pointer to the NodeInfo element that was created or found.
 // addNode assumes an appropriate lock is already taken by the caller.
@@ -70,6 +74,7 @@ func (rc *realModel) addNode(hostname string) *NodeInfo {
 		// Node does not exist in map, create a new NodeInfo object
 		node_ptr = &NodeInfo{
 			InfoType:       newInfoType(nil, nil, nil),
+			Name:           hostname,
 			Pods:           make(map[string]*PodInfo),
 			FreeContainers: make(map[string]*ContainerInfo),
 		}
@@ -78,6 +83,21 @@ func (rc *realModel) addNode(hostname string) *NodeInfo {
 		rc.Nodes[hostname] = node_ptr
 	}
 	return node_ptr
+}
+
+// Deletes the given node with all of the pods and containers on it.
+func (rc *realModel) deleteNode(hostname string) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
+	if node, ok := rc.Nodes[hostname]; ok {
+		for _, podInfo := range node.Pods {
+			if namespaceInfo, ok := rc.Namespaces[podInfo.Namespace]; ok {
+				delete(namespaceInfo.Pods, podInfo.Name)
+			}
+		}
+	}
+	delete(rc.Nodes, hostname)
 }
 
 // addNamespace creates or finds a NamespaceInfo element for the provided namespace.
@@ -93,12 +113,28 @@ func (rc *realModel) addNamespace(name string) *NamespaceInfo {
 		// Namespace does not exist in map, create a new NamespaceInfo struct
 		namespace_ptr = &NamespaceInfo{
 			InfoType: newInfoType(nil, nil, nil),
+			Name:     name,
 			Pods:     make(map[string]*PodInfo),
 		}
 		rc.Namespaces[name] = namespace_ptr
 	}
 
 	return namespace_ptr
+}
+
+// Delets the given namespace with all of the pods.
+func (rc *realModel) deleteNamespace(namespace string) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
+	if namespaceInfo, ok := rc.Namespaces[namespace]; ok {
+		for _, podInfo := range namespaceInfo.Pods {
+			if nodeInfo, ok := rc.Nodes[podInfo.Hostname]; ok {
+				delete(nodeInfo.Pods, getPodKey(namespace, podInfo.Name))
+			}
+		}
+	}
+	delete(rc.Namespaces, namespace)
 }
 
 // addPod creates or finds a PodInfo element under the provided NodeInfo and NamespaceInfo.
@@ -136,13 +172,31 @@ func (rc *realModel) addPod(pod_name string, pod_uid string, namespace *Namespac
 		pod_ptr = &PodInfo{
 			InfoType:   newInfoType(nil, nil, nil),
 			UID:        pod_uid,
+			Name:       pod_name,
+			Namespace:  namespace.Name,
+			Hostname:   node.Name,
 			Containers: make(map[string]*ContainerInfo),
 		}
 		namespace.Pods[pod_name] = pod_ptr
-		node.Pods[pod_name] = pod_ptr
+		node.Pods[getPodKey(namespace.Name, pod_name)] = pod_ptr
 	}
 
 	return pod_ptr
+}
+
+// Deletes the given pod.
+func (rc *realModel) deletePod(namespace, name string) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
+	if namespaceInfo, ok := rc.Namespaces[namespace]; ok {
+		if podInfo, ok := namespaceInfo.Pods[name]; ok {
+			if nodeInfo, ok := rc.Nodes[podInfo.Hostname]; ok {
+				delete(nodeInfo.Pods, getPodKey(namespace, name))
+			}
+			delete(namespaceInfo.Pods, name)
+		}
+	}
 }
 
 // updateInfoType updates the metrics of an InfoType from a ContainerElement.
