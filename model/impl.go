@@ -378,6 +378,19 @@ func (rc *realModel) parseMetric(cme *cache.ContainerMetricElement, dict map[str
 	return roundedStamp, nil
 }
 
+func (rc *realModel) GetCacheListener() cache.CacheListener {
+	return cache.CacheListener{
+		NodeEvicted:      func(hostName string) { rc.deleteNode(hostName) },
+		NamespaceEvicted: func(namespace string) { rc.deleteNamespace(namespace) },
+		PodEvicted:       func(namespace string, podName string) { rc.deletePod(namespace, podName) },
+		PodContainerEvicted: func(namespace string, podName string, containerName string) {
+			// do nothing at this moment.
+		},
+		FreeContainerEvicted: func(hostName string, containerName string) { rc.deleteFreeContainer(hostName, containerName) },
+	}
+
+}
+
 // Update populates the data structure from a cache.
 func (rc *realModel) Update(c cache.Cache) error {
 	var zero time.Time
@@ -490,4 +503,15 @@ func (rc *realModel) updateFreeContainer(ce *cache.ContainerElement) (time.Time,
 	cinfo := addContainerToMap(ce.Name, node.FreeContainers)
 	latest_time, err := rc.updateInfoType(&cinfo.InfoType, ce)
 	return latest_time, err
+}
+
+// updateFreeContainer updates Free Container-level information from a ContainerElement
+func (rc *realModel) deleteFreeContainer(hostname, name string) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
+	// Get Node pointer
+	if node, ok := rc.Nodes[hostname]; ok {
+		delete(node.FreeContainers, name)
+	}
 }

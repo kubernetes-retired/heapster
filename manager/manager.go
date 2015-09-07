@@ -72,6 +72,8 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 	var newModel model.Model = nil
 	if useModel {
 		newModel = model.NewModel(modelRes)
+		// Temporary semi-hack to get model storage garbage-collected.
+		c.AddCacheListener(newModel.GetCacheListener())
 	}
 	return &realManager{
 		sources:      sources,
