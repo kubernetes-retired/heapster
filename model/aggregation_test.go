@@ -19,70 +19,72 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"k8s.io/heapster/store"
+	"k8s.io/heapster/store/daystore"
+	"k8s.io/heapster/store/statstore"
 )
 
 // TestAggregateNodeMetricsEmpty tests the empty flow of aggregateNodeMetrics.
 // The normal flow is tested through TestUpdate.
 func TestAggregateNodeMetricsEmpty(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
-		c       = make(chan error)
-		assert  = assert.New(t)
+		model  = newRealModel(time.Minute)
+		c      = make(chan error)
+		assert = assert.New(t)
 	)
 
-	// Invocation with empty cluster
-	go cluster.aggregateNodeMetrics(c)
+	// Invocation with empty model
+	go model.aggregateNodeMetrics(c, time.Now())
 	assert.NoError(<-c)
-	assert.Empty(cluster.Nodes)
-	assert.Empty(cluster.Metrics)
+	assert.Empty(model.Nodes)
+	assert.Empty(model.Metrics)
 }
 
 // TestAggregateKubeMetricsError tests the error flows of aggregateKubeMetrics.
 // The normal flow is tested through TestUpdate.
 func TestAggregateKubeMetricsEmpty(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
-		c       = make(chan error)
-		assert  = assert.New(t)
+		model  = newRealModel(time.Minute)
+		c      = make(chan error)
+		assert = assert.New(t)
 	)
 
-	// Invocation with empty cluster
-	go cluster.aggregateKubeMetrics(c)
+	// Invocation with empty model
+	go model.aggregateKubeMetrics(c, time.Now())
 	assert.NoError(<-c)
-	assert.Empty(cluster.Namespaces)
+	assert.Empty(model.Namespaces)
 
 	// Error propagation from aggregateNamespaceMetrics
-	cluster.Namespaces["default"] = nil
-	go cluster.aggregateKubeMetrics(c)
+	model.Namespaces["default"] = nil
+	go model.aggregateKubeMetrics(c, time.Now())
 	assert.Error(<-c)
-	assert.NotEmpty(cluster.Namespaces)
+	assert.NotEmpty(model.Namespaces)
 }
 
 // TestAggregateNamespaceMetrics tests the error flows of aggregateNamespaceMetrics.
 // The normal flow is tested through TestUpdate.
 func TestAggregateNamespaceMetricsError(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
-		c       = make(chan error)
-		assert  = assert.New(t)
+		model  = newRealModel(time.Minute)
+		c      = make(chan error)
+		assert = assert.New(t)
 	)
 
 	// Invocation with nil namespace
-	go cluster.aggregateNamespaceMetrics(nil, c)
+	go model.aggregateNamespaceMetrics(nil, c, time.Now())
 	assert.Error(<-c)
-	assert.Empty(cluster.Namespaces)
+	assert.Empty(model.Namespaces)
 
 	// Invocation for a namespace with no pods
-	ns := cluster.addNamespace("default")
-	go cluster.aggregateNamespaceMetrics(ns, c)
+	ns := model.addNamespace("default")
+	go model.aggregateNamespaceMetrics(ns, c, time.Now())
 	assert.NoError(<-c)
 	assert.Len(ns.Pods, 0)
 
 	// Error propagation from aggregatePodMetrics
 	ns.Pods["pod1"] = nil
-	go cluster.aggregateNamespaceMetrics(ns, c)
+	go model.aggregateNamespaceMetrics(ns, c, time.Now())
 	assert.Error(<-c)
 }
 
@@ -90,39 +92,39 @@ func TestAggregateNamespaceMetricsError(t *testing.T) {
 // The normal flow is tested through TestUpdate.
 func TestAggregatePodMetricsError(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
-		c       = make(chan error)
-		assert  = assert.New(t)
+		model  = newRealModel(time.Minute)
+		c      = make(chan error)
+		assert = assert.New(t)
 	)
-	ns := cluster.addNamespace("default")
-	node := cluster.addNode("newnode")
-	pod := cluster.addPod("pod1", "uid111", ns, node)
+	ns := model.addNamespace("default")
+	node := model.addNode("newnode")
+	pod := model.addPod("pod1", "uid111", ns, node)
 
 	// Invocation with nil pod
-	go cluster.aggregatePodMetrics(nil, c)
+	go model.aggregatePodMetrics(nil, c, time.Now())
 	assert.Error(<-c)
 
 	// Invocation with empty pod
-	go cluster.aggregatePodMetrics(pod, c)
+	go model.aggregatePodMetrics(pod, c, time.Now())
 	assert.NoError(<-c)
 
 	// Invocation with a normal pod
 	addContainerToMap("new_container", pod.Containers)
 	addContainerToMap("new_container2", pod.Containers)
-	go cluster.aggregatePodMetrics(pod, c)
+	go model.aggregatePodMetrics(pod, c, time.Now())
 	assert.NoError(<-c)
 }
 
 // TestAggregateMetricsError tests the error flows of aggregateMetrics.
 func TestAggregateMetricsError(t *testing.T) {
 	var (
-		cluster    = newRealCluster(newTimeStore, time.Minute)
+		model      = newRealModel(time.Minute)
 		targetInfo = InfoType{
-			Metrics: make(map[string]*store.TimeStore),
+			Metrics: make(map[string]*daystore.DayStore),
 			Labels:  make(map[string]string),
 		}
 		srcInfo = InfoType{
-			Metrics: make(map[string]*store.TimeStore),
+			Metrics: make(map[string]*daystore.DayStore),
 			Labels:  make(map[string]string),
 		}
 		assert = assert.New(t)
@@ -130,76 +132,95 @@ func TestAggregateMetricsError(t *testing.T) {
 
 	// Invocation with nil first argument
 	sources := []*InfoType{&srcInfo}
-	assert.Error(cluster.aggregateMetrics(nil, sources))
+	assert.Error(model.aggregateMetrics(nil, sources, time.Now()))
 
 	// Invocation with empty second argument
 	sources = []*InfoType{}
-	assert.Error(cluster.aggregateMetrics(&targetInfo, sources))
+	assert.Error(model.aggregateMetrics(&targetInfo, sources, time.Now()))
 
 	// Invocation with a nil element in the second argument
 	sources = []*InfoType{&srcInfo, nil}
-	assert.Error(cluster.aggregateMetrics(&targetInfo, sources))
+	assert.Error(model.aggregateMetrics(&targetInfo, sources, time.Now()))
 
 	// Invocation with the target being also part of sources
 	sources = []*InfoType{&srcInfo, &targetInfo}
-	assert.Error(cluster.aggregateMetrics(&targetInfo, sources))
+	assert.Error(model.aggregateMetrics(&targetInfo, sources, time.Now()))
+
+	// Normal Invocation with latestTime being zero
+	sources = []*InfoType{&srcInfo}
+	assert.Error(model.aggregateMetrics(&targetInfo, sources, time.Time{}))
 }
 
 // TestAggregateMetricsNormal tests the normal flows of aggregateMetrics.
 func TestAggregateMetricsNormal(t *testing.T) {
 	var (
-		cluster    = newRealCluster(newTimeStore, time.Minute)
+		model      = newRealModel(time.Minute)
 		targetInfo = InfoType{
-			Metrics: make(map[string]*store.TimeStore),
+			Metrics: make(map[string]*daystore.DayStore),
 			Labels:  make(map[string]string),
 		}
 		srcInfo1 = InfoType{
-			Metrics: make(map[string]*store.TimeStore),
+			Metrics: make(map[string]*daystore.DayStore),
 			Labels:  make(map[string]string),
 		}
 		srcInfo2 = InfoType{
-			Metrics: make(map[string]*store.TimeStore),
+			Metrics: make(map[string]*daystore.DayStore),
 			Labels:  make(map[string]string),
 		}
-		now    = time.Now().Round(time.Minute)
-		assert = assert.New(t)
+		now     = time.Now().Round(time.Minute)
+		assert  = assert.New(t)
+		require = require.New(t)
 	)
 
-	newTS := newTimeStore()
-	newTS.Put(store.TimePoint{
+	newTS := newDayStore()
+	newTS.Put(statstore.TimePoint{
 		Timestamp: now,
 		Value:     uint64(5000),
 	})
-	newTS.Put(store.TimePoint{
-		Timestamp: now.Add(time.Hour),
+	newTS.Put(statstore.TimePoint{
+		Timestamp: now.Add(20 * time.Minute),
 		Value:     uint64(3000),
 	})
-	newTS2 := newTimeStore()
-	newTS2.Put(store.TimePoint{
+	newTS.Put(statstore.TimePoint{
+		Timestamp: now.Add(50 * time.Minute),
+		Value:     uint64(9000),
+	})
+	newTS2 := newDayStore()
+	newTS2.Put(statstore.TimePoint{
 		Timestamp: now,
 		Value:     uint64(2000),
 	})
-	newTS2.Put(store.TimePoint{
-		Timestamp: now.Add(time.Hour),
+	newTS2.Put(statstore.TimePoint{
+		Timestamp: now.Add(20 * time.Minute),
 		Value:     uint64(3500),
 	})
-	newTS2.Put(store.TimePoint{
-		Timestamp: now.Add(2 * time.Hour),
+	newTS2.Put(statstore.TimePoint{
+		Timestamp: now.Add(40 * time.Minute),
+		Value:     uint64(9000),
+	})
+	newTS2.Put(statstore.TimePoint{
+		Timestamp: now.Add(50 * time.Minute),
 		Value:     uint64(9000),
 	})
 
-	srcInfo1.Metrics[memUsage] = &newTS
-	srcInfo2.Metrics[memUsage] = &newTS2
+	// Use a dummy metric to round values to the defaultEpsilon
+	srcInfo1.Metrics["dummy"] = newTS
+	srcInfo2.Metrics["dummy"] = newTS2
 	sources := []*InfoType{&srcInfo1, &srcInfo2}
 
 	// Normal Invocation
-	cluster.aggregateMetrics(&targetInfo, sources)
+	model.aggregateMetrics(&targetInfo, sources, now.Add(50*time.Minute))
 
-	assert.NotNil(targetInfo.Metrics[memUsage])
-	targetMemTS := *(targetInfo.Metrics[memUsage])
-	res := targetMemTS.Get(time.Time{}, time.Time{})
-	assert.Len(res, 3)
-	assert.Equal(res[0].Value, uint64(9000))
-	assert.Equal(res[1].Value, uint64(6500))
-	assert.Equal(res[2].Value, uint64(7000))
+	assert.NotNil(targetInfo.Metrics["dummy"])
+	targetMemTS := targetInfo.Metrics["dummy"]
+	res := targetMemTS.Hour.Get(time.Time{}, time.Time{})
+
+	require.Len(res, 51)
+	assert.Equal(res[0].Value, uint64(18000))
+	assert.Equal(res[1].Value, uint64(12000))
+	assert.Equal(res[10].Value, uint64(12000))
+	assert.Equal(res[11].Value, uint64(6500))
+	assert.Equal(res[30].Value, uint64(6500))
+	assert.Equal(res[31].Value, uint64(7000))
+	assert.Equal(res[50].Value, uint64(7000))
 }

@@ -27,25 +27,25 @@ import (
 
 	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
-	"k8s.io/heapster/store"
+
+	"k8s.io/heapster/store/daystore"
+	"k8s.io/heapster/store/statstore"
 )
 
-// newTimeStore creates a new GCStore and returns it as a TimeStore.
-// Meant to be passed to newRealCluster calls in all unit tests.
-func newTimeStore() store.TimeStore {
-	return store.NewGCStore(store.NewCMAStore(), 24*time.Hour)
+func newDayStore() *daystore.DayStore {
+	return daystore.NewDayStore(defaultEpsilon, time.Minute)
 }
 
 // TestNewCluster tests the sanity of NewCluster
 func TestNewCluster(t *testing.T) {
-	cluster := NewCluster(newTimeStore, time.Minute)
+	cluster := NewModel(time.Minute)
 	assert.NotNil(t, cluster)
 }
 
 // TestAddNamespace tests all flows of addNamespace.
 func TestAddNamespace(t *testing.T) {
 	var (
-		cluster        = newRealCluster(newTimeStore, time.Minute)
+		cluster        = newRealModel(time.Minute)
 		namespace_name = "default"
 		assert         = assert.New(t)
 	)
@@ -67,7 +67,7 @@ func TestAddNamespace(t *testing.T) {
 // TestAddNode tests all flows of addNode.
 func TestAddNode(t *testing.T) {
 	var (
-		cluster  = newRealCluster(newTimeStore, time.Minute)
+		cluster  = newRealModel(time.Minute)
 		hostname = "kubernetes-minion-xkhz"
 		assert   = assert.New(t)
 	)
@@ -90,7 +90,7 @@ func TestAddNode(t *testing.T) {
 // TestAddPod tests all flows of addPod.
 func TestAddPod(t *testing.T) {
 	var (
-		cluster   = newRealCluster(newTimeStore, time.Minute)
+		cluster   = newRealModel(time.Minute)
 		pod_name  = "podname-xkhz"
 		pod_uid   = "123124-124124-124124124124"
 		namespace = cluster.addNamespace("default")
@@ -126,7 +126,7 @@ func TestAddPod(t *testing.T) {
 // TestUpdateTime tests the sanity of updateTime.
 func TestUpdateTime(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
+		cluster = newRealModel(time.Minute)
 		stamp   = time.Now()
 	)
 
@@ -142,55 +142,79 @@ func TestUpdateTime(t *testing.T) {
 // Tests the flow of AddMetricToMap where the metric name is present in the map
 func TestAddMetricToMapExistingKey(t *testing.T) {
 	var (
-		cluster         = newRealCluster(newTimeStore, time.Minute)
-		metrics         = make(map[string]*store.TimeStore)
+		cluster         = newRealModel(time.Minute)
+		metrics         = make(map[string]*daystore.DayStore)
 		new_metric_name = "name_already_in_map"
 		value           = uint64(1234567890)
 		zeroTime        = time.Time{}
 		stamp           = time.Now().Round(time.Minute)
 		assert          = assert.New(t)
+		require         = require.New(t)
 	)
 
 	// Fist Call: addMetricToMap for a new metric
 	assert.NoError(cluster.addMetricToMap(new_metric_name, stamp, value, metrics))
 
 	ts := *metrics[new_metric_name]
-	results := ts.Get(zeroTime, zeroTime)
-	assert.Len(results, 1)
-	assert.Equal(results[0].Timestamp, stamp)
-	assert.Equal(results[0].Value, value)
+	results := ts.Hour.Get(zeroTime, zeroTime)
+	require.Len(results, 1)
 
 	// Second Call: addMetricToMap for an existing key, same time
-	new_value := uint64(102)
+	new_value := uint64(1234567890)
 	assert.NoError(cluster.addMetricToMap(new_metric_name, stamp, new_value, metrics))
 
-	ts = *metrics[new_metric_name]
-	results = ts.Get(zeroTime, zeroTime)
-	assert.Len(results, 1)
-	assert.Equal(results[0].Timestamp, stamp)
-	assert.Equal(results[0].Value, uint64(617283996))
+	require.Len(results, 1)
 
 	// Second Call: addMetricToMap for an existing key, new time
-	later_stamp := stamp.Add(2 * time.Hour)
+	new_value = uint64(617283996)
+	later_stamp := stamp.Add(20 * time.Minute)
 	assert.NoError(cluster.addMetricToMap(new_metric_name, later_stamp, new_value, metrics))
 
 	ts = *metrics[new_metric_name]
-	results = ts.Get(zeroTime, zeroTime)
-	assert.Len(results, 2)
-	assert.Equal(results[0].Timestamp, later_stamp)
-	assert.Equal(results[0].Value, uint64(102))
-	assert.Equal(results[1].Timestamp, stamp)
-	assert.Equal(results[1].Value, uint64(617283996))
+	results = ts.Hour.Get(zeroTime, zeroTime)
+	require.Len(results, 21)
+	assert.Equal(results[0].Timestamp, stamp.Add(20*time.Minute))
+	assert.Equal(roundToEpsilon(results[0].Value, defaultEpsilon), roundToEpsilon(new_value, defaultEpsilon))
+	assert.Equal(results[20].Timestamp, stamp)
+	assert.Equal(roundToEpsilon(results[20].Value, defaultEpsilon), roundToEpsilon(1234567890, defaultEpsilon))
 
-	// Third Call: addMetricToMap for an existing key, overwrites previous data
-	later_stamp = stamp.Add(48 * time.Hour)
+	// Second Call: addMetricToMap for an existing key, same time
 	assert.NoError(cluster.addMetricToMap(new_metric_name, later_stamp, new_value, metrics))
 
 	ts = *metrics[new_metric_name]
-	results = ts.Get(zeroTime, zeroTime)
-	assert.Len(results, 1)
-	assert.Equal(results[0].Timestamp, later_stamp)
-	assert.Equal(results[0].Value, uint64(102))
+	results = ts.Hour.Get(zeroTime, zeroTime)
+	require.Len(results, 21)
+	assert.Equal(results[0].Timestamp, stamp.Add(20*time.Minute))
+	resVal := roundToEpsilon(results[0].Value, defaultEpsilon)
+	assert.Equal(resVal, roundToEpsilon(new_value, defaultEpsilon))
+
+	assert.Equal(results[1].Timestamp, stamp.Add(19*time.Minute))
+	resVal = roundToEpsilon(results[1].Value, defaultEpsilon)
+	assert.Equal(resVal, roundToEpsilon(1234567890, defaultEpsilon))
+
+	assert.Equal(results[20].Timestamp, stamp)
+	resVal = roundToEpsilon(results[20].Value, defaultEpsilon)
+	assert.Equal(resVal, roundToEpsilon(1234567890, defaultEpsilon))
+
+	// Third Call: addMetricToMap for an existing key in the distant future
+	stamp = later_stamp
+	later_stamp = stamp.Add(14 * time.Hour)
+	new_value = uint64(1234567890)
+	assert.NoError(cluster.addMetricToMap(new_metric_name, later_stamp, new_value, metrics))
+
+	ts = *metrics[new_metric_name]
+	results = ts.Hour.Get(zeroTime, zeroTime)
+	require.Len(results, 61) // One full hour of data
+	assert.Equal(results[0].Timestamp, stamp.Add(14*time.Hour))
+	resVal = roundToEpsilon(results[0].Value, defaultEpsilon)
+	assert.Equal(resVal, roundToEpsilon(1234567890, defaultEpsilon))
+
+	assert.Equal(results[1].Timestamp, stamp.Add(13*time.Hour).Add(59*time.Minute))
+	resVal = roundToEpsilon(results[1].Value, defaultEpsilon)
+	assert.Equal(resVal, roundToEpsilon(617283996, defaultEpsilon))
+
+	assert.Equal(results[60].Timestamp, stamp.Add(13*time.Hour))
+	assert.Equal(results[60].Value, uint64(roundToEpsilon(617283996, defaultEpsilon)))
 
 	// Fourth Call: addMetricToMap for an existing key, cause TimeStore failure
 	assert.Error(cluster.addMetricToMap(new_metric_name, zeroTime, new_value, metrics))
@@ -199,33 +223,40 @@ func TestAddMetricToMapExistingKey(t *testing.T) {
 // Tests the flow of AddMetricToMap where the metric name is not present in the map
 func TestAddMetricToMapNewKey(t *testing.T) {
 	var (
-		cluster         = newRealCluster(newTimeStore, time.Minute)
-		metrics         = make(map[string]*store.TimeStore)
+		cluster         = newRealModel(time.Minute)
+		metrics         = make(map[string]*daystore.DayStore)
 		new_metric_name = "name_not_in_map"
-		stamp           = time.Now()
+		stamp           = time.Now().Round(cluster.resolution)
 		zeroTime        = time.Time{}
 		value           = uint64(1234567890)
 		assert          = assert.New(t)
+		require         = require.New(t)
 	)
 
 	// First Call: Add a new metric to the map
 	assert.NoError(cluster.addMetricToMap(new_metric_name, stamp, value, metrics))
+
+	// Second Call: Add a second metric to the map on a later time. Flushes previous metric.
+	assert.NoError(cluster.addMetricToMap(new_metric_name, stamp.Add(time.Minute), value, metrics))
 	new_ts := *metrics[new_metric_name]
-	results := new_ts.Get(zeroTime, zeroTime)
-	assert.Len(results, 1)
-	assert.Equal(results[0].Timestamp, stamp)
-	assert.Equal(results[0].Value, value)
+	results := new_ts.Hour.Get(zeroTime, zeroTime)
+	require.Len(results, 2)
+	assert.Equal(results[0].Timestamp, stamp.Add(time.Minute))
+	assert.Equal(roundToEpsilon(results[0].Value, defaultEpsilon), roundToEpsilon(value, defaultEpsilon))
+	assert.Equal(results[1].Timestamp, stamp)
+	assert.Equal(roundToEpsilon(results[1].Value, defaultEpsilon), roundToEpsilon(value, defaultEpsilon))
 
 	// Second Call: addMetricToMap for a new key, cause TimeStore failure
-	assert.Error(cluster.addMetricToMap("other_metric", zeroTime, value, metrics))
+	assert.NoError(cluster.addMetricToMap("other_metric", stamp, value, metrics))
+	assert.Error(cluster.addMetricToMap("other_metric", stamp.Add(-time.Minute), value, metrics))
 }
 
 // TestParseMetricError tests the error flows of ParseMetric
 func TestParseMetricError(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
-		context = make(map[string]*store.TimePoint)
-		dict    = make(map[string]*store.TimeStore)
+		cluster = newRealModel(time.Minute)
+		context = make(map[string]*statstore.TimePoint)
+		dict    = make(map[string]*daystore.DayStore)
 		cme     = cmeFactory()
 		assert  = assert.New(t)
 	)
@@ -246,75 +277,114 @@ func TestParseMetricError(t *testing.T) {
 	assert.Equal(stamp, time.Time{})
 }
 
+// roundToEpsilon is a helper function that rounds a value based on a given epsilon.
+func roundToEpsilon(value, epsilon uint64) uint64 {
+	res := (value / epsilon) * epsilon
+	if value%epsilon != 0 {
+		res += epsilon
+	}
+	return res
+}
+
 // TestParseMetricNormal tests the normal flow of ParseMetric
 func TestParseMetricNormal(t *testing.T) {
 	var (
-		cluster    = newRealCluster(newTimeStore, time.Minute)
+		cluster    = newRealModel(time.Minute)
 		zeroTime   = time.Time{}
-		metrics    = make(map[string]*store.TimeStore)
-		context    = make(map[string]*store.TimePoint)
+		metrics    = make(map[string]*daystore.DayStore)
+		context    = make(map[string]*statstore.TimePoint)
 		normal_cme = cmeFactory()
 		other_cme  = cmeFactory()
+		flush_cme  = cmeFactory()
 		assert     = assert.New(t)
+		require    = require.New(t)
 	)
-	normal_stamp := normal_cme.Stats.Timestamp.Round(time.Minute)
+	normal_stamp := normal_cme.Stats.Timestamp.Truncate(time.Minute)
 	normal_cme.Stats.Cpu.Usage.Total = uint64(1000)
 
 	other_cme.Stats.Timestamp = normal_stamp.Add(3 * time.Minute)
 	other_cme.Stats.Cpu.Usage.Total = uint64(360000001000) // 2 stable over 3 minutes in NS
-	other_stamp := other_cme.Stats.Timestamp.Round(time.Minute)
+	other_stamp := other_cme.Stats.Timestamp.Truncate(time.Minute)
 
-	// Normal Invocation with a regular CME, passed twice
+	// Create a CME that will flush other_cme to the store
+	flush_cme.Stats.Timestamp = normal_stamp.Add(4 * time.Minute)
+	flush_cme.Stats.Cpu.Usage.Total = uint64(760000001000)
+	flush_stamp := flush_cme.Stats.Timestamp.Truncate(time.Minute)
+
+	// Three Normal Invocations
 	stamp, err := cluster.parseMetric(normal_cme, metrics, context)
 	assert.NoError(err)
 	assert.Equal(stamp, normal_stamp)
 	stamp, err = cluster.parseMetric(other_cme, metrics, context)
 	assert.NoError(err)
 	assert.Equal(stamp, other_stamp)
+	stamp, err = cluster.parseMetric(flush_cme, metrics, context)
+	assert.NoError(err)
+	assert.Equal(stamp, flush_stamp)
 	for key, ts := range metrics {
 		actual_ts := *ts
-		pointSlice := actual_ts.Get(zeroTime, zeroTime)
-		metric := pointSlice[0]
+		pointSlice := actual_ts.Hour.Get(zeroTime, zeroTime)
+		require.True(len(pointSlice) >= 1)
 		switch key {
 		case cpuLimit:
-			assert.Len(pointSlice, 2)
-			assert.Equal(metric.Timestamp, other_stamp)
-			assert.Equal(metric.Value, other_cme.Spec.Cpu.Limit)
-			metric = pointSlice[1]
-			assert.Equal(metric.Timestamp, normal_stamp)
-			assert.Equal(metric.Value, normal_cme.Spec.Cpu.Limit)
+			require.Len(pointSlice, 5)
+			assert.Equal(pointSlice[1].Timestamp, other_stamp)
+			assert.Equal(pointSlice[0].Value, other_cme.Spec.Cpu.Limit*1000/1024)
+			for i := 1; i <= 3; i++ {
+				assert.Equal(pointSlice[i+1].Timestamp, normal_stamp.Add(time.Duration(3-i)*time.Minute))
+				assert.Equal(pointSlice[i+1].Value, normal_cme.Spec.Cpu.Limit*1000/1024)
+			}
 		case memLimit:
-			assert.Len(pointSlice, 2)
-			assert.Equal(metric.Timestamp, other_stamp)
-			assert.Equal(metric.Value, other_cme.Spec.Memory.Limit)
-			metric = pointSlice[1]
-			assert.Equal(metric.Timestamp, normal_stamp)
-			assert.Equal(metric.Value, normal_cme.Spec.Memory.Limit)
+			require.Len(pointSlice, 5)
+			assert.Equal(pointSlice[1].Timestamp, other_stamp)
+			actualML := roundToEpsilon(pointSlice[0].Value, memLimitEpsilon)
+			expectedML := roundToEpsilon(other_cme.Spec.Memory.Limit, memLimitEpsilon)
+			assert.Equal(actualML, expectedML)
+			for i := 1; i <= 3; i++ {
+				assert.Equal(pointSlice[i+1].Timestamp, normal_stamp.Add(time.Duration(3-i)*time.Minute))
+				actualML = roundToEpsilon(pointSlice[i+1].Value, memLimitEpsilon)
+				expectedML = roundToEpsilon(normal_cme.Spec.Memory.Limit, memLimitEpsilon)
+				assert.Equal(actualML, expectedML)
+			}
 		case cpuUsage:
-			assert.Len(pointSlice, 1)
-			assert.Equal(metric.Timestamp, other_stamp)
-			assert.Equal(metric.Value.(uint64), 2*other_cme.Spec.Cpu.Limit)
+			require.Len(pointSlice, 2)
+			assert.Equal(pointSlice[1].Timestamp, other_stamp)
+			assert.Equal(pointSlice[1].Value, 2000) //Two full cores
 		case memUsage:
-			assert.Len(pointSlice, 2)
-			assert.Equal(metric.Timestamp, other_stamp)
-			assert.Equal(metric.Value, other_cme.Stats.Memory.Usage)
-			metric = pointSlice[1]
-			assert.Equal(metric.Timestamp, normal_stamp)
-			assert.Equal(metric.Value, normal_cme.Stats.Memory.Usage)
+			require.Len(pointSlice, 5)
+			assert.Equal(pointSlice[1].Timestamp, other_stamp)
+			actualMU := roundToEpsilon(pointSlice[0].Value, memUsageEpsilon)
+			expectedMU := roundToEpsilon(other_cme.Stats.Memory.Usage, memUsageEpsilon)
+			assert.Equal(actualMU, expectedMU)
+			for i := 1; i <= 3; i++ {
+				assert.Equal(pointSlice[i+1].Timestamp, normal_stamp.Add(time.Duration(3-i)*time.Minute))
+				actualMU := roundToEpsilon(pointSlice[i+1].Value, memUsageEpsilon)
+				expectedMU := roundToEpsilon(normal_cme.Stats.Memory.Usage, memUsageEpsilon)
+				assert.Equal(actualMU, expectedMU)
+			}
 		case memWorking:
-			assert.Len(pointSlice, 2)
-			assert.Equal(metric.Timestamp, other_stamp)
-			assert.Equal(metric.Value, other_cme.Stats.Memory.WorkingSet)
-			metric = pointSlice[1]
-			assert.Equal(metric.Timestamp, normal_stamp)
-			assert.Equal(metric.Value, normal_cme.Stats.Memory.WorkingSet)
+			require.Len(pointSlice, 5)
+			assert.Equal(pointSlice[1].Timestamp, other_stamp)
+			actualMWS := roundToEpsilon(pointSlice[0].Value, memWorkingEpsilon)
+			expectedMWS := roundToEpsilon(other_cme.Stats.Memory.WorkingSet, memWorkingEpsilon)
+			assert.Equal(actualMWS, expectedMWS)
+			for i := 1; i <= 3; i++ {
+				assert.Equal(pointSlice[i+1].Timestamp, normal_stamp.Add(time.Duration(3-i)*time.Minute))
+				actualMWS = roundToEpsilon(pointSlice[i+1].Value, memWorkingEpsilon)
+				expectedMWS = roundToEpsilon(normal_cme.Stats.Memory.WorkingSet, memWorkingEpsilon)
+				assert.Equal(actualMWS, expectedMWS)
+			}
 		default:
 			// Filesystem or error
-			assert.Len(pointSlice, 2)
+			require.Len(pointSlice, 5)
 			if strings.Contains(key, "limit") {
-				assert.Equal(metric.Value, other_cme.Stats.Filesystem[0].Limit)
+				actualFSL := roundToEpsilon(pointSlice[0].Value, fsLimitEpsilon)
+				expectedFSL := roundToEpsilon(other_cme.Stats.Filesystem[0].Limit, fsLimitEpsilon)
+				assert.Equal(actualFSL, expectedFSL)
 			} else if strings.Contains(key, "usage") {
-				assert.Equal(metric.Value, other_cme.Stats.Filesystem[0].Usage)
+				actualFSU := roundToEpsilon(pointSlice[0].Value, fsUsageEpsilon)
+				expectedFSU := roundToEpsilon(other_cme.Stats.Filesystem[0].Usage, fsUsageEpsilon)
+				assert.Equal(actualFSU, expectedFSU)
 			} else {
 				assert.True(false, "Unknown key in resulting metrics slice")
 			}
@@ -325,7 +395,7 @@ func TestParseMetricNormal(t *testing.T) {
 // TestUpdateInfoTypeError Tests the error flows of updateInfoType.
 func TestUpdateInfoTypeError(t *testing.T) {
 	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
+		cluster      = newRealModel(time.Minute)
 		new_infotype = newInfoType(nil, nil, nil)
 		full_ce      = containerElementFactory(nil)
 		assert       = assert.New(t)
@@ -346,13 +416,14 @@ func TestUpdateInfoTypeError(t *testing.T) {
 // TestUpdateInfoTypeNormal tests the normal flows of UpdateInfoType.
 func TestUpdateInfoTypeNormal(t *testing.T) {
 	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
+		cluster      = newRealModel(time.Minute)
 		new_cme      = cmeFactory()
 		empty_ce     = containerElementFactory([]*cache.ContainerMetricElement{})
 		nil_ce       = containerElementFactory([]*cache.ContainerMetricElement{new_cme, nil})
 		new_infotype = newInfoType(nil, nil, nil)
 		zeroTime     = time.Time{}
 		assert       = assert.New(t)
+		require      = require.New(t)
 	)
 
 	// Invocation with a ContainerElement argument with no CMEs
@@ -366,52 +437,59 @@ func TestUpdateInfoTypeNormal(t *testing.T) {
 	assert.NoError(err)
 	assert.NotEmpty(new_infotype.Metrics)
 	assert.NotEqual(stamp, time.Time{})
-	assert.Len(new_infotype.Metrics, 6) // 6 stats in total - no CPU Usage yet
+	require.Len(new_infotype.Metrics, 6) // 6 stats in total - no CPU Usage yet
 	for _, metricStore := range new_infotype.Metrics {
-		metricSlice := (*metricStore).Get(zeroTime, zeroTime)
-		assert.Len(metricSlice, 1) // 1 Metric per stat
+		metricSlice := (*metricStore).Hour.Get(zeroTime, zeroTime)
+		assert.Len(metricSlice, 1) // One value in the store
 	}
 
 	// Invocation with an empty InfoType argument
 	// The new ContainerElement adds one TimePoint to each of 7 Metrics
 	newer_cme := cmeFactory()
-	newer_cme.Stats.Timestamp = new_cme.Stats.Timestamp.Add(time.Hour)
-	newer_cme.Stats.Cpu.Usage.Total = new_cme.Stats.Cpu.Usage.Total + uint64(3600000000)
+	newer_cme.Stats.Timestamp = new_cme.Stats.Timestamp.Add(10 * time.Minute)
+	newer_cme.Stats.Cpu.Usage.Total = new_cme.Stats.Cpu.Usage.Total + uint64(600000000000)
 	new_ce := containerElementFactory([]*cache.ContainerMetricElement{newer_cme})
 	stamp, err = cluster.updateInfoType(&new_infotype, new_ce)
 	assert.NoError(err)
 	assert.Empty(new_infotype.Labels)
 	assert.NotEqual(stamp, time.Time{})
-	assert.Len(new_infotype.Metrics, 7) // 7 stats in total
+	require.Len(new_infotype.Metrics, 7) // 7 stats in total
 	for key, metricStore := range new_infotype.Metrics {
-		metricSlice := (*metricStore).Get(zeroTime, zeroTime)
+		metricSlice := (*metricStore).Hour.Get(zeroTime, zeroTime)
 		if key == cpuUsage {
-			assert.Len(metricSlice, 1) // cpuUsage has n-1 values.
+			// cpuUsage has 1 value at the newer_cme timestamp
+			// That value has not been flushed yet into the DayStore
+			assert.Len(metricSlice, 1)
 		} else {
-			assert.Len(metricSlice, 2) // 2 Metrics per stat
+			assert.Len(metricSlice, 11) // All other metrics have 11 values, one per elapsed minute
 		}
 	}
 
 	// Invocation with an existing infotype as argument
 	// The new ContainerElement adds two TimePoints to each Metric
 	newer_cme2 := cmeFactory()
-	newer_cme2.Stats.Timestamp = newer_cme.Stats.Timestamp.Add(time.Hour)
-	newer_cme2.Stats.Cpu.Usage.Total = newer_cme.Stats.Cpu.Usage.Total + uint64(3600000000)
+	newer_cme2.Stats.Timestamp = newer_cme.Stats.Timestamp.Add(10 * time.Minute)
+	newer_cme2.Stats.Cpu.Usage.Total = newer_cme.Stats.Cpu.Usage.Total + uint64(3600000000000)
 	newer_cme3 := cmeFactory()
-	newer_cme3.Stats.Timestamp = newer_cme2.Stats.Timestamp.Add(time.Hour)
-	newer_cme3.Stats.Cpu.Usage.Total = newer_cme2.Stats.Cpu.Usage.Total + uint64(360000000)
+	newer_cme3.Stats.Timestamp = newer_cme2.Stats.Timestamp.Add(10 * time.Minute)
+	newer_cme3.Stats.Cpu.Usage.Total = newer_cme2.Stats.Cpu.Usage.Total + uint64(600000000000)
 	new_ce = containerElementFactory([]*cache.ContainerMetricElement{newer_cme3, newer_cme2})
 	stamp, err = cluster.updateInfoType(&new_infotype, new_ce)
 	assert.NoError(err)
 	assert.Empty(new_infotype.Labels)
 	assert.NotEqual(stamp, time.Time{})
-	assert.Len(new_infotype.Metrics, 7) // 7 stats total
+	require.Len(new_infotype.Metrics, 7) // 7 stats total
 	for key, metricStore := range new_infotype.Metrics {
-		metricSlice := (*metricStore).Get(zeroTime, zeroTime)
+		metricSlice := (*metricStore).Hour.Get(zeroTime, zeroTime)
 		if key == cpuUsage {
-			assert.Len(metricSlice, 3) // cpuUsage consists of n-1 values.
+			require.Len(metricSlice, 21) // cpuUsage consists of 1+10+10 values.
+			assert.Equal(metricSlice[0].Value, 1000)
+			assert.Equal(metricSlice[1].Value, 6000)
+			assert.Equal(metricSlice[10].Value, 6000)
+			assert.Equal(metricSlice[11].Value, 1000)
+			assert.Equal(metricSlice[20].Value, 1000)
 		} else {
-			assert.Len(metricSlice, 4) // 4 Metrics per stat
+			assert.Len(metricSlice, 31) // All other metrics have 31 values, one per minute
 		}
 	}
 }
@@ -419,7 +497,7 @@ func TestUpdateInfoTypeNormal(t *testing.T) {
 // TestUpdateFreeContainer tests the flow of updateFreeContainer
 func TestUpdateFreeContainer(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
+		cluster = newRealModel(time.Minute)
 		ce      = containerElementFactory(nil)
 		assert  = assert.New(t)
 	)
@@ -439,7 +517,7 @@ func TestUpdateFreeContainer(t *testing.T) {
 // TestUpdatePodContainer tests the flow of updatePodContainer
 func TestUpdatePodContainer(t *testing.T) {
 	var (
-		cluster   = newRealCluster(newTimeStore, time.Minute)
+		cluster   = newRealModel(time.Minute)
 		namespace = cluster.addNamespace("default")
 		node      = cluster.addNode("new_node_xyz")
 		pod_ptr   = cluster.addPod("new_pod", "1234-1245-235235", namespace, node)
@@ -457,7 +535,7 @@ func TestUpdatePodContainer(t *testing.T) {
 // TestUpdatePodNormal tests the normal flow of updatePod.
 func TestUpdatePodNormal(t *testing.T) {
 	var (
-		cluster  = newRealCluster(newTimeStore, time.Minute)
+		cluster  = newRealModel(time.Minute)
 		pod_elem = podElementFactory()
 		assert   = assert.New(t)
 	)
@@ -475,7 +553,7 @@ func TestUpdatePodNormal(t *testing.T) {
 // TestUpdatePodError tests the error flow of updatePod.
 func TestUpdatePodError(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
+		cluster = newRealModel(time.Minute)
 		assert  = assert.New(t)
 	)
 	// Invocation with a nil parameter
@@ -487,7 +565,7 @@ func TestUpdatePodError(t *testing.T) {
 // TestUpdateNodeInvalid tests the error flow of updateNode.
 func TestUpdateNodeInvalid(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
+		cluster = newRealModel(time.Minute)
 		ce      = containerElementFactory(nil)
 		assert  = assert.New(t)
 	)
@@ -501,7 +579,7 @@ func TestUpdateNodeInvalid(t *testing.T) {
 // TestUpdateNodeNormal tests the normal flow of updateNode.
 func TestUpdateNodeNormal(t *testing.T) {
 	var (
-		cluster = newRealCluster(newTimeStore, time.Minute)
+		cluster = newRealModel(time.Minute)
 		ce      = containerElementFactory(nil)
 		assert  = assert.New(t)
 	)
@@ -518,11 +596,12 @@ func TestUpdateNodeNormal(t *testing.T) {
 // TestUpdate performs consecutive calls to Update with both empty and non-empty caches
 func TestUpdate(t *testing.T) {
 	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
+		cluster      = newRealModel(time.Minute)
 		source_cache = cacheFactory()
-		assert       = assert.New(t)
 		empty_cache  = cache.NewCache(24*time.Hour, time.Hour)
 		zeroTime     = time.Time{}
+		assert       = assert.New(t)
+		require      = require.New(t)
 	)
 
 	// Invocation with empty cache
@@ -536,32 +615,33 @@ func TestUpdate(t *testing.T) {
 	verifyCacheFactoryCluster(&cluster.ClusterInfo, t)
 
 	// Assert Node Metric aggregation
-	assert.NotEmpty(cluster.Nodes)
-	assert.NotEmpty(cluster.Metrics)
-	assert.NotNil(cluster.Metrics[memWorking])
+	require.NotEmpty(cluster.Nodes)
+	require.NotEmpty(cluster.Metrics)
+	require.NotNil(cluster.Metrics[memWorking])
 	mem_work_ts := *(cluster.Metrics[memWorking])
-	actual := mem_work_ts.Get(zeroTime, zeroTime)
-	assert.Len(actual, 2)
-	// Datapoint present in both nodes, added up to 1024
-	assert.Equal(actual[1].Value.(uint64), uint64(1204))
-	// Datapoint present in only one node
-	assert.Equal(actual[0].Value.(uint64), uint64(602))
+	actual := mem_work_ts.Hour.Get(zeroTime, zeroTime)
+	require.Len(actual, 6)
+	// Datapoint present in both nodes,
 
-	assert.NotNil(cluster.Metrics[memUsage])
+	assert.Equal(actual[0].Value, uint64(602+602))
+	assert.Equal(actual[1].Value, 2*memWorkingEpsilon)
+	assert.Equal(actual[5].Value, 2*memWorkingEpsilon)
+
+	require.NotNil(cluster.Metrics[memUsage])
 	mem_usage_ts := *(cluster.Metrics[memUsage])
-	actual = mem_usage_ts.Get(zeroTime, zeroTime)
-	assert.Len(actual, 2)
+	actual = mem_usage_ts.Hour.Get(zeroTime, zeroTime)
+	require.Len(actual, 6)
+	// Datapoint present in only one node, second node's metric is extended
+	assert.Equal(actual[0].Value, uint64(10000))
 	// Datapoint present in both nodes, added up to 10000
-	assert.Equal(actual[1].Value.(uint64), uint64(10000))
-	// Datapoint present in only one node
-	assert.Equal(actual[0].Value.(uint64), uint64(5000))
+	assert.Equal(actual[1].Value, 2*memWorkingEpsilon)
 
 	// Assert Kubernetes Metric aggregation up to namespaces
 	ns := cluster.Namespaces["test"]
 	mem_work_ts = *(ns.Metrics[memWorking])
-	actual = mem_work_ts.Get(zeroTime, zeroTime)
-	assert.Len(actual, 1)
-	assert.Equal(actual[0].Value.(uint64), uint64(2408))
+	actual = mem_work_ts.Hour.Get(zeroTime, zeroTime)
+	require.Len(actual, 8)
+	assert.Equal(actual[0].Value, uint64(2408))
 
 	// Invocation with no fresh data - expect no change in cluster
 	assert.NoError(cluster.Update(source_cache))
@@ -570,472 +650,6 @@ func TestUpdate(t *testing.T) {
 	// Invocation with empty cache - expect no change in cluster
 	assert.NoError(cluster.Update(empty_cache))
 	verifyCacheFactoryCluster(&cluster.ClusterInfo, t)
-}
-
-// TestGetClusterMetric tests all flows of GetClusterMetric.
-func TestGetClusterMetric(t *testing.T) {
-	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-		zeroTime     = time.Time{}
-	)
-	// Invocation with no cluster metrics
-	res, stamp, err := cluster.GetClusterMetric(ClusterRequest{cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Invocation with non-existant metric
-	res, stamp, err = cluster.GetClusterMetric(ClusterRequest{"doesnotexist", zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Normal Invocation - memoryUsage
-	res, stamp, err = cluster.GetClusterMetric(ClusterRequest{memUsage, zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-}
-
-// TestGetNodeMetric tests all flows of GetNodeMetric.
-func TestGetNodeMetric(t *testing.T) {
-	var (
-		zeroTime     = time.Time{}
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-		hostname     = "hostname3"
-	)
-	// Invocation with no nodes in cluster
-	res, stamp, err := cluster.GetNodeMetric(NodeRequest{hostname, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Invocation with non-existant node
-	res, stamp, err = cluster.GetNodeMetric(NodeRequest{"doesnotexist", cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with new node - no metrics
-	cluster.addNode("newnode")
-	res, stamp, err = cluster.GetNodeMetric(NodeRequest{"newnode", cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant metric
-	res, stamp, err = cluster.GetNodeMetric(NodeRequest{hostname, "doesnotexist", zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Normal Invocation - memoryUsage
-	res, stamp, err = cluster.GetNodeMetric(NodeRequest{hostname, memUsage, zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-}
-
-// TestGetNamespaceMetric tests all flows of GetNamespaceMetric.
-func TestGetNamespaceMetric(t *testing.T) {
-	var (
-		zeroTime     = time.Time{}
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-		namespace    = "test"
-	)
-	// Invocation with no namespaces in cluster
-	res, stamp, err := cluster.GetNamespaceMetric(NamespaceRequest{namespace, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Invocation with non-existant namespace
-	res, stamp, err = cluster.GetNamespaceMetric(NamespaceRequest{"doesnotexist", cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with new namespace - no metrics
-	cluster.addNamespace("newnode")
-	res, stamp, err = cluster.GetNamespaceMetric(NamespaceRequest{"newnode", cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant metric
-	res, stamp, err = cluster.GetNamespaceMetric(NamespaceRequest{namespace, "doesnotexist", zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Normal Invocation - memoryUsage
-	res, stamp, err = cluster.GetNamespaceMetric(NamespaceRequest{namespace, memUsage, zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-}
-
-// TestGetPodMetric tests all flows of GetPodMetric.
-func TestGetPodMetric(t *testing.T) {
-	var (
-		zeroTime     = time.Time{}
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-		namespace    = "test"
-		pod          = "pod1"
-		node         = "hostname2"
-	)
-	// Invocation with no namespaces in cluster
-	res, stamp, err := cluster.GetPodMetric(PodRequest{namespace, pod, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Invocation with non-existant namespace
-	res, stamp, err = cluster.GetPodMetric(PodRequest{"doesnotexist", pod, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant pod
-	res, stamp, err = cluster.GetPodMetric(PodRequest{namespace, "otherpod", cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with new pod - no metrics
-	cluster.addPod(pod, "1234", cluster.Namespaces[namespace], cluster.Nodes[node])
-	res, stamp, err = cluster.GetPodMetric(PodRequest{namespace, pod, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant metric
-	res, stamp, err = cluster.GetPodMetric(PodRequest{namespace, pod, "doesnotexist", zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Normal Invocation - memoryUsage
-	res, stamp, err = cluster.GetPodMetric(PodRequest{namespace, pod, memUsage, zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-}
-
-// TestGetPodMetric tests all flows of GetPodMetric.
-func TestGetBatchPodMetric(t *testing.T) {
-	var (
-		zeroTime     = time.Time{}
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-		namespace    = "test"
-		pod          = "pod1"
-		node         = "hostname2"
-	)
-
-	// Invocation with no namespaces in cluster
-	res, stamp, err := cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{pod}, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Invocation with non-existant namespace
-	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{"doesnotexist", []string{pod}, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant pod
-	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{"otherpod"}, cpuUsage, zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-	assert.Equal(len(res[0]), 0)
-
-	// Invocation with new pod - no metrics
-	cluster.addPod(pod, "1234", cluster.Namespaces[namespace], cluster.Nodes[node])
-	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{pod}, cpuUsage, zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-	assert.Equal(len(res[0]), 0)
-
-	// Invocation with non-existant metric
-	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{pod}, "doesnotexist", zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-	assert.Equal(len(res[0]), 0)
-
-	// Normal Invocation - memoryUsage
-	res, stamp, err = cluster.GetBatchPodMetric(BatchPodRequest{namespace, []string{pod}, memUsage, zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-	assert.Equal(len(res[0]), 1)
-}
-
-// TestGetPodContainerMetric tests all flows of GetPodContainerMetric.
-func TestGetPodContainerMetric(t *testing.T) {
-	var (
-		zeroTime     = time.Time{}
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-		namespace    = "test"
-		pod          = "pod1"
-		container    = "container1"
-	)
-	// Invocation with no namespaces in cluster
-	res, stamp, err := cluster.GetPodContainerMetric(PodContainerRequest{namespace, pod, container, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Invocation with non-existant namespace
-	res, stamp, err = cluster.GetPodContainerMetric(PodContainerRequest{"doesnotexist", pod, container, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with new namespace - no metrics
-	cluster.addNamespace("newnode")
-	res, stamp, err = cluster.GetPodContainerMetric(PodContainerRequest{"newnode", pod, container, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant pod
-	res, stamp, err = cluster.GetPodContainerMetric(PodContainerRequest{namespace, "otherpod", container, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant container
-	res, stamp, err = cluster.GetPodContainerMetric(PodContainerRequest{namespace, pod, "doesnotexist", cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant metric
-	res, stamp, err = cluster.GetPodContainerMetric(PodContainerRequest{namespace, pod, container, "doesnotexist", zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Normal Invocation - memoryUsage
-	res, stamp, err = cluster.GetPodContainerMetric(PodContainerRequest{namespace, pod, container, memUsage, zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-}
-
-// TestGetFreeContainerMetric tests all flows of GetFreeContainerMetric.
-func TestGetFreeContainerMetric(t *testing.T) {
-	var (
-		zeroTime     = time.Time{}
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-		node         = "hostname2"
-		container    = "free_container1"
-	)
-	// Invocation with no nodes in cluster
-	res, stamp, err := cluster.GetFreeContainerMetric(FreeContainerRequest{node, container, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Invocation with non-existant node
-	res, stamp, err = cluster.GetFreeContainerMetric(FreeContainerRequest{"doesnotexist", container, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with new node - no metrics
-	cluster.addNode("newnode")
-	res, stamp, err = cluster.GetFreeContainerMetric(FreeContainerRequest{"newnode", container, cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant container
-	res, stamp, err = cluster.GetFreeContainerMetric(FreeContainerRequest{node, "not_actual_ctr", cpuUsage, zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Invocation with non-existant metric
-	res, stamp, err = cluster.GetFreeContainerMetric(FreeContainerRequest{node, container, "doesnotexist", zeroTime, zeroTime})
-	assert.Error(err)
-	assert.Equal(stamp, zeroTime)
-	assert.Nil(res)
-
-	// Normal Invocation - memoryUsage
-	res, stamp, err = cluster.GetFreeContainerMetric(FreeContainerRequest{node, container, memUsage, zeroTime, zeroTime})
-	assert.NoError(err)
-	assert.NotEqual(stamp, zeroTime)
-	assert.NotNil(res)
-}
-
-//TestGetNodes tests the flow of GetNodes.
-func TestGetNodes(t *testing.T) {
-	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-	)
-	// Invocation with empty cluster
-	res := cluster.GetNodes()
-	assert.Len(res, 0)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Normal Invocation
-	res = cluster.GetNodes()
-	assert.Len(res, 2)
-}
-
-//TestGetNamespaces tests the flow of GetNamespaces.
-func TestGetNamespaces(t *testing.T) {
-	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-	)
-	// Invocation with empty cluster
-	res := cluster.GetNamespaces()
-	assert.Len(res, 0)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Normal Invocation
-	res = cluster.GetNamespaces()
-	assert.Len(res, 1)
-}
-
-//TestGetPods tests the flow of GetPods.
-func TestGetPods(t *testing.T) {
-	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-	)
-	// Invocation with empty cluster
-	res := cluster.GetPods("test")
-	assert.Len(res, 0)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Normal Invocation
-	res = cluster.GetPods("test")
-	assert.Len(res, 2)
-
-	// Invocation with non-existant namespace
-	res = cluster.GetPods("fakenamespace")
-	assert.Len(res, 0)
-}
-
-//TestGetPodContainers tests the flow of GetPodContainers.
-func TestGetPodContainers(t *testing.T) {
-	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-	)
-	// Invocation with empty cluster
-	res := cluster.GetPodContainers("test", "pod1")
-	assert.Len(res, 0)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Normal Invocation
-	res = cluster.GetPodContainers("test", "pod1")
-	assert.Len(res, 2)
-
-	// Invocation with non-existant namespace
-	res = cluster.GetPodContainers("fail", "pod1")
-	assert.Len(res, 0)
-
-	// Invocation with non-existant pod
-	res = cluster.GetPodContainers("test", "pod5")
-	assert.Len(res, 0)
-}
-
-//TestGetFreeContainers tests the flow of GetFreeContainers.
-func TestGetFreeContainers(t *testing.T) {
-	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-	)
-	// Invocation with empty cluster
-	res := cluster.GetFreeContainers("hostname2")
-	assert.Len(res, 0)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Normal Invocation
-	res = cluster.GetFreeContainers("hostname2")
-	assert.Len(res, 1)
-
-	// Invocation with non-existant node
-	res = cluster.GetFreeContainers("hostname9")
-	assert.Len(res, 0)
-}
-
-// TestGetAvailableMetrics tests the flow of GetAvailableMetrics.
-func TestGetAvailableMetrics(t *testing.T) {
-	var (
-		cluster      = newRealCluster(newTimeStore, time.Minute)
-		source_cache = cacheFactory()
-		assert       = assert.New(t)
-	)
-	// Invocation with no cluster metrics
-	res := cluster.GetAvailableMetrics()
-	assert.Len(res, 0)
-
-	// Populate cluster
-	assert.NoError(cluster.Update(source_cache))
-
-	// Normal Invocation
-	res = cluster.GetAvailableMetrics()
-	assert.Len(res, 7)
 }
 
 // verifyCacheFactoryCluster performs assertions over a ClusterInfo structure,
@@ -1081,7 +695,7 @@ func cmeFactory() *cache.ContainerMetricElement {
 		HasFilesystem: true,
 		HasDiskIo:     true,
 	}
-	containerSpec.Cpu.Limit = 1000
+	containerSpec.Cpu.Limit = 1024
 	containerSpec.Memory.Limit = 10000000
 
 	// Create a fuzzed ContainerStats struct
@@ -1092,18 +706,21 @@ func cmeFactory() *cache.ContainerMetricElement {
 	now_time := time.Now().Round(time.Minute)
 	new_time := now_time
 	for new_time == now_time {
-		new_time = now_time.Add(time.Duration(rand.Intn(10)) * time.Hour)
+		new_time = now_time.Add(time.Duration(rand.Intn(10)) * 5 * time.Minute)
 	}
 	containerStats.Timestamp = new_time
+	containerSpec.CreationTime = new_time.Add(-time.Hour)
 
 	// Standardize memory usage and limit to test aggregation
 	containerStats.Memory.Usage = uint64(5000)
 	containerStats.Memory.WorkingSet = uint64(602)
 
-	// Standardize the device name
+	// Standardize the device name, usage and limit
 	new_fs := cadvisor.FsStats{}
 	f.Fuzz(&new_fs)
 	new_fs.Device = "/dev/device1"
+	new_fs.Usage = 50000
+	new_fs.Limit = 100000
 	containerStats.Filesystem = []cadvisor.FsStats{new_fs}
 
 	return &cache.ContainerMetricElement{
@@ -1201,37 +818,56 @@ func podElementFactory() *cache.PodElement {
 }
 
 // cacheFactory generates a cache with a predetermined structure.
-// The cache contains two pods, one with two containers and one without any containers.
+// The cache contains 2 pods, one with two containers and one without any containers.
 // The cache also contains a free container and a "machine"-tagged container.
 func cacheFactory() cache.Cache {
-	source_cache := cache.NewCache(24*time.Hour, time.Hour)
+	source_cache := cache.NewCache(10*time.Minute, time.Minute)
 
 	// Generate Container CMEs - same timestamp for aggregation
 	cme_1 := cmeFactory()
 	cme_2 := cmeFactory()
 	cme_2.Stats.Timestamp = cme_1.Stats.Timestamp
+	cme_2.Stats.Cpu.Usage.Total = cme_1.Stats.Cpu.Usage.Total
+
+	// Generate a flush CME for cme_1 and cme_2
+	cme_2flush := cmeFactory()
+	cme_2flush.Stats.Timestamp = cme_1.Stats.Timestamp.Add(time.Minute)
 
 	// Genete Machine CMEs - same timestamp for aggregation
 	cme_3 := cmeFactory()
 	cme_4 := cmeFactory()
+	cme_3.Stats.Timestamp = cme_1.Stats.Timestamp.Add(2 * time.Minute)
 	cme_4.Stats.Timestamp = cme_3.Stats.Timestamp
+	cme_3.Stats.Memory.WorkingSet = 602
+	cme_4.Stats.Memory.WorkingSet = 1062
 
+	// Generate a flush CME for cme_3 and cme_4
+	cme_4flush := cmeFactory()
+	cme_4flush.Stats.Timestamp = cme_4.Stats.Timestamp.Add(time.Minute)
+	cme_4flush.Stats.Cpu.Usage.Total = cme_4.Stats.Cpu.Usage.Total + uint64(360000000000)
+
+	// Genete a generic container further than one resolution in the future
 	cme_5 := cmeFactory()
-	cme_5.Stats.Timestamp = cme_4.Stats.Timestamp.Add(time.Hour)
-	cme_5.Stats.Cpu.Usage.Total = cme_4.Stats.Cpu.Usage.Total + uint64(3600000000000)
+	cme_5.Stats.Timestamp = cme_4.Stats.Timestamp.Add(4 * time.Minute)
+	cme_5.Stats.Cpu.Usage.Total = cme_4.Stats.Cpu.Usage.Total + uint64(4*360000000000)
+
+	// Generate a flush CME for cme_5 and cme_4
+	cme_5flush := cmeFactory()
+	cme_5flush.Stats.Timestamp = cme_5.Stats.Timestamp.Add(time.Minute)
+	cme_5flush.Stats.Cpu.Usage.Total = cme_5.Stats.Cpu.Usage.Total + uint64(360000000000)
 
 	// Generate a pod with two containers, and a pod without any containers
 	container1 := source_api.Container{
 		Name:     "container1",
 		Hostname: "hostname2",
 		Spec:     *cme_1.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_1.Stats},
+		Stats:    []*cadvisor.ContainerStats{cme_2flush.Stats, cme_1.Stats},
 	}
 	container2 := source_api.Container{
 		Name:     "container2",
 		Hostname: "hostname3",
 		Spec:     *cme_2.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_2.Stats},
+		Stats:    []*cadvisor.ContainerStats{cme_2flush.Stats, cme_2.Stats},
 	}
 
 	containers := []source_api.Container{container1, container2}
@@ -1263,20 +899,20 @@ func cacheFactory() cache.Cache {
 		Name:     "/",
 		Hostname: "hostname2",
 		Spec:     *cme_3.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_3.Stats},
+		Stats:    []*cadvisor.ContainerStats{cme_4flush.Stats, cme_3.Stats},
 	}
 	machine_container2 := source_api.Container{
 		Name:     "/",
 		Hostname: "hostname3",
 		Spec:     *cme_4.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_5.Stats, cme_4.Stats},
+		Stats:    []*cadvisor.ContainerStats{cme_5flush.Stats, cme_5.Stats, cme_4.Stats},
 	}
 	// Generate a free container
 	free_container := source_api.Container{
 		Name:     "free_container1",
 		Hostname: "hostname2",
 		Spec:     *cme_5.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_5.Stats},
+		Stats:    []*cadvisor.ContainerStats{cme_5flush.Stats, cme_5.Stats},
 	}
 
 	other_containers := []source_api.Container{
