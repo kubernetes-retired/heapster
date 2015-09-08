@@ -297,8 +297,8 @@ func (rc *realModel) parseMetric(cme *cache.ContainerMetricElement, dict map[str
 		cpu_usage := cme.Stats.Cpu.Usage.Total
 
 		// use the context to store a TimePoint of the previous cumulative cpuUsage.
-		prevTP, ok := context[cpuUsage]
 		if cpu_usage != 0 {
+			prevTP, ok := context[cpuUsage]
 			if !ok {
 				// Context is empty, add the first TimePoint for cumulative cpuUsage.
 				context[cpuUsage] = &statstore.TimePoint{

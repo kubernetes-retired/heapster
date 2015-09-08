@@ -162,6 +162,42 @@ func instantFromCumulativeMetric(value uint64, stamp time.Time, prev *statstore.
 	return instaVal, nil
 }
 
+// getStats extracts derived stats from an InfoType.
+func getStats(info InfoType) map[string]StatBundle {
+	res := make(map[string]StatBundle)
+	for key, ds := range info.Metrics {
+		last, lastMax, _ := ds.Hour.Last()
+		minAvg := last.Value
+		minPct := lastMax
+		minMax := lastMax
+		hourAvg, _ := ds.Hour.Average()
+		hourPct, _ := ds.Hour.Percentile(0.95)
+		hourMax, _ := ds.Hour.Max()
+		dayAvg, _ := ds.Average()
+		dayPct, _ := ds.NinetyFifth()
+		dayMax, _ := ds.Max()
+
+		res[key] = StatBundle{
+			Minute: Stats{
+				Average:     minAvg,
+				NinetyFifth: minPct,
+				Max:         minMax,
+			},
+			Hour: Stats{
+				Average:     hourAvg,
+				NinetyFifth: hourPct,
+				Max:         hourMax,
+			},
+			Day: Stats{
+				Average:     dayAvg,
+				NinetyFifth: dayPct,
+				Max:         dayMax,
+			},
+		}
+	}
+	return res
+}
+
 func epsilonFromMetric(metric string) uint64 {
 	// TODO: dynamic epsilon configuration, instead of statically allocating it during init
 	// TODO(afein): handle FS epsilon
