@@ -26,6 +26,7 @@ import (
 type Model interface {
 	// The Update operation populates the Model from a cache.
 	Update(cache.Cache) error
+	GetCacheListener() cache.CacheListener
 
 	// The simple Get operations extract structural information from the Model.
 	GetAvailableMetrics() []string
