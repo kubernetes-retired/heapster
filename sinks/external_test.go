@@ -15,6 +15,7 @@
 package sinks
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -27,6 +28,8 @@ import (
 	source_api "k8s.io/heapster/sources/api"
 	hUtil "k8s.io/heapster/util"
 	kube_api "k8s.io/kubernetes/pkg/api"
+
+	"github.com/golang/glog"
 )
 
 type DummySink struct {
@@ -146,10 +149,6 @@ func newExternalSinkManager(externalSinks []sink_api.ExternalSink, cache cache.C
 	return m, nil
 }
 
-func getStats() {
-
-}
-
 func TestSyncLastUpdated(t *testing.T) {
 	as := assert.New(t)
 	s1 := &DummySink{}
@@ -186,15 +185,25 @@ func TestSyncLastUpdated(t *testing.T) {
 	for eidx := range events {
 		ts := now.Add(time.Duration(eidx) * time.Minute)
 		events[eidx].LastUpdate = ts
+		events[eidx].UID = fmt.Sprintf("id:%d", eidx)
 		expectedESync = hUtil.GetLatest(expectedESync, ts)
 	}
-	c.StorePods(pods)
-	c.StoreContainers(containers)
-	c.StoreEvents(events)
+	err = c.StorePods(pods)
+	if err != nil {
+		glog.Fatalf("Failed to store pods %v", err)
+	}
+	err = c.StoreContainers(containers)
+	if err != nil {
+		glog.Fatalf("Failed to store containers %v", err)
+	}
+	err = c.StoreEvents(events)
+	if err != nil {
+		glog.Fatalf("Failed to store events %v", err)
+	}
 	m.store()
-	as.Equal(m.lastSync.eventsSync, expectedESync, "now: %v, expected: %v, actual: %v", now, m.lastSync.eventsSync, expectedESync)
-	as.Equal(m.lastSync.podSync, expectedPSync, "now: %v, expected: %v, actual: %v", now, m.lastSync.podSync, expectedPSync)
-	as.Equal(m.lastSync.nodeSync, expectedNSync, "now: %v, expected: %v, actual: %v", now, m.lastSync.nodeSync, expectedNSync)
+	as.Equal(m.lastSync.eventsSync, expectedESync, "Event now: %v, eventSync: %v, expected: %v", now, m.lastSync.eventsSync, expectedESync)
+	as.Equal(m.lastSync.podSync, expectedPSync, "Pod now: %v, podSync: %v, expected: %v", now, m.lastSync.podSync, expectedPSync)
+	as.Equal(m.lastSync.nodeSync, expectedNSync, "Node now: %v, nodeSync: %v, expected: %v", now, m.lastSync.nodeSync, expectedNSync)
 }
 
 func TestSetSinksStore(t *testing.T) {
