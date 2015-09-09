@@ -95,16 +95,16 @@ func (eventSource *eventsSourceImpl) storeEventsInCache(events *kubeapi.EventLis
 		internalEvents = append(internalEvents,
 			&cache.Event{
 				Metadata: cache.Metadata{
-					Name:      event.Reason,
-					Namespace: event.Namespace,
-					UID:       string(event.UID),
-					Labels:    event.Labels,
-					Hostname:  event.Source.Host,
+					Name:       event.Reason,
+					Namespace:  event.Namespace,
+					UID:        string(event.UID),
+					Labels:     event.Labels,
+					Hostname:   event.Source.Host,
+					LastUpdate: event.LastTimestamp.Time,
 				},
-				Message:   event.Message,
-				Source:    event.Source.Component,
-				Timestamp: event.LastTimestamp.Time,
-				Raw:       event,
+				Message: event.Message,
+				Source:  event.Source.Component,
+				Raw:     event,
 			})
 	}
 	return eventSource.ec.StoreEvents(internalEvents)

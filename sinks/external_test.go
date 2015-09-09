@@ -25,6 +25,7 @@ import (
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
+	hUtil "k8s.io/heapster/util"
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
@@ -134,7 +135,7 @@ func newExternalSinkManager(externalSinks []sink_api.ExternalSink, cache cache.C
 	m := &externalSinkManager{
 		decoder:       sink_api.NewDecoder(),
 		cache:         cache,
-		lastSync:      time.Time{},
+		lastSync:      lastSync{zeroTime, zeroTime, zeroTime},
 		syncFrequency: syncFrequency,
 	}
 	if externalSinks != nil {
@@ -143,6 +144,57 @@ func newExternalSinkManager(externalSinks []sink_api.ExternalSink, cache cache.C
 		}
 	}
 	return m, nil
+}
+
+func getStats() {
+
+}
+
+func TestSyncLastUpdated(t *testing.T) {
+	as := assert.New(t)
+	s1 := &DummySink{}
+	c := cache.NewCache(time.Hour, time.Minute)
+	m, err := newExternalSinkManager([]sink_api.ExternalSink{s1}, c, time.Microsecond)
+	as.Nil(err)
+	var (
+		pods                                        []source_api.Pod
+		containers                                  []source_api.Container
+		events                                      []*cache.Event
+		expectedESync, expectedPSync, expectedNSync time.Time
+	)
+	f := fuzz.New().NumElements(10, 10).NilChance(0)
+	f.Fuzz(&pods)
+	now := time.Now()
+	for pidx := range pods {
+		for cidx := range pods[pidx].Containers {
+			for sidx := range pods[pidx].Containers[cidx].Stats {
+				ts := now.Add(time.Duration(sidx) * time.Minute)
+				pods[pidx].Containers[cidx].Stats[sidx].Timestamp = ts
+				expectedPSync = hUtil.GetLatest(expectedPSync, ts)
+			}
+		}
+	}
+	f.Fuzz(&containers)
+	for cidx := range containers {
+		for sidx := range containers[cidx].Stats {
+			ts := now.Add(time.Duration(sidx) * time.Minute)
+			containers[cidx].Stats[sidx].Timestamp = ts
+			expectedNSync = hUtil.GetLatest(expectedNSync, ts)
+		}
+	}
+	f.Fuzz(&events)
+	for eidx := range events {
+		ts := now.Add(time.Duration(eidx) * time.Minute)
+		events[eidx].LastUpdate = ts
+		expectedESync = hUtil.GetLatest(expectedESync, ts)
+	}
+	c.StorePods(pods)
+	c.StoreContainers(containers)
+	c.StoreEvents(events)
+	m.store()
+	as.Equal(m.lastSync.eventsSync, expectedESync, "now: %v, expected: %v, actual: %v", now, m.lastSync.eventsSync, expectedESync)
+	as.Equal(m.lastSync.podSync, expectedPSync, "now: %v, expected: %v, actual: %v", now, m.lastSync.podSync, expectedPSync)
+	as.Equal(m.lastSync.nodeSync, expectedNSync, "now: %v, expected: %v, actual: %v", now, m.lastSync.nodeSync, expectedNSync)
 }
 
 func TestSetSinksStore(t *testing.T) {

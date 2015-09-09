@@ -24,13 +24,20 @@ import (
 	"github.com/golang/glog"
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
+	hUtil "k8s.io/heapster/util"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util"
 )
 
+type lastSync struct {
+	podSync    time.Time
+	nodeSync   time.Time
+	eventsSync time.Time
+}
+
 type externalSinkManager struct {
 	cache         cache.Cache
-	lastSync      time.Time
+	lastSync      lastSync
 	syncFrequency time.Duration
 	decoder       sink_api.Decoder
 	externalSinks []sink_api.ExternalSink
@@ -58,7 +65,7 @@ func NewExternalSinkManager(externalSinks []sink_api.ExternalSink, cache cache.C
 	m := &externalSinkManager{
 		decoder:       sink_api.NewDecoder(),
 		cache:         cache,
-		lastSync:      time.Time{},
+		lastSync:      lastSync{},
 		syncFrequency: syncFrequency,
 	}
 	if externalSinks != nil {
@@ -81,13 +88,19 @@ func (esm *externalSinkManager) sync() {
 	}
 }
 
+var zeroTime = time.Time{}
+
 // TODO(vmarmol): Paralellize this.
 func (esm *externalSinkManager) store() error {
-	lastSync := esm.lastSync
-	now := time.Now()
-	pods := esm.cache.GetPods(lastSync, now)
-	containers := esm.cache.GetNodes(lastSync, now)
-	containers = append(containers, esm.cache.GetFreeContainers(lastSync, now)...)
+	pods := esm.cache.GetPods(esm.lastSync.podSync, zeroTime)
+	for _, pod := range pods {
+		esm.lastSync.podSync = hUtil.GetLatest(esm.lastSync.podSync, pod.LastUpdate)
+	}
+	containers := esm.cache.GetNodes(esm.lastSync.nodeSync, zeroTime)
+	containers = append(containers, esm.cache.GetFreeContainers(esm.lastSync.nodeSync, zeroTime)...)
+	for _, c := range containers {
+		esm.lastSync.nodeSync = hUtil.GetLatest(esm.lastSync.nodeSync, c.LastUpdate)
+	}
 	// TODO: Store data in cache.
 	timeseries, err := esm.decoder.TimeseriesFromPods(pods)
 	if err != nil {
@@ -100,19 +113,20 @@ func (esm *externalSinkManager) store() error {
 	timeseries = append(timeseries, containerTimeseries...)
 
 	if len(timeseries) == 0 {
-		glog.V(3).Info("no timeseries data between %v and %v", lastSync, now)
+		glog.V(3).Info("no timeseries data between %v and %v", esm.lastSync.nodeSync, zeroTime)
 		// Continue here to push events data.
 	}
-	events := esm.cache.GetEvents(lastSync, now)
+	events := esm.cache.GetEvents(esm.lastSync.eventsSync, zeroTime)
 	var kEvents []kube_api.Event
 	for _, event := range events {
 		kEvents = append(kEvents, event.Raw)
+		esm.lastSync.eventsSync = hUtil.GetLatest(esm.lastSync.eventsSync, event.LastUpdate)
 	}
 	if len(timeseries) == 0 && len(events) == 0 {
 		glog.V(5).Infof("Skipping sync loop")
 		return nil
 	}
-	esm.lastSync = now
+
 	// Format metrics and push them.
 	esm.RLock()
 	defer esm.RUnlock()
