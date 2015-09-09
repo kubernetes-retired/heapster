@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 )
 
 // Concatenates a map of labels into a comma-separated key=value pairs.
@@ -38,4 +39,11 @@ func CopyLabels(labels map[string]string) map[string]string {
 		c[key] = val
 	}
 	return c
+}
+
+func GetLatest(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
 }

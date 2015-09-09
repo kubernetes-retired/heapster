@@ -30,6 +30,7 @@ type Metadata struct {
 	Hostname     string
 	Labels       map[string]string
 	ExternalID   string
+	LastUpdate   time.Time
 }
 
 type Event struct {
@@ -38,8 +39,6 @@ type Event struct {
 	Message string
 	// The source component that generated the event.
 	Source string
-	// The timestamp at which the event was generated.
-	Timestamp time.Time
 	// Store a public API version instead of internal version.
 	Raw kube_api.Event
 }

@@ -21,6 +21,7 @@ import (
 
 	source_api "k8s.io/heapster/sources/api"
 	"k8s.io/heapster/store"
+	hUtil "k8s.io/heapster/util"
 	"k8s.io/kubernetes/pkg/util"
 )
 
@@ -146,10 +147,11 @@ func (rc *realCache) newNodeElement() *nodeElement {
 	}
 }
 
-func storeSpecAndStats(ce *containerElement, c *source_api.Container) {
+func storeSpecAndStats(ce *containerElement, c *source_api.Container) time.Time {
 	if ce == nil || c == nil {
-		return
+		return time.Time{}
 	}
+	latestTimestamp := time.Time{}
 	for idx := range c.Stats {
 		if c.Stats[idx] == nil {
 			continue
@@ -162,12 +164,15 @@ func storeSpecAndStats(ce *containerElement, c *source_api.Container) {
 			Timestamp: c.Stats[idx].Timestamp,
 			Value:     cme,
 		})
+		latestTimestamp = hUtil.GetLatest(latestTimestamp, c.Stats[idx].Timestamp)
 	}
+	return latestTimestamp
 }
 
 func (rc *realCache) StorePods(pods []source_api.Pod) error {
 	rc.Lock()
 	defer rc.Unlock()
+	now := time.Now()
 	for _, pod := range pods {
 		pe, ok := rc.pods[pod.ID]
 		if !ok {
@@ -195,10 +200,11 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 				Hostname: cont.Hostname,
 			}
 			ce.Image = cont.Image
-			storeSpecAndStats(ce, cont)
-			ce.lastUpdated = time.Now()
+			ce.Metadata.LastUpdate = storeSpecAndStats(ce, cont)
+			ce.lastUpdated = now
+			pe.LastUpdate = hUtil.GetLatest(pe.LastUpdate, ce.Metadata.LastUpdate)
 		}
-		pe.lastUpdated = time.Now()
+		pe.lastUpdated = now
 	}
 	return nil
 }
@@ -206,7 +212,7 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 	rc.Lock()
 	defer rc.Unlock()
-
+	now := time.Now()
 	for idx := range containers {
 		cont := &containers[idx]
 		ne, ok := rc.nodes[cont.Hostname]
@@ -235,8 +241,8 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 			}
 		}
 		ce.Image = cont.Image
-		storeSpecAndStats(ce, cont)
-		ce.lastUpdated = time.Now()
+		ce.Metadata.LastUpdate = storeSpecAndStats(ce, cont)
+		ce.lastUpdated = now
 	}
 	return nil
 }

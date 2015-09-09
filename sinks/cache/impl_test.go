@@ -80,8 +80,9 @@ func TestGC(t *testing.T) {
 
 func getContainer(name string) source_api.Container {
 	f := fuzz.New().NumElements(2, 2).NilChance(0)
+	now := time.Now()
 	containerSpec := cadvisor.ContainerSpec{
-		CreationTime:  time.Now(),
+		CreationTime:  now,
 		HasCpu:        true,
 		HasMemory:     true,
 		HasNetwork:    true,
@@ -91,7 +92,7 @@ func getContainer(name string) source_api.Container {
 	containerStats := make([]*cadvisor.ContainerStats, 1)
 	f.Fuzz(&containerStats)
 	for idx := range containerStats {
-		containerStats[idx].Timestamp = time.Now()
+		containerStats[idx].Timestamp = now
 	}
 	return source_api.Container{
 		Name:  name,
@@ -148,6 +149,7 @@ func TestRealCacheData(t *testing.T) {
 		}
 		require.NotEmpty(t, pod.Containers)
 		assert.NotEmpty(pod.Containers[0].Metrics)
+		assert.NotEqual(pod.LastUpdate, time.Time{})
 	}
 	actualContainerMap := map[string]*ContainerElement{}
 	for _, cont := range actualContainer {
@@ -162,6 +164,7 @@ func TestRealCacheData(t *testing.T) {
 		assert.Equal(expectedContainer.Image, ce.Image)
 		assert.NotNil(ce.Metrics)
 		assert.NotEmpty(ce.Metrics)
+		assert.NotEqual(ce.LastUpdate, time.Time{})
 	}
 }
 
@@ -169,22 +172,22 @@ func TestEvents(t *testing.T) {
 	cache := NewCache(time.Hour, time.Hour)
 	assert := assert.New(t)
 	eventA := &Event{
-		Message:   "test message 1",
-		Source:    "test",
-		Timestamp: time.Now(),
+		Message: "test message 1",
+		Source:  "test",
 		Metadata: Metadata{
-			UID: "123",
+			UID:        "123",
+			LastUpdate: time.Now(),
 		},
 	}
 	assert.NoError(cache.StoreEvents([]*Event{eventA}))
 	// This duplicate event must be ignored.
 	assert.NoError(cache.StoreEvents([]*Event{eventA}))
 	eventB := &Event{
-		Message:   "test message 2",
-		Source:    "test",
-		Timestamp: time.Now(),
+		Message: "test message 2",
+		Source:  "test",
 		Metadata: Metadata{
-			UID: "124",
+			UID:        "124",
+			LastUpdate: time.Now(),
 		},
 	}
 	assert.NoError(cache.StoreEvents([]*Event{eventB}))
