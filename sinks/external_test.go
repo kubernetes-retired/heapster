@@ -188,17 +188,14 @@ func TestSyncLastUpdated(t *testing.T) {
 		events[eidx].UID = fmt.Sprintf("id:%d", eidx)
 		expectedESync = hUtil.GetLatest(expectedESync, ts)
 	}
-	err = c.StorePods(pods)
-	if err != nil {
-		glog.Fatalf("Failed to store pods %v", err)
+	if err := c.StorePods(pods); err != nil {
+		glog.Fatalf("Failed to store pods: %v", err)
 	}
-	err = c.StoreContainers(containers)
-	if err != nil {
-		glog.Fatalf("Failed to store containers %v", err)
+	if err := c.StoreContainers(containers); err != nil {
+		glog.Fatalf("Failed to store containers: %v", err)
 	}
-	err = c.StoreEvents(events)
-	if err != nil {
-		glog.Fatalf("Failed to store events %v", err)
+	if err = c.StoreEvents(events); err != nil {
+		glog.Fatalf("Failed to store events: %v", err)
 	}
 	m.store()
 	as.Equal(m.lastSync.eventsSync, expectedESync, "Event now: %v, eventSync: %v, expected: %v", now, m.lastSync.eventsSync, expectedESync)
@@ -220,31 +217,82 @@ func TestSetSinksStore(t *testing.T) {
 		events     []*cache.Event
 	)
 	f := fuzz.New().NumElements(1, 1).NilChance(0)
+
+	time1 := time.Now()
 	f.Fuzz(&pods)
+	for pidx := range pods {
+		for cidx := range pods[pidx].Containers {
+			for sidx := range pods[pidx].Containers[cidx].Stats {
+				pods[pidx].Containers[cidx].Stats[sidx].Timestamp = time1
+			}
+		}
+	}
 	f.Fuzz(&containers)
+	for cidx := range containers {
+		for sidx := range containers[cidx].Stats {
+			containers[cidx].Stats[sidx].Timestamp = time1
+		}
+	}
 	f.Fuzz(&events)
-	c.StorePods(pods)
-	c.StoreContainers(containers)
-	c.StoreEvents(events)
+	for eidx := range events {
+		events[eidx].LastUpdate = time1
+		events[eidx].UID = fmt.Sprintf("id1:%d", eidx)
+	}
+
+	if err := c.StorePods(pods); err != nil {
+		glog.Fatalf("Failed to store pods: %v", err)
+	}
+	if err := c.StoreContainers(containers); err != nil {
+		glog.Fatalf("Failed to store containers: %v", err)
+	}
+	if err = c.StoreEvents(events); err != nil {
+		glog.Fatalf("Failed to store events: %v", err)
+	}
 	m.sync()
+	time.Sleep(time.Second)
 	as.Equal(1, s1.StoredTimeseries)
 	as.Equal(1, s1.StoredEvents)
 	err = m.SetSinks([]sink_api.ExternalSink{})
 	as.Nil(err)
 	m.sync()
+	time.Sleep(time.Second)
 	as.Equal(1, s1.StoredTimeseries)
 	as.Equal(1, s1.StoredEvents)
-
 	err = m.SetSinks([]sink_api.ExternalSink{s1})
 	as.Equal(1, s1.StoredTimeseries)
 	as.Equal(1, s1.StoredEvents)
 	as.Nil(err)
+
+	time2 := time.Now()
 	f.Fuzz(&pods)
+	for pidx := range pods {
+		for cidx := range pods[pidx].Containers {
+			for sidx := range pods[pidx].Containers[cidx].Stats {
+				pods[pidx].Containers[cidx].Stats[sidx].Timestamp = time2
+			}
+		}
+	}
 	f.Fuzz(&containers)
+	for cidx := range containers {
+		for sidx := range containers[cidx].Stats {
+			containers[cidx].Stats[sidx].Timestamp = time2
+		}
+	}
 	f.Fuzz(&events)
-	c.StorePods(pods)
-	c.StoreContainers(containers)
-	c.StoreEvents(events)
+	for eidx := range events {
+		events[eidx].LastUpdate = time1
+		events[eidx].UID = fmt.Sprintf("id2:%d", eidx)
+	}
+
+	if err := c.StorePods(pods); err != nil {
+		glog.Fatalf("Failed to store pods: %v", err)
+	}
+	if err := c.StoreContainers(containers); err != nil {
+		glog.Fatalf("Failed to store containers: %v", err)
+	}
+	if err = c.StoreEvents(events); err != nil {
+		glog.Fatalf("Failed to store events: %v", err)
+	}
 	m.sync()
 	time.Sleep(time.Second)
 	as.Equal(2, s1.StoredTimeseries)
