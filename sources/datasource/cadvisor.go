@@ -29,11 +29,11 @@ import (
 
 type cadvisorSource struct{}
 
-func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo, resolution time.Duration) *api.Container {
+func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
 	container := &api.Container{
 		Name:  containerInfo.Name,
 		Spec:  containerInfo.Spec,
-		Stats: sampleContainerStats(containerInfo.Stats, resolution),
+		Stats: sampleContainerStats(containerInfo.Stats),
 	}
 	if len(containerInfo.Aliases) > 0 {
 		container.Name = containerInfo.Aliases[0]
@@ -42,16 +42,15 @@ func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo, res
 	return container
 }
 
-func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error) {
+func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, start, end time.Time) (subcontainers []*api.Container, root *api.Container, err error) {
 	allContainers, err := client.SubcontainersInfo("/",
 		&cadvisor.ContainerInfoRequest{Start: start, End: end})
 	if err != nil {
-
 		return nil, nil, err
 	}
 
 	for _, containerInfo := range allContainers {
-		container := self.parseStat(&containerInfo, resolution)
+		container := self.parseStat(&containerInfo)
 		if containerInfo.Name == "/" {
 			root = container
 		} else {
@@ -62,13 +61,13 @@ func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, star
 	return subcontainers, root, nil
 }
 
-func (self *cadvisorSource) GetAllContainers(host Host, start, end time.Time, resolution time.Duration) (subcontainers []*api.Container, root *api.Container, err error) {
+func (self *cadvisorSource) GetAllContainers(host Host, start, end time.Time) (subcontainers []*api.Container, root *api.Container, err error) {
 	url := fmt.Sprintf("http://%s:%d/", host.IP, host.Port)
 	client, err := cadvisorClient.NewClient(url)
 	if err != nil {
 		return
 	}
-	subcontainers, root, err = self.getAllContainers(client, start, end, resolution)
+	subcontainers, root, err = self.getAllContainers(client, start, end)
 	if err != nil {
 		glog.Errorf("failed to get stats from cadvisor %q - %v\n", url, err)
 	}

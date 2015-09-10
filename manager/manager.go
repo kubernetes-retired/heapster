@@ -80,7 +80,7 @@ func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManag
 		sinkManager:  sinkManager,
 		cache:        c,
 		model:        newModel,
-		lastSync:     time.Now(),
+		lastSync:     time.Now().Round(res),
 		resolution:   res,
 		decoder:      sink_api.NewDecoder(),
 		sinkStopChan: sinkManager.Sync(),
@@ -93,7 +93,7 @@ func (rm *realManager) GetModel() model.Model {
 
 func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, sd *syncData, errChan chan<- error) {
 	glog.V(2).Infof("attempting to get data from source %q", s.Name())
-	data, err := s.GetInfo(start, end, rm.resolution)
+	data, err := s.GetInfo(start, end)
 	if err != nil {
 		errChan <- fmt.Errorf("failed to get information from source %q - %v", s.Name(), err)
 		return
@@ -114,12 +114,21 @@ func (rm *realManager) HousekeepModel() {
 }
 
 func (rm *realManager) Housekeep() {
+	for {
+		start := rm.lastSync
+		end := start.Add(rm.resolution)
+		timeToNextSync := end.Sub(time.Now())
+		// TODO: consider adding some delay here
+		time.Sleep(timeToNextSync)
+		rm.housekeep(start, end)
+		rm.lastSync = end
+	}
+}
+
+func (rm *realManager) housekeep(start, end time.Time) {
+	glog.V(2).Infof("starting to scrape data from sources start: %v end: %v", start, end)
 	errChan := make(chan error, len(rm.sources))
 	var sd syncData
-	start := rm.lastSync
-	end := time.Now()
-	rm.lastSync = end
-	glog.V(2).Infof("starting to scrape data from sources")
 	for idx := range rm.sources {
 		s := rm.sources[idx]
 		go rm.scrapeSource(s, start, end, &sd, errChan)
