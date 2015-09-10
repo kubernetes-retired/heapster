@@ -15,6 +15,8 @@
 package cache
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -43,15 +45,20 @@ func TestFuzz(t *testing.T) {
 }
 
 func TestGC(t *testing.T) {
+	var mutex sync.Mutex
 	var podEvictedCount int
 	var containerEvictedCount int
 
 	cache := NewCache(time.Millisecond, time.Second)
 	cache.AddCacheListener(CacheListener{
 		PodEvicted: func(namespace string, name string) {
+			mutex.Lock()
+			defer mutex.Unlock()
 			podEvictedCount += 1
 		},
 		FreeContainerEvicted: func(hostname string, name string) {
+			mutex.Lock()
+			defer mutex.Unlock()
 			containerEvictedCount += 1
 		},
 	})
@@ -63,6 +70,13 @@ func TestGC(t *testing.T) {
 	f := fuzz.New().NumElements(2, 10).NilChance(0)
 	f.Fuzz(&pods)
 	f.Fuzz(&containers)
+	for i := range pods {
+		pods[i].Name = fmt.Sprintf("%d-%s", i, pods[i].Name)
+	}
+	for i := range containers {
+		containers[i].Name = fmt.Sprintf("%d-%s", i, containers[i].Name)
+	}
+
 	assert := assert.New(t)
 	assert.NoError(cache.StorePods(pods))
 	assert.NoError(cache.StoreContainers(containers))
@@ -74,6 +88,8 @@ func TestGC(t *testing.T) {
 	assert.Empty(cache.GetFreeContainers(zeroTime, zeroTime))
 	assert.Empty(cache.GetPods(zeroTime, zeroTime))
 
+	mutex.Lock()
+	defer mutex.Unlock()
 	assert.Equal(len(pods), podEvictedCount)
 	assert.Equal(len(containers), containerEvictedCount)
 }
