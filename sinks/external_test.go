@@ -249,13 +249,11 @@ func TestSetSinksStore(t *testing.T) {
 		glog.Fatalf("Failed to store events: %v", err)
 	}
 	m.sync()
-	time.Sleep(time.Second)
 	as.Equal(1, s1.StoredTimeseries)
 	as.Equal(1, s1.StoredEvents)
 	err = m.SetSinks([]sink_api.ExternalSink{})
 	as.Nil(err)
 	m.sync()
-	time.Sleep(time.Second)
 	as.Equal(1, s1.StoredTimeseries)
 	as.Equal(1, s1.StoredEvents)
 	err = m.SetSinks([]sink_api.ExternalSink{s1})
@@ -294,7 +292,6 @@ func TestSetSinksStore(t *testing.T) {
 		glog.Fatalf("Failed to store events: %v", err)
 	}
 	m.sync()
-	time.Sleep(time.Second)
 	as.Equal(2, s1.StoredTimeseries)
 	as.Equal(2, s1.StoredEvents)
 }
