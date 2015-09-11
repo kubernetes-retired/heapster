@@ -285,7 +285,7 @@ func (self *hawkularSink) init() error {
 	return nil
 }
 
-func NewHawkularSink(u *url.URL) ([]sink_api.ExternalSink, error) {
+func NewHawkularSink(u *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSink, error) {
 	sink := &hawkularSink{
 		uri: u,
 	}

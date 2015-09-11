@@ -284,7 +284,7 @@ func init() {
 	extpoints.SinkFactories.Register(CreateGCLSink, "gcl")
 }
 
-func CreateGCLSink(uri *url.URL) ([]sink_api.ExternalSink, error) {
+func CreateGCLSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSink, error) {
 	if *uri != (url.URL{}) {
 		return nil, fmt.Errorf("gcl sinks don't take arguments")
 	}

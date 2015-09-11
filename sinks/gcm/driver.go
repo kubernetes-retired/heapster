@@ -104,7 +104,7 @@ func init() {
 	extpoints.SinkFactories.Register(CreateGCMSink, "gcm")
 }
 
-func CreateGCMSink(uri *url.URL) ([]sink_api.ExternalSink, error) {
+func CreateGCMSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSink, error) {
 	if *uri != (url.URL{}) {
 		return nil, fmt.Errorf("gcm sinks don't take arguments")
 	}
