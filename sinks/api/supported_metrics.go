@@ -73,6 +73,21 @@ var statMetrics = []SupportedStatMetric{
 	},
 	{
 		MetricDescriptor: MetricDescriptor{
+			Name:        "cpu/request",
+			Description: "CPU request in millicores",
+			Type:        MetricGauge,
+			ValueType:   ValueInt64,
+			Units:       UnitsCount,
+		},
+		HasValue: func(spec *source_api.ContainerSpec) bool {
+			return spec.CpuRequest > 0
+		},
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
+			return []InternalPoint{{Value: spec.CpuRequest}}
+		},
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
 			Name:        "memory/usage",
 			Description: "Total memory usage",
 			Type:        MetricGauge,
@@ -116,6 +131,21 @@ var statMetrics = []SupportedStatMetric{
 			return []InternalPoint{{Value: int64(spec.Memory.Limit)}}
 		},
 		OnlyExportIfChanged: true,
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "memory/request",
+			Description: "Memory request",
+			Type:        MetricGauge,
+			ValueType:   ValueInt64,
+			Units:       UnitsBytes,
+		},
+		HasValue: func(spec *source_api.ContainerSpec) bool {
+			return spec.MemoryRequest > 0
+		},
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
+			return []InternalPoint{{Value: spec.MemoryRequest}}
+		},
 	},
 	{
 		MetricDescriptor: MetricDescriptor{

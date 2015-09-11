@@ -59,6 +59,8 @@ func (a *AggregateData) Merge(b *AggregateData) {
 
 type ContainerSpec struct {
 	cadvisor.ContainerSpec
+	CpuRequest    int64
+	MemoryRequest int64
 }
 
 type ContainerStats struct {

@@ -65,6 +65,8 @@ func getContainerElement(name string) *cache.ContainerElement {
 				Limit: 100,
 			},
 		},
+		CpuRequest:    200,
+		MemoryRequest: 200,
 	}
 	containerStats := make([]*source_api.ContainerStats, 1)
 	f.Fuzz(&containerStats)
@@ -200,10 +202,18 @@ func TestRealInput(t *testing.T) {
 				require.True(t, ok)
 				expected := (spec.Cpu.Limit * 1000) / 1024
 				assert.Equal(t, expected, value)
+			case "cpu/request":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				assert.Equal(t, spec.CpuRequest, value)
 			case "memory/limit":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
 				assert.Equal(t, spec.Memory.Limit, value)
+			case "memory/request":
+				value, ok := entry.Point.Value.(int64)
+				require.True(t, ok)
+				assert.Equal(t, spec.MemoryRequest, value)
 			case "filesystem/limit":
 				value, ok := entry.Point.Value.(int64)
 				require.True(t, ok)
