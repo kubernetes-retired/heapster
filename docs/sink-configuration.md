@@ -19,7 +19,7 @@ To use the InfluxDB sink add the following flag:
 If you're running Heapster in a Kubernetes cluster with the default InfluxDB + Grafana setup you can use the following flag:
 
 ```
---sink=influxdb:http:://monitoring-influxdb:80/
+--sink=influxdb:http://monitoring-influxdb:80/
 ```
 
 The following options are available:
