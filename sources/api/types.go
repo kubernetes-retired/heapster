@@ -58,12 +58,14 @@ func (a *AggregateData) Merge(b *AggregateData) {
 }
 
 type ContainerSpec struct {
+	// TODO(piosz): Consider defining an internal Spec API to guard against changes to cadvisor API.
 	cadvisor.ContainerSpec
 	CpuRequest    int64
 	MemoryRequest int64
 }
 
 type ContainerStats struct {
+	// TODO(piosz): Consider defining an internal Stats API (see above).
 	cadvisor.ContainerStats
 }
 

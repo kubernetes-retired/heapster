@@ -57,7 +57,7 @@ var statMetrics = []SupportedStatMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "cpu/limit",
-			Description: "CPU limit in millicores",
+			Description: "CPU hard limit in millicores.",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
 			Units:       UnitsCount,
@@ -74,7 +74,7 @@ var statMetrics = []SupportedStatMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "cpu/request",
-			Description: "CPU request in millicores",
+			Description: "CPU request (the guaranteed amount of resources) in millicores. This metric is Kubernetes specific.",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
 			Units:       UnitsCount,
@@ -119,7 +119,7 @@ var statMetrics = []SupportedStatMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "memory/limit",
-			Description: "Memory limit",
+			Description: "Memory hard limit in bytes.",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
 			Units:       UnitsBytes,
@@ -135,7 +135,7 @@ var statMetrics = []SupportedStatMetric{
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "memory/request",
-			Description: "Memory request",
+			Description: "Memory request (the guaranteed amount of resources) in bytes. This metric is Kubernetes specific.",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
 			Units:       UnitsBytes,

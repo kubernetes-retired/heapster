@@ -41,10 +41,12 @@ var (
 		Key:         "compute.googleapis.com/resource_type",
 		Description: "Resource types for nodes specific for GCE.",
 	}
-	cpuUsage = "cpu/usage"
-	cpuLimit = "cpu/limit"
-	memUsage = "memory/usage"
-	memLimit = "memory/limit"
+	cpuUsage   = "cpu/usage"
+	cpuLimit   = "cpu/limit"
+	cpuRequest = "cpu/request"
+	memUsage   = "memory/usage"
+	memLimit   = "memory/limit"
+	memRequest = "memory/request"
 )
 
 var autoscalingLabels = []sink_api.LabelDescriptor{
@@ -140,7 +142,7 @@ func (self *gcmAutocalingSink) updateMachineCapacityAndReservation(input []sink_
 	self.memReservation = make(map[hostTime]int64)
 	for _, entry := range input {
 		metric := entry.Point
-		if metric.Name != cpuLimit && metric.Name != memLimit {
+		if metric.Name != cpuLimit && metric.Name != memLimit && metric.Name != cpuRequest && metric.Name != memRequest {
 			continue
 		}
 		host := metric.Labels[sink_api.LabelHostname.Key]
@@ -156,9 +158,9 @@ func (self *gcmAutocalingSink) updateMachineCapacityAndReservation(input []sink_
 				self.memCapacity[self.hostTime(host, metric)] = value
 			}
 		} else if isPodContainer(metric) {
-			if metric.Name == cpuLimit {
+			if metric.Name == cpuRequest {
 				self.cpuReservation[self.hostTime(host, metric)] += value
-			} else if metric.Name == memLimit {
+			} else if metric.Name == memRequest {
 				self.memReservation[self.hostTime(host, metric)] += value
 			}
 		}
