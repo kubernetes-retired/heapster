@@ -782,19 +782,21 @@ func verifyCacheFactoryCluster(clinfo *ClusterInfo, t *testing.T) {
 // The timestamp of the CME is rouded to the current minute and offset by a random number of hours.
 func cmeFactory() *cache.ContainerMetricElement {
 	f := fuzz.New().NilChance(0).NumElements(1, 1)
-	containerSpec := cadvisor.ContainerSpec{
-		CreationTime:  time.Now(),
-		HasCpu:        true,
-		HasMemory:     true,
-		HasNetwork:    true,
-		HasFilesystem: true,
-		HasDiskIo:     true,
+	containerSpec := source_api.ContainerSpec{
+		ContainerSpec: cadvisor.ContainerSpec{
+			CreationTime:  time.Now(),
+			HasCpu:        true,
+			HasMemory:     true,
+			HasNetwork:    true,
+			HasFilesystem: true,
+			HasDiskIo:     true,
+		},
 	}
 	containerSpec.Cpu.Limit = 1024
 	containerSpec.Memory.Limit = 10000000
 
 	// Create a fuzzed ContainerStats struct
-	var containerStats cadvisor.ContainerStats
+	var containerStats source_api.ContainerStats
 	f.Fuzz(&containerStats)
 
 	// Standardize timestamp to the current minute plus a random number of hours ([1, 10])
@@ -827,15 +829,17 @@ func cmeFactory() *cache.ContainerMetricElement {
 // emptyCMEFactory generates an empty ContainerMetricElement.
 func emptyCMEFactory() *cache.ContainerMetricElement {
 	f := fuzz.New().NilChance(0).NumElements(1, 1)
-	containerSpec := cadvisor.ContainerSpec{
-		CreationTime:  time.Now(),
-		HasCpu:        false,
-		HasMemory:     false,
-		HasNetwork:    false,
-		HasFilesystem: false,
-		HasDiskIo:     false,
+	containerSpec := source_api.ContainerSpec{
+		ContainerSpec: cadvisor.ContainerSpec{
+			CreationTime:  time.Now(),
+			HasCpu:        false,
+			HasMemory:     false,
+			HasNetwork:    false,
+			HasFilesystem: false,
+			HasDiskIo:     false,
+		},
 	}
-	var containerStats cadvisor.ContainerStats
+	var containerStats source_api.ContainerStats
 	f.Fuzz(&containerStats)
 	containerStats.Timestamp = time.Now()
 
@@ -956,13 +960,13 @@ func cacheFactory() cache.Cache {
 		Name:     "container1",
 		Hostname: "hostname2",
 		Spec:     *cme_1.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_2flush.Stats, cme_1.Stats},
+		Stats:    []*source_api.ContainerStats{cme_2flush.Stats, cme_1.Stats},
 	}
 	container2 := source_api.Container{
 		Name:     "container2",
 		Hostname: "hostname3",
 		Spec:     *cme_2.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_2flush.Stats, cme_2.Stats},
+		Stats:    []*source_api.ContainerStats{cme_2flush.Stats, cme_2.Stats},
 	}
 
 	containers := []source_api.Container{container1, container2}
@@ -994,20 +998,20 @@ func cacheFactory() cache.Cache {
 		Name:     "/",
 		Hostname: "hostname2",
 		Spec:     *cme_3.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_4flush.Stats, cme_3.Stats},
+		Stats:    []*source_api.ContainerStats{cme_4flush.Stats, cme_3.Stats},
 	}
 	machine_container2 := source_api.Container{
 		Name:     "/",
 		Hostname: "hostname3",
 		Spec:     *cme_4.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_5flush.Stats, cme_5.Stats, cme_4.Stats},
+		Stats:    []*source_api.ContainerStats{cme_5flush.Stats, cme_5.Stats, cme_4.Stats},
 	}
 	// Generate a free container
 	free_container := source_api.Container{
 		Name:     "free_container1",
 		Hostname: "hostname2",
 		Spec:     *cme_5.Spec,
-		Stats:    []*cadvisor.ContainerStats{cme_5flush.Stats, cme_5.Stats},
+		Stats:    []*source_api.ContainerStats{cme_5flush.Stats, cme_5.Stats},
 	}
 
 	other_containers := []source_api.Container{

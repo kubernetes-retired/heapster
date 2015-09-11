@@ -17,7 +17,6 @@ package cache
 import (
 	"time"
 
-	cadvisor_api "github.com/google/cadvisor/info/v1"
 	source_api "k8s.io/heapster/sources/api"
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
@@ -44,8 +43,8 @@ type Event struct {
 }
 
 type ContainerMetricElement struct {
-	Spec  *cadvisor_api.ContainerSpec
-	Stats *cadvisor_api.ContainerStats
+	Spec  *source_api.ContainerSpec
+	Stats *source_api.ContainerStats
 }
 
 type ContainerElement struct {

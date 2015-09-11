@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/heapster/sinks/cache"
+	source_api "k8s.io/heapster/sources/api"
 )
 
 const (
@@ -49,21 +50,23 @@ func TestFuzzInput(t *testing.T) {
 
 func getContainerElement(name string) *cache.ContainerElement {
 	f := fuzz.New().NumElements(1, 1).NilChance(0)
-	containerSpec := &cadvisor_api.ContainerSpec{
-		CreationTime:  time.Unix(fakeContainerCreationTime, 0),
-		HasCpu:        true,
-		HasMemory:     true,
-		HasNetwork:    true,
-		HasFilesystem: true,
-		HasDiskIo:     true,
-		Cpu: cadvisor_api.CpuSpec{
-			Limit: 100,
-		},
-		Memory: cadvisor_api.MemorySpec{
-			Limit: 100,
+	containerSpec := &source_api.ContainerSpec{
+		ContainerSpec: cadvisor_api.ContainerSpec{
+			CreationTime:  time.Unix(fakeContainerCreationTime, 0),
+			HasCpu:        true,
+			HasMemory:     true,
+			HasNetwork:    true,
+			HasFilesystem: true,
+			HasDiskIo:     true,
+			Cpu: cadvisor_api.CpuSpec{
+				Limit: 100,
+			},
+			Memory: cadvisor_api.MemorySpec{
+				Limit: 100,
+			},
 		},
 	}
-	containerStats := make([]*cadvisor_api.ContainerStats, 1)
+	containerStats := make([]*source_api.ContainerStats, 1)
 	f.Fuzz(&containerStats)
 	return &cache.ContainerElement{
 		Metadata: cache.Metadata{

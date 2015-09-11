@@ -57,19 +57,25 @@ func (a *AggregateData) Merge(b *AggregateData) {
 	a.Events = append(a.Events, b.Events...)
 }
 
+type ContainerSpec struct {
+	cadvisor.ContainerSpec
+}
+
+type ContainerStats struct {
+	cadvisor.ContainerStats
+}
+
 type Container struct {
 	Hostname   string
 	ExternalID string
 	Name       string
 	Image      string
-	// TODO(vishh): Consider defining an internal Spec and Stats API to guard against
-	// changes to cadvisor API.
-	Spec  cadvisor.ContainerSpec
-	Stats []*cadvisor.ContainerStats
+	Spec       ContainerSpec
+	Stats      []*ContainerStats
 }
 
 func NewContainer() *Container {
-	return &Container{Stats: make([]*cadvisor.ContainerStats, 0)}
+	return &Container{Stats: make([]*ContainerStats, 0)}
 }
 
 // An external node represents a host which is running cadvisor. Heapster will expect

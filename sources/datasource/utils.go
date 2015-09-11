@@ -16,11 +16,12 @@ package datasource
 
 import (
 	cadvisor "github.com/google/cadvisor/info/v1"
+	"k8s.io/heapster/sources/api"
 )
 
-func sampleContainerStats(stats []*cadvisor.ContainerStats) []*cadvisor.ContainerStats {
+func sampleContainerStats(stats []*cadvisor.ContainerStats) []*api.ContainerStats {
 	if len(stats) == 0 {
-		return stats
+		return []*api.ContainerStats{}
 	}
-	return stats[:1]
+	return []*api.ContainerStats{&api.ContainerStats{*stats[0]}}
 }

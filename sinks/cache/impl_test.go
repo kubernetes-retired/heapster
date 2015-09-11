@@ -97,15 +97,17 @@ func TestGC(t *testing.T) {
 func getContainer(name string) source_api.Container {
 	f := fuzz.New().NumElements(2, 2).NilChance(0)
 	now := time.Now()
-	containerSpec := cadvisor.ContainerSpec{
-		CreationTime:  now,
-		HasCpu:        true,
-		HasMemory:     true,
-		HasNetwork:    true,
-		HasFilesystem: true,
-		HasDiskIo:     true,
+	containerSpec := source_api.ContainerSpec{
+		ContainerSpec: cadvisor.ContainerSpec{
+			CreationTime:  now,
+			HasCpu:        true,
+			HasMemory:     true,
+			HasNetwork:    true,
+			HasFilesystem: true,
+			HasDiskIo:     true,
+		},
 	}
-	containerStats := make([]*cadvisor.ContainerStats, 1)
+	containerStats := make([]*source_api.ContainerStats, 1)
 	f.Fuzz(&containerStats)
 	for idx := range containerStats {
 		containerStats[idx].Timestamp = now
