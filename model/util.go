@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"k8s.io/heapster/store/daystore"
@@ -199,8 +200,6 @@ func getStats(info InfoType) map[string]StatBundle {
 }
 
 func epsilonFromMetric(metric string) uint64 {
-	// TODO: dynamic epsilon configuration, instead of statically allocating it during init
-	// TODO(afein): handle FS epsilon
 	switch metric {
 	case cpuLimit:
 		return cpuLimitEpsilon
@@ -213,6 +212,14 @@ func epsilonFromMetric(metric string) uint64 {
 	case memWorking:
 		return memWorkingEpsilon
 	default:
+		if strings.Contains(metric, fsLimit) {
+			return fsLimitEpsilon
+		}
+
+		if strings.Contains(metric, fsUsage) {
+			return fsUsageEpsilon
+		}
+
 		return defaultEpsilon
 	}
 }

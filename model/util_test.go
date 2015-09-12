@@ -348,3 +348,15 @@ func TestGetStats(t *testing.T) {
 	assert.Equal(res[cpuLimit].Day.Average, res[cpuLimit].Hour.Average)
 	assert.Equal(res[cpuLimit].Day.NinetyFifth, res[cpuLimit].Hour.NinetyFifth)
 }
+
+func TestEpsilonFromMetric(t *testing.T) {
+	assert := assert.New(t)
+	assert.Equal(cpuLimitEpsilon, epsilonFromMetric(cpuLimit))
+	assert.Equal(cpuUsageEpsilon, epsilonFromMetric(cpuUsage))
+	assert.Equal(memLimitEpsilon, epsilonFromMetric(memLimit))
+	assert.Equal(memUsageEpsilon, epsilonFromMetric(memUsage))
+	assert.Equal(memWorkingEpsilon, epsilonFromMetric(memWorking))
+	assert.Equal(fsLimitEpsilon, epsilonFromMetric(fsLimit))
+	assert.Equal(fsUsageEpsilon, epsilonFromMetric(fsUsage))
+	assert.Equal(defaultEpsilon, epsilonFromMetric("other"))
+}
