@@ -250,7 +250,7 @@ func onlyKeepLatestStat(cont *cache.ContainerElement) {
 }
 
 func (rm *realManager) SetSinkUris(sinkUris Uris) error {
-	sinks, err := newSinks(sinkUris)
+	sinks, err := newSinks(sinkUris, rm.resolution)
 	if err != nil {
 		return err
 	}

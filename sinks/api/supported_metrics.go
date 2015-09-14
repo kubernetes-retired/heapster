@@ -17,7 +17,7 @@ package v1
 import (
 	"time"
 
-	cadvisor "github.com/google/cadvisor/info/v1"
+	source_api "k8s.io/heapster/sources/api"
 )
 
 // Stub out for testing
@@ -32,10 +32,10 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsMilliseconds,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return !spec.CreationTime.IsZero()
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: timeSince(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}}
 		},
 	},
@@ -47,29 +47,44 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsNanoseconds,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasCpu
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(stat.Cpu.Usage.Total)}}
 		},
 	},
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "cpu/limit",
-			Description: "CPU limit in millicores",
+			Description: "CPU hard limit in millicores.",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
 			Units:       UnitsCount,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasCpu && (spec.Cpu.Limit > 0)
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			// Normalize to a conversion factor of 1000.
 			return []InternalPoint{{Value: int64(spec.Cpu.Limit*1000) / 1024}}
 		},
 		OnlyExportIfChanged: true,
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "cpu/request",
+			Description: "CPU request (the guaranteed amount of resources) in millicores. This metric is Kubernetes specific.",
+			Type:        MetricGauge,
+			ValueType:   ValueInt64,
+			Units:       UnitsCount,
+		},
+		HasValue: func(spec *source_api.ContainerSpec) bool {
+			return spec.CpuRequest > 0
+		},
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
+			return []InternalPoint{{Value: spec.CpuRequest}}
+		},
 	},
 	{
 		MetricDescriptor: MetricDescriptor{
@@ -79,10 +94,10 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsBytes,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasMemory
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(stat.Memory.Usage)}}
 		},
 	},
@@ -94,28 +109,43 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsBytes,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasMemory
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(stat.Memory.WorkingSet)}}
 		},
 	},
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "memory/limit",
-			Description: "Memory limit",
+			Description: "Memory hard limit in bytes.",
 			Type:        MetricGauge,
 			ValueType:   ValueInt64,
 			Units:       UnitsBytes,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasMemory && (spec.Memory.Limit > 0)
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(spec.Memory.Limit)}}
 		},
 		OnlyExportIfChanged: true,
+	},
+	{
+		MetricDescriptor: MetricDescriptor{
+			Name:        "memory/request",
+			Description: "Memory request (the guaranteed amount of resources) in bytes. This metric is Kubernetes specific.",
+			Type:        MetricGauge,
+			ValueType:   ValueInt64,
+			Units:       UnitsBytes,
+		},
+		HasValue: func(spec *source_api.ContainerSpec) bool {
+			return spec.MemoryRequest > 0
+		},
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
+			return []InternalPoint{{Value: spec.MemoryRequest}}
+		},
 	},
 	{
 		MetricDescriptor: MetricDescriptor{
@@ -125,10 +155,10 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsCount,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasMemory
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(stat.Memory.ContainerData.Pgfault)}}
 		},
 	},
@@ -140,10 +170,10 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsCount,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasMemory
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(stat.Memory.ContainerData.Pgmajfault)}}
 		},
 	},
@@ -155,10 +185,10 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsBytes,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasNetwork
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(stat.Network.RxBytes)}}
 		},
 	},
@@ -170,10 +200,10 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsCount,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasNetwork
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(stat.Network.RxErrors)}}
 		},
 	},
@@ -185,10 +215,10 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsBytes,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasNetwork
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(stat.Network.TxBytes)}}
 		},
 	},
@@ -200,10 +230,10 @@ var statMetrics = []SupportedStatMetric{
 			ValueType:   ValueInt64,
 			Units:       UnitsCount,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasNetwork
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			return []InternalPoint{{Value: int64(stat.Network.TxErrors)}}
 		},
 	},
@@ -216,10 +246,10 @@ var statMetrics = []SupportedStatMetric{
 			Units:       UnitsBytes,
 			Labels:      metricLabels,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasFilesystem
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			result := make([]InternalPoint, 0, len(stat.Filesystem))
 			for _, fs := range stat.Filesystem {
 				result = append(result, InternalPoint{
@@ -241,10 +271,10 @@ var statMetrics = []SupportedStatMetric{
 			Units:       UnitsBytes,
 			Labels:      metricLabels,
 		},
-		HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		HasValue: func(spec *source_api.ContainerSpec) bool {
 			return spec.HasFilesystem
 		},
-		GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
+		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
 			result := make([]InternalPoint, 0, len(stat.Filesystem))
 			for _, fs := range stat.Filesystem {
 				result = append(result, InternalPoint{

@@ -17,7 +17,7 @@ package v1
 import (
 	"time"
 
-	cadvisor "github.com/google/cadvisor/info/v1"
+	source_api "k8s.io/heapster/sources/api"
 )
 
 type MetricType int
@@ -145,10 +145,10 @@ type SupportedStatMetric struct {
 	MetricDescriptor
 
 	// Returns whether this metric is present.
-	HasValue func(*cadvisor.ContainerSpec) bool
+	HasValue func(*source_api.ContainerSpec) bool
 
 	// Returns a slice of internal point objects that contain metric values and associated labels.
-	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) []InternalPoint
+	GetValue func(*source_api.ContainerSpec, *source_api.ContainerStats) []InternalPoint
 
 	// TODO(vmarmol): Make use of this.
 	// Whether to only export if the metric's value has changed (Default: false).

@@ -340,7 +340,7 @@ func init() {
 	extpoints.SinkFactories.Register(CreateInfluxdbSink, "influxdb")
 }
 
-func CreateInfluxdbSink(uri *url.URL) ([]sink_api.ExternalSink, error) {
+func CreateInfluxdbSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSink, error) {
 	defaultConfig := config{
 		user:         "root",
 		password:     "root",

@@ -32,7 +32,7 @@ type cadvisorSource struct{}
 func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
 	container := &api.Container{
 		Name:  containerInfo.Name,
-		Spec:  containerInfo.Spec,
+		Spec:  api.ContainerSpec{ContainerSpec: containerInfo.Spec},
 		Stats: sampleContainerStats(containerInfo.Stats),
 	}
 	if len(containerInfo.Aliases) > 0 {

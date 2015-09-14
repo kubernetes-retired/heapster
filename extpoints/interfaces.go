@@ -16,6 +16,7 @@ package extpoints
 
 import (
 	"net/url"
+	"time"
 
 	sinksApi "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
@@ -24,4 +25,8 @@ import (
 
 type SourceFactory func(*url.URL, cache.Cache) ([]sourceApi.Source, error)
 
-type SinkFactory func(*url.URL) ([]sinksApi.ExternalSink, error)
+type HeapsterConf struct {
+	StatsResolution time.Duration
+}
+
+type SinkFactory func(*url.URL, HeapsterConf) ([]sinksApi.ExternalSink, error)
