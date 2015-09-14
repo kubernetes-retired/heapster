@@ -1,5 +1,8 @@
 # Release Notes for heapster influxdb container.
 
+## 0.5 (9-18-2015)
+- updated to v0.9.4
+
 ## 0.4 (9-17-2015)
 - Updated to InfluxDB v0.8.9 to pave way for safely upgrading to influxDB v0.9.x
 
