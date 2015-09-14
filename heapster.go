@@ -31,7 +31,6 @@ import (
 	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
 	"k8s.io/heapster/version"
-	"k8s.io/kubernetes/pkg/util"
 )
 
 var (
@@ -91,13 +90,6 @@ func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration, c, *argUseModel, *argModelResolution)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if err := manager.SetSinkUris(argSinks); err != nil {
-		return nil, nil, nil, err
-	}
 
 	// Spawn the Model Housekeeping goroutine even if the model is not enabled.
 	// This will allow the model to be activated/deactivated in runtime.
@@ -108,9 +100,17 @@ func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, 
 	if (*argCacheDuration).Nanoseconds() < modelDuration.Nanoseconds() {
 		modelDuration = *argCacheDuration
 	}
-	go util.Until(manager.HousekeepModel, modelDuration, util.NeverStop)
 
-	go manager.Housekeep()
+	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration, c, *argUseModel, *argModelResolution,
+		modelDuration)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if err := manager.SetSinkUris(argSinks); err != nil {
+		return nil, nil, nil, err
+	}
+
+	manager.Start()
 	return sources, sinkManager, manager, nil
 }
 
