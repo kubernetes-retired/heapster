@@ -227,6 +227,11 @@ var expectedSystemContainers = map[string]struct{}{
 	"docker-daemon": {},
 }
 
+func isContainerBaseImageExpected(ts *api_v1.Timeseries) bool {
+	_, exists := expectedSystemContainers[ts.Labels[sink_api.LabelContainerName.Key]]
+	return !exists
+}
+
 func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 	expectedPods, err := fm.GetRunningPodNames()
 	if err != nil {
@@ -260,6 +265,9 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 		// Verify the relevant labels are present.
 		// All common labels must be present.
 		for _, label := range sink_api.CommonLabels() {
+			if label == sink_api.LabelContainerBaseImage && !isContainerBaseImageExpected(ts) {
+				continue
+			}
 			_, exists := ts.Labels[label.Key]
 			if !exists {
 				return fmt.Errorf("timeseries: %v does not contain common label: %v", ts, label)
@@ -302,6 +310,7 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 			if !exists {
 				return fmt.Errorf("unexpected metric %q", metricName)
 			}
+
 			for _, point := range points {
 				for _, label := range md.Labels {
 					_, exists := point.Labels[label.Key]
