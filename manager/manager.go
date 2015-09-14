@@ -31,13 +31,6 @@ import (
 // Manager provides an interface to control the core of heapster.
 // Implementations are not required to be thread safe.
 type Manager interface {
-	// Housekeep collects data from all the configured sources and
-	// stores the data to all the configured sinks.
-	Housekeep()
-
-	// HousekeepModel performs housekeeping for the Model entity
-	HousekeepModel()
-
 	// Export the latest data point of all metrics.
 	ExportMetrics() ([]*sink_api.Point, error)
 
@@ -49,18 +42,27 @@ type Manager interface {
 
 	// Get a reference to the cluster entity of the model, if it exists.
 	GetModel() model.Model
+
+	// Starts the manager.
+	Start()
+
+	// Stops the manager.
+	Stop()
 }
 
 type realManager struct {
-	sources      []source_api.Source
-	cache        cache.Cache
-	model        model.Model
-	sinkManager  sinks.ExternalSinkManager
-	sinkUris     Uris
-	lastSync     time.Time
-	resolution   time.Duration
-	decoder      sink_api.Decoder
-	sinkStopChan chan<- struct{}
+	sources       []source_api.Source
+	cache         cache.Cache
+	model         model.Model
+	modelDuration time.Duration
+	sinkManager   sinks.ExternalSinkManager
+	sinkUris      Uris
+	lastSync      time.Time
+	resolution    time.Duration
+	decoder       sink_api.Decoder
+	mainStopChan  chan struct{}
+	sinkStopChan  chan<- struct{}
+	modelStopChan chan struct{}
 }
 
 type syncData struct {
@@ -68,22 +70,28 @@ type syncData struct {
 	mutex sync.Mutex
 }
 
-func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration, c cache.Cache, useModel bool, modelRes time.Duration) (Manager, error) {
+func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration,
+	c cache.Cache, useModel bool, modelRes, modelDuration time.Duration) (Manager, error) {
+
 	var newModel model.Model = nil
 	if useModel {
 		newModel = model.NewModel(modelRes)
 		// Temporary semi-hack to get model storage garbage-collected.
 		c.AddCacheListener(newModel.GetCacheListener())
 	}
+
 	return &realManager{
-		sources:      sources,
-		sinkManager:  sinkManager,
-		cache:        c,
-		model:        newModel,
-		lastSync:     time.Now().Round(res),
-		resolution:   res,
-		decoder:      sink_api.NewDecoder(),
-		sinkStopChan: sinkManager.Sync(),
+		sources:       sources,
+		sinkManager:   sinkManager,
+		cache:         c,
+		model:         newModel,
+		modelDuration: modelDuration,
+		lastSync:      time.Now().Round(res),
+		resolution:    res,
+		decoder:       sink_api.NewDecoder(),
+		mainStopChan:  make(chan struct{}),
+		modelStopChan: make(chan struct{}),
+		sinkStopChan:  sinkManager.Sync(),
 	}, nil
 }
 
@@ -104,11 +112,32 @@ func (rm *realManager) scrapeSource(s source_api.Source, start, end time.Time, s
 	errChan <- nil
 }
 
+func (rm *realManager) Start() {
+	go rm.Housekeep()
+	if rm.model != nil {
+		go rm.HousekeepModel()
+	}
+}
+
+func (rm *realManager) Stop() {
+	rm.mainStopChan <- struct{}{}
+	if rm.model != nil {
+		rm.modelStopChan <- struct{}{}
+	}
+	rm.sinkStopChan <- struct{}{}
+}
+
 // HousekeepModel periodically populates the manager model from the manager cache.
 func (rm *realManager) HousekeepModel() {
-	if rm.model != nil {
-		if err := rm.model.Update(rm.cache); err != nil {
-			glog.V(1).Infof("Model housekeeping returned error: %s", err.Error())
+	for {
+		select {
+		//TODO: better timing here
+		case <-time.After(rm.modelDuration):
+			if err := rm.model.Update(rm.cache); err != nil {
+				glog.V(1).Infof("Model housekeeping returned error: %s", err.Error())
+			}
+		case <-rm.modelStopChan:
+			return
 		}
 	}
 }
@@ -119,9 +148,13 @@ func (rm *realManager) Housekeep() {
 		end := start.Add(rm.resolution)
 		timeToNextSync := end.Sub(time.Now())
 		// TODO: consider adding some delay here
-		time.Sleep(timeToNextSync)
-		rm.housekeep(start, end)
-		rm.lastSync = end
+		select {
+		case <-time.After(timeToNextSync):
+			rm.housekeep(start, end)
+			rm.lastSync = end
+		case <-rm.mainStopChan:
+			return
+		}
 	}
 }
 
