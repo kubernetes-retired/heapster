@@ -34,14 +34,11 @@ import (
 	sink_api "k8s.io/heapster/sinks/api"
 )
 
-const GCLAuthScope = "https://www.googleapis.com/auth/monitoring"
+const GCMAuthScope = "https://www.googleapis.com/auth/monitoring"
 
 type GcmCore struct {
 	// Token to use for authentication.
-	token string
-
-	// When the token expires.
-	tokenExpiration time.Time
+	token gce.AuthTokenProvider
 
 	// TODO(vmarmol): Make this configurable and not only detected.
 	// GCE project.
@@ -53,24 +50,6 @@ type GcmCore struct {
 
 	// The last value we have pushed for every cumulative metric.
 	lastValue gcstore.GCStore
-}
-
-func (self *GcmCore) refreshToken() error {
-	if time.Now().After(self.tokenExpiration) {
-		token, err := gce.GetAuthToken()
-		if err != nil {
-			return err
-		}
-
-		// Expire the token a bit early.
-		const earlyRefreshSeconds = 60
-		if token.ExpiresIn > earlyRefreshSeconds {
-			token.ExpiresIn -= earlyRefreshSeconds
-		}
-		self.token = token.AccessToken
-		self.tokenExpiration = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
-	}
-	return nil
 }
 
 // GCM request structures for a MetricDescriptor.
@@ -113,7 +92,7 @@ func (self *GcmCore) listMetrics() error {
 	if err != nil {
 		return err
 	}
-	err = sendRequest("GET", self.token, url, nil, &response)
+	err = self.sendRequest("GET", url, nil, &response)
 	if err != nil {
 		glog.Errorf("[GCM] list metrics failed %v", err)
 		return err
@@ -135,7 +114,7 @@ func (self *GcmCore) deleteMetric(metricName string) error {
 		Opaque: fmt.Sprintf("%s/metricDescriptors/%s", self.defaultUrlPath(), url.QueryEscape(metricName)),
 	}
 
-	err := sendRequest("DELETE", self.token, url, nil, nil)
+	err := self.sendRequest("DELETE", url, nil, nil)
 	if err != nil {
 		glog.V(2).Infof("[GCM] Deleting metric %q failed: %v", metricName, err)
 	}
@@ -154,7 +133,7 @@ func (self *GcmCore) addMetric(request metricDescriptor) error {
 	if err != nil {
 		return err
 	}
-	if err = sendRequest("POST", self.token, url, request, nil); err == nil {
+	if err = self.sendRequest("POST", url, request, nil); err == nil {
 		glog.V(3).Infof("[GCM] Added metric %q", request.Name)
 		// Add metric to exportedMetrics.
 		self.exportedMetrics[request.Name] = request
@@ -353,19 +332,13 @@ func (self *GcmCore) pushMetrics(request *metricWriteRequest) error {
 		return fmt.Errorf("unable to write more than %d metrics at once and %d were provided", maxTimeseriesPerRequest, len(request.Timeseries))
 	}
 
-	// Refresh token.
-	err := self.refreshToken()
-	if err != nil {
-		return err
-	}
-
 	url, err := url.Parse(fmt.Sprintf("%s/timeseries:write", self.defaultUrlPath()))
 	if err != nil {
 		return err
 	}
 	const requestAttempts = 3
 	for i := 1; i <= requestAttempts; i++ {
-		err = sendRequest("POST", self.token, url, request, nil)
+		err = self.sendRequest("POST", url, request, nil)
 		if err != nil {
 			glog.Warningf("[GCM] Push attempt %d failed: %v", i, err)
 		} else {
@@ -407,7 +380,11 @@ func FullMetricName(name string) string {
 	return name
 }
 
-func sendRequest(method, token string, url *url.URL, request interface{}, value interface{}) error {
+func (self *GcmCore) sendRequest(method string, url *url.URL, request interface{}, value interface{}) error {
+	token, err := self.token.GetToken()
+	if err != nil {
+		return err
+	}
 	var rawRequest io.Reader = nil
 	if request != nil {
 		jsonRequest, err := json.Marshal(request)
@@ -450,11 +427,9 @@ func sendRequest(method, token string, url *url.URL, request interface{}, value 
 
 // Returns a thread-compatible implementation of GCM interactions.
 func NewCore() (*GcmCore, error) {
-	// TODO: Retry OnGCE call for ~15 seconds before declaring failure.
-	time.Sleep(3 * time.Second)
-	// Only support GCE for now.
-	if !metadata.OnGCE() {
-		return nil, fmt.Errorf("the GCM sink is currently only supported on GCE")
+	token, err := gce.NewAuthTokenProvider(GCMAuthScope)
+	if err != nil {
+		return nil, err
 	}
 
 	// Detect project.
@@ -463,20 +438,15 @@ func NewCore() (*GcmCore, error) {
 		return nil, err
 	}
 
-	// Check required service accounts
-	err = gce.VerifyAuthScope(GCLAuthScope)
-	if err != nil {
-		return nil, err
-	}
-
 	core := &GcmCore{
+		token:           token,
 		project:         project,
 		exportedMetrics: make(map[string]metricDescriptor),
 		lastValue:       gcstore.New(time.Hour),
 	}
 
-	// Get an initial token.
-	err = core.refreshToken()
+	// Wait for an initial token.
+	_, err = core.token.WaitForToken()
 	if err != nil {
 		return nil, err
 	}
