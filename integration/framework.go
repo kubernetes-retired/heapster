@@ -67,8 +67,12 @@ type kubeFramework interface {
 	// Returns the node hostnames.
 	GetNodes() ([]string, error)
 
+	// Returns pod names in the cluster.
+	// TODO: Remove, or mix with namespace
+	GetPodNames() ([]string, error)
+
 	// Returns pods in the cluster.
-	GetPods() ([]string, error)
+	GetPodList() (*api.PodList, error)
 
 	WaitUntilPodRunning(ns string, podLabels map[string]string, timeout time.Duration) error
 	WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error
@@ -424,9 +428,13 @@ func (self *realKubeFramework) GetNodes() ([]string, error) {
 	return nodes, nil
 }
 
-func (self *realKubeFramework) GetPods() ([]string, error) {
+func (self *realKubeFramework) GetPodList() (*api.PodList, error) {
+	return self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything(), fields.Everything())
+}
+
+func (self *realKubeFramework) GetPodNames() ([]string, error) {
 	var pods []string
-	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything(), fields.Everything())
+	podList, err := self.GetPodList()
 	if err != nil {
 		return pods, err
 	}
