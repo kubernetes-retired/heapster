@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FILES=$(go vet k8s.io/heapster/...)
+FILES=$(go vet k8s.io/heapster/... 2>&1)
 if [[ ! -z "$FILES" ]]; then
-echo Run go fix on the following files:$'\n' $FILES
+echo -e "Run go fix on the following files:\n $FILES"
   exit 1
 fi

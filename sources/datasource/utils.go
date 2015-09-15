@@ -23,5 +23,7 @@ func sampleContainerStats(stats []*cadvisor.ContainerStats) []*api.ContainerStat
 	if len(stats) == 0 {
 		return []*api.ContainerStats{}
 	}
-	return []*api.ContainerStats{&api.ContainerStats{*stats[0]}}
+	return []*api.ContainerStats{&api.ContainerStats{
+		ContainerStats: *stats[0],
+	}}
 }
