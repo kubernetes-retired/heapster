@@ -19,11 +19,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/golang/glog"
 	"google.golang.org/cloud/compute/metadata"
 )
 
-type AuthToken struct {
+const (
+	metadataAuthScopes       = "instance/service-accounts/default/scopes"
+	metadataAuthToken        = "instance/service-accounts/default/token"
+	earlyRefreshTokenSeconds = 60
+	waitForTokenInterval     = 1 * time.Second
+	waitForTokenTimeout      = 30 * time.Second
+)
+
+// GCE specific representation of authorization token. For parsing purposes.
+type authToken struct {
 	// The actual token.
 	AccessToken string `json:"access_token"`
 
@@ -34,9 +46,103 @@ type AuthToken struct {
 	TokenType string `json:"token_type"`
 }
 
+type AuthTokenProvider interface {
+	GetToken() (string, error)
+	WaitForToken() (string, error)
+}
+
+// AuthTokenProvider is thread-safe.
+type realAuthTokenProvider struct {
+	sync.RWMutex
+
+	// Token to use for authentication.
+	token string
+}
+
+func NewAuthTokenProvider(expectedAuthScope string) (AuthTokenProvider, error) {
+	// Retry OnGCE call for 15 seconds before declaring failure.
+	onGCE := false
+	for start := time.Now(); time.Since(start) < 15*time.Second; time.Sleep(time.Second) {
+		if metadata.OnGCE() {
+			onGCE = true
+			break
+		}
+	}
+	// Only support GCE for now.
+	if !onGCE {
+		return nil, fmt.Errorf("authorization to GCE is currently only supported on GCE")
+	}
+
+	// Check for required auth scopes
+	err := verifyAuthScope(expectedAuthScope)
+	if err != nil {
+		return nil, err
+	}
+
+	t := &realAuthTokenProvider{
+		RWMutex: sync.RWMutex{},
+	}
+	go t.refreshTokenWhenExpires()
+	return t, nil
+}
+
+func (t *realAuthTokenProvider) GetToken() (string, error) {
+	defer t.RUnlock()
+	t.RLock()
+	if t.token != "" {
+		return t.token, nil
+	} else {
+		return "", fmt.Errorf("No valid GCE token")
+	}
+}
+
+func (t *realAuthTokenProvider) WaitForToken() (string, error) {
+	for start := time.Now(); time.Since(start) < waitForTokenTimeout; time.Sleep(waitForTokenInterval) {
+		if token, err := t.GetToken(); err == nil {
+			return token, nil
+		}
+	}
+	return "", fmt.Errorf("Timeout after %v while waiting for GCE token", waitForTokenTimeout)
+}
+
+// Get a token for performing GCE requests.
+func getAuthToken() (authToken, error) {
+	rawToken, err := metadata.Get(metadataAuthToken)
+	if err != nil {
+		return authToken{}, err
+	}
+
+	var token authToken
+	err = json.Unmarshal([]byte(rawToken), &token)
+	if err != nil {
+		return authToken{}, fmt.Errorf("failed to unmarshal service account token with output %q: %v", rawToken, err)
+	}
+
+	return token, err
+}
+
+func (t *realAuthTokenProvider) refreshTokenWhenExpires() {
+	for {
+		token, err := getAuthToken()
+
+		// If token was successfully obtained update local copy and wait until it will expire. Otherwise log error and try again.
+		if err == nil {
+			t.Lock()
+			if token.ExpiresIn > earlyRefreshTokenSeconds {
+				token.ExpiresIn -= earlyRefreshTokenSeconds
+			}
+			t.token = token.AccessToken
+			t.Unlock()
+			time.Sleep(time.Duration(token.ExpiresIn) * time.Second)
+		} else {
+			glog.Errorf("Error occured while refreshing GCE token: %v", err)
+		}
+	}
+}
+
 // Checks that the required auth scope is present.
-func VerifyAuthScope(expectedScope string) error {
-	scopes, err := metadata.Get("instance/service-accounts/default/scopes")
+func verifyAuthScope(expectedScope string) error {
+	scopes, err := metadata.Get(metadataAuthScopes)
 	if err != nil {
 		return err
 	}
@@ -48,20 +154,4 @@ func VerifyAuthScope(expectedScope string) error {
 	}
 
 	return fmt.Errorf("Current instance does not have the expected scope (%q). Actual scopes: %v", expectedScope, scopes)
-}
-
-// Get a token for performing GCE requests.
-func GetAuthToken() (AuthToken, error) {
-	rawToken, err := metadata.Get("instance/service-accounts/default/token")
-	if err != nil {
-		return AuthToken{}, err
-	}
-
-	var token AuthToken
-	err = json.Unmarshal([]byte(rawToken), &token)
-	if err != nil {
-		return AuthToken{}, fmt.Errorf("failed to unmarshal service account token with output %q: %v", rawToken, err)
-	}
-
-	return token, err
 }

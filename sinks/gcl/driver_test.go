@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	sink_api "k8s.io/heapster/sinks/api"
+	"k8s.io/heapster/util/gce"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	kube_time "k8s.io/kubernetes/pkg/util"
 )
@@ -73,7 +74,7 @@ func NewFakeSink() fakeGCLSink {
 		&gclSink{
 			projectId:  "fakeProjectId",
 			httpClient: fakeHttpClient,
-			token:      "fakeToken",
+			token:      gce.NewFakeAuthTokenProvider("fakeToken"),
 		},
 		fakeHttpClient,
 	}

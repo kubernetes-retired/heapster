@@ -80,10 +80,7 @@ type httpClient interface {
 
 type gclSink struct {
 	// Token to use for authentication.
-	token string
-
-	// When the token expires.
-	tokenExpiration time.Time
+	token gce.AuthTokenProvider
 
 	// GCE Project ID
 	projectId string
@@ -93,24 +90,6 @@ type gclSink struct {
 
 	// Number of times an Http Error was encountered (for debugging)
 	httpErrorCount uint
-}
-
-func (sink *gclSink) refreshToken() error {
-	if time.Now().After(sink.tokenExpiration) {
-		token, err := gce.GetAuthToken()
-		if err != nil {
-			return err
-		}
-
-		// Expire the token a bit early.
-		const earlyRefreshSeconds = 60
-		if token.ExpiresIn > earlyRefreshSeconds {
-			token.ExpiresIn -= earlyRefreshSeconds
-		}
-		sink.token = token.AccessToken
-		sink.tokenExpiration = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
-	}
-	return nil
 }
 
 type LogsEntriesWriteRequest struct {
@@ -201,6 +180,11 @@ func (sink *gclSink) createLogsEntriesRequest(events []kube_api.Event) LogsEntri
 
 // TODO: Move this to a common lib and share it with GCM implementation.
 func (sink *gclSink) sendLogsEntriesRequest(request LogsEntriesWriteRequest) error {
+	token, err := sink.token.GetToken()
+	if err != nil {
+		return err
+	}
+
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		return err
@@ -218,7 +202,7 @@ func (sink *gclSink) sendLogsEntriesRequest(request LogsEntriesWriteRequest) err
 	}
 	req.URL = url
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", sink.token))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	resp, err := sink.httpClient.Do(req)
 	if err != nil {
@@ -246,11 +230,9 @@ func (self *gclSink) Name() string {
 
 // Returns an implementation of a Google Cloud Logging (GCL) sink.
 func new() (sink_api.ExternalSink, error) {
-	// TODO: Retry OnGCE call for ~15 seconds before declaring failure.
-	time.Sleep(3 * time.Second)
-	// Only support GCE for now.
-	if !metadata.OnGCE() {
-		return nil, fmt.Errorf("The Google Cloud Logging (GCL) sink failed to start: this process must be running on Google Compute Engine (GCE)")
+	token, err := gce.NewAuthTokenProvider(GCLAuthScope)
+	if err != nil {
+		return nil, err
 	}
 
 	// Detect project ID
@@ -260,21 +242,10 @@ func new() (sink_api.ExternalSink, error) {
 	}
 	glog.Infof("Project ID for GCL sink is: %q\r\n", projectId)
 
-	// Check for required auth scopes
-	err = gce.VerifyAuthScope(GCLAuthScope)
-	if err != nil {
-		return nil, err
-	}
-
 	impl := &gclSink{
+		token:      token,
 		projectId:  projectId,
 		httpClient: &http.Client{},
-	}
-
-	// Get an initial token.
-	err = impl.refreshToken()
-	if err != nil {
-		return nil, err
 	}
 
 	return impl, nil
