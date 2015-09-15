@@ -37,7 +37,7 @@ var (
 	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats.")
 	argSinkFrequency   = flag.Duration("sink_frequency", 10*time.Second, "Frequency at which data will be pushed to sinks")
 	argCacheDuration   = flag.Duration("cache_duration", 4*time.Minute, "The total duration of the historical data that will be cached by heapster.")
-	argUseModel        = flag.Bool("use_model", false, "When true, the internal model representation will be used")
+	argUseModel        = flag.Bool("use_model", true, "When true, the internal model representation will be used")
 	argModelResolution = flag.Duration("model_resolution", 1*time.Minute, "The resolution of the timeseries stored in the model. Applies only if use_model is true")
 	argPort            = flag.Int("port", 8082, "port to listen to")
 	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
