@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.18.0
+- Cluster Model APIs enabled by default
+- Garbage collection in the cluster model
+- New rolling window based bucketing storage engine for model that significantly reduces memory footprint
+- Many fixes around race conditions with the cache
+- GCP authorization policy updated to reduce flakiness
+
 ## 0.17.0
 - Fixes service account handling.
 - New APIs that provide insight into a kubernetes cluster - usage distribution across nodes, namespaces, pods, etc.
