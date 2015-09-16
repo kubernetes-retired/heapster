@@ -15,8 +15,8 @@ if ! git diff --name-only origin/master | grep -c -E "*.go|*.sh|.*yaml" &> /dev/
   exit 0
 fi
 
-SUPPORTED_KUBE_VERSIONS="1.0.1"
-TEST_NAMESPACE="default"
+SUPPORTED_KUBE_VERSIONS="1.0.5"
+TEST_NAMESPACE="heapster-e2e-tests"
 
 make test-unit
-godep go test -a -v --timeout=30m k8s.io/heapster/integration/... --vmodule=*=1 --namespace=$TEST_NAMESPACE --kube_versions=$SUPPORTED_KUBE_VERSIONS 
+godep go test -a -v --timeout=30m k8s.io/heapster/integration/... --vmodule=*=2 --namespace=$TEST_NAMESPACE --kube_versions=$SUPPORTED_KUBE_VERSIONS 

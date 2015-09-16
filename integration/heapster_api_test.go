@@ -43,49 +43,44 @@ const (
 
 var (
 	kubeVersions           = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
-	heapsterControllerFile = flag.String("heapster_controller", "../deploy/kube-config/standalone/heapster-controller.json", "Path to heapster replication controller file.")
-	heapsterServiceFile    = flag.String("heapster_service", "../deploy/kube-config/standalone/heapster-service.json", "Path to heapster service file.")
+	heapsterControllerFile = flag.String("heapster_controller", "../deploy/kube-config/standalone-test/heapster-controller.json", "Path to heapster replication controller file.")
+	heapsterServiceFile    = flag.String("heapster_service", "../deploy/kube-config/standalone-test/heapster-service.json", "Path to heapster service file.")
 	heapsterImage          = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
 	avoidBuild             = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
-	namespace              = flag.String("namespace", "default", "namespace to be used for testing")
+	namespace              = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
 	maxRetries             = flag.Int("retries", 100, "Number of attempts before failing this test.")
 	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
 )
 
 func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_api.ReplicationController) error {
-	glog.V(2).Infof("Deleting rc %s/%s...", ns, rc.Name)
-	retries := 5
-	for {
-		if err := fm.DeleteRC(ns, rc); err != nil {
-			glog.V(2).Infof("Failed to delete rc: %v", err)
-			if retries <= 0 {
-				return err
-			}
-		} else {
-			break
-		}
-		retries--
+	glog.V(2).Infof("Deleting ns %s...", ns)
+	err := fm.DeleteNs(ns)
+	if err != nil {
+		glog.V(2).Infof("Failed to delete %s", ns)
+		return err
 	}
-	glog.V(2).Infof("Deleted rc %s/%s.", ns, rc.Name)
-
-	glog.V(2).Infof("Deleting service %s/%s.", ns, service.Name)
-	retries = 5
-	for {
-		if err := fm.DeleteService(ns, service); err != nil {
-			glog.V(2).Infof("Failed to delete service: %v", err)
-			if retries <= 0 {
-				return err
-			}
-		} else {
-			break
-		}
-		retries--
-	}
-	glog.V(2).Infof("Deleted service %s/%s.", ns, service.Name)
+	glog.V(2).Infof("Deleted ns %s.", ns)
 	return nil
 }
 
 func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kube_api.ReplicationController) error {
+	glog.V(2).Infof("Creating ns %s...", ns)
+	namespace := kube_api.Namespace{
+		TypeMeta: kube_api.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: kube_api.ObjectMeta{
+			Name: ns,
+		},
+	}
+	if _, err := fm.CreateNs(&namespace); err != nil {
+		glog.V(2).Infof("Failed to create ns: %v", err)
+		return err
+	}
+
+	glog.V(2).Infof("Created ns %s.", ns)
+
 	glog.V(2).Infof("Creating rc %s/%s...", ns, (*rc).Name)
 	if newRc, err := fm.CreateRC(ns, *rc); err != nil {
 		glog.V(2).Infof("Failed to create rc: %v", err)
@@ -102,7 +97,7 @@ func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kub
 	} else {
 		*service = newSvc
 	}
-	glog.V(2).Infof("Created servuce %s/%s.", ns, (*service).Name)
+	glog.V(2).Infof("Created service %s/%s.", ns, (*service).Name)
 
 	return nil
 }
