@@ -655,22 +655,22 @@ func TestGetClusterStats(t *testing.T) {
 	)
 
 	// Invocation with no cluster stats
-	res, uptime, err := model.GetClusterStats()
-	assert.Len(res, 0)
-	assert.Equal(uptime, time.Duration(0))
+	res, err := model.GetClusterStats()
+	assert.Len(res.ByName, 0)
+	assert.Equal(res.Uptime, time.Duration(0))
 	assert.NoError(err)
 
 	// Invocation with cluster stats
 	model.Update(source_cache)
-	res, uptime, err = model.GetClusterStats()
-	assert.True(len(res) >= 6)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
-	assert.Equal(res[memUsage].Minute.Average, uint64(10000))
-	assert.Equal(res[memUsage].Hour.Max, 2*memUsageEpsilon)
-	assert.Equal(res[memUsage].Hour.Average, 2*memUsageEpsilon)
-	assert.Equal(res[memUsage].Hour.NinetyFifth, 2*memUsageEpsilon)
-	assert.NotEqual(uptime, time.Duration(0))
+	res, err = model.GetClusterStats()
+	assert.True(len(res.ByName) >= 6)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.Max)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.NinetyFifth)
+	assert.Equal(res.ByName[memUsage].Minute.Average, uint64(10000))
+	assert.Equal(res.ByName[memUsage].Hour.Max, 2*memUsageEpsilon)
+	assert.Equal(res.ByName[memUsage].Hour.Average, 2*memUsageEpsilon)
+	assert.Equal(res.ByName[memUsage].Hour.NinetyFifth, 2*memUsageEpsilon)
+	assert.NotEqual(res.Uptime, time.Duration(0))
 	assert.NoError(err)
 }
 
@@ -684,21 +684,20 @@ func TestGetNodeStats(t *testing.T) {
 	model.Update(source_cache)
 
 	// Invocation with nonexistant node
-	res, uptime, err := model.GetNodeStats(NodeRequest{
+	res, err := model.GetNodeStats(NodeRequest{
 		NodeName: "nonexistant",
 	})
 	assert.Nil(res)
-	assert.Equal(uptime, time.Duration(0))
 	assert.Error(err)
 
 	// Invocation with normal node
-	res, uptime, err = model.GetNodeStats(NodeRequest{
+	res, err = model.GetNodeStats(NodeRequest{
 		NodeName: "hostname2",
 	})
-	assert.True(len(res) >= 6)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
-	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
+	assert.True(len(res.ByName) >= 6)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.Max)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res.ByName[memUsage].Minute.Average, uint64(0))
 	assert.NoError(err)
 }
 
@@ -712,22 +711,21 @@ func TestGetNamespaceStats(t *testing.T) {
 	model.Update(source_cache)
 
 	// Invocation with nonexistant namespace
-	res, uptime, err := model.GetNamespaceStats(NamespaceRequest{
+	res, err := model.GetNamespaceStats(NamespaceRequest{
 		NamespaceName: "nonexistant",
 	})
 	assert.Nil(res)
-	assert.Equal(uptime, time.Duration(0))
 	assert.Error(err)
 
 	// Invocation with normal namespace
-	res, uptime, err = model.GetNamespaceStats(NamespaceRequest{
+	res, err = model.GetNamespaceStats(NamespaceRequest{
 		NamespaceName: "test",
 	})
-	assert.True(len(res) >= 6)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
-	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
-	assert.NotEqual(res[memUsage].Hour.Average, uint64(0))
+	assert.True(len(res.ByName) >= 6)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.Max)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res.ByName[memUsage].Minute.Average, uint64(0))
+	assert.NotEqual(res.ByName[memUsage].Hour.Average, uint64(0))
 	assert.NoError(err)
 }
 
@@ -741,38 +739,36 @@ func TestGetPodStats(t *testing.T) {
 	model.Update(source_cache)
 
 	// Invocation with nonexistant namespace
-	res, uptime, err := model.GetPodStats(PodRequest{
+	res, err := model.GetPodStats(PodRequest{
 		NamespaceName: "nonexistant",
 		PodName:       "pod1",
 	})
 	assert.Nil(res)
-	assert.Equal(uptime, time.Duration(0))
 	assert.Error(err)
 
 	// Invocation with normal namespace and nonexistant pod
-	res, uptime, err = model.GetPodStats(PodRequest{
+	res, err = model.GetPodStats(PodRequest{
 		NamespaceName: "test",
 		PodName:       "nonexistant",
 	})
 	assert.Nil(res)
-	assert.Equal(uptime, time.Duration(0))
 	assert.Error(err)
 
 	// Normal Invocation
-	res, uptime, err = model.GetPodStats(PodRequest{
+	res, err = model.GetPodStats(PodRequest{
 		NamespaceName: "test",
 		PodName:       "pod1",
 	})
-	assert.True(len(res) >= 6)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
-	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
-	assert.NotEqual(res[memUsage].Hour.Average, uint64(0))
+	assert.True(len(res.ByName) >= 6)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.Max)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res.ByName[memUsage].Minute.Average, uint64(0))
+	assert.NotEqual(res.ByName[memUsage].Hour.Average, uint64(0))
 
-	assert.Equal(res[cpuLimit].Minute.Average, res[cpuLimit].Minute.Max)
-	assert.Equal(res[cpuLimit].Minute.Average, res[cpuLimit].Minute.NinetyFifth)
-	assert.NotEqual(res[cpuLimit].Minute.Average, uint64(0))
-	assert.NotEqual(res[cpuLimit].Hour.Average, uint64(0))
+	assert.Equal(res.ByName[cpuLimit].Minute.Average, res.ByName[cpuLimit].Minute.Max)
+	assert.Equal(res.ByName[cpuLimit].Minute.Average, res.ByName[cpuLimit].Minute.NinetyFifth)
+	assert.NotEqual(res.ByName[cpuLimit].Minute.Average, uint64(0))
+	assert.NotEqual(res.ByName[cpuLimit].Hour.Average, uint64(0))
 	assert.NoError(err)
 }
 
@@ -786,47 +782,44 @@ func TestGetPodContainerStats(t *testing.T) {
 	model.Update(source_cache)
 
 	// Invocation with nonexistant namespace
-	res, uptime, err := model.GetPodContainerStats(PodContainerRequest{
+	res, err := model.GetPodContainerStats(PodContainerRequest{
 		NamespaceName: "nonexistant",
 		PodName:       "pod1",
 		ContainerName: "container1",
 	})
 	assert.Nil(res)
-	assert.Equal(uptime, time.Duration(0))
 	assert.Error(err)
 
 	// Invocation with normal namespace and nonexistant pod
-	res, uptime, err = model.GetPodContainerStats(PodContainerRequest{
+	res, err = model.GetPodContainerStats(PodContainerRequest{
 		NamespaceName: "test",
 		PodName:       "nonexistant",
 		ContainerName: "container1",
 	})
 	assert.Nil(res)
-	assert.Equal(uptime, time.Duration(0))
 	assert.Error(err)
 
 	// Invocation with normal namespace and pod, but nonexistant container
-	res, uptime, err = model.GetPodContainerStats(PodContainerRequest{
+	res, err = model.GetPodContainerStats(PodContainerRequest{
 		NamespaceName: "test",
 		PodName:       "pod1",
 		ContainerName: "nonexistant",
 	})
 	assert.Nil(res)
-	assert.Equal(uptime, time.Duration(0))
 	assert.Error(err)
 
 	// Normal Invocation
-	res, uptime, err = model.GetPodContainerStats(PodContainerRequest{
+	res, err = model.GetPodContainerStats(PodContainerRequest{
 		NamespaceName: "test",
 		PodName:       "pod1",
 		ContainerName: "container1",
 	})
-	assert.True(len(res) >= 6)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
-	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
-	assert.NotEqual(res[memUsage].Minute.Max, uint64(0))
-	assert.NotEqual(res[memUsage].Minute.NinetyFifth, uint64(0))
+	assert.True(len(res.ByName) >= 6)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.Max)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res.ByName[memUsage].Minute.Average, uint64(0))
+	assert.NotEqual(res.ByName[memUsage].Minute.Max, uint64(0))
+	assert.NotEqual(res.ByName[memUsage].Minute.NinetyFifth, uint64(0))
 	assert.NoError(err)
 }
 
@@ -840,32 +833,30 @@ func TestGetFreeContainerStats(t *testing.T) {
 	model.Update(source_cache)
 
 	// Invocation with nonexistant node
-	res, uptime, err := model.GetFreeContainerStats(FreeContainerRequest{
+	res, err := model.GetFreeContainerStats(FreeContainerRequest{
 		NodeName:      "nonexistant",
 		ContainerName: "free_container1",
 	})
 	assert.Nil(res)
-	assert.Equal(uptime, time.Duration(0))
 	assert.Error(err)
 
 	// Invocation with normal node and nonexistant container
-	res, uptime, err = model.GetFreeContainerStats(FreeContainerRequest{
+	res, err = model.GetFreeContainerStats(FreeContainerRequest{
 		NodeName:      "hostname2",
 		ContainerName: "nonexistant",
 	})
 	assert.Nil(res)
-	assert.Equal(uptime, time.Duration(0))
 	assert.Error(err)
 
 	// Normal Invocation
-	res, uptime, err = model.GetFreeContainerStats(FreeContainerRequest{
+	res, err = model.GetFreeContainerStats(FreeContainerRequest{
 		NodeName:      "hostname2",
 		ContainerName: "free_container1",
 	})
-	assert.True(len(res) >= 6)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.Max)
-	assert.Equal(res[memUsage].Minute.Average, res[memUsage].Minute.NinetyFifth)
-	assert.NotEqual(res[memUsage].Minute.Average, uint64(0))
-	assert.NotEqual(res[memUsage].Hour.Average, uint64(0))
+	assert.True(len(res.ByName) >= 6)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.Max)
+	assert.Equal(res.ByName[memUsage].Minute.Average, res.ByName[memUsage].Minute.NinetyFifth)
+	assert.NotEqual(res.ByName[memUsage].Minute.Average, uint64(0))
+	assert.NotEqual(res.ByName[memUsage].Hour.Average, uint64(0))
 	assert.NoError(err)
 }

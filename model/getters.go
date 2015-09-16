@@ -427,88 +427,122 @@ func (rc *realModel) uptime(infotype *InfoType) time.Duration {
 }
 
 // getClusterStats extracts the derived stats and uptime for the Cluster entity.
-func (rc *realModel) GetClusterStats() (map[string]StatBundle, time.Duration, error) {
+func (rc *realModel) GetClusterStats() (*StatsResult, error) {
 	rc.lock.RLock()
 	defer rc.lock.RUnlock()
-	return getStats(rc.InfoType), rc.uptime(&rc.InfoType), nil
+	s, t := getStats(rc.InfoType)
+	res := &StatsResult{
+		ByName:    s,
+		Timestamp: t,
+		Uptime:    rc.uptime(&rc.InfoType),
+	}
+	return res, nil
 }
 
 // getNodeStats extracts the derived stats and uptime for a Node entity.
-func (rc *realModel) GetNodeStats(req NodeRequest) (map[string]StatBundle, time.Duration, error) {
+func (rc *realModel) GetNodeStats(req NodeRequest) (*StatsResult, error) {
 	rc.lock.RLock()
 	defer rc.lock.RUnlock()
 	node, ok := rc.Nodes[req.NodeName]
 	if !ok {
-		return nil, time.Duration(0), errInvalidNode
+		return nil, errInvalidNode
 	}
-
-	return getStats(node.InfoType), rc.uptime(&node.InfoType), nil
+	s, t := getStats(node.InfoType)
+	res := &StatsResult{
+		ByName:    s,
+		Timestamp: t,
+		Uptime:    rc.uptime(&node.InfoType),
+	}
+	return res, nil
 }
 
 // getNamespaceStats extracts the derived stats and uptime for a Namespace entity.
-func (rc *realModel) GetNamespaceStats(req NamespaceRequest) (map[string]StatBundle, time.Duration, error) {
+func (rc *realModel) GetNamespaceStats(req NamespaceRequest) (*StatsResult, error) {
 	rc.lock.RLock()
 	defer rc.lock.RUnlock()
 	ns, ok := rc.Namespaces[req.NamespaceName]
 	if !ok {
-		return nil, time.Duration(0), errNoSuchNamespace
+		return nil, errNoSuchNamespace
 	}
-
-	return getStats(ns.InfoType), rc.uptime(&ns.InfoType), nil
+	s, t := getStats(ns.InfoType)
+	res := &StatsResult{
+		ByName:    s,
+		Timestamp: t,
+		Uptime:    rc.uptime(&ns.InfoType),
+	}
+	return res, nil
 }
 
 // getPodStats extracts the derived stats and uptime for a Pod entity.
-func (rc *realModel) GetPodStats(req PodRequest) (map[string]StatBundle, time.Duration, error) {
+func (rc *realModel) GetPodStats(req PodRequest) (*StatsResult, error) {
 	rc.lock.RLock()
 	defer rc.lock.RUnlock()
 	ns, ok := rc.Namespaces[req.NamespaceName]
 	if !ok {
-		return nil, time.Duration(0), errNoSuchNamespace
+		return nil, errNoSuchNamespace
 	}
 
 	pod, ok := ns.Pods[req.PodName]
 	if !ok {
-		return nil, time.Duration(0), errNoSuchPod
+		return nil, errNoSuchPod
 	}
 
-	return getStats(pod.InfoType), rc.uptime(&pod.InfoType), nil
+	s, t := getStats(pod.InfoType)
+	res := &StatsResult{
+		ByName:    s,
+		Timestamp: t,
+		Uptime:    rc.uptime(&pod.InfoType),
+	}
+	return res, nil
 }
 
 // getPodContainerStats extracts the derived stats and uptime for a Pod Container entity.
-func (rc *realModel) GetPodContainerStats(req PodContainerRequest) (map[string]StatBundle, time.Duration, error) {
+func (rc *realModel) GetPodContainerStats(req PodContainerRequest) (*StatsResult, error) {
 	rc.lock.RLock()
 	defer rc.lock.RUnlock()
 	ns, ok := rc.Namespaces[req.NamespaceName]
 	if !ok {
-		return nil, time.Duration(0), errNoSuchNamespace
+		return nil, errNoSuchNamespace
 	}
 
 	pod, ok := ns.Pods[req.PodName]
 	if !ok {
-		return nil, time.Duration(0), errNoSuchPod
+		return nil, errNoSuchPod
 	}
 
 	ctr, ok := pod.Containers[req.ContainerName]
 	if !ok {
-		return nil, time.Duration(0), errNoSuchContainer
+		return nil, errNoSuchContainer
 	}
 
-	return getStats(ctr.InfoType), rc.uptime(&ctr.InfoType), nil
+	s, t := getStats(ctr.InfoType)
+	res := &StatsResult{
+		ByName:    s,
+		Timestamp: t,
+		Uptime:    rc.uptime(&ctr.InfoType),
+	}
+	return res, nil
 }
 
 // getFreeContainerStats extracts the derived stats and uptime for a Pod Container entity.
-func (rc *realModel) GetFreeContainerStats(req FreeContainerRequest) (map[string]StatBundle, time.Duration, error) {
+func (rc *realModel) GetFreeContainerStats(req FreeContainerRequest) (*StatsResult, error) {
 	rc.lock.RLock()
 	defer rc.lock.RUnlock()
 	node, ok := rc.Nodes[req.NodeName]
 	if !ok {
-		return nil, time.Duration(0), errInvalidNode
+		return nil, errInvalidNode
 	}
 
 	ctr, ok := node.FreeContainers[req.ContainerName]
 	if !ok {
-		return nil, time.Duration(0), errNoSuchContainer
+		return nil, errNoSuchContainer
 	}
 
-	return getStats(ctr.InfoType), rc.uptime(&ctr.InfoType), nil
+	s, t := getStats(ctr.InfoType)
+	res := &StatsResult{
+		ByName:    s,
+		Timestamp: t,
+		Uptime:    rc.uptime(&ctr.InfoType),
+	}
+	return res, nil
 }
