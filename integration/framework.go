@@ -69,10 +69,10 @@ type kubeFramework interface {
 
 	// Returns pod names in the cluster.
 	// TODO: Remove, or mix with namespace
-	GetPodNames() ([]string, error)
+	GetRunningPodNames() ([]string, error)
 
 	// Returns pods in the cluster.
-	GetPodList() (*api.PodList, error)
+	GetRunningPods() ([]*api.Pod, error)
 
 	WaitUntilPodRunning(ns string, podLabels map[string]string, timeout time.Duration) error
 	WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error
@@ -394,16 +394,17 @@ func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationContr
 		glog.V(2).Infof("Found no RCs identified by '%s'. Skipping deletion.", labelValue)
 		return nil
 	}
+
 	for _, rc := range list {
 		rc.Spec.Replicas = 0
 		if _, err := self.kubeClient.ReplicationControllers(ns).Update(rc); err != nil {
 			return fmt.Errorf("unable to modify replica count for rc %v: %v", inputRc.Name, err)
 		}
+
 		if err := self.kubeClient.ReplicationControllers(ns).Delete(rc.Name); err != nil {
 			return fmt.Errorf("unable to delete rc %v: %v", inputRc.Name, err)
 		}
 	}
-
 	return nil
 }
 
@@ -428,20 +429,28 @@ func (self *realKubeFramework) GetNodes() ([]string, error) {
 	return nodes, nil
 }
 
-func (self *realKubeFramework) GetPodList() (*api.PodList, error) {
-	return self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything(), fields.Everything())
+func (self *realKubeFramework) GetRunningPods() ([]*api.Pod, error) {
+	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything(), fields.Everything())
+	if err != nil {
+		return nil, err
+	}
+	pods := []*api.Pod{}
+	for _, pod := range podList.Items {
+		if pod.Status.Phase == api.PodRunning && !strings.Contains(pod.Spec.NodeName, "kubernetes-master") {
+			pods = append(pods, &pod)
+		}
+	}
+	return pods, nil
 }
 
-func (self *realKubeFramework) GetPodNames() ([]string, error) {
+func (self *realKubeFramework) GetRunningPodNames() ([]string, error) {
 	var pods []string
-	podList, err := self.GetPodList()
+	podList, err := self.GetRunningPods()
 	if err != nil {
 		return pods, err
 	}
-	for _, pod := range podList.Items {
-		if !strings.Contains(pod.Spec.NodeName, "kubernetes-master") {
-			pods = append(pods, string(pod.Name))
-		}
+	for _, pod := range podList {
+		pods = append(pods, string(pod.Name))
 	}
 	return pods, nil
 }
