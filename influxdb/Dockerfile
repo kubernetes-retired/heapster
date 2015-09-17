@@ -2,9 +2,9 @@
 FROM ubuntu:trusty
 
 # Install InfluxDB
-ENV INFLUXDB_VERSION 0.8.8
+ENV INFLUXDB_VERSION 0.8.9
 
-RUN apt-get update && apt-get install -y curl && curl -s -o /tmp/influxdb_latest_amd64.deb https://s3.amazonaws.com/influxdb/influxdb_${INFLUXDB_VERSION}_amd64.deb && \
+RUN apt-get update && apt-get install -y curl && curl -s -o /tmp/influxdb_latest_amd64.deb http://get.influxdb.org.s3.amazonaws.com/influxdb_${INFLUXDB_VERSION}_amd64.deb && \
   dpkg -i /tmp/influxdb_latest_amd64.deb && \
   rm /tmp/influxdb_latest_amd64.deb
 
