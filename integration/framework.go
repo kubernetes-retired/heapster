@@ -48,14 +48,14 @@ type kubeFramework interface {
 	// Creates a kube service.
 	CreateService(ns string, service *api.Service) (*api.Service, error)
 
-	// Deletes a kube service.
-	DeleteService(ns string, service *api.Service) error
+	// Creates a namespace.
+	CreateNs(ns *api.Namespace) (*api.Namespace, error)
 
 	// Creates a kube replication controller.
 	CreateRC(ns string, rc *api.ReplicationController) (*api.ReplicationController, error)
 
-	// Deletes a kube replication controller.
-	DeleteRC(ns string, rc *api.ReplicationController) error
+	// Deletes a namespace
+	DeleteNs(ns string) error
 
 	// Destroy cluster
 	DestroyCluster()
@@ -69,10 +69,10 @@ type kubeFramework interface {
 
 	// Returns pod names in the cluster.
 	// TODO: Remove, or mix with namespace
-	GetPodNames() ([]string, error)
+	GetRunningPodNames() ([]string, error)
 
 	// Returns pods in the cluster.
-	GetPodList() (*api.PodList, error)
+	GetRunningPods() ([]*api.Pod, error)
 
 	WaitUntilPodRunning(ns string, podLabels map[string]string, timeout time.Duration) error
 	WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error
@@ -145,7 +145,9 @@ func setupNewCluster(kubeBaseDir string) error {
 		glog.Errorf("failed to bring up cluster - %q\n%s", err, out)
 		return fmt.Errorf("failed to bring up cluster - %q", err)
 	}
-
+	glog.V(2).Info(string(out))
+	glog.V(2).Infof("Giving the cluster 30 sec to stabilize")
+	time.Sleep(30 * time.Second)
 	return nil
 }
 
@@ -355,56 +357,21 @@ func (self *realKubeFramework) CreateService(ns string, service *api.Service) (*
 	return newSvc, err
 }
 
-func (self *realKubeFramework) DeleteService(ns string, service *api.Service) error {
-	if _, err := self.kubeClient.Services(ns).Get(service.Name); err != nil {
-		glog.V(2).Infof("cannot find service %q. Skipping deletion.", service.Name)
+func (self *realKubeFramework) DeleteNs(ns string) error {
+	if _, err := self.kubeClient.Namespaces().Get(ns); err != nil {
+		glog.V(2).Infof("Cannot delete namespace %q. Skipping deletion.", ns)
 		return nil
 	}
+	return self.kubeClient.Namespaces().Delete(ns)
+}
 
-	return self.kubeClient.Services(ns).Delete(service.Name)
+func (self *realKubeFramework) CreateNs(ns *api.Namespace) (*api.Namespace, error) {
+	return self.kubeClient.Namespaces().Create(ns)
 }
 
 func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController) (*api.ReplicationController, error) {
 	rc.Namespace = ns
 	return self.kubeClient.ReplicationControllers(ns).Create(rc)
-}
-
-func (self *realKubeFramework) DeleteRC(ns string, inputRc *api.ReplicationController) error {
-	var list []*api.ReplicationController
-	labelValue := "heapster"
-	labelKeys := []string{"k8s-app", "name"}
-	for _, k := range labelKeys {
-		if val, e := inputRc.Labels[k]; e {
-			labelValue = val
-		}
-	}
-	for _, labelKey := range labelKeys {
-		selector := labels.Set(map[string]string{
-			labelKey: labelValue,
-		}).AsSelector()
-		rcList, err := self.kubeClient.ReplicationControllers(ns).List(selector)
-		if err != nil {
-			return fmt.Errorf("cannot list RCs by label %s=%s: %v", labelKey, labelValue, err)
-		}
-		for i := range rcList.Items {
-			list = append(list, &rcList.Items[i])
-		}
-	}
-	if len(list) < 1 {
-		glog.V(2).Infof("Found no RCs identified by '%s'. Skipping deletion.", labelValue)
-		return nil
-	}
-	for _, rc := range list {
-		rc.Spec.Replicas = 0
-		if _, err := self.kubeClient.ReplicationControllers(ns).Update(rc); err != nil {
-			return fmt.Errorf("unable to modify replica count for rc %v: %v", inputRc.Name, err)
-		}
-		if err := self.kubeClient.ReplicationControllers(ns).Delete(rc.Name); err != nil {
-			return fmt.Errorf("unable to delete rc %v: %v", inputRc.Name, err)
-		}
-	}
-
-	return nil
 }
 
 func (self *realKubeFramework) DestroyCluster() {
@@ -428,25 +395,34 @@ func (self *realKubeFramework) GetNodes() ([]string, error) {
 	return nodes, nil
 }
 
-func (self *realKubeFramework) GetPodList() (*api.PodList, error) {
-	return self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything(), fields.Everything())
-}
-
-func (self *realKubeFramework) GetPodNames() ([]string, error) {
-	var pods []string
-	podList, err := self.GetPodList()
+func (self *realKubeFramework) GetRunningPods() ([]*api.Pod, error) {
+	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything(), fields.Everything())
 	if err != nil {
-		return pods, err
+		return nil, err
 	}
+	pods := []*api.Pod{}
 	for _, pod := range podList.Items {
-		if !strings.Contains(pod.Spec.NodeName, "kubernetes-master") {
-			pods = append(pods, string(pod.Name))
+		if pod.Status.Phase == api.PodRunning && !strings.Contains(pod.Spec.NodeName, "kubernetes-master") {
+			pods = append(pods, &pod)
 		}
 	}
 	return pods, nil
 }
 
+func (self *realKubeFramework) GetRunningPodNames() ([]string, error) {
+	var pods []string
+	podList, err := self.GetRunningPods()
+	if err != nil {
+		return pods, err
+	}
+	for _, pod := range podList {
+		pods = append(pods, string(pod.Name))
+	}
+	return pods, nil
+}
+
 func (rkf *realKubeFramework) WaitUntilPodRunning(ns string, podLabels map[string]string, timeout time.Duration) error {
+	glog.V(2).Infof("Waiting for pod %v in %s...", podLabels, ns)
 	podsInterface := rkf.Client().Pods(ns)
 	for i := 0; i < int(timeout/time.Second); i++ {
 		selector := labels.Set(podLabels).AsSelector()
@@ -467,6 +443,7 @@ func (rkf *realKubeFramework) WaitUntilPodRunning(ns string, podLabels map[strin
 }
 
 func (rkf *realKubeFramework) WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error {
+	glog.V(2).Infof("Waiting for endpoints in service %s/%s", svc.Namespace, svc.Name)
 	for i := 0; i < int(timeout/time.Second); i++ {
 		e, err := rkf.Client().Endpoints(svc.Namespace).Get(svc.Name)
 		if err != nil {
