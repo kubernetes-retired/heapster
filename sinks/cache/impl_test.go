@@ -71,9 +71,11 @@ func TestGC(t *testing.T) {
 	f.Fuzz(&pods)
 	f.Fuzz(&containers)
 	for i := range pods {
+		pods[i].ID = fmt.Sprintf("ID-%d", i)
 		pods[i].Name = fmt.Sprintf("%d-%s", i, pods[i].Name)
 	}
 	for i := range containers {
+		containers[i].Hostname = fmt.Sprintf("Node-%d", i%5)
 		containers[i].Name = fmt.Sprintf("%d-%s", i, containers[i].Name)
 	}
 
