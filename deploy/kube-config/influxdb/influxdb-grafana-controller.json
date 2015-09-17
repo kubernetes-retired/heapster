@@ -22,7 +22,7 @@
 	    "spec": {
 		"containers": [
 		    {
-			"image": "kubernetes/heapster_influxdb:v0.3",
+			"image": "kubernetes/heapster_influxdb:v0.4",
 			"name": "influxdb",
 			"ports": [
 			    {
