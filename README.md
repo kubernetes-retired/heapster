@@ -13,7 +13,7 @@ Source configuration is documented [here](docs/source-configuration.md).
 
 ### Running Heapster on Kubernetes
 
-Heapster supports a pluggable storage backend. It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/) and [Google Cloud Logging](https://cloud.google.com/logging/). We welcome patches that add additional storage backends.
+Heapster supports a pluggable storage backend. It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/), [Google Cloud Logging](https://cloud.google.com/logging/) and [Hawkular](http://www.hawkular.org). We welcome patches that add additional storage backends.
 
 To run Heapster on a Kubernetes cluster with,
 - InfluxDB use [this guide](docs/influxdb.md). 
@@ -23,6 +23,10 @@ Take a look at the storage schema [here](docs/storage-schema.md).
 
 When Heapster is running on a Kubernetes cluster, the [Heapster Model](docs/model.md)
 can be used to extract aggregated metrics and derived stats for various Kubernetes cluster entities.
+
+### Running Heapster on Openshift
+
+Using Heapster to monitor an Openshift cluster requires some additional changes to the Kubernetes instructions to allow communication between the Heapster instance and Openshift's secured endpoints. To run a combination of Heapster and Hawkular-Metrics, follow [this guide](https://github.com/hawkular/hawkular-metrics/blob/master/containers/README.adoc). 
 
 ### Running Heapster on CoreOS
 

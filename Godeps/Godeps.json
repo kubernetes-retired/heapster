@@ -145,7 +145,7 @@
 		},
 		{
 			"ImportPath": "github.com/hawkular/hawkular-client-go/metrics",
-			"Rev": "06bf87e3e131208c321ebd5d21576d94809537a1"
+			"Rev": "58a3868088707267e6c0383bd40c579587779f9a"
 		},
 		{
 			"ImportPath": "github.com/imdario/mergo",
