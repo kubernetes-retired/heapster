@@ -92,12 +92,16 @@ UpdateLoop:
 func (eventSource *eventsSourceImpl) storeEventsInCache(events *kubeapi.EventList) error {
 	var internalEvents []*cache.Event
 	for _, event := range events.Items {
+		if string(event.Name) == "" {
+			glog.Errorf("Dropping kubernetes event. Name is missing: %+v", event)
+			continue
+		}
 		internalEvents = append(internalEvents,
 			&cache.Event{
 				Metadata: cache.Metadata{
 					Name:       event.Reason,
 					Namespace:  event.Namespace,
-					UID:        string(event.UID),
+					UID:        string(event.Name),
 					Labels:     event.Labels,
 					Hostname:   event.Source.Host,
 					LastUpdate: event.LastTimestamp.Time,
