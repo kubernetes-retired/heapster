@@ -36,12 +36,12 @@ import (
 )
 
 const (
-	kTestZone        = "us-central1-b"
 	targetTags       = "kubernetes-minion"
 	heapsterBuildDir = "../deploy/docker"
 )
 
 var (
+	testZone               = flag.String("test_zone", "us-central1-b", "GCE zone where the test will be executed")
 	kubeVersions           = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
 	heapsterControllerFile = flag.String("heapster_controller", "../deploy/kube-config/standalone-test/heapster-controller.json", "Path to heapster replication controller file.")
 	heapsterServiceFile    = flag.String("heapster_service", "../deploy/kube-config/standalone-test/heapster-service.json", "Path to heapster service file.")
@@ -102,7 +102,7 @@ func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kub
 	return nil
 }
 
-func removeHeapsterImage(fm kubeFramework) error {
+func removeHeapsterImage(fm kubeFramework, zone string) error {
 	glog.V(2).Infof("Removing heapster image.")
 	if err := removeDockerImage(*heapsterImage); err != nil {
 		glog.Errorf("Failed to remove Heapster image: %v", err)
@@ -112,7 +112,7 @@ func removeHeapsterImage(fm kubeFramework) error {
 	if nodes, err := fm.GetNodes(); err == nil {
 		for _, node := range nodes {
 			host := strings.Split(node, ".")[0]
-			cleanupRemoteHost(host, kTestZone)
+			cleanupRemoteHost(host, zone)
 		}
 	} else {
 		glog.Errorf("failed to cleanup nodes - %v", err)
@@ -120,7 +120,7 @@ func removeHeapsterImage(fm kubeFramework) error {
 	return nil
 }
 
-func buildAndPushHeapsterImage(hostnames []string) error {
+func buildAndPushHeapsterImage(hostnames []string, zone string) error {
 	glog.V(2).Info("Building and pushing Heapster image...")
 	curwd, err := os.Getwd()
 	if err != nil {
@@ -133,7 +133,7 @@ func buildAndPushHeapsterImage(hostnames []string) error {
 		return err
 	}
 	for _, host := range hostnames {
-		if err := copyDockerImage(*heapsterImage, host, kTestZone); err != nil {
+		if err := copyDockerImage(*heapsterImage, host, zone); err != nil {
 			return err
 		}
 	}
@@ -159,7 +159,7 @@ func getHeapsterRcAndSvc(fm kubeFramework) (*kube_api.Service, *kube_api.Replica
 	return svc, rc, nil
 }
 
-func buildAndPushDockerImages(fm kubeFramework) error {
+func buildAndPushDockerImages(fm kubeFramework, zone string) error {
 	if *avoidBuild {
 		return nil
 	}
@@ -172,7 +172,7 @@ func buildAndPushDockerImages(fm kubeFramework) error {
 		hostnames = append(hostnames, strings.Split(node, ".")[0])
 	}
 
-	return buildAndPushHeapsterImage(hostnames)
+	return buildAndPushHeapsterImage(hostnames, zone)
 }
 
 const (
@@ -605,12 +605,12 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 	return nil
 }
 
-func apiTest(kubeVersion string) error {
+func apiTest(kubeVersion string, zone string) error {
 	fm, err := newKubeFramework(kubeVersion)
 	if err != nil {
 		return err
 	}
-	if err := buildAndPushDockerImages(fm); err != nil {
+	if err := buildAndPushDockerImages(fm, zone); err != nil {
 		return err
 	}
 	// Create heapster pod and service.
@@ -688,7 +688,7 @@ func apiTest(kubeVersion string) error {
 		time.Sleep(time.Second * 10)
 	}
 	deleteAll(fm, ns, svc, rc)
-	removeHeapsterImage(fm)
+	removeHeapsterImage(fm, zone)
 	return nil
 }
 
@@ -699,11 +699,11 @@ func runApiTest() error {
 	}
 	defer os.RemoveAll(tempDir)
 	if *kubeVersions == "" {
-		return apiTest("")
+		return apiTest("", *testZone)
 	}
 	kubeVersionsList := strings.Split(*kubeVersions, ",")
 	for _, kubeVersion := range kubeVersionsList {
-		if err := apiTest(kubeVersion); err != nil {
+		if err := apiTest(kubeVersion, *testZone); err != nil {
 			return err
 		}
 	}
