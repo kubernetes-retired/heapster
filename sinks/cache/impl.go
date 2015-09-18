@@ -198,6 +198,7 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 			ce.Metadata = Metadata{
 				Name:     cont.Name,
 				Hostname: cont.Hostname,
+				Labels:   cont.Spec.Labels,
 			}
 			ce.Image = cont.Image
 			ce.Metadata.LastUpdate = storeSpecAndStats(ce, cont)
@@ -240,6 +241,7 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 				ne.freeContainers[cont.Name] = ce
 			}
 		}
+		ce.Metadata.Labels = cont.Spec.Labels
 		ce.Image = cont.Image
 		ce.Metadata.LastUpdate = storeSpecAndStats(ce, cont)
 		ce.lastUpdated = now
