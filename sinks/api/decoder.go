@@ -15,6 +15,7 @@
 package v1
 
 import (
+	"fmt"
 	"time"
 
 	"k8s.io/heapster/sinks/cache"
@@ -94,6 +95,12 @@ func (self *decoder) getContainerMetrics(container *cache.ContainerElement, labe
 	}
 	labels[LabelContainerName.Key] = container.Name
 	labels[LabelContainerBaseImage.Key] = container.Image
+	// Add container specific labels along with existing labels.
+	containerLabels := util.LabelsToString(container.Labels, ",")
+	if labels[LabelLabels.Key] != "" {
+		containerLabels = fmt.Sprintf("%s,%s", labels[LabelLabels.Key], containerLabels)
+	}
+	labels[LabelLabels.Key] = containerLabels
 
 	if _, exists := labels[LabelHostID.Key]; !exists {
 		labels[LabelHostID.Key] = container.ExternalID
