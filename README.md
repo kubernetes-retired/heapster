@@ -2,27 +2,31 @@
 
 [![GoDoc](https://godoc.org/k8s.io/heapster?status.svg)](https://godoc.org/k8s.io/heapster) [![Build Status](https://travis-ci.org/kubernetes/heapster.svg?branch=master)](https://travis-ci.org/kubernetes/heapster)
 
-Heapster enables Container Cluster Monitoring. 
+Heapster enables Container Cluster Monitoring and Performance Analysis.
 
-Internally, heapster uses [cAdvisor](https://github.com/google/cadvisor) for compute resource usage metrics.
+Heapster currently supports [Kubernetes](https://github.com/kubernetes/kubernetes) and CoreOS natively.
+It can be extended to support other cluster management solutions easily.
+Heapster collects and interprets various signals like compute resource usage, lifecycle events, etc, and exports cluster metrics via [REST endpoints](docs/model.md).
+**Note: Some of the endpoints are only valid in Kubernetes clusters**
 
-Heapster currently supports [Kubernetes](https://github.com/kubernetes/kubernetes) and CoreOS natively. It can be extended to support other cluster management solutions easily.
-While running in a Kube cluster, heapster collects compute resource usage of all pods and nodes.
+Heapster supports multiple sources of data.
+More information [here](docs/source-configuration.md).
 
-Source configuration is documented [here](docs/source-configuration.md).
+Heapster supports a pluggable storage backend.
+It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/), [Google Cloud Logging](https://cloud.google.com/logging/), and [Hawkular](http://www.hawkular.org)
+We welcome patches that add additional storage backends.
+Documentation on storage sinks [here](docs/sink-configuration.md)
+The current version of Storage Schema is documented [here](docs/storage-schema.md).
 
 ### Running Heapster on Kubernetes
-
-Heapster supports a pluggable storage backend. It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/) and [Google Cloud Logging](https://cloud.google.com/logging/). We welcome patches that add additional storage backends.
 
 To run Heapster on a Kubernetes cluster with,
 - InfluxDB use [this guide](docs/influxdb.md). 
 - Google Cloud Monitoring and Google Cloud Logging use [this guide](docs/google.md).
 
-Take a look at the storage schema [here](docs/storage-schema.md).
+### Running Heapster on Openshift
 
-When Heapster is running on a Kubernetes cluster, the [Heapster Model](docs/model.md)
-can be used to extract aggregated metrics and derived stats for various Kubernetes cluster entities.
+Using Heapster to monitor an Openshift cluster requires some additional changes to the Kubernetes instructions to allow communication between the Heapster instance and Openshift's secured endpoints. To run a combination of Heapster and Hawkular-Metrics, follow [this guide](https://github.com/hawkular/hawkular-metrics/blob/master/containers/README.adoc). 
 
 ### Running Heapster on CoreOS
 

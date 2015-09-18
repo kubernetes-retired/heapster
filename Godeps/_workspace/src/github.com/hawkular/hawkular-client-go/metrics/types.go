@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -17,7 +18,7 @@ const (
 var longForm = []string{
 	"gauges",
 	"availability",
-	"counter",
+	"counters",
 	"metrics",
 }
 
@@ -49,12 +50,43 @@ func (self MetricType) shortForm() string {
 	return shortForm[self]
 }
 
+// Custom unmarshaller
+func (self *MetricType) UnmarshalJSON(b []byte) error {
+	var f interface{}
+	err := json.Unmarshal(b, &f)
+	if err != nil {
+		return err
+	}
+
+	if str, ok := f.(string); ok {
+		for i, v := range shortForm {
+			if str == v {
+				*self = MetricType(i)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+func (self MetricType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(self.String())
+}
+
+type SortKey struct {
+	Tenant string
+	Type   MetricType
+}
+
 // Hawkular-Metrics external structs
+// Do I need external.. hmph.
 
 type MetricHeader struct {
-	Type MetricType  `json:"-"`
-	Id   string      `json:"id"`
-	Data []Datapoint `json:"data"`
+	Tenant string      `json:"-"`
+	Type   MetricType  `json:"-"`
+	Id     string      `json:"id"`
+	Data   []Datapoint `json:"data"`
 }
 
 // Value should be convertible to float64 for numeric values
@@ -70,7 +102,8 @@ type HawkularError struct {
 }
 
 type MetricDefinition struct {
-	Type          MetricType        `json:"-"`
+	Tenant        string            `json:"-"`
+	Type          MetricType        `json:"type,omitempty"`
 	Id            string            `json:"id"`
 	Tags          map[string]string `json:"tags,omitempty"`
 	RetentionTime int               `json:"dataRetention,omitempty"`
