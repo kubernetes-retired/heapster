@@ -538,70 +538,127 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 		return err
 	}
 	if len(podList) == 0 {
-		return fmt.Errorf("Empty pod list")
+		return fmt.Errorf("empty pod list")
 	}
+	nodeList, err := fm.GetNodes()
+	if err != nil {
+		return err
+	}
+	if len(nodeList) == 0 {
+		return fmt.Errorf(("empty node list"))
+	}
+
+	metricUrlsToCheck := []string{}
+	batchMetricsUrlsToCheck := []string{}
+	stringUrlsToCheck := []string{}
+	entityListEntryUrlsToCheck := []string{}
+	statsUrlsToCheck := []string{}
+
+	metricUrlsToCheck = append(metricUrlsToCheck,
+		fmt.Sprintf("/api/v1/model/metrics/%s", "cpu-usage"),
+	)
+
+	entityListEntryUrlsToCheck = append(entityListEntryUrlsToCheck,
+		"/api/v1/model/nodes",
+		"/api/v1/model/namespaces",
+	)
+
+	stringUrlsToCheck = append(stringUrlsToCheck,
+		"/api/v1/model/",
+		"/api/v1/model/metrics",
+	)
+
+	statsUrlsToCheck = append(statsUrlsToCheck,
+		"/api/v1/model/stats/",
+	)
+
+	for _, node := range nodeList {
+		metricUrlsToCheck = append(metricUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/nodes/%s/metrics/%s", node, "cpu-usage"),
+		)
+
+		stringUrlsToCheck = append(stringUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/nodes/%s", node),
+			fmt.Sprintf("/api/v1/model/nodes/%s/metrics", node),
+		)
+
+		statsUrlsToCheck = append(statsUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/nodes/%s/stats", node),
+		)
+
+		entityListEntryUrlsToCheck = append(entityListEntryUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/nodes/%s/pods", node),
+		)
+	}
+
 	for _, pod := range podList {
 		containerName := pod.Spec.Containers[0].Name
 
-		metricUrlsToCheck := []string{
+		metricUrlsToCheck = append(metricUrlsToCheck,
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/metrics/%s", pod.Namespace, pod.Name, "cpu-usage"),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/metrics/%s", pod.Namespace, pod.Name, containerName, "cpu-usage"),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/metrics/%s", pod.Namespace, "cpu-usage"),
-		}
-		for _, url := range metricUrlsToCheck {
-			_, err := getMetricResult(fm, svc, url)
-			if err != nil {
-				return fmt.Errorf("error while querying %s: %v", url, err)
-			}
-		}
+		)
 
-		_, err = getMetricResultList(fm, svc, fmt.Sprintf("/api/v1/model/namespaces/%s/pod-list/%s,%s/metrics/%s", pod.Namespace, pod.Name, pod.Name, "cpu-usage"))
-		if err != nil {
-			return fmt.Errorf("error while getting metrics list for %s/%s: %v", pod.Namespace, pod.Name, err)
-		}
+		batchMetricsUrlsToCheck = append(batchMetricsUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/namespaces/%s/pod-list/%s,%s/metrics/%s", pod.Namespace, pod.Name, pod.Name, "cpu-usage"))
 
-		// Ok, metrics present lets do the next checks
-
-		stringUrlsToCheck := []string{
+		stringUrlsToCheck = append(stringUrlsToCheck,
 			fmt.Sprintf("/api/v1/model/namespaces/%s", pod.Namespace),
+			fmt.Sprintf("/api/v1/model/namespaces/%s/metrics", pod.Namespace),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s", pod.Namespace, pod.Name),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/metrics", pod.Namespace, pod.Name),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s", pod.Namespace, pod.Name, containerName),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/metrics", pod.Namespace, pod.Name, containerName),
-		}
+		)
 
-		entityListEntryUrlsToCheck := []string{
+		entityListEntryUrlsToCheck = append(entityListEntryUrlsToCheck,
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods", pod.Namespace),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers", pod.Namespace, pod.Name),
-		}
+		)
 
-		statsUrlsToCheck := []string{
+		statsUrlsToCheck = append(statsUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/namespaces/%s/stats", pod.Namespace),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/stats", pod.Namespace, pod.Name),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/stats", pod.Namespace, pod.Name, containerName),
-		}
-
-		for _, url := range stringUrlsToCheck {
-			_, err := getStringResult(fm, svc, url)
-			if err != nil {
-				return fmt.Errorf("error while querying %s: %v", url, err)
-			}
-		}
-
-		for _, url := range statsUrlsToCheck {
-			_, err := getStatsResponse(fm, svc, url)
-			if err != nil {
-				return fmt.Errorf("error while querying %s: %v", url, err)
-			}
-		}
-
-		for _, url := range entityListEntryUrlsToCheck {
-			_, err := getEntityListEntry(fm, svc, url)
-			if err != nil {
-				return fmt.Errorf("error while querying %s: %v", url, err)
-			}
-		}
-
+		)
 	}
+
+	for _, url := range metricUrlsToCheck {
+		_, err := getMetricResult(fm, svc, url)
+		if err != nil {
+			return fmt.Errorf("error while querying %s: %v", url, err)
+		}
+	}
+
+	for _, url := range batchMetricsUrlsToCheck {
+		_, err := getMetricResultList(fm, svc, url)
+		if err != nil {
+			return fmt.Errorf("error while querying %s: %v", url, err)
+		}
+	}
+
+	for _, url := range stringUrlsToCheck {
+		_, err := getStringResult(fm, svc, url)
+		if err != nil {
+			return fmt.Errorf("error while querying %s: %v", url, err)
+		}
+	}
+
+	for _, url := range statsUrlsToCheck {
+		_, err := getStatsResponse(fm, svc, url)
+		if err != nil {
+			return fmt.Errorf("error while querying %s: %v", url, err)
+		}
+	}
+
+	for _, url := range entityListEntryUrlsToCheck {
+		_, err := getEntityListEntry(fm, svc, url)
+		if err != nil {
+			return fmt.Errorf("error while querying %s: %v", url, err)
+		}
+	}
+
 	return nil
 }
 
