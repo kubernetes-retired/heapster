@@ -11,6 +11,7 @@ heapster can store data into multiple sinks at once.
 ## Current sinks
 ### InfluxDB
 This sink supports both monitoring metrics and events.
+*Supports InfluxDB versions v0.9 and above*
 To use the InfluxDB sink add the following flag:
 ```
 --sink=influxdb:<INFLUXDB_URL>[?<INFLUXDB_OPTIONS>]
@@ -26,7 +27,7 @@ The following options are available:
 * `user` - InfluxDB username (default: `root`)
 * `pw` - InfluxDB password (default: `root`)
 * `db` - InfluxDB Database name (default: `k8s`)
-* `avoidColumns` - When set to `true`, labels are folded into the series name (default: `false`)
+* `secure` - Connect securely to InfluxDB (default: `false`)
 
 
 ### Google Cloud Monitoring

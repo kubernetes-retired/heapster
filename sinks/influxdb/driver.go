@@ -28,56 +28,65 @@ import (
 	influxdb "github.com/influxdb/influxdb/client"
 	"k8s.io/heapster/extpoints"
 	sink_api "k8s.io/heapster/sinks/api"
-	"k8s.io/heapster/util"
+	"k8s.io/heapster/version"
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
-type influxDBClient interface {
-	WriteSeriesWithTimePrecision(series []*influxdb.Series, timePrecision influxdb.TimePrecision) error
-	GetDatabaseList() ([]map[string]interface{}, error)
-	CreateDatabase(name string) error
-	DisableCompression()
+type influxdbClient interface {
+	Write(influxdb.BatchPoints) (*influxdb.Response, error)
+	Query(influxdb.Query) (*influxdb.Response, error)
+	Ping() (time.Duration, string, error)
 }
 
 type influxdbSink struct {
-	client    influxDBClient
-	stateLock sync.RWMutex
+	client influxdbClient
+	sync.RWMutex
 	// TODO(rjnagal): switch to atomic if writeFailures is the only protected data.
 	writeFailures int // guarded by stateLock
-	seqNum        metricSequenceNum
 	c             config
+	dbExists      bool
 }
 
 type config struct {
-	user         string
-	password     string
-	host         string
-	dbName       string
-	avoidColumns bool
+	user     string
+	password string
+	host     string
+	dbName   string
+	secure   bool
 }
 
 const (
-	eventsSeriesName = "log/events"
+	eventMeasurementName = "log/events"
 	// Attempt database creation maxRetries times before quitting.
 	maxRetries = 20
 	// Sleep for waitDuration between database creation retries.
 	waitDuration = 30 * time.Second
+	// Value Field name
+	valueField = "value"
+	// Event special tags
+	eventUID        = "uid"
+	dbNotFoundError = "database not found"
 )
 
-func (self *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
-	// Create tags once influxDB v0.9.0 is released.
+var (
+	eventPodID   = sink_api.LabelPodId.Key
+	eventPodName = sink_api.LabelPodName.Key
+	eventHost    = sink_api.LabelHostname.Key
+)
+
+func (sink *influxdbSink) Register(metrics []sink_api.MetricDescriptor) error {
+	if err := sink.createDatabase(); err != nil {
+		glog.Error(err)
+	}
+
 	return nil
 }
 
-func (self *influxdbSink) Unregister(metrics []sink_api.MetricDescriptor) error {
-	// Like Register
+func (sink *influxdbSink) Unregister(metrics []sink_api.MetricDescriptor) error {
 	return nil
 }
 
-func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influxdb.Series {
-	columns := []string{}
-	values := []interface{}{}
-	// TODO: move labels to tags once v0.9.0 is released.
+func (sink *influxdbSink) metricToPoint(timeseries *sink_api.Timeseries) influxdb.Point {
 	seriesName := timeseries.Point.Name
 	if timeseries.MetricDescriptor.Units.String() != "" {
 		seriesName = fmt.Sprintf("%s_%s", seriesName, timeseries.MetricDescriptor.Units.String())
@@ -85,101 +94,82 @@ func (self *influxdbSink) metricToSeries(timeseries *sink_api.Timeseries) *influ
 	if timeseries.MetricDescriptor.Type.String() != "" {
 		seriesName = fmt.Sprintf("%s_%s", seriesName, timeseries.MetricDescriptor.Type.String())
 	}
-
-	// Add the real metric value.
-	columns = append(columns, "value")
-	values = append(values, timeseries.Point.Value)
-	// Append labels.
-	if !self.c.avoidColumns {
-		for key, value := range timeseries.Point.Labels {
-			columns = append(columns, key)
-			values = append(values, value)
-		}
-	} else {
-		seriesName = strings.Replace(seriesName, "/", "_", -1)
-		seriesName = fmt.Sprintf("%s_%s", util.LabelsToString(timeseries.Point.Labels, "_"), seriesName)
+	point := influxdb.Point{
+		Measurement: seriesName,
+		Tags:        make(map[string]string, len(timeseries.Point.Labels)),
+		Fields: map[string]interface{}{
+			"value": timeseries.Point.Value,
+		},
+		Time: timeseries.Point.End.UTC(),
 	}
-	// Add timestamp.
-	columns = append(columns, "time")
-	values = append(values, timeseries.Point.End.Unix())
-	// Ass sequence number
-	columns = append(columns, "sequence_number")
-	values = append(values, self.seqNum.Get(seriesName))
+	// Append labels.
+	for key, value := range timeseries.Point.Labels {
+		if value != "" {
+			point.Tags[key] = value
+		}
+	}
 
-	return self.newSeries(seriesName, columns, values)
-}
-
-var eventColumns = []string{
-	"time",                     // Column 0
-	"sequence_number",          // Column 1
-	sink_api.LabelPodId.Key,    // Column 2
-	sink_api.LabelPodName.Key,  // Column 3
-	sink_api.LabelHostname.Key, // Column 4
-	"value",                    // Column 5
+	return point
 }
 
 // Stores events into the backend.
 func (sink *influxdbSink) StoreEvents(events []kube_api.Event) error {
-	dataPoints := []*influxdb.Series{}
+	if err := sink.createDatabase(); err != nil {
+		return err
+	}
 	if events == nil || len(events) <= 0 {
 		return nil
 	}
-	if !sink.c.avoidColumns {
-		dataPoint, err := sink.storeEventsColumns(events)
-		if err != nil {
-			glog.Errorf("failed to parse events: %v", err)
-			return err
-		}
-		dataPoints = append(dataPoints, dataPoint)
-	} else {
-		for _, event := range events {
-			dataPoint, err := sink.storeEventNoColumns(event)
-			if err != nil {
-				glog.Errorf("failed to parse events: %v", err)
-				return err
-			}
-			dataPoints = append(dataPoints, dataPoint)
-		}
-	}
-	err := sink.client.WriteSeriesWithTimePrecision(dataPoints, influxdb.Millisecond)
+	points, err := sink.eventsToPoints(events)
 	if err != nil {
+		glog.Errorf("failed to parse events: %v", err)
+		return err
+	}
+	bp := influxdb.BatchPoints{
+		Points:   points,
+		Database: sink.c.dbName,
+	}
+	if _, err = sink.client.Write(bp); err != nil {
+		if strings.Contains(err.Error(), dbNotFoundError) {
+			sink.dbExists = false
+		}
 		glog.Errorf("failed to write events to influxDB - %s", err)
 		sink.recordWriteFailure()
-	} else {
-		glog.V(1).Info("Successfully flushed events to influxDB")
+		return err
 	}
-	return err
-
+	glog.V(4).Info("Successfully flushed events to influxDB")
+	return nil
 }
 
-func (sink *influxdbSink) storeEventsColumns(events []kube_api.Event) (*influxdb.Series, error) {
+func (sink *influxdbSink) eventsToPoints(events []kube_api.Event) ([]influxdb.Point, error) {
 	if events == nil || len(events) <= 0 {
 		return nil, nil
 	}
-	points := make([][]interface{}, len(events))
-	for i, event := range events {
-		points[i] = make([]interface{}, len(eventColumns))
-		points[i][0] = event.LastTimestamp.Time.UTC().Round(time.Millisecond).Unix() // Column 0 - time
-		points[i][1] = hashUID(string(event.UID))                                    // Column 1 - sequence_number
-		if event.InvolvedObject.Kind == "Pod" {
-			points[i][2] = event.InvolvedObject.UID  // Column 2 - pod_id
-			points[i][3] = event.InvolvedObject.Name // Column 3 - pod_name
-		} else {
-			points[i][2] = "" // Column 2 - pod_id
-			points[i][3] = "" // Column 3 - pod_name
-		}
+	points := make([]influxdb.Point, 0, len(events))
+	for _, event := range events {
 		value, err := getEventValue(&event)
 		if err != nil {
 			return nil, err
 		}
-		points[i][4] = event.Source.Host // Column 4 - hostname
-		points[i][5] = value             // Column 5 - value
+
+		point := influxdb.Point{
+			Measurement: eventMeasurementName,
+			Time:        event.LastTimestamp.Time.UTC(),
+			Fields: map[string]interface{}{
+				valueField: value,
+			},
+			Tags: map[string]string{
+				eventUID: string(event.UID),
+			},
+		}
+		if event.InvolvedObject.Kind == "Pod" {
+			point.Tags[eventPodID] = string(event.InvolvedObject.UID)
+			point.Tags[eventPodName] = event.InvolvedObject.Name
+		}
+		point.Tags[eventHost] = event.Source.Host
+		points = append(points, point)
 	}
-	return &influxdb.Series{
-		Name:    eventsSeriesName,
-		Columns: eventColumns,
-		Points:  points,
-	}, nil
+	return points, nil
 }
 
 func hashUID(s string) uint64 {
@@ -188,55 +178,31 @@ func hashUID(s string) uint64 {
 	return h.Sum64()
 }
 
-func (sink *influxdbSink) storeEventNoColumns(event kube_api.Event) (*influxdb.Series, error) {
-	// Append labels to seriesName instead of adding extra columns
-	seriesName := strings.Replace(eventsSeriesName, "/", "_", -1)
-	labels := make(map[string]string)
-	if event.InvolvedObject.Kind == "Pod" {
-		labels[sink_api.LabelPodId.Key] = string(event.InvolvedObject.UID)
-		labels[sink_api.LabelPodName.Key] = event.InvolvedObject.Name
+func (sink *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) error {
+	var err error
+	if err = sink.createDatabase(); err != nil {
+		return err
 	}
-	labels[sink_api.LabelHostname.Key] = event.Source.Host
-	seriesName = fmt.Sprintf("%s_%s", util.LabelsToString(labels, "_"), seriesName)
-
-	columns := []string{}
-	columns = append(columns, "time")            // Column 0
-	columns = append(columns, "value")           // Column 1
-	columns = append(columns, "sequence_number") // Column 2
-
-	value, err := getEventValue(&event)
-	if err != nil {
-		return nil, err
-	}
-
-	// There's only one point per series for no columns
-	points := make([][]interface{}, 1)
-	points[0] = make([]interface{}, len(columns))
-	points[0][0] = event.LastTimestamp.Time.Round(time.Millisecond).Unix() // Column 0 - time
-	points[0][1] = sink.seqNum.Get(eventsSeriesName)                       // Column 1 - sequence_number
-	points[0][2] = value                                                   // Column 2 - value
-	return &influxdb.Series{
-		Name:    seriesName,
-		Columns: eventColumns,
-		Points:  points,
-	}, nil
-
-}
-
-func (self *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) error {
-	dataPoints := []*influxdb.Series{}
+	dataPoints := make([]influxdb.Point, 0, len(timeseries))
 	for index := range timeseries {
-		dataPoints = append(dataPoints, self.metricToSeries(&timeseries[index]))
+		dataPoints = append(dataPoints, sink.metricToPoint(&timeseries[index]))
 	}
-	// TODO: Group all datapoints belonging to a metric into a single series.
+	bp := influxdb.BatchPoints{
+		Points:          dataPoints,
+		Database:        sink.c.dbName,
+		RetentionPolicy: "default",
+	}
 	// TODO: Record the average time taken to flush data.
-	err := self.client.WriteSeriesWithTimePrecision(dataPoints, influxdb.Second)
-	if err != nil {
-		glog.Errorf("failed to write stats to influxDB - %s", err)
-		self.recordWriteFailure()
+	if _, err = sink.client.Write(bp); err != nil {
+		if strings.Contains(err.Error(), dbNotFoundError) {
+			sink.dbExists = false
+		}
+		glog.Errorf("failed to write stats to influxDB - %v", err)
+		sink.recordWriteFailure()
+		return err
 	}
-	glog.V(1).Info("flushed stats to influxDB")
-	return err
+	glog.V(4).Info("flushed stats to influxDB")
+	return nil
 }
 
 // Generate point value for event
@@ -248,90 +214,75 @@ func getEventValue(event *kube_api.Event) (string, error) {
 	return string(bytes), nil
 }
 
-// Returns a new influxdb series.
-func (self *influxdbSink) newSeries(seriesName string, columns []string, points []interface{}) *influxdb.Series {
-	out := &influxdb.Series{
-		Name:    seriesName,
-		Columns: columns,
-		// There's only one point for each stats
-		Points: make([][]interface{}, 1),
-	}
-	out.Points[0] = points
-	return out
+func (sink *influxdbSink) recordWriteFailure() {
+	sink.Lock()
+	defer sink.Unlock()
+	sink.writeFailures++
 }
 
-func (self *influxdbSink) recordWriteFailure() {
-	self.stateLock.Lock()
-	defer self.stateLock.Unlock()
-	self.writeFailures++
+func (sink *influxdbSink) getState() string {
+	sink.RLock()
+	defer sink.RUnlock()
+	return fmt.Sprintf("\tNumber of write failures: %d\n", sink.writeFailures)
 }
 
-func (self *influxdbSink) getState() string {
-	self.stateLock.RLock()
-	defer self.stateLock.RUnlock()
-	return fmt.Sprintf("\tNumber of write failures: %d\n", self.writeFailures)
-}
-
-func (self *influxdbSink) DebugInfo() string {
+func (sink *influxdbSink) DebugInfo() string {
 	desc := "Sink Type: InfluxDB\n"
-	desc += fmt.Sprintf("\tclient: Host %q, Database %q\n", self.c.host, self.c.dbName)
-	desc += self.getState()
+	desc += fmt.Sprintf("\tclient: Host %q, Database %q\n", sink.c.host, sink.c.dbName)
+	desc += sink.getState()
 	desc += "\n"
 	return desc
 }
 
-func (self *influxdbSink) Name() string {
+func (sink *influxdbSink) Name() string {
 	return "InfluxDB Sink"
 }
 
-func createDatabase(databaseName string, client *influxdb.Client) error {
-	createDatabase := true
-	if databases, err := client.GetDatabaseList(); err == nil {
-		for _, database := range databases {
-			if database["name"] == databaseName {
-				createDatabase = false
-				break
-			}
-		}
+func (sink *influxdbSink) createDatabase() error {
+	sink.Lock()
+	defer sink.Unlock()
+	if sink.dbExists {
+		return nil
 	}
-	if createDatabase {
-		if err := client.CreateDatabase(databaseName); err != nil {
+	q := influxdb.Query{
+		Command: fmt.Sprintf("CREATE DATABASE %s", sink.c.dbName),
+	}
+	if resp, err := sink.client.Query(q); err != nil {
+		if !(resp != nil && resp.Err != nil && strings.Contains(resp.Err.Error(), "already exists")) {
 			return fmt.Errorf("Database creation failed: %v", err)
 		}
-		glog.Infof("Created database %q on influxdb", databaseName)
 	}
+	sink.dbExists = true
+	glog.Infof("Created database %q on influxDB server at %q", sink.c.dbName, sink.c.host)
 	return nil
 }
 
 // Returns a thread-compatible implementation of influxdb interactions.
 func new(c config) (sink_api.ExternalSink, error) {
-	var err error
-	iConfig := &influxdb.ClientConfig{
-		Host:     c.host,
-		Username: c.user,
-		Password: c.password,
-		Database: c.dbName,
-		IsSecure: false,
+	url := &url.URL{
+		Scheme: "http",
+		Host:   c.host,
 	}
-	client, err := influxdb.NewClient(iConfig)
+	if c.secure {
+		url.Scheme = "https"
+	}
+
+	iConfig := &influxdb.Config{
+		URL:       *url,
+		Username:  c.user,
+		Password:  c.password,
+		UserAgent: fmt.Sprintf("%v/%v", "heapster", version.HeapsterVersion),
+	}
+	client, err := influxdb.NewClient(*iConfig)
+
 	if err != nil {
 		return nil, err
 	}
-	client.DisableCompression()
-	for i := 0; i < maxRetries; i++ {
-		err = createDatabase(c.dbName, client)
-		if err == nil {
-			break
-		}
-		glog.Errorf("%s. Retrying after 30 seconds", err)
-		time.Sleep(waitDuration)
-	}
-	if err != nil {
-		return nil, err
+	if _, _, err := client.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping InfluxDB server at %q - %v", c.host, err)
 	}
 	return &influxdbSink{
 		client: client,
-		seqNum: newMetricSequenceNum(),
 		c:      c,
 	}, nil
 }
@@ -342,11 +293,11 @@ func init() {
 
 func CreateInfluxdbSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSink, error) {
 	defaultConfig := config{
-		user:         "root",
-		password:     "root",
-		host:         "localhost:8086",
-		dbName:       "k8s",
-		avoidColumns: false,
+		user:     "root",
+		password: "root",
+		host:     "localhost:8086",
+		dbName:   "k8s",
+		secure:   false,
 	}
 
 	if len(uri.Host) > 0 {
@@ -362,12 +313,12 @@ func CreateInfluxdbSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.Exte
 	if len(opts["db"]) >= 1 {
 		defaultConfig.dbName = opts["db"][0]
 	}
-	if len(opts["avoidColumns"]) >= 1 {
-		val, err := strconv.ParseBool(opts["avoidColumns"][0])
+	if len(opts["secure"]) >= 1 {
+		val, err := strconv.ParseBool(opts["secure"][0])
 		if err != nil {
-			return nil, fmt.Errorf("invalid value %q for option 'avoidColumns' passed to influxdb sink", opts["avoidColumns"][0])
+			return nil, fmt.Errorf("failed to parse `secure` flag - %v", err)
 		}
-		defaultConfig.avoidColumns = val
+		defaultConfig.secure = val
 	}
 	sink, err := new(defaultConfig)
 	if err != nil {

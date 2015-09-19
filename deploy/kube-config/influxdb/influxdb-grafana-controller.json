@@ -20,9 +20,15 @@
 		}
 	    },
 	    "spec": {
+		"volumes": [
+		    {
+			"name": "influxdb-storage",
+			"emptyDir": {}
+		    }
+		],
 		"containers": [
 		    {
-			"image": "kubernetes/heapster_influxdb:v0.4",
+			"image": "kubernetes/heapster_influxdb:v0.5",
 			"name": "influxdb",
 			"ports": [
 			    {
@@ -32,6 +38,12 @@
 			    {
 				"containerPort": 8086,
 				"hostPort": 8086
+			    }
+			],
+			"volumeMounts": [
+			    {
+				"mountPath": "/data",
+				"name": "influxdb-storage"
 			    }
 			]
 		    },

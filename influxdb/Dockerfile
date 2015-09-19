@@ -1,24 +1,21 @@
-# influxdb
-FROM ubuntu:trusty
+FROM ubuntu
+
+MAINTAINER Vishnu kannan "<vishnuk@google.com>"
 
 # Install InfluxDB
-ENV INFLUXDB_VERSION 0.8.9
+ENV INFLUXDB_VERSION 0.9.4.1
 
-RUN apt-get update && apt-get install -y curl && curl -s -o /tmp/influxdb_latest_amd64.deb http://get.influxdb.org.s3.amazonaws.com/influxdb_${INFLUXDB_VERSION}_amd64.deb && \
-  dpkg -i /tmp/influxdb_latest_amd64.deb && \
-  rm /tmp/influxdb_latest_amd64.deb
+RUN apt-get update && apt-get install -y curl && mkdir /app && curl -s -o /app/influxdb_latest_amd64.deb https://s3.amazonaws.com/influxdb/influxdb_${INFLUXDB_VERSION}_amd64.deb && \
+  dpkg -i /app/influxdb_latest_amd64.deb && \
+  rm /app/influxdb_latest_amd64.deb
 
-ADD config.toml /config/config.toml
-ADD collectd-types.db /config/types.db
-ADD shardSpace.json /config/shardSpace.json
+ENV PATH=/opt/influxdb:$PATH
 
-ADD run.sh /run.sh
-RUN chmod +x /run.sh
+ADD config.toml /etc/influxdb.toml
 
-ENV PRE_CREATE_DB k8s;grafana
-
-EXPOSE 8083 8086 8084 8090 8099
+# admin, http, udp, cluster, graphite, opentsdb, collectd
+EXPOSE 8083 8086 8086/udp 8088 2003 4242 25826
 
 VOLUME ["/data"]
 
-CMD ["/run.sh"]
+ENTRYPOINT ["influxd", "--config", "/etc/influxdb.toml"]
