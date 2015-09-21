@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.18.1 (9-18-2015)
+- Avoid using UIDs for Kubernetes events.
+- Export container labels.
+- Hawkular sink upgrades
+
 ## 0.18.0
 - Cluster Model APIs enabled by default
 - Garbage collection in the cluster model
