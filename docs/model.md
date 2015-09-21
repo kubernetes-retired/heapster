@@ -11,16 +11,16 @@ TODO(afein): remove NOTICE prior to next release
 ## Usage
 
 The Heapster Model can be enabled by initializing Heapster with the `-use_model=true` flag. The resolution of the model can be configured through
-the `-model_resolution` flag, which will cause the model to store historical data at the specified resolution. If the `model_resolution` flag is not specified, the default
+the `-model_resolution` flag, which will cause the model to store historical data at the specified resolution. If the `-model_resolution` flag is not specified, the default
 resolution of 1 minute will be used.
 
 ## API documentation
 
 A detailed documentation of each API endpoint is listed below. 
 
-All endpoints ending in `/metrics/{metric-name}` can accept the optional `start` and `end` query parameters 
+All endpoints ending in `/metrics/{metric-name}/` can accept the optional `start` and `end` query parameters 
 that represent the start and end time of the requested timeseries. The result
-will be a list of (Timestamp, Value) pairs in the time range (start, end].
+will be a list of (Timestamp, Value) pairs in the time range [start, end].
 `start` and `end` are strings formatted according to RFC3339. If `start` is not
 defined, it is assumed as the zero Unix epoch time. If `end` is not defined,
 then all data later than `start` will be returned.
@@ -37,33 +37,33 @@ pairs for the requested cluster-level metric, between the time range specified b
 past minute, hour and day for each cluster metric.
 
 ### Node-level Metrics and Stats
-`/api/v1/model/nodes`: Returns a list of all available nodes, along
+`/api/v1/model/nodes/`: Returns a list of all available nodes, along
 with their latest CPU and Memory Usage values.
 
-`/api/v1/model/nodes/{node-name}`: Returns all browsable subpaths for a
+`/api/v1/model/nodes/{node-name}/`: Returns all browsable subpaths for a
 specific node.
 
-`/api/v1/model/nodes/{node-name}/pods`: Returns a list of all available pods
-under a given node, along with their latest CPU and Memory Usage values
+`/api/v1/model/nodes/{node-name}/pods/`: Returns a list of all available pods
+under a given node, along with their latest CPU and Memory Usage values.
 
 `/api/v1/model/nodes/{node-name}/metrics/`: Returns a list of available
-node-level metrics
+node-level metrics.
 
 `/api/v1/model/metrics/nodes/{node-name}/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested node-level metric, within the time range specified by `start` and `end`. 
 
 `/api/v1/model/nodes/{node-name}/stats/`: Exposes the average, max and 95th
-percentile over the past minute, hour and day for each node metric
+percentile over the past minute, hour and day for each node metric.
 
 
 ### Namespace-level Metrics and Stats
-`/api/v1/model/namespaces`: Returns a list of all available namespaces, along
+`/api/v1/model/namespaces/`: Returns a list of all available namespaces, along
 with their latest CPU and Memory Usage values.
 
-`/api/v1/model/namespaces/{namespace-name}`: Returns all browsable subpaths for
+`/api/v1/model/namespaces/{namespace-name}/`: Returns all browsable subpaths for
 a specific namespace.
 
-`/api/v1/model/namespaces/{namespace-name}/metrics/`: Returns a list of available namespace-level metrics
+`/api/v1/model/namespaces/{namespace-name}/metrics/`: Returns a list of available namespace-level metrics.
 
 `/api/v1/model/namespaces/{namespace-name}/metrics/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested namespace-level metric, within the time range specified by `start` and `end`. 
@@ -73,10 +73,10 @@ past minute, hour and day for each namespace metric.
 
 
 ### Pod-level Metrics and Stats
-`/api/v1/model/namespaces/{namespace-name}/pods`: Returns a list of all available pods under a given namespace, along
+`/api/v1/model/namespaces/{namespace-name}/pods/`: Returns a list of all available pods under a given namespace, along
 with their latest CPU and Memory Usage values.
 
-`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}`: Returns all browsable subpaths for
+`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/`: Returns all browsable subpaths for
 a specific Pod.
 
 `/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/metrics/`: Returns a list of available pod-level metrics
@@ -92,10 +92,10 @@ past minute, hour and day for each pod-level metric.
 Container metrics and stats are accessible for both containers that belong to
 pods, as well as for free containers running in each node.
 
-`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers`: Returns a list of all available containers under a given pod, along
+`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/`: Returns a list of all available containers under a given pod, along
 with their latest CPU and Memory Usage values.
 
-`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}`: Returns all browsable subpaths for
+`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/`: Returns all browsable subpaths for
 a specific container.
 
 `/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics/`: Returns a list of available container-level metrics
@@ -106,10 +106,10 @@ pairs for the requested container-level metric, within the time range specified 
 `/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/stats/`: Exposes the average, max and 95th percentile over the
 past minute, hour and day for each container metric.
 
-`/api/v1/model/nodes/{node-name}/freecontainers`: Returns a list of all available free containers under a given node, along
+`/api/v1/model/nodes/{node-name}/freecontainers/`: Returns a list of all available free containers under a given node, along
 with their latest CPU and Memory Usage values.
 
-`/api/v1/model/nodes/{node-name}/freecontainers/{container-name}`: Returns all browsable subpaths for
+`/api/v1/model/nodes/{node-name}/freecontainers/{container-name}/`: Returns all browsable subpaths for
 a specific free container.
 
 `/api/v1/model/nodes/{node-name}/freecontainers/{container-name}/metrics/`: Returns a list of available container-level metrics
@@ -119,4 +119,3 @@ pairs for the requested container-level metric, within the time range specified 
 
 `/api/v1/model/nodes/{node-name}/freecontainers/{container-name}/stats/`: Exposes the average, max and 95th percentile over the
 past minute, hour and day for each container metric.
-
