@@ -1,5 +1,5 @@
 # influxdb
-FROM ubuntu:trusty
+FROM ubuntu:14.04
 
 # Install InfluxDB
 ENV INFLUXDB_VERSION 0.8.9
@@ -9,16 +9,10 @@ RUN apt-get update && apt-get install -y curl && curl -s -o /tmp/influxdb_latest
   rm /tmp/influxdb_latest_amd64.deb
 
 ADD config.toml /config/config.toml
-ADD collectd-types.db /config/types.db
 ADD shardSpace.json /config/shardSpace.json
-
-ADD run.sh /run.sh
-RUN chmod +x /run.sh
-
-ENV PRE_CREATE_DB k8s;grafana
 
 EXPOSE 8083 8086 8084 8090 8099
 
 VOLUME ["/data"]
 
-CMD ["/run.sh"]
+ENTRYPOINT ["influxdb", "--config", "/config/config.toml"]
