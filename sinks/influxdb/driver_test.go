@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	sink_api "k8s.io/heapster/sinks/api"
 	kube_api "k8s.io/kubernetes/pkg/api"
-	kube_time "k8s.io/kubernetes/pkg/util"
+	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 type capturedWriteCall struct {
@@ -102,7 +102,7 @@ func TestStoreEventsEmptyInput(t *testing.T) {
 func TestStoreEventsSingleEventInput(t *testing.T) {
 	// Arrange
 	fakeSink := NewFakeSink()
-	eventTime := kube_time.Unix(12345, 0)
+	eventTime := kube_api_unv.Unix(12345, 0)
 	eventSourceHostname := "event1HostName"
 	eventReason := "event1"
 	events := []kube_api.Event{
@@ -134,8 +134,8 @@ func TestStoreEventsSingleEventInput(t *testing.T) {
 func TestStoreEventsMultipleEventsInput(t *testing.T) {
 	// Arrange
 	fakeSink := NewFakeSink()
-	event1Time := kube_time.Unix(12345, 0)
-	event2Time := kube_time.Unix(12366, 0)
+	event1Time := kube_api_unv.Unix(12345, 0)
+	event2Time := kube_api_unv.Unix(12366, 0)
 	event1SourceHostname := "event1HostName"
 	event2SourceHostname := "event2HostName"
 	event1Reason := "event1"

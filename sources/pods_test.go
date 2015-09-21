@@ -24,14 +24,14 @@ import (
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/latest"
 	"k8s.io/kubernetes/pkg/api/testapi"
-	"k8s.io/kubernetes/pkg/client"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util"
 )
 
 func body(obj runtime.Object) string {
 	if obj != nil {
-		bs, _ := latest.Codec.Encode(obj)
+		bs, _ := latest.GroupOrDie("").Codec.Encode(obj)
 		body := string(bs)
 		return body
 	}
@@ -48,7 +48,7 @@ func TestPodsApiCreation(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Version()})
+	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
 	podsApi := newPodsApi(client)
 	_, err := podsApi.List(&nodes.NodeList{})
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestPodsParsing(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Version()})
+	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
 	podsApi := newPodsApi(client)
 	nodeList := &nodes.NodeList{
 		Items: map[nodes.Host]nodes.Info{

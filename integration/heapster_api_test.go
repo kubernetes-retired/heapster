@@ -33,6 +33,7 @@ import (
 	"k8s.io/heapster/sinks/cache"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	apiErrors "k8s.io/kubernetes/pkg/api/errors"
+	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 const (
@@ -66,7 +67,7 @@ func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_
 func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kube_api.ReplicationController) error {
 	glog.V(2).Infof("Creating ns %s...", ns)
 	namespace := kube_api.Namespace{
-		TypeMeta: kube_api.TypeMeta{
+		TypeMeta: kube_api_unv.TypeMeta{
 			Kind:       "Namespace",
 			APIVersion: "v1",
 		},
