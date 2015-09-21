@@ -18,7 +18,7 @@ Heapster exports a '/validate' endpoint that will provide some information about
 
 If the '/validate' endpoint does not provide enough information, additional logging can be enabled by setting an extra flag. This requires restarting heapster though.
 Add `--vmodule=*=4` flag to heapster. When using the docker image or when running in kubernetes, pass an extra environment variable `FLAGS="--vmodule=*=4`. 
-If you are running heapster on kubernetes, the environment variable needs to be added to the `env` section in [heapster-controller.yaml](../deploy/kube-config/heapster-controller.yaml)
+If you are running heapster on kubernetes, the environment variable needs to be added to the `env` section in [heapster-controller.json](../deploy/kube-config/standalone/heapster-controller.json).
 
 ### InfluxDB & Grafana
 
