@@ -120,164 +120,166 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
-	// The /namespaces/ endpoint returns a list of all Namespace entities in the model.
-	ws.Route(ws.GET("/namespaces/").
-		To(a.allNamespaces).
-		Filter(compressionFilter).
-		Doc("Get a list of all Namespaces in the model").
-		Operation("allNamespaces"))
+	if a.runningInKubernetes {
+		// The /namespaces/ endpoint returns a list of all Namespace entities in the model.
+		ws.Route(ws.GET("/namespaces/").
+			To(a.allNamespaces).
+			Filter(compressionFilter).
+			Doc("Get a list of all Namespaces in the model").
+			Operation("allNamespaces"))
 
-	// The /namespaces/{namespace-name} endpoint returns a list of all available API Paths for a Namespace entity.
-	ws.Route(ws.GET("/namespaces/{namespace-name}").
-		To(a.namespacePaths).
-		Filter(compressionFilter).
-		Doc("Get a list of all available API paths for a namespace entity").
-		Operation("namespacePaths").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
+		// The /namespaces/{namespace-name} endpoint returns a list of all available API Paths for a Namespace entity.
+		ws.Route(ws.GET("/namespaces/{namespace-name}").
+			To(a.namespacePaths).
+			Filter(compressionFilter).
+			Doc("Get a list of all available API paths for a namespace entity").
+			Operation("namespacePaths").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
 
-	// The /namespaces/{namespace-name}/stats endpoint returns all available derived stats for a Namespace entity.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/stats/").
-		To(a.namespaceStats).
-		Filter(compressionFilter).
-		Doc("Get all available stats for a Namespace entity.").
-		Operation("namespaceStats").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
+		// The /namespaces/{namespace-name}/stats endpoint returns all available derived stats for a Namespace entity.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/stats/").
+			To(a.namespaceStats).
+			Filter(compressionFilter).
+			Doc("Get all available stats for a Namespace entity.").
+			Operation("namespaceStats").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
 
-	// The /namespaces/{namespace-name}/metrics endpoint returns a list of all available metrics for a Namespace entity.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/metrics").
-		To(a.availableMetrics).
-		Filter(compressionFilter).
-		Doc("Get a list of all available metrics for a Namespace entity").
-		Operation("availableMetrics").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
+		// The /namespaces/{namespace-name}/metrics endpoint returns a list of all available metrics for a Namespace entity.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/metrics").
+			To(a.availableMetrics).
+			Filter(compressionFilter).
+			Doc("Get a list of all available metrics for a Namespace entity").
+			Operation("availableMetrics").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
 
-	// The /namespaces/{namespace-name}/metrics/{metric-name} endpoint exposes an aggregated metrics
-	// for a Namespace entity of the model.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/metrics/{metric-name}").
-		To(a.namespaceMetrics).
-		Filter(compressionFilter).
-		Doc("Export an aggregated namespace-level metric").
-		Operation("namespaceMetrics").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
-		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
-		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(types.MetricResult{}))
+		// The /namespaces/{namespace-name}/metrics/{metric-name} endpoint exposes an aggregated metrics
+		// for a Namespace entity of the model.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/metrics/{metric-name}").
+			To(a.namespaceMetrics).
+			Filter(compressionFilter).
+			Doc("Export an aggregated namespace-level metric").
+			Operation("namespaceMetrics").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
+			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
+			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Writes(types.MetricResult{}))
 
-	// The /namespaces/{namespace-name}/pods endpoint returns a list of all Pod entities in the model,
-	// under a specified namespace.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods").
-		To(a.allPods).
-		Filter(compressionFilter).
-		Doc("Get a list of all Pods in the model, belonging to the specified Namespace").
-		Operation("allPods").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
+		// The /namespaces/{namespace-name}/pods endpoint returns a list of all Pod entities in the model,
+		// under a specified namespace.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods").
+			To(a.allPods).
+			Filter(compressionFilter).
+			Doc("Get a list of all Pods in the model, belonging to the specified Namespace").
+			Operation("allPods").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
 
-	// The /namespaces/{namespace-name}/pods/{pod-name} endpoint returns a list of all
-	// API paths available for a pod
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}").
-		To(a.podPaths).
-		Filter(compressionFilter).
-		Doc("Get a list of all API paths available for a Pod entity").
-		Operation("podPaths").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
+		// The /namespaces/{namespace-name}/pods/{pod-name} endpoint returns a list of all
+		// API paths available for a pod
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}").
+			To(a.podPaths).
+			Filter(compressionFilter).
+			Doc("Get a list of all API paths available for a Pod entity").
+			Operation("podPaths").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
 
-	// The /namespaces/{namespace-name}/pods/{pod-name}/stats endpoint returns all available derived stats for a Pod entity.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/stats/").
-		To(a.podStats).
-		Filter(compressionFilter).
-		Doc("Get all available stats for a Pod entity.").
-		Operation("podStats").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
+		// The /namespaces/{namespace-name}/pods/{pod-name}/stats endpoint returns all available derived stats for a Pod entity.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/stats/").
+			To(a.podStats).
+			Filter(compressionFilter).
+			Doc("Get all available stats for a Pod entity.").
+			Operation("podStats").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
 
-	// The /namespaces/{namespace-name}/pods/{pod-name}/metrics endpoint returns a list of all available metrics for a Pod entity.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/metrics").
-		To(a.availableMetrics).
-		Filter(compressionFilter).
-		Doc("Get a list of all available metrics for a Pod entity").
-		Operation("availableMetrics").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
+		// The /namespaces/{namespace-name}/pods/{pod-name}/metrics endpoint returns a list of all available metrics for a Pod entity.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/metrics").
+			To(a.availableMetrics).
+			Filter(compressionFilter).
+			Doc("Get a list of all available metrics for a Pod entity").
+			Operation("availableMetrics").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
 
-	// The /namespaces/{namespace-name}/pods/{pod-name}/metrics/{metric-name} endpoint exposes
-	// an aggregated metric for a Pod entity of the model.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/metrics/{metric-name}").
-		To(a.podMetrics).
-		Filter(compressionFilter).
-		Doc("Export an aggregated pod-level metric").
-		Operation("podMetrics").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
-		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
-		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
-		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(types.MetricResult{}))
-	// The /namespaces/{namespace-name}/pods/{pod-name}/containers endpoint returns a list of all Container entities,
-	// under a specified namespace and pod.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers").
-		To(a.allPodContainers).
-		Filter(compressionFilter).
-		Doc("Get a list of all Containers in the model, belonging to the specified Namespace and Pod").
-		Operation("allPodContainers").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
+		// The /namespaces/{namespace-name}/pods/{pod-name}/metrics/{metric-name} endpoint exposes
+		// an aggregated metric for a Pod entity of the model.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/metrics/{metric-name}").
+			To(a.podMetrics).
+			Filter(compressionFilter).
+			Doc("Export an aggregated pod-level metric").
+			Operation("podMetrics").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
+			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
+			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
+			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Writes(types.MetricResult{}))
+		// The /namespaces/{namespace-name}/pods/{pod-name}/containers endpoint returns a list of all Container entities,
+		// under a specified namespace and pod.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers").
+			To(a.allPodContainers).
+			Filter(compressionFilter).
+			Doc("Get a list of all Containers in the model, belonging to the specified Namespace and Pod").
+			Operation("allPodContainers").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
 
-	// The /namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name} endpoint
-	// returns a list of all API paths available for a Pod Container
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}").
-		To(a.containerPaths).
-		Filter(compressionFilter).
-		Doc("Get a list of all API paths available for a Pod Container entity").
-		Operation("containerPaths").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
-		Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")))
+		// The /namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name} endpoint
+		// returns a list of all API paths available for a Pod Container
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}").
+			To(a.containerPaths).
+			Filter(compressionFilter).
+			Doc("Get a list of all API paths available for a Pod Container entity").
+			Operation("containerPaths").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
+			Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")))
 
-	// The /namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/stats endpoint returns derived stats for a Pod Container entity.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/stats/").
-		To(a.podContainerStats).
-		Filter(compressionFilter).
-		Doc("Get all available stats for a Pod Container entity.").
-		Operation("podContainerStats").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
-		Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")))
+		// The /namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/stats endpoint returns derived stats for a Pod Container entity.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/stats/").
+			To(a.podContainerStats).
+			Filter(compressionFilter).
+			Doc("Get all available stats for a Pod Container entity.").
+			Operation("podContainerStats").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
+			Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")))
 
-	// The /namespaces/{namespace-name}/pods/{pod-name}/containers/metrics/{container-name}/metrics endpoint
-	// returns a list of all available metrics for a Pod Container entity.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics").
-		To(a.availableMetrics).
-		Filter(compressionFilter).
-		Doc("Get a list of all available metrics for a Pod entity").
-		Operation("availableMetrics").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
-		Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")))
+		// The /namespaces/{namespace-name}/pods/{pod-name}/containers/metrics/{container-name}/metrics endpoint
+		// returns a list of all available metrics for a Pod Container entity.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics").
+			To(a.availableMetrics).
+			Filter(compressionFilter).
+			Doc("Get a list of all available metrics for a Pod entity").
+			Operation("availableMetrics").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
+			Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")))
 
-	// The /namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics/{metric-name} endpoint exposes
-	// a metric for a Container entity of the model.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics/{metric-name}").
-		To(a.podContainerMetrics).
-		Filter(compressionFilter).
-		Doc("Export an aggregated metric for a Pod Container").
-		Operation("podContainerMetrics").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to use").DataType("string")).
-		Param(ws.PathParameter("pod-name", "The name of the pod to use").DataType("string")).
-		Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")).
-		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
-		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
-		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(types.MetricResult{}))
+		// The /namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics/{metric-name} endpoint exposes
+		// a metric for a Container entity of the model.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics/{metric-name}").
+			To(a.podContainerMetrics).
+			Filter(compressionFilter).
+			Doc("Export an aggregated metric for a Pod Container").
+			Operation("podContainerMetrics").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to use").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to use").DataType("string")).
+			Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")).
+			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
+			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
+			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Writes(types.MetricResult{}))
 
-	// The /nodes/{node-name}/pods/ endpoint returns a list of all Pods entities under a specified node.
-	ws.Route(ws.GET("/nodes/{node-name}/pods/").
-		To(a.nodePods).
-		Filter(compressionFilter).
-		Doc("Get a list of all Pods belonging to a specified Node in the model").
-		Operation("nodePods").
-		Param(ws.PathParameter("node-name", "The name of the namespace to lookup").DataType("string")))
+		// The /nodes/{node-name}/pods/ endpoint returns a list of all Pods entities under a specified node.
+		ws.Route(ws.GET("/nodes/{node-name}/pods/").
+			To(a.nodePods).
+			Filter(compressionFilter).
+			Doc("Get a list of all Pods belonging to a specified Node in the model").
+			Operation("nodePods").
+			Param(ws.PathParameter("node-name", "The name of the namespace to lookup").DataType("string")))
+	}
 
 	// The /nodes/{node-name}/freecontainers/ endpoint returns a list of all free Container entities,
 	// under a specified node.
@@ -332,19 +334,21 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
-	// The /namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name} endpoint exposes
-	// metrics for a list od pods of the model.
-	ws.Route(ws.GET("/namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name}").
-		To(a.podListMetrics).
-		Filter(compressionFilter).
-		Doc("Export a metric for all pods from the given list").
-		Operation("podListMetric").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
-		Param(ws.PathParameter("pod-list", "Comma separated list of pod names to lookup").DataType("string")).
-		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
-		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
-		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
-		Writes(types.MetricResult{}))
+	if a.runningInKubernetes {
+		// The /namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name} endpoint exposes
+		// metrics for a list od pods of the model.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name}").
+			To(a.podListMetrics).
+			Filter(compressionFilter).
+			Doc("Export a metric for all pods from the given list").
+			Operation("podListMetric").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-list", "Comma separated list of pod names to lookup").DataType("string")).
+			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
+			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
+			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Writes(types.MetricResult{}))
+	}
 
 	container.Add(ws)
 }

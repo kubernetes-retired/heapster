@@ -30,7 +30,10 @@ import (
 	kubewatch "k8s.io/kubernetes/pkg/watch"
 )
 
-const kubeEventsSource = "kube-events"
+const (
+	kubeEventsSourceType = "kube-events"
+	KubeEventsSourceName = "Kube Events Source"
+)
 
 // eventsUpdate is the wrapper object used to pass new events around
 type eventsUpdate struct {
@@ -217,11 +220,11 @@ func (eventSource *eventsSourceImpl) GetInfo(start, end time.Time) (api.Aggregat
 }
 
 func (eventSource *eventsSourceImpl) DebugInfo() string {
-	desc := fmt.Sprintf("Source type: %s\n", kubeEventsSource)
+	desc := fmt.Sprintf("Source type: %s\n", kubeEventsSourceType)
 	// TODO: Add events specific debug information
 	return desc
 }
 
 func (eventsSource *eventsSourceImpl) Name() string {
-	return kubeEventsSource
+	return KubeEventsSourceName
 }

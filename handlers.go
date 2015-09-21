@@ -24,21 +24,30 @@ import (
 	"k8s.io/heapster/api/v1"
 	"k8s.io/heapster/manager"
 	"k8s.io/heapster/sinks"
+	"k8s.io/heapster/sources"
 	"k8s.io/heapster/sources/api"
 	"k8s.io/heapster/validate"
 )
 
 const pprofBasePath = "/debug/pprof/"
 
-func setupHandlers(sources []api.Source, sink sinks.ExternalSinkManager, m manager.Manager) http.Handler {
+func setupHandlers(sourcesList []api.Source, sink sinks.ExternalSinkManager, m manager.Manager) http.Handler {
+
+	runningInKubernetes := false
+	for _, source := range sourcesList {
+		if source.Name() == sources.KubePodsSourceName {
+			runningInKubernetes = true
+		}
+	}
+
 	// Make API handler.
 	wsContainer := restful.NewContainer()
-	a := v1.NewApi(m)
+	a := v1.NewApi(m, runningInKubernetes)
 	a.Register(wsContainer)
 
 	// Validation/Debug handler.
 	handleValidate := func(req *restful.Request, resp *restful.Response) {
-		err := validate.HandleRequest(resp, sources, sink)
+		err := validate.HandleRequest(resp, sourcesList, sink)
 		if err != nil {
 			fmt.Fprintf(resp, "%s", err)
 		}
