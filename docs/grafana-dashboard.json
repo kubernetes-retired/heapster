@@ -1,0 +1,215 @@
+{
+  "id": 1,
+  "title": "Kubernetes Cluster",
+  "originalTitle": "Kubernetes Cluster",
+  "tags": [],
+  "style": "dark",
+  "timezone": "browser",
+  "editable": true,
+  "hideControls": false,
+  "sharedCrosshair": false,
+  "rows": [
+    {
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": null,
+          "editable": true,
+          "error": false,
+          "fill": 1,
+          "grid": {
+            "leftLogBase": 1,
+            "leftMax": null,
+            "leftMin": null,
+            "rightLogBase": 1,
+            "rightMax": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "hideTimeOverride": false,
+          "id": 1,
+          "interval": "10s",
+          "legend": {
+            "avg": true,
+            "current": false,
+            "max": true,
+            "min": true,
+            "show": true,
+            "total": false,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 12,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "alias": "influxdb-usage",
+              "fields": [
+                {
+                  "func": "mean",
+                  "name": "value"
+                }
+              ],
+              "groupByTags": [],
+              "hide": false,
+              "measurement": "memory/working_set_bytes_gauge",
+              "query": "select pod_name, mean(value) from \"memory/usage_bytes_gauge\" where $timeFilter and container_name =~ /influx/ group by time($interval), pod_name order asc",
+              "tags": [
+                {
+                  "key": "container_name",
+                  "value": "influxdb"
+                }
+              ],
+              "function": "mean",
+              "column": "value",
+              "series": "memory/usage_bytes_gauge",
+              "condition": "container_name =~ /influx/",
+              "groupby_field": "pod_name"
+            },
+            {
+              "alias": "heapster-usage",
+              "fields": [
+                {
+                  "func": "mean",
+                  "name": "value"
+                }
+              ],
+              "groupByTags": [],
+              "hide": false,
+              "measurement": "memory/working_set_bytes_gauge",
+              "query": "select pod_name, mean(value) from \"memory/usage_bytes_gauge\" where $timeFilter and container_name =~ /heapster/ group by time($interval), pod_name order asc",
+              "tags": [
+                {
+                  "key": "container_name",
+                  "value": "heapster"
+                }
+              ],
+              "target": "",
+              "function": "mean",
+              "column": "value",
+              "series": "memory/usage_bytes_gauge",
+              "condition": "container_name =~ /heapster/",
+              "groupby_field": "pod_name"
+            },
+            {
+              "alias": "grafana-usage",
+              "fields": [
+                {
+                  "func": "mean",
+                  "name": "value"
+                }
+              ],
+              "groupByTags": [],
+              "hide": false,
+              "measurement": "memory/working_set_bytes_gauge",
+              "query": "select pod_name, mean(value) from \"memory/usage_bytes_gauge\" where $timeFilter and container_name =~ /grafana/ group by time($interval), pod_name order asc",
+              "tags": [
+                {
+                  "key": "container_name",
+                  "value": "grafana"
+                }
+              ],
+              "target": "",
+              "function": "mean",
+              "column": "value",
+              "series": "memory/usage_bytes_gauge",
+              "condition": "container_name =~ /grafana/",
+              "groupby_field": "pod_name"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Monitoring Memory usage",
+          "tooltip": {
+            "shared": true,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [
+            "bytes",
+            "short"
+          ]
+        }
+      ],
+      "title": "Row"
+    },
+    {
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [],
+      "title": "New row"
+    },
+    {
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [],
+      "title": "New row"
+    }
+  ],
+  "nav": [
+    {
+      "collapse": false,
+      "enable": true,
+      "notice": false,
+      "now": true,
+      "refresh_intervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "status": "Stable",
+      "time_options": [
+        "5m",
+        "15m",
+        "1h",
+        "6h",
+        "12h",
+        "24h",
+        "2d",
+        "7d",
+        "30d"
+      ],
+      "type": "timepicker"
+    }
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "schemaVersion": 6,
+  "version": 2,
+  "links": []
+}
