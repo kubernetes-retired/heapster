@@ -20,6 +20,12 @@
 		}
 	    },
 	    "spec": {
+		"volumes": [
+		    {
+			"name": "grafana-store",
+			"emptyDir": {}
+		    }
+		],
 		"containers": [
 		    {
 			"image": "kubernetes/heapster_influxdb:v0.4",
@@ -37,7 +43,13 @@
 		    },
 		    {
 			"image": "grafana/grafana:2.1.0",
-			"name": "grafana"
+			"name": "grafana",
+			"volumeMounts": [
+			    {
+				"name": "grafana-store",
+				"mountPath": "/var/lib/grafana"
+			    }
+			]
 		    }
 		]
 	    }          
