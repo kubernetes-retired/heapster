@@ -3,73 +3,79 @@ Runnig Heapster standalone on a host with cAdvisor
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-    - [Prepare Heapster binaries](#prepare-heapster-binaries)
-    - [Running a Cadvisor](#running-a-cadvisor)
-- [Starting a heapster](#starting-a-heapster)
-    - [Config Cadvisor source](#config-cadvisor-source)
+    - [Prepare Heapster binary](#prepare-heapster-binary)
+    - [Run a cAdvisor](#run-a-cadvisor)
+- [Start a heapster](#start-a-heapster)
+    - [Config cAdvisor source](#config-cadvisor-source)
     - [Start heapster](#start-heapster)
     - [Test it out](#test-it-out)
 
 ## Introduction
 
-This document describes how to to run Heapster standalone with [cAdvisor](https://github.com/google/cadvisor). These guide is tested OK on Ubuntu 14.04 LTS 64bit server. I'm working around testing this with some other system . The assumptions here are that [influxdb](https://github.com/influxdb/influxdb), and [grafana](https://github.com/grafana/grafana.git) run on one machine, which heapster can visit.
+This document describes how to run Heapster standalone with [cAdvisor](https://github.com/google/cadvisor).  
+These guide is tested OK on Ubuntu 14.04 LTS 64bit server.I'm working around testing this with some other system.  
+The assumptions here are that [influxdb](https://github.com/influxdb/influxdb), and [grafana](https://github.com/grafana/grafana.git) run on one machine, which heapster can visit.
 
 ## Prerequisites
 
-### Prepare Heapster binaries
-We can get the heapster binary from the [Release Page](https://github.com/kubernetes/heapster/releases/) or build the heapster from source code.The build steps are as follows, [go](https://github.com/golang) and [godep](https://github.com/tools/godep) need be installed in system first:
+### Prepare Heapster binary
+We can get the heapster binary from the [Release Page](https://github.com/kubernetes/heapster/releases/) or build the heapster from source code.  
+The build steps are as follows, [go](https://github.com/golang) and [godep](https://github.com/tools/godep) need be installed in system first.  
 
 
 **Step 1: Clone the heapster github repo**
 
-``` 
+```shell 
 $ git clone https://github.com/kubernetes/heapster.git
 ```
 
 **Step 2: Build the source code**
 
-``` 
+```shell 
 $ cd kubernetes/heapster
 $ make
 ```
 
 Then you can get the heapster binary in current path.
 
-### Running a cAdvisor
-cAdvisor can run in a docker or standalone outside of Docker to monitor the whole machine. This guide run a cAdvisor standalone out of Docker.cAdvisor is a static Go binary with no external dependencies. To run it standalone all you should need to do is run it! Note that some data sources may require root priviledges.You can get cAdvisor binary from the [Release Page](https://github.com/google/cadvisor/releases)
+### Run a cAdvisor
+cAdvisor can run in a docker or standalone outside of Docker to monitor the whole machine. This guide run a cAdvisor standalone outside of Docker.  
+cAdvisor is a static Go binary with no external dependency.Note that some data source may require root priviledges.  
+You can get cAdvisor binary from the [Release Page](https://github.com/google/cadvisor/releases)  
 
-``` 
+```shell
 $ ./cadvisor  
 ```
 
 cAdvisor is now running (in the foreground) on http://localhost:8080/.
 
-## Starting a heapster
+## Start a heapster
 
-### Config Cadvisor source
-Heapster support two types of Cadvisor source: standalone & CoreOS; Doc of source configuration is [HERE](https://github.com/kubernetes/heapster/blob/master/docs/source-configuration.md)
+### Config cAdvisor source
+Heapster supports two types of cAdvisor source: `standalone` & `CoreOS`;   
+Doc of source configuration is [HERE](https://github.com/kubernetes/heapster/blob/master/docs/source-configuration.md)
+External cAdvisor source "discovers" hosts from the specified file. Use it like this:
 
-External cadvisor source "discovers" hosts from the specified file. Use it like this:
-
-```
+```shell
 --source=cadvisor:external[?<OPTIONS>]
 ```
 
 The following options are available:
 
 * `standalone` - only use `localhost` (default: `false`)
-* `hostsFile` - file containing list of hosts to gather cadvisor metrics from (default: `/var/run/heapster/hosts`)
-* `cadvisorPort` - cadvisor port to use (default: `8080`)
+* `hostsFile` - file containing list of hosts to gather cAdvisor metrics from (default: `/var/run/heapster/hosts`)
+* `cadvisorPort` - cAdvisor port to use (default: `8080`)
 
 Here is an example:
+
 ```shell
 $ ./heapster --source="cadvisor:external?cadvisorPort=4194"
 ```
 
-Because heapster needs a specified file to config external cadvisor source, we need to provide one.
-The `hostsFile` parameter defines a list of hosts to poll for metrics and must be in JSON format. See below for an example:
+Because heapster needs a specified file to config external cAdvisor source, we need to provide one.  
+The `hostsFile` parameter defines a list of hosts to poll for metrics and must be in JSON format.See below for an example:  
 
-```
+```shell
 {
   "Items": [
     {
@@ -78,7 +84,7 @@ The `hostsFile` parameter defines a list of hosts to poll for metrics and must b
     },
     {
       "Name": "server-106",
-      "IP": "192.168.99.105"
+      "IP": "192.168.99.106"
     }
   ]
 }
@@ -86,30 +92,29 @@ The `hostsFile` parameter defines a list of hosts to poll for metrics and must b
 ### Start heapster
 Now you can run a heapster, here is an example:
 
-```
+```shell
 ./heapster-master --source="cadvisor:external?cadvisorPort=8080" --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s"
 ```
 
 The `hostsFile` use the default one `/var/run/heapster/hosts`.Then the heapster is running on the default port 8082,like this:
 
-```
+```shell
 I0911 13:42:03.657739   21041 heapster.go:57] ./heapster --source=cadvisor:external?cadvisorPort=8080 --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s
 I0911 13:42:03.657918   21041 heapster.go:58] Heapster version 0.17.0
 I0911 13:42:03.662594   21041 heapster.go:68] Starting heapster on port 8082
 ```
 
 ###Test it out
-If you got debug information as before, means that the heapster is working normally.You can test it by requeting its [Reatful api](https://github.com/kubernetes/heapster/blob/master/docs/model.md). You can use some restful tools to test, or just run a `curl` command, 
+If you got debug information as before, means that the heapster is working normally.You can test it by calling its [RESTful API](https://github.com/kubernetes/heapster/blob/master/docs/model.md).  
+You can use some restful tools to test, or just run a `curl` command (_ heapster implements gzip encoding, so we need add gunzip in command "curl"_).  
 
-```
-
+```shell
 curl http://0.0.0.0:8082/api/v1/model/stats/ | gunzip
-
 ```
 
 and you will get the response like this:
 
-```
+```shell
 {
   "uptime": 2543160,
   "stats": {
