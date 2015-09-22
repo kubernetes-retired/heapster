@@ -86,7 +86,7 @@ format is the same as when passed via command line flags.
 
 For example, to set gcm and influxdb as sinks, you may do the following:
 
-```
+```shell
 echo '["gcm", "influxdb:http://monitoring-influxdb:8086"]' | curl \
     --insecure -u admin:<password> -X POST -d @- \
     -H "Accept: application/json" -H "Content-Type: application/json" \

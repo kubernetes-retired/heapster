@@ -92,29 +92,25 @@ The `hostsFile` parameter defines a list of hosts to poll for metrics and must b
 ### Start heapster
 Now you can run a heapster, here is an example:
 
-```shell
-./heapster-master --source="cadvisor:external?cadvisorPort=8080" --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s"
-```
+	./heapster-master --source="cadvisor:external?cadvisorPort=8080" --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s"
 
 The `hostsFile` use the default one `/var/run/heapster/hosts`.Then the heapster is running on the default port 8082,like this:
 
-```shell
+```
 I0911 13:42:03.657739   21041 heapster.go:57] ./heapster --source=cadvisor:external?cadvisorPort=8080 --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s
 I0911 13:42:03.657918   21041 heapster.go:58] Heapster version 0.17.0
 I0911 13:42:03.662594   21041 heapster.go:68] Starting heapster on port 8082
 ```
 
-###Test it out
+### Test it out
 If you got debug information as before, means that the heapster is working normally.You can test it by calling its [RESTful API](https://github.com/kubernetes/heapster/blob/master/docs/model.md).  
 You can use some restful tools to test, or just run a `curl` command (_ heapster implements gzip encoding, so we need add gunzip in command "curl"_).  
 
-```shell
-curl http://0.0.0.0:8082/api/v1/model/stats/ | gunzip
-```
+	curl http://0.0.0.0:8082/api/v1/model/stats/ | gunzip
 
 and you will get the response like this:
 
-```shell
+```json
 {
   "uptime": 2543160,
   "stats": {

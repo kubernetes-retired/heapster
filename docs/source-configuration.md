@@ -35,7 +35,7 @@ This requires the apiserver to be setup completely without auth, which can be do
 
 Alternatively, you can use a heapster-only serviceaccount like this:
 
-```
+```shell
 cat <EOF | kubectl create -f -
 apiVersion: v1
 kind: ServiceAccount
@@ -46,7 +46,7 @@ EOF
 
 This will generate a token on the API server. You will then need to reference the service account in your Heapster pod spec like this:
 
-```
+```yaml
 apiVersion: "v1"
 kind: "ReplicationController"
 metadata:
@@ -103,13 +103,12 @@ The following options are available:
 * `cadvisorPort` - cadvisor port to use (default: `8080`)
 
 Here is an example:
-```shell
-./heapster --source="cadvisor:external?cadvisorPort=4194"
-```
+
+	./heapster --source="cadvisor:external?cadvisorPort=4194"
 
 The `hostsFile` parameter defines a list of hosts to poll for metrics and must be in JSON format. See below for an example:
 
-```
+```json
 {
   "Items": [
     {

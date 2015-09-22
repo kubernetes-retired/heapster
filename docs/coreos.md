@@ -8,7 +8,7 @@ The assumptions here are that influxdb, heapster, and grafana will run on the sa
 **Step 1: Start cAdvisor on all hosts by default**
 
 This can be accomplished with either a cloud config entry:
-```
+```yaml
     - name: cadvisor.service
       runtime: true
       command: start
@@ -27,7 +27,8 @@ This can be accomplished with either a cloud config entry:
 ```
 
 or with a global fleet file:
-```
+
+```ini
 [Unit]
 Description=Analyzes resource usage and performance characteristics of running containers.
 After=docker.service
@@ -48,7 +49,7 @@ Global=true
 
 You can use a fleet file like this named heapster_influxdb.service:
 
-```
+```ini
 [Unit]
 Description=influxdb
 
@@ -79,7 +80,7 @@ Notice that this fleet file is using a volume for data. In order to retain your 
 
 Since we are keeping heapster running on the same machine as influxdb, we can use a link here in our fleet file named heapster.service.
 
-```
+```ini
 [Unit]
 Description=heapster
 
@@ -114,7 +115,7 @@ X-ConditionMachineOf=heapster_influxdb.service
 
 Grafana's fleet file is named heapster_grafana.service and we are also keeping it on the same system as influxdb for simplicity:
 
-```
+```ini
 [Unit]
 Description=grafana
 
