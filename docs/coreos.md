@@ -47,7 +47,7 @@ Global=true
 
 **Step 2: Start InfluxDB**
 
-You can use a fleet file like this named heapster_influxdb.service:
+You can use a fleet file like this named `heapster_influxdb.service`:
 
 ```ini
 [Unit]
@@ -113,7 +113,7 @@ X-ConditionMachineOf=heapster_influxdb.service
 
 **Step 4: Start Grafana**
 
-Grafana's fleet file is named heapster_grafana.service and we are also keeping it on the same system as influxdb for simplicity:
+Grafana's fleet file is named `heapster_grafana.service` and we are also keeping it on the same system as influxdb for simplicity:
 
 ```ini
 [Unit]

@@ -47,7 +47,7 @@ You can get cAdvisor binary from the [Release Page](https://github.com/google/ca
 $ ./cadvisor  
 ```
 
-cAdvisor is now running (in the foreground) on http://localhost:8080/.
+cAdvisor is now running (in the foreground) on `http://localhost:8080/`.
 
 ## Start a heapster
 
