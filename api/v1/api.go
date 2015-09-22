@@ -26,17 +26,19 @@ import (
 )
 
 type Api struct {
-	manager manager.Manager
+	manager             manager.Manager
+	runningInKubernetes bool
 }
 
 // Create a new Api to serve from the specified cache.
-func NewApi(m manager.Manager) *Api {
+func NewApi(m manager.Manager, runningInKuberentes bool) *Api {
 	return &Api{
-		manager: m,
+		manager:             m,
+		runningInKubernetes: runningInKuberentes,
 	}
 }
 
-// Register the Api on the specified endpoint.
+// Register the mainApi on the specified endpoint.
 func (a *Api) Register(container *restful.Container) {
 	ws := new(restful.WebService)
 	ws.
@@ -76,7 +78,6 @@ func (a *Api) Register(container *restful.Container) {
 		Writes([]string{}))
 	container.Add(ws)
 
-	// Register the endpoints of the model
 	a.RegisterModel(container)
 }
 

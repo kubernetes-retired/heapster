@@ -39,7 +39,10 @@ func NewKubeNodeMetrics(kubeletPort int, kubeletApi datasource.Kubelet, nodesApi
 	}
 }
 
-const rootContainer = "/"
+const (
+	rootContainer             = "/"
+	KubeNodeMetricsSourceName = "Kube Node Metrics Source"
+)
 
 var knownContainers = map[string]string{
 	"/docker-daemon": "docker-daemon",
@@ -140,5 +143,5 @@ func (self *kubeNodeMetrics) DebugInfo() string {
 }
 
 func (kns *kubeNodeMetrics) Name() string {
-	return "Kube Node Metrics Source"
+	return KubeNodeMetricsSourceName
 }
