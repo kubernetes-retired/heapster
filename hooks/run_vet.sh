@@ -14,8 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FILES=$(go vet k8s.io/heapster/... 2>&1)
-if [[ ! -z "$FILES" ]]; then
-echo -e "Run go fix on the following files:\n $FILES"
-  exit 1
-fi
+set -o errexit
+set -o pipefail
+
+# Filter silly "exit status 1" lines and send main output to stdout.
+#
+# This is tricky - pipefail means any non-zero exit in a pipeline is reported,
+# and errexit exits on error.  Turning that into an || expression blocks the
+# errexit.  But $? is still not useful because grep will return an error when it
+# receives no input, which is exactly what go vet produces on success.  In
+# short, if go vet fails (produces output), grep will succeed, but if go vet
+# succeeds (produces no output) grep will fail.  Then we just look at
+# PIPESTATUS[0] which is go's exit code.
+rc=0
+go vet ./... 2>&1 | grep -v "^exit status " || rc=${PIPESTATUS[0]}
+exit "${rc}"
