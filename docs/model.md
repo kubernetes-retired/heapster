@@ -5,8 +5,6 @@ It allows the extraction of up to 1 hour of historical data for any Container, P
 The model can also export the Average, Max and 95th Percentile for each one of these entities, over a duration of 1 minute, 1 hour or 24 hours.
 
 
-NOTICE: this document represents the state of the model at the next Heapster release, and is not representative of the current state of the master branch
-TODO(afein): remove NOTICE prior to next release
 
 ## Usage
 
