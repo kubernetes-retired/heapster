@@ -147,6 +147,7 @@ X-ConditionMachineOf=heapster_influxdb.service
 ```
 
 **Notes**
+
 * We are using --net=host on the heapster container simply to avoid having to find the IP of a fleet node. If this information is available, we can remove this requirement.
 
 * Grafana will be available on whatever machine fleet decides to run influxdb. This means that it will jump around your cluster. It is best to use some sort of proxy setup to get to your service. This can be handled with something like haproxy or nginx, but is something that is left to the reader to find the best way to handle it for their situation.

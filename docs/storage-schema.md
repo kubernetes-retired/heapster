@@ -31,7 +31,7 @@ Heapster tags each metric with the following labels.
 | labels         | Comma-separated list of user-provided labels. Format is 'key:value'           | v0.9            | Yes                 |
 | hostname       | Hostname where the container ran                                              | v0.9            | No                  |
 | namespace_id   | UID of the namespace of a Pod                                                 | v0.14.1         | Yes                 |
-| host_id    | Cloud-provider specified or user specified Identifier of a node               | v0.14.1         | Yes                 |
+| host_id        | Cloud-provider specified or user specified Identifier of a node               | v0.14.1         | Yes                 |
 | resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | v0.11.0 | No |
 
 
@@ -46,6 +46,7 @@ The series name is constructed by combining the metric name with its type and un
 `list series`
 
 ###### Output
+
 ```
 cpu/usage_ns_cumulative
 filesystem/usage
@@ -58,6 +59,7 @@ network/tx_bytes_cumulative
 network/tx_errors_cumulative
 uptime_ms_cumulative
 ```
+
 *Note: Unit 'Count' is ignored*
 
 Heapster adds timestamp and sequence number to every metric.

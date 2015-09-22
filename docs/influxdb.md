@@ -21,13 +21,9 @@ A sample Grafana dashboard for Kubernetes clusters [here](Grafana Dashboard.json
 ## Troubleshooting guide
 1. If the Grafana service is not accessible, chances are it might not be running. Use `kubectl.sh` to verify that the `heapster` and `influxdb & grafana` pods are alive.
 
-	```shell
-$ kubectl get pods
-	```
+	kubectl get pods
 
-	```shell
-$ kubectl get services
-	```
+	kubectl get services
 
 2. To access the InfluxDB UI, you will have to make the InfluxDB service externally visible, similar to how Grafana is made publicly accessible.
 

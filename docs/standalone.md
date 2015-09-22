@@ -25,16 +25,12 @@ The build steps are as follows, [go](https://github.com/golang) and [godep](http
 
 **Step 1: Clone the heapster github repo**
 
-```shell 
-$ git clone https://github.com/kubernetes/heapster.git
-```
+	git clone https://github.com/kubernetes/heapster.git
 
 **Step 2: Build the source code**
 
-```shell 
-$ cd kubernetes/heapster
-$ make
-```
+	cd kubernetes/heapster
+	make
 
 Then you can get the heapster binary in current path.
 
@@ -43,9 +39,7 @@ cAdvisor can run in a docker or standalone outside of Docker to monitor the whol
 cAdvisor is a static Go binary with no external dependency.Note that some data source may require root priviledges.  
 You can get cAdvisor binary from the [Release Page](https://github.com/google/cadvisor/releases)  
 
-```shell
-$ ./cadvisor  
-```
+	./cadvisor  
 
 cAdvisor is now running (in the foreground) on `http://localhost:8080/`.
 
@@ -56,9 +50,7 @@ Heapster supports two types of cAdvisor source: `standalone` & `CoreOS`;
 Doc of source configuration is [HERE](https://github.com/kubernetes/heapster/blob/master/docs/source-configuration.md)
 External cAdvisor source "discovers" hosts from the specified file. Use it like this:
 
-```shell
---source=cadvisor:external[?<OPTIONS>]
-```
+	--source=cadvisor:external[?<OPTIONS>]
 
 The following options are available:
 
@@ -68,9 +60,7 @@ The following options are available:
 
 Here is an example:
 
-```shell
-$ ./heapster --source="cadvisor:external?cadvisorPort=4194"
-```
+	./heapster --source="cadvisor:external?cadvisorPort=4194"
 
 Because heapster needs a specified file to config external cAdvisor source, we need to provide one.  
 The `hostsFile` parameter defines a list of hosts to poll for metrics and must be in JSON format.See below for an example:  
@@ -237,7 +227,3 @@ and you will get the response like this:
  }
 
 ```
-
-
-
-

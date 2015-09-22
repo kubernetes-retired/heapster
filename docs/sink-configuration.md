@@ -13,15 +13,12 @@ heapster can store data into multiple sinks at once.
 This sink supports both monitoring metrics and events.
 *Supports InfluxDB versions v0.9 and above*
 To use the InfluxDB sink add the following flag:
-```
---sink=influxdb:<INFLUXDB_URL>[?<INFLUXDB_OPTIONS>]
-```
+
+	--sink=influxdb:<INFLUXDB_URL>[?<INFLUXDB_OPTIONS>]
 
 If you're running Heapster in a Kubernetes cluster with the default InfluxDB + Grafana setup you can use the following flag:
 
-```
---sink=influxdb:http://monitoring-influxdb:80/
-```
+	--sink=influxdb:http://monitoring-influxdb:80/
 
 The following options are available:
 * `user` - InfluxDB username (default: `root`)
@@ -29,13 +26,11 @@ The following options are available:
 * `db` - InfluxDB Database name (default: `k8s`)
 * `secure` - Connect securely to InfluxDB (default: `false`)
 
-
 ### Google Cloud Monitoring
 This sink supports monitoring metrics only.
 To use the GCM sink add the following flag:
-```
---sink=gcm
-```
+
+	--sink=gcm
 
 *Note: This sink works only on a Google Compute Enginer VM as of now*
 
@@ -44,9 +39,8 @@ This sink does not export any options!
 ### Google Cloud Monitoring Autoscaling
 This sink supports monitoring metrics for autoscaling purposes only.
 To use the GCM Autoscaling sink add the following flag:
-```
---sink=gcmautoscaling
-```
+
+	--sink=gcmautoscaling
 
 *Note: This sink works only on a Google Compute Enginer VM as of now*
 
@@ -55,9 +49,8 @@ This sink does not export any options!
 ### Google Cloud Logging
 This sink supports events only.
 To use the InfluxDB sink add the following flag:
-```
---sink=gcl
-```
+
+	--sink=gcl
 
 *Note: This sink works only on a Google Compute Enginer VM as of now*
 
@@ -67,9 +60,7 @@ This sink does not export any options!
 This sink supports monitoring metrics only.
 To use the Hawkular-Metrics sink add the following flag:
 
-```
---sink=hawkular:<HAWKULAR_SERVER_URL>[?<OPTIONS>]
-```
+	--sink=hawkular:<HAWKULAR_SERVER_URL>[?<OPTIONS>]
 
 If `HAWKULAR_SERVER_URL` includes any path, the default `hawkular/metrics` is overridden.
 

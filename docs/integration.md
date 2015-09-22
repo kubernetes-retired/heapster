@@ -2,8 +2,6 @@
 
 Heapster can be tested against an existing Kubernetes cluster running on GCE. Tests under [integration](../integration) can be used for integration testing.
 
-```shell
-$ make test-integration
-```
+	make test-integration
 
 Note that the test expects Kube Config to exist under `~/.kube/.kubeconfig`. To override the default path using the flag `--kube_config`
