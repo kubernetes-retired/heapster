@@ -38,7 +38,7 @@
 			"name": "heapster",
 			"command": [
 			    "/heapster",
-			    "--source=kubernetes"
+			    "--source=kubernetes:https://kubernetes.default"
 			],
 			"volumeMounts": [
 			    {
