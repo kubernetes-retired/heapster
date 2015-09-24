@@ -240,6 +240,11 @@
 			"Rev": "a412f6a67e3a7dd78ff9a1fe12a720b66313de0f"
 		},
 		{
+			"ImportPath": "k8s.io/kubernetes/pkg/auth/authenticator",
+			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
+			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
+		},
+		{
 			"ImportPath": "k8s.io/kubernetes/pkg/auth/user",
 			"Comment": "v1.0.3-28-ga412f6a",
 			"Rev": "a412f6a67e3a7dd78ff9a1fe12a720b66313de0f"
@@ -303,6 +308,11 @@
 			"ImportPath": "k8s.io/kubernetes/pkg/watch",
 			"Comment": "v1.0.3-28-ga412f6a",
 			"Rev": "a412f6a67e3a7dd78ff9a1fe12a720b66313de0f"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/plugin/pkg/auth/authenticator/request/x509",
+			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
+			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/third_party/forked/reflect",
