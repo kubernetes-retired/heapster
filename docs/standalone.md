@@ -25,16 +25,12 @@ The build steps are as follows, [go](https://github.com/golang) and [godep](http
 
 **Step 1: Clone the heapster github repo**
 
-```shell 
-$ git clone https://github.com/kubernetes/heapster.git
-```
+	git clone https://github.com/kubernetes/heapster.git
 
 **Step 2: Build the source code**
 
-```shell 
-$ cd kubernetes/heapster
-$ make
-```
+	cd kubernetes/heapster
+	make
 
 Then you can get the heapster binary in current path.
 
@@ -43,11 +39,9 @@ cAdvisor can run in a docker or standalone outside of Docker to monitor the whol
 cAdvisor is a static Go binary with no external dependency.Note that some data source may require root priviledges.  
 You can get cAdvisor binary from the [Release Page](https://github.com/google/cadvisor/releases)  
 
-```shell
-$ ./cadvisor  
-```
+	./cadvisor  
 
-cAdvisor is now running (in the foreground) on http://localhost:8080/.
+cAdvisor is now running (in the foreground) on `http://localhost:8080/`.
 
 ## Start a heapster
 
@@ -56,9 +50,7 @@ Heapster supports two types of cAdvisor source: `standalone` & `CoreOS`;
 Doc of source configuration is [HERE](https://github.com/kubernetes/heapster/blob/master/docs/source-configuration.md)
 External cAdvisor source "discovers" hosts from the specified file. Use it like this:
 
-```shell
---source=cadvisor:external[?<OPTIONS>]
-```
+	--source=cadvisor:external[?<OPTIONS>]
 
 The following options are available:
 
@@ -68,9 +60,7 @@ The following options are available:
 
 Here is an example:
 
-```shell
-$ ./heapster --source="cadvisor:external?cadvisorPort=4194"
-```
+	./heapster --source="cadvisor:external?cadvisorPort=4194"
 
 Because heapster needs a specified file to config external cAdvisor source, we need to provide one.  
 The `hostsFile` parameter defines a list of hosts to poll for metrics and must be in JSON format.See below for an example:  
@@ -92,29 +82,25 @@ The `hostsFile` parameter defines a list of hosts to poll for metrics and must b
 ### Start heapster
 Now you can run a heapster, here is an example:
 
-```shell
-./heapster-master --source="cadvisor:external?cadvisorPort=8080" --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s"
-```
+	./heapster-master --source="cadvisor:external?cadvisorPort=8080" --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s"
 
 The `hostsFile` use the default one `/var/run/heapster/hosts`.Then the heapster is running on the default port 8082,like this:
 
-```shell
+```
 I0911 13:42:03.657739   21041 heapster.go:57] ./heapster --source=cadvisor:external?cadvisorPort=8080 --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s
 I0911 13:42:03.657918   21041 heapster.go:58] Heapster version 0.17.0
 I0911 13:42:03.662594   21041 heapster.go:68] Starting heapster on port 8082
 ```
 
-###Test it out
+### Test it out
 If you got debug information as before, means that the heapster is working normally.You can test it by calling its [RESTful API](https://github.com/kubernetes/heapster/blob/master/docs/model.md).  
 You can use some restful tools to test, or just run a `curl` command (_ heapster implements gzip encoding, so we need add gunzip in command "curl"_).  
 
-```shell
-curl http://0.0.0.0:8082/api/v1/model/stats/ | gunzip
-```
+	curl http://0.0.0.0:8082/api/v1/model/stats/ | gunzip
 
 and you will get the response like this:
 
-```shell
+```json
 {
   "uptime": 2543160,
   "stats": {
@@ -241,7 +227,3 @@ and you will get the response like this:
  }
 
 ```
-
-
-
-

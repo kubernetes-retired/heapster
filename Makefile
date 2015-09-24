@@ -27,17 +27,17 @@ test-integration: clean deps build
 	godep go test -v --timeout=30m ./integration/... --vmodule=*=2 $(FLAGS)
 
 container: build
-	cp ./heapster ./deploy/docker/heapster
-	docker build -t $(PREFIX)/heapster:$(TAG) ./deploy/docker/
+	cp heapster deploy/docker/heapster
+	docker build -t $(PREFIX)/heapster:$(TAG) deploy/docker/
 
 grafana:
-	docker build -t $(PREFIX)/heapster_grafana:$(TAG) ./grafana/
+	docker build -t $(PREFIX)/heapster_grafana:$(TAG) grafana/
 
 influxdb:
-	docker build -t $(PREFIX)/heapster_influxdb:$(TAG) ./influxdb/
+	docker build -t $(PREFIX)/heapster_influxdb:$(TAG) influxdb/
 
 clean:
 	rm -f heapster
-	rm -f ./deploy/docker/heapster
+	rm -f deploy/docker/heapster
 
 .PHONY: all deps build sanitize test-unit test-unit-cov test-integration container grafana influxdb clean
