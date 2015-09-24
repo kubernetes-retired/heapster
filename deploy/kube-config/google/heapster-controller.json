@@ -38,7 +38,7 @@
 			"name": "heapster",
 			"command": [
 			    "/heapster",
-			    "--source=kubernetes",
+			    "--source=kubernetes:https://kubernetes.default",
 			    "--sink=gcm",
 			    "--sink=gcl",
 			    "--poll_duration=2m",

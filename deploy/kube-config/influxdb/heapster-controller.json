@@ -30,7 +30,7 @@
 			"name": "heapster",
 			"command": [
 			    "/heapster",
-			    "--source=kubernetes:https://kubernetes",
+			    "--source=kubernetes:https://kubernetes.default",
 			    "--sink=influxdb:http://monitoring-influxdb:8086"
 			]
 		    }
