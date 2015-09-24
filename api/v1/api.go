@@ -18,7 +18,6 @@ import (
 	"net/http"
 
 	restful "github.com/emicklei/go-restful"
-	"github.com/golang/glog"
 	"k8s.io/heapster/api/v1/types"
 	"k8s.io/heapster/manager"
 	sinksApi "k8s.io/heapster/sinks/api"
@@ -46,7 +45,6 @@ func (a *Api) Register(container *restful.Container) {
 		Doc("Exports the latest point for all Heapster metrics").
 		Produces(restful.MIME_JSON)
 	ws.Route(ws.GET("").
-		Filter(compressionFilter).
 		To(a.exportMetrics).
 		Doc("export the latest data point for all metrics").
 		Operation("exportMetrics").
@@ -79,18 +77,6 @@ func (a *Api) Register(container *restful.Container) {
 	container.Add(ws)
 
 	a.RegisterModel(container)
-}
-
-func compressionFilter(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
-	// wrap responseWriter into a compressing one
-	compress, err := restful.NewCompressingResponseWriter(resp.ResponseWriter, restful.ENCODING_GZIP)
-	if err != nil {
-		glog.Warningf("Failed to create CompressingResponseWriter for request %q: %v", req.Request.URL, err)
-		return
-	}
-	resp.ResponseWriter = compress
-	defer compress.Close()
-	chain.ProcessFilter(req, resp)
 }
 
 // Labels used by the target schema. A target schema uniquely identifies a container.
