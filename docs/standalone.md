@@ -96,7 +96,7 @@ I0911 13:42:03.662594   21041 heapster.go:68] Starting heapster on port 8082
 If you got debug information as before, means that the heapster is working normally.You can test it by calling its [RESTful API](https://github.com/kubernetes/heapster/blob/master/docs/model.md).  
 You can use some restful tools to test, or just run a `curl` command (_ heapster implements gzip encoding, so we need add gunzip in command "curl"_).  
 
-	curl http://0.0.0.0:8082/api/v1/model/stats/ | gunzip
+	curl http://0.0.0.0:8082/api/v1/model/stats/
 
 and you will get the response like this:
 

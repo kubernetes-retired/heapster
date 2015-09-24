@@ -117,3 +117,145 @@ pairs for the requested container-level metric, within the time range specified 
 
 `/api/v1/model/nodes/{node-name}/freecontainers/{container-name}/stats/`: Exposes the average, max and 95th percentile over the
 past minute, hour and day for each container metric.
+
+### Metric Types
+
+* cpu-limit
+* cpu-usage
+* memory-limit
+* memory-usage
+* memory-working
+* fs-limit-<fs_name>
+* fs-usage-<fs_name>
+
+### Sample API response
+
+	curl http://heapster:8082/api/v1/model/stats/
+
+```json
+{
+  "uptime": 2543160,
+  "stats": {
+   "cpu-limit": {
+    "minute": {
+     "average": 1000,
+     "percentile": 1000,
+     "max": 1000
+    },
+    "hour": {
+     "average": 1000,
+     "percentile": 1000,
+     "max": 1000
+    },
+    "day": {
+     "average": 1000,
+     "percentile": 1000,
+     "max": 1000
+    }
+   },
+   "cpu-usage": {
+    "minute": {
+     "average": 10,
+     "percentile": 10,
+     "max": 10
+    },
+    "hour": {
+     "average": 10,
+     "percentile": 10,
+     "max": 10
+    },
+    "day": {
+     "average": 10,
+     "percentile": 10,
+     "max": 10
+    }
+   },
+   "fs-limit-dev-disk-by-uuid-dcaa07b0-d2ad-4a32-bd61-6584d0da68c0": {
+    "minute": {
+     "average": 21103243264,
+     "percentile": 21103243264,
+     "max": 21103243264
+    },
+    "hour": {
+     "average": 21103243300,
+     "percentile": 21103243300,
+     "max": 21103243300
+    },
+    "day": {
+     "average": 21103243300,
+     "percentile": 21103243300,
+     "max": 21103243300
+    }
+   },
+   "fs-usage-dev-disk-by-uuid-dcaa07b0-d2ad-4a32-bd61-6584d0da68c0": {
+    "minute": {
+     "average": 12974346240,
+     "percentile": 12974346240,
+     "max": 12974346240
+    },
+    "hour": {
+     "average": 12974346300,
+     "percentile": 12974346300,
+     "max": 12974346300
+    },
+    "day": {
+     "average": 12974346300,
+     "percentile": 12974346300,
+     "max": 12974346300
+    }
+   },
+   "memory-limit": {
+    "minute": {
+     "average": 0,
+     "percentile": 18446744073709551615,
+     "max": 18446744073709551615
+    },
+    "hour": {
+     "average": 1366425486941603612,
+     "percentile": 12297829382474432512,
+     "max": 18446744073709551615
+    },
+    "day": {
+     "average": 1366425486941603612,
+     "percentile": 12297829382474432512,
+     "max": 18446744073709551615
+    }
+   },
+   "memory-usage": {
+    "minute": {
+     "average": 1824296960,
+     "percentile": 1824296960,
+     "max": 1824296960
+    },
+    "hour": {
+     "average": 1820327936,
+     "percentile": 1820327936,
+     "max": 1824296960
+    },
+    "day": {
+     "average": 1820327936,
+     "percentile": 1820327936,
+     "max": 1824296960
+    }
+   },
+   "memory-working": {
+    "minute": {
+     "average": 447021056,
+     "percentile": 447021056,
+     "max": 447021056
+    },
+    "hour": {
+     "average": 444596224,
+     "percentile": 444596224,
+     "max": 447021056
+    },
+    "day": {
+     "average": 444596224,
+     "percentile": 444596224,
+     "max": 447021056
+    }
+   }
+  }
+ }
+
+```
