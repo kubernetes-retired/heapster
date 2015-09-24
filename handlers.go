@@ -42,6 +42,7 @@ func setupHandlers(sourcesList []api.Source, sink sinks.ExternalSinkManager, m m
 
 	// Make API handler.
 	wsContainer := restful.NewContainer()
+	wsContainer.EnableContentEncoding(true)
 	a := v1.NewApi(m, runningInKubernetes)
 	a.Register(wsContainer)
 
