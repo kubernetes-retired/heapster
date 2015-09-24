@@ -7,18 +7,9 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/pborman/uuid",
-			"Rev": "cccd189d45f7ac3368a0d127efb7f4d08ae0b655"
-		},
-		{
 			"ImportPath": "bitbucket.org/ww/goautoneg",
 			"Comment": "null-5",
 			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
-		},
-		{
-			"ImportPath": "code.google.com/p/go-uuid/uuid",
-			"Comment": "null-12",
-			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
 		},
 		{
 			"ImportPath": "github.com/armon/go-metrics",
@@ -103,22 +94,22 @@
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/cgroups",
-			"Comment": "v2.1.0-51-g73eab50",
+			"Comment": "v2.2.1-2-g73eab50",
 			"Rev": "73eab50ed6320687ce236ffceeec5485498c4d62"
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/configs",
-			"Comment": "v2.1.0-51-g73eab50",
+			"Comment": "v2.2.1-2-g73eab50",
 			"Rev": "73eab50ed6320687ce236ffceeec5485498c4d62"
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/netlink",
-			"Comment": "v2.1.0-51-g73eab50",
+			"Comment": "v2.2.1-2-g73eab50",
 			"Rev": "73eab50ed6320687ce236ffceeec5485498c4d62"
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/system",
-			"Comment": "v2.1.0-51-g73eab50",
+			"Comment": "v2.2.1-2-g73eab50",
 			"Rev": "73eab50ed6320687ce236ffceeec5485498c4d62"
 		},
 		{
@@ -174,6 +165,7 @@
 		},
 		{
 			"ImportPath": "github.com/hawkular/hawkular-client-go/metrics",
+			"Comment": "v0.3.4-4-g58a3868",
 			"Rev": "58a3868088707267e6c0383bd40c579587779f9a"
 		},
 		{
@@ -224,12 +216,26 @@
 			"Rev": "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
 		},
 		{
+			"ImportPath": "github.com/pborman/uuid",
+			"Rev": "cccd189d45f7ac3368a0d127efb7f4d08ae0b655"
+		},
+		{
 			"ImportPath": "github.com/progrium/go-extpoints",
 			"Comment": "go-plugins-43-g529a176",
 			"Rev": "529a176f52394e48e8882dd70a01732f1bb480f3"
 		},
 		{
+			"ImportPath": "github.com/prometheus/client_golang/model",
+			"Comment": "0.4.0-1-g692492e",
+			"Rev": "692492e54b553a81013254cc1fba4b6dd76fad30"
+		},
+		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",
+			"Comment": "0.4.0-1-g692492e",
+			"Rev": "692492e54b553a81013254cc1fba4b6dd76fad30"
+		},
+		{
+			"ImportPath": "github.com/prometheus/client_golang/text",
 			"Comment": "0.4.0-1-g692492e",
 			"Rev": "692492e54b553a81013254cc1fba4b6dd76fad30"
 		},
@@ -297,11 +303,6 @@
 			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
 		},
 		{
-			"ImportPath": "k8s.io/kubernetes/pkg/apis/experimental/install",
-			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
-			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
-		},
-		{
 			"ImportPath": "k8s.io/kubernetes/pkg/auth/user",
 			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
 			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
@@ -322,16 +323,6 @@
 			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
 		},
 		{
-			"ImportPath": "k8s.io/kubernetes/pkg/client/unversioned/clientcmd",
-			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
-			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
-		},
-		{
-			"ImportPath": "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api",
-			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
-			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
-		},
-		{
 			"ImportPath": "k8s.io/kubernetes/pkg/controller/framework",
 			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
 			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
@@ -348,11 +339,6 @@
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/labels",
-			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
-			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
-		},
-		{
-			"ImportPath": "k8s.io/kubernetes/pkg/probe",
 			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
 			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
 		},
