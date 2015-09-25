@@ -15,8 +15,12 @@
 package hawkular
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -26,6 +30,8 @@ import (
 
 	sink_api "k8s.io/heapster/sinks/api"
 	kube_api "k8s.io/kubernetes/pkg/api"
+	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 )
 
 const (
@@ -35,6 +41,8 @@ const (
 	descriptorTag  string = "descriptor_name"
 	groupTag       string = "group_id"
 	separator      string = "/"
+
+	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 type hawkularSink struct {
@@ -208,6 +216,7 @@ func (self *hawkularSink) StoreTimeseries(ts []sink_api.Timeseries) error {
 		wg := &sync.WaitGroup{}
 
 		for _, t := range ts {
+			t := t
 
 			tenant := self.client.Tenant
 
@@ -324,12 +333,7 @@ func init() {
 func (self *hawkularSink) init() error {
 	p := metrics.Parameters{
 		Tenant: "heapster",
-		Host:   self.uri.Host,
-	}
-
-	// Connection parameters
-	if len(self.uri.Path) > 0 {
-		p.Path = self.uri.Path
+		Url:    self.uri.String(),
 	}
 
 	opts := self.uri.Query()
@@ -341,6 +345,64 @@ func (self *hawkularSink) init() error {
 	if v, found := opts["labelToTenant"]; found {
 		self.labelTenant = v[0]
 	}
+
+	if v, found := opts["useServiceAccount"]; found {
+		if b, _ := strconv.ParseBool(v[0]); b {
+			// If a readable service account token exists, then use it
+			if contents, err := ioutil.ReadFile(defaultServiceAccountFile); err == nil {
+				p.Token = string(contents)
+			}
+		}
+	}
+
+	// Authentication / Authorization parameters
+	tC := &tls.Config{}
+
+	if v, found := opts["auth"]; found {
+		if _, f := opts["caCert"]; f {
+			return fmt.Errorf("Both auth and caCert files provided, combination is not supported")
+		}
+		if len(v[0]) > 0 {
+			// Authfile
+			kubeConfig, err := kubeClientCmd.NewNonInteractiveDeferredLoadingClientConfig(&kubeClientCmd.ClientConfigLoadingRules{
+				ExplicitPath: v[0]},
+				&kubeClientCmd.ConfigOverrides{}).ClientConfig()
+			if err != nil {
+				return err
+			}
+			tC, err = kube_client.TLSConfigFor(kubeConfig)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if v, found := opts["caCert"]; found {
+		caCert, err := ioutil.ReadFile(v[0])
+		if err != nil {
+			return err
+		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		tC.RootCAs = caCertPool
+	}
+
+	if v, found := opts["insecure"]; found {
+		_, f := opts["caCert"]
+		_, f2 := opts["auth"]
+		if f || f2 {
+			return fmt.Errorf("Insecure can't be defined with auth or caCert")
+		}
+		insecure, err := strconv.ParseBool(v[0])
+		if err != nil {
+			return err
+		}
+		tC.InsecureSkipVerify = insecure
+	}
+
+	p.TLSConfig = tC
 
 	c, err := metrics.NewHawkularClient(p)
 	if err != nil {
