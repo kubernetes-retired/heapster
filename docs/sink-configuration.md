@@ -70,12 +70,18 @@ To use the Hawkular-Metrics sink add the following flag:
 --sink=hawkular:<HAWKULAR_SERVER_URL>[?<OPTIONS>]
 ```
 
-If `HAWKULAR_SERVER_URL` includes any path, the default `hawkular/metrics` is overridden.
+If `HAWKULAR_SERVER_URL` includes any path, the default `hawkular/metrics` is overridden. To use SSL, the `HAWKULAR_SERVER_URL` has to start with `https`
 
 The following options are available:
 
 * `tenant` - Hawkular-Metrics tenantId (default: `heapster`)
 * `labelToTenant` - Hawkular-Metrics uses given label's value as tenant value when storing data
+* `useServiceAccount` - Sink will use the service account token to authorize to Hawkular-Metrics (requires Openshift)
+* `insecure` - SSL connection will not verify the certificates
+* `caCert` - A path to the CA Certificate file that will be used in the connection
+* `auth` - Kubernetes authentication file that will be used for constructing the TLSConfig
+
+A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. 
 
 ## Modifying the sinks at runtime
 

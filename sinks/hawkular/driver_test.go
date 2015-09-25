@@ -142,27 +142,20 @@ func TestRecentTest(t *testing.T) {
 // Integration tests
 
 func integSink(uri string) (*hawkularSink, error) {
+
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
 	}
 
-	p := metrics.Parameters{
-		Tenant: "test-heapster",
-		Host:   u.Host,
+	sink := &hawkularSink{
+		uri: u,
 	}
-
-	c, err := metrics.NewHawkularClient(p)
-	if err != nil {
+	if err = sink.init(); err != nil {
 		return nil, err
 	}
 
-	hSink := &hawkularSink{
-		reg:    make(map[string]*metrics.MetricDefinition),
-		models: make(map[string]*metrics.MetricDefinition),
-		client: c,
-	}
-	return hSink, nil
+	return sink, nil
 }
 
 // Test that Definitions is called for Gauges & Counters
@@ -205,7 +198,7 @@ func TestRegister(t *testing.T) {
 	}))
 	defer s.Close()
 
-	hSink, err := integSink(s.URL)
+	hSink, err := integSink(s.URL + "?tenant=test-heapster")
 	assert.NoError(t, err)
 
 	md := make([]sink_api.MetricDescriptor, 0, 1)
@@ -220,12 +213,20 @@ func TestRegister(t *testing.T) {
 		Type:      sink_api.MetricGauge,
 		Labels:    []sink_api.LabelDescriptor{ld},
 	}
-	md = append(md, smd)
+	smdg := sink_api.MetricDescriptor{
+		Name:      "test/metric/2",
+		Units:     sink_api.UnitsBytes,
+		ValueType: sink_api.ValueDouble,
+		Type:      sink_api.MetricCumulative,
+		Labels:    []sink_api.LabelDescriptor{},
+	}
+
+	md = append(md, smd, smdg)
 
 	err = hSink.Register(md)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(hSink.models))
+	assert.Equal(t, 2, len(hSink.models))
 	assert.Equal(t, 1, len(hSink.reg))
 
 	assert.True(t, definitionsCalled["gauge"], "Gauge definitions were not fetched")
@@ -236,6 +237,7 @@ func TestRegister(t *testing.T) {
 // Store timeseries with both gauges and cumulatives
 func TestStoreTimeseries(t *testing.T) {
 	var calls int
+	var ids []string
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
 		w.Header().Set("Content-Type", "application/json")
@@ -263,14 +265,13 @@ func TestStoreTimeseries(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(mH))
-		assert.Equal(t, "test-container/test-podid/test/metric/", mH[0].Id[:len(mH[0].Id)-1])
+
+		ids = append(ids, mH[0].Id)
 	}))
 	defer s.Close()
 
-	hSink, err := integSink(s.URL)
+	hSink, err := integSink(s.URL + "?tenant=test-heapster&labelToTenant=projectId")
 	assert.NoError(t, err)
-
-	hSink.labelTenant = "projectId"
 
 	l := make(map[string]string)
 	l["projectId"] = "test-label"
@@ -325,4 +326,7 @@ func TestStoreTimeseries(t *testing.T) {
 	err = hSink.StoreTimeseries([]sink_api.Timeseries{ts, tsg})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, calls)
+	assert.Equal(t, 2, len(ids))
+
+	assert.NotEqual(t, ids[0], ids[1])
 }
