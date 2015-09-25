@@ -48,12 +48,12 @@ type Model interface {
 	GetFreeContainerMetric(FreeContainerMetricRequest) ([]statstore.TimePoint, time.Time, error)
 
 	// The GetXStats operations extract all derived stats for a single entity of the cluster.
-	GetClusterStats() (map[string]StatBundle, time.Duration, error)
-	GetNodeStats(NodeRequest) (map[string]StatBundle, time.Duration, error)
-	GetNamespaceStats(NamespaceRequest) (map[string]StatBundle, time.Duration, error)
-	GetPodStats(PodRequest) (map[string]StatBundle, time.Duration, error)
-	GetPodContainerStats(PodContainerRequest) (map[string]StatBundle, time.Duration, error)
-	GetFreeContainerStats(FreeContainerRequest) (map[string]StatBundle, time.Duration, error)
+	GetClusterStats() (*StatsResult, error)
+	GetNodeStats(NodeRequest) (*StatsResult, error)
+	GetNamespaceStats(NamespaceRequest) (*StatsResult, error)
+	GetPodStats(PodRequest) (*StatsResult, error)
+	GetPodContainerStats(PodContainerRequest) (*StatsResult, error)
+	GetFreeContainerStats(FreeContainerRequest) (*StatsResult, error)
 }
 
 // realModel is an implementation of the Model interface.
@@ -175,6 +175,12 @@ type StatBundle struct {
 	Minute Stats
 	Hour   Stats
 	Day    Stats
+}
+
+type StatsResult struct {
+	ByName    map[string]StatBundle
+	Timestamp time.Time
+	Uptime    time.Duration
 }
 
 // Listing Types

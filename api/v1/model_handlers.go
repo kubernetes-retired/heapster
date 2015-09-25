@@ -469,11 +469,11 @@ func (a *Api) clusterStats(request *restful.Request, response *restful.Response)
 	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 	}
-	res, uptime, err := model.GetClusterStats()
+	res, err := model.GetClusterStats()
 	if err != nil {
 		response.WriteError(400, err)
 	}
-	response.WriteEntity(exportStatBundle(res, uptime))
+	response.WriteEntity(exportStatsResult(res))
 }
 
 // clusterMetrics returns a metric timeseries for a metric of the Cluster entity.
@@ -501,13 +501,13 @@ func (a *Api) nodeStats(request *restful.Request, response *restful.Response) {
 	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 	}
-	res, uptime, err := model.GetNodeStats(model_api.NodeRequest{
+	res, err := model.GetNodeStats(model_api.NodeRequest{
 		NodeName: request.PathParameter("node-name"),
 	})
 	if err != nil {
 		response.WriteError(400, err)
 	}
-	response.WriteEntity(exportStatBundle(res, uptime))
+	response.WriteEntity(exportStatsResult(res))
 }
 
 // nodeMetrics returns a metric timeseries for a metric of the Node entity.
@@ -536,13 +536,13 @@ func (a *Api) namespaceStats(request *restful.Request, response *restful.Respons
 	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 	}
-	res, uptime, err := model.GetNamespaceStats(model_api.NamespaceRequest{
+	res, err := model.GetNamespaceStats(model_api.NamespaceRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
 	})
 	if err != nil {
 		response.WriteError(400, err)
 	}
-	response.WriteEntity(exportStatBundle(res, uptime))
+	response.WriteEntity(exportStatsResult(res))
 }
 
 // namespaceMetrics returns a metric timeseries for a metric of the Namespace entity.
@@ -571,14 +571,14 @@ func (a *Api) podStats(request *restful.Request, response *restful.Response) {
 	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 	}
-	res, uptime, err := model.GetPodStats(model_api.PodRequest{
+	res, err := model.GetPodStats(model_api.PodRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
 		PodName:       request.PathParameter("pod-name"),
 	})
 	if err != nil {
 		response.WriteError(400, err)
 	}
-	response.WriteEntity(exportStatBundle(res, uptime))
+	response.WriteEntity(exportStatsResult(res))
 }
 
 // podMetrics returns a metric timeseries for a metric of the Pod entity.
@@ -635,7 +635,7 @@ func (a *Api) podContainerStats(request *restful.Request, response *restful.Resp
 	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 	}
-	res, uptime, err := model.GetPodContainerStats(model_api.PodContainerRequest{
+	res, err := model.GetPodContainerStats(model_api.PodContainerRequest{
 		NamespaceName: request.PathParameter("namespace-name"),
 		PodName:       request.PathParameter("pod-name"),
 		ContainerName: request.PathParameter("container-name"),
@@ -643,7 +643,7 @@ func (a *Api) podContainerStats(request *restful.Request, response *restful.Resp
 	if err != nil {
 		response.WriteError(400, err)
 	}
-	response.WriteEntity(exportStatBundle(res, uptime))
+	response.WriteEntity(exportStatsResult(res))
 }
 
 // podContainerMetrics returns a metric timeseries for a metric of a Pod Container entity.
@@ -675,14 +675,14 @@ func (a *Api) freeContainerStats(request *restful.Request, response *restful.Res
 	if model == nil {
 		response.WriteError(400, errModelNotActivated)
 	}
-	res, uptime, err := model.GetFreeContainerStats(model_api.FreeContainerRequest{
+	res, err := model.GetFreeContainerStats(model_api.FreeContainerRequest{
 		NodeName:      request.PathParameter("node-name"),
 		ContainerName: request.PathParameter("container-name"),
 	})
 	if err != nil {
 		response.WriteError(400, err)
 	}
-	response.WriteEntity(exportStatBundle(res, uptime))
+	response.WriteEntity(exportStatsResult(res))
 }
 
 // freeContainerMetrics returns a metric timeseries for a metric of the Container entity.
@@ -734,10 +734,10 @@ func parseRequestParam(param string, request *restful.Request, response *restful
 	return req_stamp
 }
 
-// exportStatBundle renders a model.StatBundle and a time.Duration into StatsResponse.
-func exportStatBundle(stats map[string]model_api.StatBundle, uptime time.Duration) types.StatsResponse {
+// exportStatsResult renders a model.StatsResult into a StatsResponse.
+func exportStatsResult(res *model_api.StatsResult) types.StatsResponse {
 	resMap := make(map[string]types.ExternalStatBundle)
-	for key, val := range stats {
+	for key, val := range res.ByName {
 		resMap[key] = types.ExternalStatBundle{
 			Minute: exportStat(val.Minute),
 			Hour:   exportStat(val.Hour),
@@ -745,7 +745,7 @@ func exportStatBundle(stats map[string]model_api.StatBundle, uptime time.Duratio
 		}
 	}
 	return types.StatsResponse{
-		Uptime: uint64(uptime.Seconds()),
+		Uptime: uint64(res.Uptime.Seconds()),
 		Stats:  resMap,
 	}
 }

@@ -334,7 +334,7 @@ func TestGetStats(t *testing.T) {
 	})
 	info := newInfoType(metrics, nil, nil)
 
-	res := getStats(info)
+	res, _ := getStats(info)
 	assert.Len(res, 2)
 	assert.Equal(res[cpuLimit].Minute.Average, uint64(300000))
 	assert.Equal(res[cpuLimit].Minute.Max, uint64(300000))

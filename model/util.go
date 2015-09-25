@@ -163,11 +163,13 @@ func instantFromCumulativeMetric(value uint64, stamp time.Time, prev *statstore.
 	return instaVal, nil
 }
 
-// getStats extracts derived stats from an InfoType.
-func getStats(info InfoType) map[string]StatBundle {
+// getStats extracts derived stats from an InfoType and their timestamp.
+func getStats(info InfoType) (map[string]StatBundle, time.Time) {
 	res := make(map[string]StatBundle)
+	var timestamp time.Time
 	for key, ds := range info.Metrics {
 		last, lastMax, _ := ds.Hour.Last()
+		timestamp = last.Timestamp
 		minAvg := last.Value
 		minPct := lastMax
 		minMax := lastMax
@@ -196,7 +198,7 @@ func getStats(info InfoType) map[string]StatBundle {
 			},
 		}
 	}
-	return res
+	return res, timestamp
 }
 
 func epsilonFromMetric(metric string) uint64 {
