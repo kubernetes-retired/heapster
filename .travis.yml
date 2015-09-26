@@ -9,9 +9,9 @@ install:
   - mkdir $HOME/gopath/src/k8s.io
   - mv $TRAVIS_BUILD_DIR $HOME/gopath/src/k8s.io
   - cd $HOME/gopath/src/k8s.io/heapster
-  - go get github.com/axw/gocov/gocov
-  - go get golang.org/x/tools/cmd/cover
-  - go get github.com/mattn/goveralls
+  - go get -u github.com/axw/gocov/gocov
+  - go get -u golang.org/x/tools/cmd/cover
+  - go get -u github.com/mattn/goveralls
 
 script:
   - make test-unit test-unit-cov

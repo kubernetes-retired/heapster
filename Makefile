@@ -5,7 +5,7 @@ PREFIX = gcr.io/google_containers
 FLAGS = 
 
 deps:
-	go get github.com/tools/godep
+	go get -u github.com/tools/godep
 
 build: clean deps
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build ./...
