@@ -36,7 +36,6 @@ import (
 
 const (
 	unitsTag       string = "units"
-	typeTag        string = "type"
 	descriptionTag string = "_description"
 	descriptorTag  string = "descriptor_name"
 	groupTag       string = "group_id"

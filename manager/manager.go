@@ -73,7 +73,7 @@ type syncData struct {
 func NewManager(sources []source_api.Source, sinkManager sinks.ExternalSinkManager, res, bufferDuration time.Duration,
 	c cache.Cache, useModel bool, modelRes, modelDuration time.Duration) (Manager, error) {
 
-	var newModel model.Model = nil
+	var newModel model.Model
 	if useModel {
 		newModel = model.NewModel(modelRes)
 		// Temporary semi-hack to get model storage garbage-collected.

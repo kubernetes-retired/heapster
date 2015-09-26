@@ -218,7 +218,6 @@ func (sink *gclSink) sendLogsEntriesRequest(request LogsEntriesWriteRequest) err
 	if resp.StatusCode != http.StatusOK {
 		sink.httpErrorCount++
 		return fmt.Errorf("request to %q failed with status %q and response: %q", url, resp.Status, string(out))
-	} else {
 	}
 
 	return nil

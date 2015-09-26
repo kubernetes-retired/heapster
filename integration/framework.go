@@ -92,10 +92,7 @@ type realKubeFramework struct {
 	baseDir string
 }
 
-const (
-	imageUrlTemplate = "https://github.com/kubernetes/kubernetes/releases/download/v%s/kubernetes.tar.gz"
-	kubectl          = "kubectl.sh"
-)
+const imageUrlTemplate = "https://github.com/kubernetes/kubernetes/releases/download/v%s/kubernetes.tar.gz"
 
 var (
 	kubeConfig = flag.String("kube_config", os.Getenv("HOME")+"/.kube/config", "Path to cluster info file.")
@@ -269,7 +266,7 @@ func downloadAndSetupCluster(version string) (baseDir string, err error) {
 		// Cluster setup failed for some reason.
 		// Attempting to validate the cluster to see if it failed in the validate phase.
 		sleepDuration := 10 * time.Second
-		var clusterReady bool = false
+		clusterReady := false
 		for i := 0; i < int(time.Minute/sleepDuration); i++ {
 			if !validateCluster(kubeBaseDir) {
 				glog.Infof("Retry validation after %v seconds.", sleepDuration/time.Second)

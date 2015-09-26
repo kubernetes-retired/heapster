@@ -414,7 +414,7 @@ func (rc *realModel) GetAvailableMetrics() []string {
 	rc.lock.RLock()
 	defer rc.lock.RUnlock()
 
-	res := make([]string, 0)
+	res := make([]string, 0, len(rc.Metrics))
 	for key := range rc.Metrics {
 		res = append(res, key)
 	}

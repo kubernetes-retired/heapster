@@ -385,7 +385,7 @@ func (self *GcmCore) sendRequest(method string, url *url.URL, request interface{
 	if err != nil {
 		return err
 	}
-	var rawRequest io.Reader = nil
+	var rawRequest io.Reader
 	if request != nil {
 		jsonRequest, err := json.Marshal(request)
 		if err != nil {
