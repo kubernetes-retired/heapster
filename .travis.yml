@@ -3,15 +3,15 @@ sudo: false
 language: go
 
 go:
- - 1.4
+  - 1.4
 
 install:
- - mkdir $HOME/gopath/src/k8s.io
- - mv $TRAVIS_BUILD_DIR $HOME/gopath/src/k8s.io
- - cd $HOME/gopath/src/k8s.io/heapster
- - go get github.com/axw/gocov/gocov
- - go get golang.org/x/tools/cmd/cover
- - go get github.com/mattn/goveralls
+  - mkdir $HOME/gopath/src/k8s.io
+  - mv $TRAVIS_BUILD_DIR $HOME/gopath/src/k8s.io
+  - cd $HOME/gopath/src/k8s.io/heapster
+  - go get github.com/axw/gocov/gocov
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
 
 script:
- - make test-unit test-unit-cov
+  - make test-unit test-unit-cov
