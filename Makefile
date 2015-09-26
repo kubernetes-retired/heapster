@@ -2,10 +2,12 @@ all: build
 
 TAG = v0.18.1
 PREFIX = gcr.io/google_containers
-FLAGS = 
+FLAGS =
 
 deps:
 	go get github.com/tools/godep
+	go get github.com/onsi/ginkgo
+	go get github.com/onsi/gomega
 
 build: clean deps
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build ./...
