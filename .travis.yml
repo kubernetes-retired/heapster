@@ -15,6 +15,5 @@ install:
  - go get github.com/mattn/goveralls
 
 script:
- - export PATH=$PATH:$HOME/gopath/bin
  - make test-unit
  - make test-unit-cov
