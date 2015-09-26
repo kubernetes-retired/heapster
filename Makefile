@@ -4,6 +4,9 @@ TAG = v0.18.1
 PREFIX = gcr.io/google_containers
 FLAGS = 
 
+SUPPORTED_KUBE_VERSIONS = "1.0.5"
+TEST_NAMESPACE = heapster-e2e-tests
+
 deps:
 	go get -u github.com/tools/godep
 
@@ -24,7 +27,7 @@ test-unit-cov: clean deps sanitize build
 	hooks/coverage.sh
 
 test-integration: clean deps build
-	godep go test -v --timeout=30m ./integration/... --vmodule=*=2 $(FLAGS)
+	godep go test -v --timeout=30m ./integration/... --vmodule=*=2 $(FLAGS) --namespace=$(TEST_NAMESPACE) --kube_versions=$(SUPPORTED_KUBE_VERSIONS)
 
 container: build
 	cp heapster deploy/docker/heapster
