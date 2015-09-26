@@ -82,13 +82,13 @@ func (rc *realModel) aggregateKubeMetrics(c chan error, latestTime time.Time) {
 	}
 
 	// Perform aggregation for all the namespaces
-	chans := make([]chan error, 0)
+	chans := make([]chan error, 0, len(rc.Namespaces))
 	for _, namespace := range rc.Namespaces {
 		chans = append(chans, make(chan error))
 		go rc.aggregateNamespaceMetrics(namespace, chans[len(chans)-1], latestTime)
 	}
 
-	errs := make([]error, len(chans))
+	errs := make([]error, 0, len(chans))
 	for _, channel := range chans {
 		errs = append(errs, <-channel)
 	}
@@ -117,13 +117,13 @@ func (rc *realModel) aggregateNamespaceMetrics(namespace *NamespaceInfo, c chan 
 	}
 
 	// Perform aggregation on all the Pods
-	chans := make([]chan error, 0)
+	chans := make([]chan error, 0, len(namespace.Pods))
 	for _, pod := range namespace.Pods {
 		chans = append(chans, make(chan error))
 		go rc.aggregatePodMetrics(pod, chans[len(chans)-1], latestTime)
 	}
 
-	errs := make([]error, len(chans))
+	errs := make([]error, 0, len(chans))
 	for _, channel := range chans {
 		errs = append(errs, <-channel)
 	}
