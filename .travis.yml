@@ -15,5 +15,4 @@ install:
  - go get github.com/mattn/goveralls
 
 script:
- - make test-unit
- - make test-unit-cov
+ - make test-unit test-unit-cov
