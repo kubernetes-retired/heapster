@@ -34,7 +34,6 @@ import (
 const (
 	APIVersion = "v1"
 
-	defaultInsecure           = false
 	defaultKubeletPort        = 10255
 	defaultKubeletHttps       = false
 	defaultUseServiceAccount  = false

@@ -92,10 +92,7 @@ type realKubeFramework struct {
 	baseDir string
 }
 
-const (
-	imageUrlTemplate = "https://github.com/kubernetes/kubernetes/releases/download/v%s/kubernetes.tar.gz"
-	kubectl          = "kubectl.sh"
-)
+const imageUrlTemplate = "https://github.com/kubernetes/kubernetes/releases/download/v%s/kubernetes.tar.gz"
 
 var (
 	kubeConfig = flag.String("kube_config", os.Getenv("HOME")+"/.kube/config", "Path to cluster info file.")

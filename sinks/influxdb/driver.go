@@ -17,7 +17,6 @@ package influxdb
 import (
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
 	"net/url"
 	"strconv"
 	"strings"
@@ -57,10 +56,6 @@ type config struct {
 
 const (
 	eventMeasurementName = "log/events"
-	// Attempt database creation maxRetries times before quitting.
-	maxRetries = 20
-	// Sleep for waitDuration between database creation retries.
-	waitDuration = 30 * time.Second
 	// Value Field name
 	valueField = "value"
 	// Event special tags
@@ -170,12 +165,6 @@ func (sink *influxdbSink) eventsToPoints(events []kube_api.Event) ([]influxdb.Po
 		points = append(points, point)
 	}
 	return points, nil
-}
-
-func hashUID(s string) uint64 {
-	h := fnv.New64a()
-	h.Write([]byte(s))
-	return h.Sum64()
 }
 
 func (sink *influxdbSink) StoreTimeseries(timeseries []sink_api.Timeseries) error {
