@@ -225,7 +225,7 @@ func (rc *realModel) updateInfoType(info *InfoType, ce *cache.ContainerElement) 
 			glog.Warningf("failed to parse ContainerMetricElement: %s", err)
 			continue
 		}
-		parsed += 1
+		parsed++
 		latestTime = latestTimestamp(latestTime, stamp)
 
 		if info.Creation.Equal(time.Time{}) || cme.Spec.CreationTime.Before(info.Creation) {

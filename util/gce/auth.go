@@ -89,11 +89,10 @@ func NewAuthTokenProvider(expectedAuthScope string) (AuthTokenProvider, error) {
 func (t *realAuthTokenProvider) GetToken() (string, error) {
 	defer t.RUnlock()
 	t.RLock()
-	if t.token != "" {
-		return t.token, nil
-	} else {
+	if t.token == "" {
 		return "", fmt.Errorf("No valid GCE token")
 	}
+	return t.token, nil
 }
 
 func (t *realAuthTokenProvider) WaitForToken() (string, error) {

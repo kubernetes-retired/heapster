@@ -79,7 +79,7 @@ func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start
 		containers[i].Hostname = hostString
 		containers[i].ExternalID = externalID
 	}
-	var hostContainer *api.Container = nil
+	var hostContainer *api.Container
 	if hostIndex >= 0 {
 		hostCopy := containers[hostIndex]
 		hostContainer = &hostCopy

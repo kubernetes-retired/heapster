@@ -54,12 +54,12 @@ func TestGC(t *testing.T) {
 		PodEvicted: func(namespace string, name string) {
 			mutex.Lock()
 			defer mutex.Unlock()
-			podEvictedCount += 1
+			podEvictedCount++
 		},
 		FreeContainerEvicted: func(hostname string, name string) {
 			mutex.Lock()
 			defer mutex.Unlock()
-			containerEvictedCount += 1
+			containerEvictedCount++
 		},
 	})
 

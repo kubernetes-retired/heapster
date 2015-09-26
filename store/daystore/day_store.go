@@ -138,7 +138,7 @@ func (ds *DayStore) Put(tp statstore.TimePoint) error {
 		ds.lastFlush = nextflush
 		nextflush = ds.lastFlush.Add(time.Hour)
 		if ds.size < 24 {
-			ds.size += 1
+			ds.size++
 		}
 		ds.window.PushBack(newEntry)
 		distance = time.Time{}.Add(distance).Add(-time.Hour).Sub(time.Time{})

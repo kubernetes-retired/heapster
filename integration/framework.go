@@ -266,7 +266,7 @@ func downloadAndSetupCluster(version string) (baseDir string, err error) {
 		// Cluster setup failed for some reason.
 		// Attempting to validate the cluster to see if it failed in the validate phase.
 		sleepDuration := 10 * time.Second
-		var clusterReady bool = false
+		clusterReady := false
 		for i := 0; i < int(time.Minute/sleepDuration); i++ {
 			if !validateCluster(kubeBaseDir) {
 				glog.Infof("Retry validation after %v seconds.", sleepDuration/time.Second)
