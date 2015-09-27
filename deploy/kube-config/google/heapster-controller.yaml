@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  labels:
+    k8s-app: heapster
+    name: heapster
+    version: v6
+  name: heapster
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    k8s-app: heapster
+    version: v6
+  template:
+    metadata:
+      labels:
+        k8s-app: heapster
+        version: v6
+    spec:
+      containers:
+      - command:
+        - /heapster
+        - --source=kubernetes:https://kubernetes.default
+        - --sink=gcm
+        - --sink=gcl
+        - --poll_duration=2m
+        - --stats_resolution=1m
+        image: kubernetes/heapster:v0.18.1
+        name: heapster
+        volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: ssl-certs
+          readOnly: true
+      volumes:
+      - hostPath:
+          path: /etc/ssl/certs
+        name: ssl-certs
