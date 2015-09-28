@@ -19,20 +19,20 @@ spec:
         version: v6
     spec:
       containers:
-      - command:
+      - name: heapster
+        image: kubernetes/heapster:v0.18.1
+        command:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
         - --sink=gcm
         - --sink=gcl
         - --poll_duration=2m
         - --stats_resolution=1m
-        image: kubernetes/heapster:v0.18.1
-        name: heapster
         volumeMounts:
         - mountPath: /etc/ssl/certs
           name: ssl-certs
           readOnly: true
       volumes:
-      - hostPath:
+      - name: ssl-certs
+        hostPath:
           path: /etc/ssl/certs
-        name: ssl-certs

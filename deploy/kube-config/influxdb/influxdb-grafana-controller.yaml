@@ -15,8 +15,8 @@ spec:
         name: influxGrafana
     spec:
       containers:
-      - image: kubernetes/heapster_influxdb:v0.5
-        name: influxdb
+      - name: influxdb
+        image: kubernetes/heapster_influxdb:v0.5
         ports:
         - containerPort: 8083
           hostPort: 8083
@@ -25,8 +25,8 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: influxdb-storage
-      - image: grafana/grafana:2.1.0
-        name: grafana
+      - name: grafana
+        image: grafana/grafana:2.1.0
       volumes:
-      - emptyDir: {}
-        name: influxdb-storage
+      - name: influxdb-storage
+        emptyDir: {}

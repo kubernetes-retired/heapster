@@ -7,9 +7,9 @@ metadata:
   name: monitoring-grafana
   namespace: kube-system
 spec:
+  type: LoadBalancer
   ports:
   - port: 80
     targetPort: 3000
   selector:
     name: influxGrafana
-  type: LoadBalancer
