@@ -320,7 +320,7 @@ func (self *realKubeFramework) loadObject(filePath string) (runtime.Object, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to read object: %v", err)
 	}
-	return v1.Codec.Decode(data)
+	return runtime.YAMLDecoder(v1.Codec).Decode(data)
 }
 
 func (self *realKubeFramework) ParseRC(filePath string) (*api.ReplicationController, error) {

@@ -44,8 +44,8 @@ const (
 var (
 	testZone               = flag.String("test_zone", "us-central1-b", "GCE zone where the test will be executed")
 	kubeVersions           = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
-	heapsterControllerFile = flag.String("heapster_controller", "../deploy/kube-config/standalone-test/heapster-controller.json", "Path to heapster replication controller file.")
-	heapsterServiceFile    = flag.String("heapster_service", "../deploy/kube-config/standalone-test/heapster-service.json", "Path to heapster service file.")
+	heapsterControllerFile = flag.String("heapster_controller", "../deploy/kube-config/standalone-test/heapster-controller.yaml", "Path to heapster replication controller file.")
+	heapsterServiceFile    = flag.String("heapster_service", "../deploy/kube-config/standalone-test/heapster-service.yaml", "Path to heapster service file.")
 	heapsterImage          = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
 	avoidBuild             = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
 	namespace              = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
