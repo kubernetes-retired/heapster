@@ -28,6 +28,7 @@ import (
 )
 
 func TestEventsBasic(t *testing.T) {
+	t.Skip("Broken and flaky test - first fix #537 and #565")
 	handler := util.FakeHandler{
 		StatusCode:   200,
 		RequestBody:  "something",
