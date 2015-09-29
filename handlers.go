@@ -22,6 +22,7 @@ import (
 
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/api/v1"
+	expv2 "k8s.io/heapster/expapi/v2"
 	"k8s.io/heapster/manager"
 	"k8s.io/heapster/sinks"
 	"k8s.io/heapster/sources"
@@ -45,6 +46,8 @@ func setupHandlers(sourcesList []api.Source, sink sinks.ExternalSinkManager, m m
 	wsContainer.EnableContentEncoding(true)
 	a := v1.NewApi(m, runningInKubernetes)
 	a.Register(wsContainer)
+	expa := expv2.NewApi(m)
+	expa.Register(wsContainer)
 
 	// Validation/Debug handler.
 	handleValidate := func(req *restful.Request, resp *restful.Response) {
