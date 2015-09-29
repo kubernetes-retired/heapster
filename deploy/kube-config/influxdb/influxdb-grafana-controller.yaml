@@ -17,22 +17,19 @@ spec:
       containers:
       - name: influxdb
         image: kubernetes/heapster_influxdb:v0.5
-        ports:
-        - containerPort: 8083
-          hostPort: 8083
-        - containerPort: 8086
-          hostPort: 8086
         volumeMounts:
         - mountPath: /data
           name: influxdb-storage
       - name: grafana
-        image: kubernetes/heapster_grafana:2.1.0
-        ports:
-          - containerPort: 3000
-            hostPort: 3000
+        image: kubernetes/heapster_grafana:v2.1.0
         env:
           - name: "INFLUXDB_SERVICE_URL"
             value: "http://monitoring-influxdb:8086"
+        volumeMounts:
+        - mountPath: /var
+          name: grafana-storage
       volumes:
       - name: influxdb-storage
+        emptyDir: {}
+      - name: grafana-storage
         emptyDir: {}
