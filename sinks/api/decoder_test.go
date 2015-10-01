@@ -226,3 +226,35 @@ func TestRealInput(t *testing.T) {
 		}
 	}
 }
+
+func copyMetric(el *cache.ContainerMetricElement) *cache.ContainerMetricElement {
+	res := *el
+	s := *el.Stats
+	res.Stats = &s
+	return &res
+}
+
+func TestNoDuplicates(t *testing.T) {
+	decoder := NewDecoder()
+	c := getContainerElement("container1")
+	now := time.Now()
+
+	m0 := c.Metrics[0]
+	m0.Stats.Timestamp = now.Add(-1 * time.Minute)
+	m1 := copyMetric(m0)
+	m1.Stats.Timestamp = now.Add(-2 * time.Minute)
+	m2 := copyMetric(m0)
+	m2.Stats.Timestamp = now.Add(-3 * time.Minute)
+	m3 := copyMetric(m0)
+	m3.Stats.Timestamp = now.Add(-4 * time.Minute)
+
+	c.Metrics = []*cache.ContainerMetricElement{m2, m3}
+	ts, err := decoder.TimeseriesFromContainers([]*cache.ContainerElement{c})
+	assert.NoError(t, err)
+	assert.Equal(t, 2*len(statMetrics), len(ts))
+
+	c.Metrics = []*cache.ContainerMetricElement{m0, m1, m2, m3}
+	ts, err = decoder.TimeseriesFromContainers([]*cache.ContainerElement{c})
+	assert.NoError(t, err)
+	assert.Equal(t, 2*len(statMetrics), len(ts))
+}
