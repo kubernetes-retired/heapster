@@ -108,7 +108,12 @@ func (self *decoder) getContainerMetrics(container *cache.ContainerElement, labe
 	// One metric value per data point.
 	var result []Timeseries
 	labelsAsString := util.LabelsToString(labels, ",")
-	for _, metric := range container.Metrics {
+
+	// Metrics are in reverse chronological order (most recent to oldest). See sinks/cache/cache.go.
+	// Iterate over them in chronological order since the code below assumes such order.
+	// TODO(piosz): Remove this hack.
+	for i := len(container.Metrics) - 1; i >= 0; i-- {
+		metric := container.Metrics[i]
 		if metric == nil || metric.Spec == nil || metric.Stats == nil {
 			continue
 		}
@@ -120,9 +125,9 @@ func (self *decoder) getContainerMetrics(container *cache.ContainerElement, labe
 				Name:   supported.Name,
 				Labels: labelsAsString,
 			}
-			// TODO: remove this once the heapster source is tested to not provide duplicate metric.Statss.
 
-			if data, ok := self.lastExported[key]; ok && data.After(metric.Stats.Timestamp) {
+			// TODO: remove this once the heapster source is tested to not provide duplicate metric.Stats.
+			if data, ok := self.lastExported[key]; ok && !data.Before(metric.Stats.Timestamp) {
 				continue
 			}
 
@@ -157,7 +162,6 @@ func (self *decoder) getContainerMetrics(container *cache.ContainerElement, labe
 		}
 
 	}
-
 	return result
 }
 
