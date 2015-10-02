@@ -19,7 +19,9 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,6 +47,30 @@ const (
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
+// Filter which Timeseries are stored. Store if returns true, filter if returns false
+type Filter func(*sink_api.Timeseries) bool
+type FilterType int
+
+const (
+	// Filter by label's value
+	Label FilterType = iota
+	// Filter by metric name
+	Name
+	// Unknown filter type
+	Unknown
+)
+
+func (f FilterType) From(s string) FilterType {
+	switch s {
+	case "label":
+		return Label
+	case "name":
+		return Name
+	default:
+		return Unknown
+	}
+}
+
 type hawkularSink struct {
 	client  *metrics.Client
 	models  map[string]*metrics.MetricDefinition // Model definitions
@@ -54,6 +80,8 @@ type hawkularSink struct {
 	uri *url.URL
 
 	labelTenant string
+	modifiers   []metrics.Modifier
+	filters     []Filter
 }
 
 // START: ExternalSink interface implementations
@@ -79,7 +107,11 @@ func (self *hawkularSink) Register(mds []sink_api.MetricDescriptor) error {
 
 // Fetches definitions from the server and checks that they're matching the descriptors
 func (self *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
-	mds, err := self.client.Definitions(metrics.Filters(metrics.TypeFilter(mt)))
+	m := make([]metrics.Modifier, len(self.modifiers), len(self.modifiers)+1)
+	copy(m, self.modifiers)
+	m = append(m, metrics.Filters(metrics.TypeFilter(mt)))
+
+	mds, err := self.client.Definitions(m...)
 	if err != nil {
 		return err
 	}
@@ -92,7 +124,7 @@ func (self *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
 		if mk, found := p.Tags[descriptorTag]; found {
 			if model, f := self.models[mk]; f {
 				if !self.recent(p, model) {
-					if err := self.client.UpdateTags(mt, p.Id, p.Tags); err != nil {
+					if err := self.client.UpdateTags(mt, p.Id, p.Tags, self.modifiers...); err != nil {
 						return err
 					}
 				}
@@ -154,7 +186,15 @@ func (self *hawkularSink) groupName(p *sink_api.Point) string {
 }
 
 func (self *hawkularSink) idName(p *sink_api.Point) string {
-	n := []string{p.Labels[sink_api.LabelContainerName.Key], p.Labels[sink_api.LabelPodId.Key], p.Name}
+	n := make([]string, 0, 3)
+	n = append(n, p.Labels[sink_api.LabelContainerName.Key])
+	if p.Labels[sink_api.LabelPodId.Key] != "" {
+		n = append(n, p.Labels[sink_api.LabelPodId.Key])
+	} else {
+		n = append(n, p.Labels[sink_api.LabelHostID.Key])
+	}
+	n = append(n, p.Name)
+
 	return strings.Join(n, separator)
 }
 
@@ -187,6 +227,8 @@ func (self *hawkularSink) registerIfNecessary(t *sink_api.Timeseries, m ...metri
 			mdd.Tags[groupTag] = self.groupName(t.Point)
 			mdd.Tags[descriptorTag] = t.MetricDescriptor.Name
 
+			m = append(m, self.modifiers...)
+
 			// Create metric, use updateTags instead of Create because we know it is unique
 			if err := self.client.UpdateTags(mdd.Type, key, mdd.Tags, m...); err != nil {
 				// Log error and don't add this key to the lookup table
@@ -215,8 +257,15 @@ func (self *hawkularSink) StoreTimeseries(ts []sink_api.Timeseries) error {
 
 		wg := &sync.WaitGroup{}
 
+	Store:
 		for _, t := range ts {
 			t := t
+
+			for _, filter := range self.filters {
+				if !filter(&t) {
+					continue Store
+				}
+			}
 
 			tenant := self.client.Tenant
 
@@ -256,7 +305,10 @@ func (self *hawkularSink) StoreTimeseries(ts []sink_api.Timeseries) error {
 			wg.Add(1)
 			go func(v []metrics.MetricHeader, k string) {
 				defer wg.Done()
-				if err := self.client.Write(v, metrics.Tenant(k)); err != nil {
+				m := make([]metrics.Modifier, len(self.modifiers), len(self.modifiers)+1)
+				copy(m, self.modifiers)
+				m = append(m, metrics.Tenant(k))
+				if err := self.client.Write(v, m...); err != nil {
 					glog.Errorf(err.Error())
 				}
 			}(v, k)
@@ -331,6 +383,11 @@ func init() {
 }
 
 func (self *hawkularSink) init() error {
+	self.reg = make(map[string]*metrics.MetricDefinition)
+	self.models = make(map[string]*metrics.MetricDefinition)
+	self.modifiers = make([]metrics.Modifier, 0)
+	self.filters = make([]Filter, 0)
+
 	p := metrics.Parameters{
 		Tenant: "heapster",
 		Url:    self.uri.String(),
@@ -377,6 +434,18 @@ func (self *hawkularSink) init() error {
 		}
 	}
 
+	if u, found := opts["user"]; found {
+		if _, wrong := opts["useServiceAccount"]; wrong {
+			return fmt.Errorf("If user and password are used, serviceAccount cannot be used")
+		}
+		if p, f := opts["pass"]; f {
+			self.modifiers = append(self.modifiers, func(req *http.Request) error {
+				req.SetBasicAuth(u[0], p[0])
+				return nil
+			})
+		}
+	}
+
 	if v, found := opts["caCert"]; found {
 		caCert, err := ioutil.ReadFile(v[0])
 		if err != nil {
@@ -404,17 +473,87 @@ func (self *hawkularSink) init() error {
 
 	p.TLSConfig = tC
 
+	// Filters
+	if v, found := opts["filter"]; found {
+		filters, err := parseFilters(v)
+		if err != nil {
+			return err
+		}
+		self.filters = filters
+	}
+
 	c, err := metrics.NewHawkularClient(p)
 	if err != nil {
 		return err
 	}
 
 	self.client = c
-	self.reg = make(map[string]*metrics.MetricDefinition)
-	self.models = make(map[string]*metrics.MetricDefinition)
 
 	glog.Infof("Initialised Hawkular Sink with parameters %v", p)
 	return nil
+}
+
+// If Heapster gets filters, remove these..
+func parseFilters(v []string) ([]Filter, error) {
+	fs := make([]Filter, 0, len(v))
+	for _, s := range v {
+		p := strings.Index(s, "(")
+		if p < 0 {
+			return nil, fmt.Errorf("Incorrect syntax in filter parameters, missing (")
+		}
+
+		if strings.Index(s, ")") != len(s)-1 {
+			return nil, fmt.Errorf("Incorrect syntax in filter parameters, missing )")
+		}
+
+		t := Unknown.From(s[:p])
+		if t == Unknown {
+			return nil, fmt.Errorf("Unknown filter type")
+		}
+
+		command := s[p+1 : len(s)-1]
+
+		switch t {
+		case Label:
+			proto := strings.SplitN(command, ":", 2)
+			if len(proto) < 2 {
+				return nil, fmt.Errorf("Missing : from label filter")
+			}
+			r, err := regexp.Compile(proto[1])
+			if err != nil {
+				return nil, err
+			}
+			fs = append(fs, labelFilter(proto[0], r))
+			break
+		case Name:
+			r, err := regexp.Compile(command)
+			if err != nil {
+				return nil, err
+			}
+			fs = append(fs, nameFilter(r))
+			break
+		}
+	}
+	return fs, nil
+}
+
+func labelFilter(label string, r *regexp.Regexp) Filter {
+	return func(t *sink_api.Timeseries) bool {
+		for k, v := range t.Point.Labels {
+			if k == label {
+				if r.MatchString(v) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+}
+
+func nameFilter(r *regexp.Regexp) Filter {
+	return func(t *sink_api.Timeseries) bool {
+		return !r.MatchString(t.Point.Name)
+	}
 }
 
 func NewHawkularSink(u *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSink, error) {

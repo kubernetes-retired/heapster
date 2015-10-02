@@ -80,8 +80,13 @@ The following options are available:
 * `insecure` - SSL connection will not verify the certificates
 * `caCert` - A path to the CA Certificate file that will be used in the connection
 * `auth` - Kubernetes authentication file that will be used for constructing the TLSConfig
+* `user` - Username to connect to the Hawkular-Metrics server
+* `pass` - Password to connect to the Hawkular-Metrics server
+* `filter` - Allows bypassing the store of matching metrics, any number of `filter` parameters can be given with a syntax of `filter=operation(param)`. Supported operations and their params:
+  * `label` - The syntax is `label(labelName:regexp)` where `labelName` is 1:1 match and `regexp` to use for matching is given after `:` delimiter
+  * `name` - The syntax is `name(regexp)` where MetricName is matched (such as `cpu/usage`) with a `regexp` filter
 
-A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. 
+A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. 
 
 ## Modifying the sinks at runtime
 
