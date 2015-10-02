@@ -79,6 +79,7 @@ func TestMetricTransform(t *testing.T) {
 	l := make(map[string]string)
 	l["spooky"] = "notvisible"
 	l[sink_api.LabelHostname.Key] = "localhost"
+	l[sink_api.LabelHostID.Key] = "localhost"
 	l[sink_api.LabelContainerName.Key] = "docker"
 	l[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
@@ -103,6 +104,14 @@ func TestMetricTransform(t *testing.T) {
 	assert.Equal(t, 1, len(m.Data))
 	_, ok := m.Data[0].Value.(float64)
 	assert.True(t, ok, "Value should have been converted to float64")
+
+	delete(l, sink_api.LabelPodId.Key)
+
+	m, err = hSink.pointToMetricHeader(&ts)
+	assert.NoError(t, err)
+
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", p.Labels[sink_api.LabelContainerName.Key], p.Labels[sink_api.LabelHostID.Key], p.Name), m.Id)
+
 }
 
 func TestRecentTest(t *testing.T) {
@@ -139,8 +148,24 @@ func TestRecentTest(t *testing.T) {
 
 }
 
-// Integration tests
+func TestParseFiltersErrors(t *testing.T) {
+	_, err := parseFilters([]string{"(missingcommand)"})
+	assert.Error(t, err)
 
+	_, err = parseFilters([]string{"missingeverything"})
+	assert.Error(t, err)
+
+	_, err = parseFilters([]string{"labelstart:^missing$)"})
+	assert.Error(t, err)
+
+	_, err = parseFilters([]string{"label(endmissing"})
+	assert.Error(t, err)
+
+	_, err = parseFilters([]string{"label(wrongsyntax)"})
+	assert.Error(t, err)
+}
+
+// Integration tests
 func integSink(uri string) (*hawkularSink, error) {
 
 	u, err := url.Parse(uri)
@@ -329,4 +354,158 @@ func TestStoreTimeseries(t *testing.T) {
 	assert.Equal(t, 2, len(ids))
 
 	assert.NotEqual(t, ids[0], ids[1])
+}
+
+func TestUserPass(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Authorization", r.Header.Get("Authorization"))
+		auth := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+		if len(auth) != 2 || auth[0] != "Basic" {
+			assert.FailNow(t, "Could not find Basic authentication")
+		}
+		assert.True(t, len(auth[1]) > 0)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer s.Close()
+
+	hSink, err := integSink(s.URL + "?user=tester&pass=hidden")
+	assert.NoError(t, err)
+
+	// md := make([]sink_api.MetricDescriptor, 0, 1)
+	ld := sink_api.LabelDescriptor{
+		Key:         "k1",
+		Description: "d1",
+	}
+	smd := sink_api.MetricDescriptor{
+		Name:      "test/metric/1",
+		Units:     sink_api.UnitsBytes,
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricGauge,
+		Labels:    []sink_api.LabelDescriptor{ld},
+	}
+	err = hSink.Register([]sink_api.MetricDescriptor{smd})
+	assert.NoError(t, err)
+}
+
+func TestFiltering(t *testing.T) {
+	mH := []metrics.MetricHeader{}
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.RequestURI, "data") {
+			defer r.Body.Close()
+			b, err := ioutil.ReadAll(r.Body)
+			assert.NoError(t, err)
+
+			err = json.Unmarshal(b, &mH)
+			assert.NoError(t, err)
+		}
+	}))
+	defer s.Close()
+
+	hSink, err := integSink(s.URL + "?filter=label(namespace_id:^$)&filter=label(container_name:^[/system.slice/|/user.slice].*)&filter=name(remove*)")
+	assert.NoError(t, err)
+
+	l := make(map[string]string)
+	l["namespace_id"] = "123"
+	l["container_name"] = "/system.slice/-.mount"
+	l[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+
+	l2 := make(map[string]string)
+	l2["namespace_id"] = "123"
+	l2["container_name"] = "/system.slice/dbus.service"
+	l2[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+
+	l3 := make(map[string]string)
+	l3["namespace_id"] = "123"
+	l3[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+
+	l4 := make(map[string]string)
+	l4["namespace_id"] = ""
+	l4[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+
+	l5 := make(map[string]string)
+	l5["namespace_id"] = "123"
+	l5[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+
+	p := sink_api.Point{
+		Name:   "/system.slice/-.mount//cpu/limit",
+		Labels: l,
+		Start:  time.Now(),
+		End:    time.Now(),
+		Value:  int64(123456),
+	}
+	smd := sink_api.MetricDescriptor{
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricCumulative,
+	}
+	ts := sink_api.Timeseries{
+		MetricDescriptor: &smd,
+		Point:            &p,
+	}
+
+	p2 := sink_api.Point{
+		Name:   "/system.slice/dbus.service//cpu/usage",
+		Labels: l2,
+		Start:  time.Now(),
+		End:    time.Now(),
+		Value:  int64(123456),
+	}
+	smd2 := sink_api.MetricDescriptor{
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricCumulative,
+	}
+	ts2 := sink_api.Timeseries{
+		MetricDescriptor: &smd2,
+		Point:            &p2,
+	}
+
+	p3 := sink_api.Point{
+		Name:   "test/metric/1",
+		Labels: l3,
+		Start:  time.Now(),
+		End:    time.Now(),
+		Value:  int64(123456),
+	}
+	smd3 := sink_api.MetricDescriptor{
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricCumulative,
+	}
+	ts3 := sink_api.Timeseries{
+		MetricDescriptor: &smd3,
+		Point:            &p3,
+	}
+	p4 := sink_api.Point{
+		Name:   "test/metric/1",
+		Labels: l4,
+		Start:  time.Now(),
+		End:    time.Now(),
+		Value:  int64(123456),
+	}
+	smd4 := sink_api.MetricDescriptor{
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricCumulative,
+	}
+	ts4 := sink_api.Timeseries{
+		MetricDescriptor: &smd4,
+		Point:            &p4,
+	}
+	p5 := sink_api.Point{
+		Name:   "removeme",
+		Labels: l5,
+		Start:  time.Now(),
+		End:    time.Now(),
+		Value:  int64(123456),
+	}
+	smd5 := sink_api.MetricDescriptor{
+		ValueType: sink_api.ValueInt64,
+		Type:      sink_api.MetricCumulative,
+	}
+	ts5 := sink_api.Timeseries{
+		MetricDescriptor: &smd5,
+		Point:            &p5,
+	}
+
+	err = hSink.StoreTimeseries([]sink_api.Timeseries{ts, ts2, ts3, ts4, ts5})
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(mH))
 }
