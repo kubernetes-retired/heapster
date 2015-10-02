@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.18.2 (10-2-2015)
+- Export metrics in increasing time order to sinks.
+
 ## 0.18.1 (9-18-2015)
 - Avoid using UIDs for Kubernetes events.
 - Export container labels.
