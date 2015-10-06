@@ -323,8 +323,7 @@
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/client/unversioned",
-			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
-			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
+		        "Rev": "5ad24837841e585ee9e821eba6a6cb376f4c3120"
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/controller/framework",
@@ -358,8 +357,7 @@
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/util",
-			"Comment": "v1.1.0-alpha.1-1078-gb07b991",
-			"Rev": "b07b9918ce6b18614f0e93bfe2cbc98b6590eef5"
+			"Rev": "5ad24837841e585ee9e821eba6a6cb376f4c3120"
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/version",
