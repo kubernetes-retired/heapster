@@ -173,6 +173,7 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 		Port:            uint(kubeletPort),
 		EnableHttps:     kubeletHttps,
 		TLSClientConfig: kubeConfig.TLSClientConfig,
+		BearerToken:     kubeConfig.BearerToken,
 	}
 
 	kubeletApi, err := datasource.NewKubelet(kubeletConfig)
