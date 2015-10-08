@@ -1,5 +1,3 @@
-// +build !cgo !linux
-
 /*
 Copyright 2015 The Kubernetes Authors All rights reserved.
 
@@ -16,25 +14,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package oom
+package limitwriter
 
 import (
 	"errors"
+	"io"
 )
 
-var unsupportedErr = errors.New("setting OOM scores is unsupported in this build")
-
-func NewOOMAdjuster() *OOMAdjuster {
-	return &OOMAdjuster{
-		ApplyOOMScoreAdj:          unsupportedApplyOOMScoreAdj,
-		ApplyOOMScoreAdjContainer: unsupportedApplyOOMScoreAdjContainer,
+// New creates a writer that is limited to writing at most n bytes to w. This writer is not
+// thread safe.
+func New(w io.Writer, n int64) io.Writer {
+	return &limitWriter{
+		w: w,
+		n: n,
 	}
 }
 
-func unsupportedApplyOOMScoreAdj(pid int, oomScoreAdj int) error {
-	return unsupportedErr
+// ErrMaximumWrite is returned when all bytes have been written.
+var ErrMaximumWrite = errors.New("maximum write")
+
+type limitWriter struct {
+	w io.Writer
+	n int64
 }
 
-func unsupportedApplyOOMScoreAdjContainer(cgroupName string, oomScoreAdj, maxTries int) error {
-	return unsupportedErr
+func (w *limitWriter) Write(p []byte) (n int, err error) {
+	if int64(len(p)) > w.n {
+		p = p[:w.n]
+	}
+	if len(p) > 0 {
+		n, err = w.w.Write(p)
+		w.n -= int64(n)
+	}
+	if w.n == 0 {
+		err = ErrMaximumWrite
+	}
+	return
 }

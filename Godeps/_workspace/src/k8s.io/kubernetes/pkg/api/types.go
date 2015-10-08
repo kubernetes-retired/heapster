@@ -204,6 +204,9 @@ type VolumeSource struct {
 	// CephFS represents a Cephfs mount on the host that shares a pod's lifetime
 	CephFS *CephFSVolumeSource `json:"cephfs,omitempty"`
 
+	// Flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+	Flocker *FlockerVolumeSource `json:"flocker,omitempty"`
+
 	// DownwardAPI represents metadata about the pod that should populate this volume
 	DownwardAPI *DownwardAPIVolumeSource `json:"downwardAPI,omitempty"`
 	// FC represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
@@ -239,6 +242,8 @@ type PersistentVolumeSource struct {
 	CephFS *CephFSVolumeSource `json:"cephfs,omitempty"`
 	// FC represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
 	FC *FCVolumeSource `json:"fc,omitempty"`
+	// Flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running
+	Flocker *FlockerVolumeSource `json:"flocker,omitempty"`
 }
 
 type PersistentVolumeClaimVolumeSource struct {
@@ -590,6 +595,12 @@ type CephFSVolumeSource struct {
 	// Optional: Defaults to false (read/write). ReadOnly here will force
 	// the ReadOnly setting in VolumeMounts.
 	ReadOnly bool `json:"readOnly,omitempty"`
+}
+
+// FlockerVolumeSource represents a Flocker volume mounted by the Flocker agent.
+type FlockerVolumeSource struct {
+	// Required: the volume name. This is going to be store on metadata -> name on the payload for Flocker
+	DatasetName string `json:"datasetName"`
 }
 
 // DownwardAPIVolumeSource represents a volume containing downward API info
@@ -1598,12 +1609,30 @@ type PodLogOptions struct {
 
 	// Container for which to return logs
 	Container string
-
 	// If true, follow the logs for the pod
 	Follow bool
-
 	// If true, return previous terminated container logs
 	Previous bool
+	// A relative time in seconds before the current time from which to show logs. If this value
+	// precedes the time a pod was started, only logs since the pod start will be returned.
+	// If this value is in the future, no logs will be returned.
+	// Only one of sinceSeconds or sinceTime may be specified.
+	SinceSeconds *int64
+	// An RFC3339 timestamp from which to show logs. If this value
+	// preceeds the time a pod was started, only logs since the pod start will be returned.
+	// If this value is in the future, no logs will be returned.
+	// Only one of sinceSeconds or sinceTime may be specified.
+	SinceTime *unversioned.Time
+	// If true, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line
+	// of log output.
+	Timestamps bool
+	// If set, the number of lines from the end of the logs to show. If not specified,
+	// logs are shown from the creation of the container or sinceSeconds or sinceTime
+	TailLines *int64
+	// If set, the number of bytes to read from the server before terminating the
+	// log output. This may not display a complete final line of logging, and may return
+	// slightly more or slightly less than the specified limit.
+	LimitBytes *int64
 }
 
 // PodAttachOptions is the query options to a Pod's remote attach call
@@ -1933,14 +1962,24 @@ const (
 	// Command to run for remote command execution
 	ExecCommandParamm = "command"
 
-	StreamType       = "streamType"
-	StreamTypeStdin  = "stdin"
+	// Name of header that specifies stream type
+	StreamType = "streamType"
+	// Value for streamType header for stdin stream
+	StreamTypeStdin = "stdin"
+	// Value for streamType header for stdout stream
 	StreamTypeStdout = "stdout"
+	// Value for streamType header for stderr stream
 	StreamTypeStderr = "stderr"
-	StreamTypeData   = "data"
-	StreamTypeError  = "error"
+	// Value for streamType header for data stream
+	StreamTypeData = "data"
+	// Value for streamType header for error stream
+	StreamTypeError = "error"
 
+	// Name of header that specifies the port being forwarded
 	PortHeader = "port"
+	// Name of header that specifies a request ID used to associate the error
+	// and data streams for a single forwarded connection
+	PortForwardRequestIDHeader = "requestID"
 )
 
 // Similarly to above, these are constants to support HTTP PATCH utilized by
@@ -2042,36 +2081,4 @@ type RangeAllocation struct {
 	// represented as a bit array starting at the base IP of the CIDR in Range, with each bit representing
 	// a single allocated address (the fifth bit on CIDR 10.0.0.0/8 is 10.0.0.4).
 	Data []byte `json:"data"`
-}
-
-// A ThirdPartyResource is a generic representation of a resource, it is used by add-ons and plugins to add new resource
-// types to the API.  It consists of one or more Versions of the api.
-type ThirdPartyResource struct {
-	unversioned.TypeMeta `json:",inline"`
-	ObjectMeta           `json:"metadata,omitempty"`
-
-	Description string `json:"description,omitempty"`
-
-	Versions []APIVersion `json:"versions,omitempty"`
-}
-
-type ThirdPartyResourceList struct {
-	unversioned.TypeMeta `json:",inline"`
-	unversioned.ListMeta `json:"metadata,omitempty"`
-
-	Items []ThirdPartyResource `json:"items"`
-}
-
-// An APIVersion represents a single concrete version of an object model.
-type APIVersion struct {
-	Name     string `json:"name,omitempty"`
-	APIGroup string `json:"apiGroup,omitempty"`
-}
-
-// An internal object, used for versioned storage in etcd.  Not exposed to the end user.
-type ThirdPartyResourceData struct {
-	unversioned.TypeMeta `json:",inline"`
-	ObjectMeta           `json:"metadata,omitempty"`
-
-	Data []byte `json:"name,omitempty"`
 }

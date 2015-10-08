@@ -607,6 +607,11 @@ func deepCopy_v1_FCVolumeSource(in FCVolumeSource, out *FCVolumeSource, c *conve
 	return nil
 }
 
+func deepCopy_v1_FlockerVolumeSource(in FlockerVolumeSource, out *FlockerVolumeSource, c *conversion.Cloner) error {
+	out.DatasetName = in.DatasetName
+	return nil
+}
+
 func deepCopy_v1_GCEPersistentDiskVolumeSource(in GCEPersistentDiskVolumeSource, out *GCEPersistentDiskVolumeSource, c *conversion.Cloner) error {
 	out.PDName = in.PDName
 	out.FSType = in.FSType
@@ -1315,6 +1320,14 @@ func deepCopy_v1_PersistentVolumeSource(in PersistentVolumeSource, out *Persiste
 	} else {
 		out.FC = nil
 	}
+	if in.Flocker != nil {
+		out.Flocker = new(FlockerVolumeSource)
+		if err := deepCopy_v1_FlockerVolumeSource(*in.Flocker, out.Flocker, c); err != nil {
+			return err
+		}
+	} else {
+		out.Flocker = nil
+	}
 	return nil
 }
 
@@ -1450,6 +1463,33 @@ func deepCopy_v1_PodLogOptions(in PodLogOptions, out *PodLogOptions, c *conversi
 	out.Container = in.Container
 	out.Follow = in.Follow
 	out.Previous = in.Previous
+	if in.SinceSeconds != nil {
+		out.SinceSeconds = new(int64)
+		*out.SinceSeconds = *in.SinceSeconds
+	} else {
+		out.SinceSeconds = nil
+	}
+	if in.SinceTime != nil {
+		out.SinceTime = new(unversioned.Time)
+		if err := deepCopy_unversioned_Time(*in.SinceTime, out.SinceTime, c); err != nil {
+			return err
+		}
+	} else {
+		out.SinceTime = nil
+	}
+	out.Timestamps = in.Timestamps
+	if in.TailLines != nil {
+		out.TailLines = new(int64)
+		*out.TailLines = *in.TailLines
+	} else {
+		out.TailLines = nil
+	}
+	if in.LimitBytes != nil {
+		out.LimitBytes = new(int64)
+		*out.LimitBytes = *in.LimitBytes
+	} else {
+		out.LimitBytes = nil
+	}
 	return nil
 }
 
@@ -2071,6 +2111,14 @@ func deepCopy_v1_ServiceSpec(in ServiceSpec, out *ServiceSpec, c *conversion.Clo
 	} else {
 		out.ExternalIPs = nil
 	}
+	if in.DeprecatedPublicIPs != nil {
+		out.DeprecatedPublicIPs = make([]string, len(in.DeprecatedPublicIPs))
+		for i := range in.DeprecatedPublicIPs {
+			out.DeprecatedPublicIPs[i] = in.DeprecatedPublicIPs[i]
+		}
+	} else {
+		out.DeprecatedPublicIPs = nil
+	}
 	out.SessionAffinity = in.SessionAffinity
 	out.LoadBalancerIP = in.LoadBalancerIP
 	return nil
@@ -2210,6 +2258,14 @@ func deepCopy_v1_VolumeSource(in VolumeSource, out *VolumeSource, c *conversion.
 	} else {
 		out.CephFS = nil
 	}
+	if in.Flocker != nil {
+		out.Flocker = new(FlockerVolumeSource)
+		if err := deepCopy_v1_FlockerVolumeSource(*in.Flocker, out.Flocker, c); err != nil {
+			return err
+		}
+	} else {
+		out.Flocker = nil
+	}
 	if in.DownwardAPI != nil {
 		out.DownwardAPI = new(DownwardAPIVolumeSource)
 		if err := deepCopy_v1_DownwardAPIVolumeSource(*in.DownwardAPI, out.DownwardAPI, c); err != nil {
@@ -2286,6 +2342,7 @@ func init() {
 		deepCopy_v1_EventSource,
 		deepCopy_v1_ExecAction,
 		deepCopy_v1_FCVolumeSource,
+		deepCopy_v1_FlockerVolumeSource,
 		deepCopy_v1_GCEPersistentDiskVolumeSource,
 		deepCopy_v1_GitRepoVolumeSource,
 		deepCopy_v1_GlusterfsVolumeSource,

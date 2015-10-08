@@ -220,6 +220,15 @@ func ValidatePositiveField(value int64, fieldName string) errs.ValidationErrorLi
 	return allErrs
 }
 
+// Validates that a Quantity is not negative
+func ValidatePositiveQuantity(value resource.Quantity, fieldName string) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	if value.Cmp(resource.Quantity{}) < 0 {
+		allErrs = append(allErrs, errs.NewFieldInvalid(fieldName, value.String(), isNegativeErrorMsg))
+	}
+	return allErrs
+}
+
 // ValidateObjectMeta validates an object's metadata on creation. It expects that name generation has already
 // been performed.
 func ValidateObjectMeta(meta *api.ObjectMeta, requiresNamespace bool, nameFn ValidateNameFunc) errs.ValidationErrorList {
@@ -369,6 +378,10 @@ func validateSource(source *api.VolumeSource) errs.ValidationErrorList {
 	if source.Glusterfs != nil {
 		numVolumes++
 		allErrs = append(allErrs, validateGlusterfs(source.Glusterfs).Prefix("glusterfs")...)
+	}
+	if source.Flocker != nil {
+		numVolumes++
+		allErrs = append(allErrs, validateFlocker(source.Flocker).Prefix("flocker")...)
 	}
 	if source.PersistentVolumeClaim != nil {
 		numVolumes++
@@ -522,6 +535,17 @@ func validateGlusterfs(glusterfs *api.GlusterfsVolumeSource) errs.ValidationErro
 	return allErrs
 }
 
+func validateFlocker(flocker *api.FlockerVolumeSource) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	if flocker.DatasetName == "" {
+		allErrs = append(allErrs, errs.NewFieldRequired("datasetName"))
+	}
+	if strings.Contains(flocker.DatasetName, "/") {
+		allErrs = append(allErrs, errs.NewFieldInvalid("datasetName", flocker.DatasetName, "must not contain '/'"))
+	}
+	return allErrs
+}
+
 var validDownwardAPIFieldPathExpressions = sets.NewString("metadata.name", "metadata.namespace", "metadata.labels", "metadata.annotations")
 
 func validateDownwardAPIVolumeSource(downwardAPIVolume *api.DownwardAPIVolumeSource) errs.ValidationErrorList {
@@ -626,6 +650,10 @@ func ValidatePersistentVolume(pv *api.PersistentVolume) errs.ValidationErrorList
 	if pv.Spec.Glusterfs != nil {
 		numVolumes++
 		allErrs = append(allErrs, validateGlusterfs(pv.Spec.Glusterfs).Prefix("glusterfs")...)
+	}
+	if pv.Spec.Flocker != nil {
+		numVolumes++
+		allErrs = append(allErrs, validateFlocker(pv.Spec.Flocker).Prefix("flocker")...)
 	}
 	if pv.Spec.NFS != nil {
 		numVolumes++
@@ -1701,14 +1729,17 @@ func ValidateResourceQuota(resourceQuota *api.ResourceQuota) errs.ValidationErro
 	allErrs := errs.ValidationErrorList{}
 	allErrs = append(allErrs, ValidateObjectMeta(&resourceQuota.ObjectMeta, true, ValidateResourceQuotaName).Prefix("metadata")...)
 
-	for k := range resourceQuota.Spec.Hard {
+	for k, v := range resourceQuota.Spec.Hard {
 		allErrs = append(allErrs, validateResourceName(string(k), string(resourceQuota.TypeMeta.Kind))...)
+		allErrs = append(allErrs, ValidatePositiveQuantity(v, string(k))...)
 	}
-	for k := range resourceQuota.Status.Hard {
+	for k, v := range resourceQuota.Status.Hard {
 		allErrs = append(allErrs, validateResourceName(string(k), string(resourceQuota.TypeMeta.Kind))...)
+		allErrs = append(allErrs, ValidatePositiveQuantity(v, string(k))...)
 	}
-	for k := range resourceQuota.Status.Used {
+	for k, v := range resourceQuota.Status.Used {
 		allErrs = append(allErrs, validateResourceName(string(k), string(resourceQuota.TypeMeta.Kind))...)
+		allErrs = append(allErrs, ValidatePositiveQuantity(v, string(k))...)
 	}
 	return allErrs
 }
@@ -1825,8 +1856,8 @@ func validateEndpointSubsets(subsets []api.EndpointSubset) errs.ValidationErrorL
 
 		ssErrs := errs.ValidationErrorList{}
 
-		if len(ss.Addresses) == 0 {
-			ssErrs = append(ssErrs, errs.NewFieldRequired("addresses"))
+		if len(ss.Addresses) == 0 && len(ss.NotReadyAddresses) == 0 {
+			ssErrs = append(ssErrs, errs.NewFieldRequired("addresses or notReadyAddresses"))
 		}
 		if len(ss.Ports) == 0 {
 			ssErrs = append(ssErrs, errs.NewFieldRequired("ports"))
@@ -1924,29 +1955,22 @@ func ValidateSecurityContext(sc *api.SecurityContext) errs.ValidationErrorList {
 	return allErrs
 }
 
-func ValidateThirdPartyResourceUpdate(old, update *api.ThirdPartyResource) errs.ValidationErrorList {
-	return ValidateThirdPartyResource(update)
-}
-
-func ValidateThirdPartyResource(obj *api.ThirdPartyResource) errs.ValidationErrorList {
+func ValidatePodLogOptions(opts *api.PodLogOptions) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
-	if len(obj.Name) == 0 {
-		allErrs = append(allErrs, errs.NewFieldInvalid("name", obj.Name, "name must be non-empty"))
+	if opts.TailLines != nil && *opts.TailLines < 0 {
+		allErrs = append(allErrs, errs.NewFieldInvalid("tailLines", *opts.TailLines, "tailLines must be a non-negative integer or nil"))
 	}
-	versions := sets.String{}
-	for ix := range obj.Versions {
-		version := &obj.Versions[ix]
-		if len(version.Name) == 0 {
-			allErrs = append(allErrs, errs.NewFieldInvalid("name", version, "name can not be empty"))
+	if opts.LimitBytes != nil && *opts.LimitBytes < 1 {
+		allErrs = append(allErrs, errs.NewFieldInvalid("limitBytes", *opts.LimitBytes, "limitBytes must be a positive integer or nil"))
+	}
+	switch {
+	case opts.SinceSeconds != nil && opts.SinceTime != nil:
+		allErrs = append(allErrs, errs.NewFieldInvalid("sinceSeconds", *opts.SinceSeconds, "only one of sinceTime or sinceSeconds can be provided"))
+		allErrs = append(allErrs, errs.NewFieldInvalid("sinceTime", *opts.SinceTime, "only one of sinceTime or sinceSeconds can be provided"))
+	case opts.SinceSeconds != nil:
+		if *opts.SinceSeconds < 1 {
+			allErrs = append(allErrs, errs.NewFieldInvalid("sinceSeconds", *opts.SinceSeconds, "sinceSeconds must be a positive integer"))
 		}
-		if versions.Has(version.Name) {
-			allErrs = append(allErrs, errs.NewFieldDuplicate("version", version))
-		}
-		versions.Insert(version.Name)
 	}
 	return allErrs
-}
-
-func ValidateSchemaUpdate(oldResource, newResource *api.ThirdPartyResource) errs.ValidationErrorList {
-	return errs.ValidationErrorList{fmt.Errorf("Schema update is not supported.")}
 }
