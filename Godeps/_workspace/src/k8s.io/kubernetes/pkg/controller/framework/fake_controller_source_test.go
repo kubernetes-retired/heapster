@@ -1,3 +1,5 @@
+// +build !cgo !linux
+
 /*
 Copyright 2015 The Kubernetes Authors All rights reserved.
 
@@ -14,35 +16,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package framework
+package oom
 
 import (
-	"testing"
-
-	"k8s.io/kubernetes/pkg/api"
+	"errors"
 )
 
-func TestRCNumber(t *testing.T) {
-	pod := func(name string) *api.Pod {
-		return &api.Pod{
-			ObjectMeta: api.ObjectMeta{
-				Name: name,
-			},
-		}
-	}
+var unsupportedErr = errors.New("setting OOM scores is unsupported in this build")
 
-	source := NewFakeControllerSource()
-	source.Add(pod("foo"))
-	source.Modify(pod("foo"))
-	source.Modify(pod("foo"))
+func NewOOMAdjuster() *OOMAdjuster {
+	return &OOMAdjuster{
+		ApplyOOMScoreAdj:          unsupportedApplyOOMScoreAdj,
+		ApplyOOMScoreAdjContainer: unsupportedApplyOOMScoreAdjContainer,
+	}
+}
 
-	w, err := source.Watch("1")
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	defer w.Stop()
-	got := <-w.ResultChan()
-	if e, a := "2", got.Object.(*api.Pod).ObjectMeta.ResourceVersion; e != a {
-		t.Errorf("wanted %v, got %v", e, a)
-	}
+func unsupportedApplyOOMScoreAdj(pid int, oomScoreAdj int) error {
+	return unsupportedErr
+}
+
+func unsupportedApplyOOMScoreAdjContainer(cgroupName string, oomScoreAdj, maxTries int) error {
+	return unsupportedErr
 }

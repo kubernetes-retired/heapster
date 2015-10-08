@@ -14,28 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package client
+package unversioned
 
 import (
 	"errors"
-	"net"
 	"net/http"
-	"net/url"
-	"strconv"
 
-	"k8s.io/kubernetes/pkg/probe"
-	httprobe "k8s.io/kubernetes/pkg/probe/http"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 // KubeletClient is an interface for all kubelet functionality
 type KubeletClient interface {
-	KubeletHealthChecker
 	ConnectionInfoGetter
-}
-
-// KubeletHealthchecker is an interface for healthchecking kubelets
-type KubeletHealthChecker interface {
-	HealthCheck(host string) (result probe.Result, output string, err error)
 }
 
 type ConnectionInfoGetter interface {
@@ -60,14 +50,20 @@ func MakeTransport(config *KubeletConfig) (http.RoundTripper, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	transport := http.DefaultTransport
 	if config.Dial != nil || tlsConfig != nil {
-		return &http.Transport{
+		transport = util.SetTransportDefaults(&http.Transport{
 			Dial:            config.Dial,
 			TLSClientConfig: tlsConfig,
-		}, nil
-	} else {
-		return http.DefaultTransport, nil
+		})
 	}
+
+	if len(config.BearerToken) > 0 {
+		transport = NewBearerAuthRoundTripper(config.BearerToken, transport)
+	}
+
+	return transport, nil
 }
 
 // TODO: this structure is questionable, it should be using client.Config and overriding defaults.
@@ -94,32 +90,10 @@ func (c *HTTPKubeletClient) GetConnectionInfo(host string) (string, uint, http.R
 	return scheme, c.Config.Port, c.Client.Transport, nil
 }
 
-func (c *HTTPKubeletClient) url(host, path, query string) *url.URL {
-	scheme := "http"
-	if c.Config.EnableHttps {
-		scheme = "https"
-	}
-
-	return &url.URL{
-		Scheme:   scheme,
-		Host:     net.JoinHostPort(host, strconv.FormatUint(uint64(c.Config.Port), 10)),
-		Path:     path,
-		RawQuery: query,
-	}
-}
-
-func (c *HTTPKubeletClient) HealthCheck(host string) (probe.Result, string, error) {
-	return httprobe.DoHTTPProbe(c.url(host, "/healthz", ""), c.Client)
-}
-
 // FakeKubeletClient is a fake implementation of KubeletClient which returns an error
 // when called.  It is useful to pass to the master in a test configuration with
 // no kubelets.
 type FakeKubeletClient struct{}
-
-func (c FakeKubeletClient) HealthCheck(host string) (probe.Result, string, error) {
-	return probe.Unknown, "", errors.New("Not Implemented")
-}
 
 func (c FakeKubeletClient) GetConnectionInfo(host string) (string, uint, http.RoundTripper, error) {
 	return "", 0, nil, errors.New("Not Implemented")

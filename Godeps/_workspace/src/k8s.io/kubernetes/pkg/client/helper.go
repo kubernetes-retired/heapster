@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package client
+package unversioned
 
 import (
 	"fmt"
@@ -27,6 +27,7 @@ import (
 	"reflect"
 	gruntime "runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -34,6 +35,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/latest"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/version"
 )
 
@@ -98,6 +100,9 @@ type KubeletConfig struct {
 	// TLSClientConfig contains settings to enable transport layer security
 	TLSClientConfig
 
+	// Server requires Bearer authentication
+	BearerToken string
+
 	// HTTPTimeout is used by the client to timeout http requests to Kubelet.
 	HTTPTimeout time.Duration
 
@@ -126,7 +131,7 @@ type TLSClientConfig struct {
 }
 
 // New creates a Kubernetes client for the given config. This client works with pods,
-// replication controllers and services. It allows operations such as list, get, update
+// replication controllers, daemons, and services. It allows operations such as list, get, update
 // and delete on these objects. An error is returned if the provided configuration
 // is not valid.
 func New(c *Config) (*Client, error) {
@@ -138,7 +143,16 @@ func New(c *Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{client}, nil
+
+	if _, err := latest.Group("experimental"); err != nil {
+		return &Client{RESTClient: client, ExperimentalClient: nil}, nil
+	}
+	experimentalConfig := *c
+	experimentalClient, err := NewExperimental(&experimentalConfig)
+	if err != nil {
+		return nil, err
+	}
+	return &Client{RESTClient: client, ExperimentalClient: experimentalClient}, nil
 }
 
 // MatchesServerVersion queries the server to compares the build version
@@ -181,15 +195,15 @@ func NegotiateVersion(client *Client, c *Config, version string, clientRegistere
 			return "", err
 		}
 	}
-	clientVersions := util.StringSet{}
+	clientVersions := sets.String{}
 	for _, v := range clientRegisteredVersions {
 		clientVersions.Insert(v)
 	}
 	apiVersions, err := client.ServerAPIVersions()
 	if err != nil {
-		return "", fmt.Errorf("couldn't read version from server: %v\n", err)
+		return "", fmt.Errorf("couldn't read version from server: %v", err)
 	}
-	serverVersions := util.StringSet{}
+	serverVersions := sets.String{}
 	for _, v := range apiVersions.Versions {
 		serverVersions.Insert(v)
 	}
@@ -217,9 +231,11 @@ func NegotiateVersion(client *Client, c *Config, version string, clientRegistere
 		if serverVersions.Has(clientVersion) {
 			// Version was not explicitly requested in command config (--api-version).
 			// Ok to fall back to a supported version with a warning.
-			if len(version) != 0 {
-				glog.Warningf("Server does not support API version '%s'. Falling back to '%s'.", version, clientVersion)
-			}
+			// TODO: caesarxuchao: enable the warning message when we have
+			// proper fix. Please refer to issue #14895.
+			// if len(version) != 0 {
+			// 	glog.Warningf("Server does not support API version '%s'. Falling back to '%s'.", version, clientVersion)
+			// }
 			return clientVersion, nil
 		}
 	}
@@ -248,7 +264,7 @@ func InClusterConfig() (*Config, error) {
 	tlsClientConfig := TLSClientConfig{}
 	rootCAFile := "/var/run/secrets/kubernetes.io/serviceaccount/" + api.ServiceAccountRootCAKey
 	if _, err := util.CertPoolFromFile(rootCAFile); err != nil {
-		glog.Errorf("expected to load root CA config from %s, but got err: %v", rootCAFile, err)
+		glog.Errorf("Expected to load root CA config from %s, but got err: %v", rootCAFile, err)
 	} else {
 		tlsClientConfig.CAFile = rootCAFile
 	}
@@ -283,9 +299,9 @@ func SetKubernetesDefaults(config *Config) error {
 		config.Version = defaultVersionFor(config)
 	}
 	version := config.Version
-	versionInterfaces, err := latest.InterfacesFor(version)
+	versionInterfaces, err := latest.GroupOrDie("").InterfacesFor(version)
 	if err != nil {
-		return fmt.Errorf("API version '%s' is not recognized (valid values: %s)", version, strings.Join(latest.Versions, ", "))
+		return fmt.Errorf("API version '%s' is not recognized (valid values: %s)", version, strings.Join(latest.GroupOrDie("").Versions, ", "))
 	}
 	if config.Codec == nil {
 		config.Codec = versionInterfaces.Codec
@@ -329,6 +345,50 @@ func RESTClientFor(config *Config) (*RESTClient, error) {
 	return client, nil
 }
 
+var (
+	// tlsTransports stores reusable round trippers with custom TLSClientConfig options
+	tlsTransports = map[string]*http.Transport{}
+
+	// tlsTransportLock protects retrieval and storage of round trippers into the tlsTransports map
+	tlsTransportLock sync.Mutex
+)
+
+// tlsTransportFor returns a http.RoundTripper for the given config, or an error
+// The same RoundTripper will be returned for configs with identical TLS options
+// If the config has no custom TLS options, http.DefaultTransport is returned
+func tlsTransportFor(config *Config) (http.RoundTripper, error) {
+	// Get a unique key for the TLS options in the config
+	key, err := tlsConfigKey(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure we only create a single transport for the given TLS options
+	tlsTransportLock.Lock()
+	defer tlsTransportLock.Unlock()
+
+	// See if we already have a custom transport for this config
+	if cachedTransport, ok := tlsTransports[key]; ok {
+		return cachedTransport, nil
+	}
+
+	// Get the TLS options for this client config
+	tlsConfig, err := TLSConfigFor(config)
+	if err != nil {
+		return nil, err
+	}
+	// The options didn't require a custom TLS config
+	if tlsConfig == nil {
+		return http.DefaultTransport, nil
+	}
+
+	// Cache a single transport for these options
+	tlsTransports[key] = util.SetTransportDefaults(&http.Transport{
+		TLSClientConfig: tlsConfig,
+	})
+	return tlsTransports[key], nil
+}
+
 // TransportFor returns an http.RoundTripper that will provide the authentication
 // or transport level security defined by the provided Config. Will return the
 // default http.DefaultTransport if no special case behavior is needed.
@@ -341,28 +401,23 @@ func TransportFor(config *Config) (http.RoundTripper, error) {
 		return nil, fmt.Errorf("using a custom transport with TLS certificate options or the insecure flag is not allowed")
 	}
 
-	tlsConfig, err := TLSConfigFor(config)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		transport http.RoundTripper
+		err       error
+	)
 
-	var transport http.RoundTripper
 	if config.Transport != nil {
 		transport = config.Transport
 	} else {
-		if tlsConfig != nil {
-			transport = &http.Transport{
-				TLSClientConfig: tlsConfig,
-				Proxy:           http.ProxyFromEnvironment,
-				Dial: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).Dial,
-				TLSHandshakeTimeout: 10 * time.Second,
-			}
-		} else {
-			transport = http.DefaultTransport
+		transport, err = tlsTransportFor(config)
+		if err != nil {
+			return nil, err
 		}
+	}
+
+	// Call wrap prior to adding debugging wrappers
+	if config.WrapTransport != nil {
+		transport = config.WrapTransport(transport)
 	}
 
 	switch {
@@ -374,10 +429,6 @@ func TransportFor(config *Config) (http.RoundTripper, error) {
 		transport = NewDebuggingRoundTripper(transport, JustURL, RequestHeaders, ResponseStatus)
 	case bool(glog.V(6)):
 		transport = NewDebuggingRoundTripper(transport, URLTiming)
-	}
-
-	if config.WrapTransport != nil {
-		transport = config.WrapTransport(transport)
 	}
 
 	transport, err = HTTPWrappersForConfig(config, transport)
@@ -437,7 +488,7 @@ func DefaultServerURL(host, prefix, version string, defaultTLS bool) (*url.URL, 
 			return nil, err
 		}
 		if hostURL.Path != "" && hostURL.Path != "/" {
-			return nil, fmt.Errorf("host must be a URL or a host:port pair: %s", base)
+			return nil, fmt.Errorf("host must be a URL or a host:port pair: %q", base)
 		}
 	}
 
@@ -456,7 +507,7 @@ func DefaultServerURL(host, prefix, version string, defaultTLS bool) (*url.URL, 
 	return hostURL, nil
 }
 
-// IsConfigTransportTLS returns true iff the provided config will result in a protected
+// IsConfigTransportTLS returns true if and only if the provided config will result in a protected
 // connection to the server when it is passed to client.New() or client.RESTClientFor().
 // Use to determine when to send credentials over the wire.
 //
@@ -495,7 +546,7 @@ func defaultVersionFor(config *Config) string {
 	if version == "" {
 		// Clients default to the preferred code API version
 		// TODO: implement version negotiation (highest version supported by server)
-		version = latest.Version
+		version = latest.GroupOrDie("").Version
 	}
 	return version
 }

@@ -46,25 +46,41 @@ type ConditionFunc func() (done bool, err error)
 // If you pass maxTimes = 0, Poll will loop until condition returns true or an
 // error.
 // Poll always waits the interval before the first check of the condition.
-// TODO: create a separate PollImmediate function that does not wait.
 func Poll(interval, timeout time.Duration, condition ConditionFunc) error {
-	return WaitFor(poller(interval, timeout), condition)
+	return pollInternal(poller(interval, timeout), condition)
+}
+func pollInternal(wait WaitFunc, condition ConditionFunc) error {
+	return WaitFor(wait, condition)
+}
+
+func PollImmediate(interval, timeout time.Duration, condition ConditionFunc) error {
+	return pollImmediateInternal(poller(interval, timeout), condition)
+}
+func pollImmediateInternal(wait WaitFunc, condition ConditionFunc) error {
+	done, err := condition()
+	if err != nil {
+		return err
+	}
+	if done {
+		return nil
+	}
+	return pollInternal(wait, condition)
 }
 
 // WaitFunc creates a channel that receives an item every time a test
 // should be executed and is closed when the last test should be invoked.
 type WaitFunc func() <-chan struct{}
 
-// WaitFor gets a channel from wait(), and then invokes c once for every value
-// placed on the channel and once more when the channel is closed.  If c
-// returns an error the loop ends and that error is returned, and if c returns
+// WaitFor gets a channel from wait(), and then invokes fn once for every value
+// placed on the channel and once more when the channel is closed.  If fn
+// returns an error the loop ends and that error is returned, and if fn returns
 // true the loop ends and nil is returned. ErrWaitTimeout will be returned if
-// the channel is closed without c ever returning true.
-func WaitFor(wait WaitFunc, c ConditionFunc) error {
-	w := wait()
+// the channel is closed without fn ever returning true.
+func WaitFor(wait WaitFunc, fn ConditionFunc) error {
+	c := wait()
 	for {
-		_, open := <-w
-		ok, err := c()
+		_, open := <-c
+		ok, err := fn()
 		if err != nil {
 			return err
 		}

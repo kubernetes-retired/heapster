@@ -14,19 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package record
+package oom
 
-import (
-	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/util"
-)
+type FakeOOMAdjuster struct{}
 
-// FakeRecorder is used as a fake during tests.
-type FakeRecorder struct{}
+func NewFakeOOMAdjuster() *OOMAdjuster {
+	return &OOMAdjuster{
+		pidLister:                 func(cgroupName string) ([]int, error) { return make([]int, 0), nil },
+		ApplyOOMScoreAdj:          fakeApplyOOMScoreAdj,
+		ApplyOOMScoreAdjContainer: fakeApplyOOMScoreAdjContainer,
+	}
+}
 
-func (f *FakeRecorder) Event(object runtime.Object, reason, message string) {}
+func fakeApplyOOMScoreAdj(pid int, oomScoreAdj int) error {
+	return nil
+}
 
-func (f *FakeRecorder) Eventf(object runtime.Object, reason, messageFmt string, args ...interface{}) {}
-
-func (f *FakeRecorder) PastEventf(object runtime.Object, timestamp util.Time, reason, messageFmt string, args ...interface{}) {
+func fakeApplyOOMScoreAdjContainer(cgroupName string, oomScoreAdj, maxTries int) error {
+	return nil
 }
