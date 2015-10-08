@@ -5,7 +5,7 @@
 	"labels": {
 	    "name": "influxGrafana"
 	},
-	"name": "infludb-grafana",
+	"name": "influxdb-grafana",
 	"namespace": "kube-system"
     },
     "spec": {
@@ -24,30 +24,37 @@
 		    {
 			"name": "grafana-store",
 			"emptyDir": {}
+		    },
+		    {
+			"name": "influxdb-store",
+			"emptyDir": {}
 		    }
+
 		],
 		"containers": [
 		    {
 			"image": "kubernetes/heapster_influxdb:v0.4",
 			"name": "influxdb",
-			"ports": [
+			"volumeMounts": [
 			    {
-				"containerPort": 8083,
-				"hostPort": 8083
-			    },
-			    {
-				"containerPort": 8086,
-				"hostPort": 8086
+				"name": "influxdb-store",
+				"mountPath": "/data"
 			    }
 			]
 		    },
 		    {
-			"image": "grafana/grafana:2.1.0",
+			"image": "kubernetes/heapster_grafana:v2.1.1",
 			"name": "grafana",
+			"env": [
+			    {
+				"name": "INFLUXDB_SERVICE_URL",
+				"value": "http://monitoring-influxdb:8086"
+			    }
+			],
 			"volumeMounts": [
 			    {
 				"name": "grafana-store",
-				"mountPath": "/var/lib/grafana"
+				"mountPath": "/var"
 			    }
 			]
 		    }
