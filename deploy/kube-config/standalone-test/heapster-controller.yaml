@@ -17,7 +17,8 @@ spec:
     spec:
       containers:
       - name: heapster-test
-        image: kubernetes/heapster:v0.18.0
+        image: kubernetes/heapster:canary
+        imagePullPolicy: Always
         command:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
