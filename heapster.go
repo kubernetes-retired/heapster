@@ -40,6 +40,7 @@ var (
 	argCacheDuration   = flag.Duration("cache_duration", 4*time.Minute, "The total duration of the historical data that will be cached by heapster.")
 	argUseModel        = flag.Bool("use_model", true, "When true, the internal model representation will be used")
 	argModelResolution = flag.Duration("model_resolution", 1*time.Minute, "The resolution of the timeseries stored in the model. Applies only if use_model is true")
+	argModelFrequency  = flag.Duration("model_frequency", 145*time.Second, "Frequency at which model will be updated. Applies only if use_model is true")
 	argPort            = flag.Int("port", 8082, "port to listen to")
 	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
@@ -101,6 +102,9 @@ func validateFlags() error {
 	if *argSinkFrequency >= *argCacheDuration {
 		return fmt.Errorf("sink frequency '%d' is expected to be lesser than cache duration '%d'", *argSinkFrequency, *argCacheDuration)
 	}
+	if *argModelFrequency <= *argModelResolution {
+		return fmt.Errorf("model frequency '%d' is expected to be greater than model resolution '%d'", *argModelFrequency, *argModelResolution)
+	}
 	if (len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) == 0) || (len(*argTLSCertFile) == 0 && len(*argTLSKeyFile) > 0) {
 		return fmt.Errorf("both TLS certificate & key are required to enable TLS serving")
 	}
@@ -123,10 +127,7 @@ func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, 
 
 	// Spawn the Model Housekeeping goroutine even if the model is not enabled.
 	// This will allow the model to be activated/deactivated in runtime.
-	// Set the housekeeping period to 2 * argModelResolution + 25 sec
-	// TODO(afein): select a more well-defined housekeeping interval
-	modelDuration := 2 * *argModelResolution
-	modelDuration = time.Time{}.Add(modelDuration).Add(25 * time.Second).Sub(time.Time{})
+	modelDuration := *argModelFrequency
 	if (*argCacheDuration).Nanoseconds() < modelDuration.Nanoseconds() {
 		modelDuration = *argCacheDuration
 	}
