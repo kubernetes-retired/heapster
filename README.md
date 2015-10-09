@@ -9,6 +9,8 @@ It can be extended to support other cluster management solutions easily.
 Heapster collects and interprets various signals like compute resource usage, lifecycle events, etc, and exports cluster metrics via [REST endpoints](docs/model.md).
 **Note: Some of the endpoints are only valid in Kubernetes clusters**
 
+Use [Kubedash](https://github.com/kubernetes/kubedash) to visualize data exported by Heapster.
+
 Heapster supports multiple sources of data.
 More information [here](docs/source-configuration.md).
 
