@@ -101,14 +101,12 @@ func (self *kubeletSource) getContainer(url string, start, end time.Time) (*api.
 }
 
 func (self *kubeletSource) GetContainer(host Host, start, end time.Time) (container *api.Container, err error) {
-	var schema string
+	scheme := "http"
 	if self.config != nil && self.config.EnableHttps {
-		schema = "https"
-	} else {
-		schema = "http"
+		scheme = "https"
 	}
 
-	url := fmt.Sprintf("%s://%s:%d/%s", schema, host.IP, host.Port, host.Resource)
+	url := fmt.Sprintf("%s://%s:%d/%s", scheme, host.IP, host.Port, host.Resource)
 	glog.V(3).Infof("about to query kubelet using url: %q", url)
 
 	return self.getContainer(url, start, end)
@@ -140,7 +138,12 @@ type statsRequest struct {
 
 // Get stats for all non-Kubernetes containers.
 func (self *kubeletSource) GetAllRawContainers(host Host, start, end time.Time) ([]api.Container, error) {
-	url := fmt.Sprintf("http://%s:%d/stats/container/", host.IP, host.Port)
+	scheme := "http"
+	if self.config != nil && self.config.EnableHttps {
+		scheme = "https"
+	}
+
+	url := fmt.Sprintf("%s://%s:%d/stats/container/", scheme, host.IP, host.Port)
 	return self.getAllContainers(url, start, end)
 }
 
@@ -163,7 +166,11 @@ func (self *kubeletSource) getAllContainers(url string, start, end time.Time) ([
 	req.Header.Set("Content-Type", "application/json")
 
 	var containers map[string]cadvisor.ContainerInfo
-	err = self.postRequestAndGetValue(http.DefaultClient, req, &containers)
+	client := self.client
+	if client == nil {
+		client = http.DefaultClient
+	}
+	err = self.postRequestAndGetValue(client, req, &containers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all container stats from Kubelet URL %q: %v", url, err)
 	}
