@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package v1alpha1
 
 // This file contains a collection of methods that can be used from go-resful to
 // generate Swagger API documentation for its models. Please read this PR for more
@@ -70,9 +70,9 @@ func (DaemonSetSpec) SwaggerDoc() map[string]string {
 
 var map_DaemonSetStatus = map[string]string{
 	"": "DaemonSetStatus represents the current status of a daemon set.",
-	"currentNumberScheduled": "CurrentNumberScheduled is the number of nodes that are running exactly 1 daemon pod and are supposed to run the daemon pod.",
-	"numberMisscheduled":     "NumberMisscheduled is the number of nodes that are running the daemon pod, but are not supposed to run the daemon pod.",
-	"desiredNumberScheduled": "DesiredNumberScheduled is the total number of nodes that should be running the daemon pod (including nodes correctly running the daemon pod).",
+	"currentNumberScheduled": "CurrentNumberScheduled is the number of nodes that are running exactly 1 daemon pod and are supposed to run the daemon pod. More info: http://releases.k8s.io/HEAD/docs/admin/daemon.md",
+	"numberMisscheduled":     "NumberMisscheduled is the number of nodes that are running the daemon pod, but are not supposed to run the daemon pod. More info: http://releases.k8s.io/HEAD/docs/admin/daemon.md",
+	"desiredNumberScheduled": "DesiredNumberScheduled is the total number of nodes that should be running the daemon pod (including nodes correctly running the daemon pod). More info: http://releases.k8s.io/HEAD/docs/admin/daemon.md",
 }
 
 func (DaemonSetStatus) SwaggerDoc() map[string]string {
@@ -133,6 +133,25 @@ func (DeploymentStrategy) SwaggerDoc() map[string]string {
 	return map_DeploymentStrategy
 }
 
+var map_HTTPIngressPath = map[string]string{
+	"":        "IngressPath associates a path regex with an IngressBackend. Incoming urls matching the Path are forwarded to the Backend.",
+	"path":    "Path is a regex matched against the url of an incoming request.",
+	"backend": "Define the referenced service endpoint which the traffic will be forwarded to.",
+}
+
+func (HTTPIngressPath) SwaggerDoc() map[string]string {
+	return map_HTTPIngressPath
+}
+
+var map_HTTPIngressRuleValue = map[string]string{
+	"":      "HTTPIngressRuleValue is a list of http selectors pointing to IngressBackends. In the example: http://<host>/<path>?<searchpart> -> IngressBackend where parts of the url correspond to RFC 3986, this resource will be used to to match against everything after the last '/' and before the first '?' or '#'.",
+	"paths": "A collection of paths that map requests to IngressBackends.",
+}
+
+func (HTTPIngressRuleValue) SwaggerDoc() map[string]string {
+	return map_HTTPIngressRuleValue
+}
+
 var map_HorizontalPodAutoscaler = map[string]string{
 	"":         "HorizontalPodAutoscaler represents the configuration of a horizontal pod autoscaler.",
 	"metadata": "Standard object metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata",
@@ -179,7 +198,7 @@ func (HorizontalPodAutoscalerStatus) SwaggerDoc() map[string]string {
 }
 
 var map_Ingress = map[string]string{
-	"":         "An Ingress is a way to give services externally-reachable urls. Each Ingress is a collection of rules that allow inbound connections to reach the endpoints defined by a backend.",
+	"":         "Ingress is a collection of rules that allow inbound connections to reach the endpoints defined by a backend. An Ingress can be configured to give services externally-reachable urls, load balance traffic, terminate SSL, offer name based virtual hosting etc.",
 	"metadata": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata",
 	"spec":     "Spec is the desired state of the Ingress. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status",
 	"status":   "Status is the current state of the Ingress. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status",
@@ -190,10 +209,9 @@ func (Ingress) SwaggerDoc() map[string]string {
 }
 
 var map_IngressBackend = map[string]string{
-	"":            "IngressBackend describes all endpoints for a given Service, port and protocol.",
-	"serviceRef":  "Specifies the referenced service.",
+	"":            "IngressBackend describes all endpoints for a given Service and port.",
+	"serviceName": "Specifies the name of the referenced service.",
 	"servicePort": "Specifies the port of the referenced service.",
-	"protocol":    "Specifies the protocol of the referenced service.",
 }
 
 func (IngressBackend) SwaggerDoc() map[string]string {
@@ -210,29 +228,28 @@ func (IngressList) SwaggerDoc() map[string]string {
 	return map_IngressList
 }
 
-var map_IngressPath = map[string]string{
-	"":        "IngressPath associates a path regex with an IngressBackend. Incoming urls matching the Path are forwarded to the Backend.",
-	"path":    "Path is a regex matched against the url of an incoming request.",
-	"backend": "Define the referenced service endpoint which the traffic will be forwarded to.",
-}
-
-func (IngressPath) SwaggerDoc() map[string]string {
-	return map_IngressPath
-}
-
 var map_IngressRule = map[string]string{
-	"":      "IngressRule represents the rules mapping the paths under a specified host to the related backend services.",
-	"host":  "Host is the fully qualified domain name of a network host, or its IP address as a set of four decimal digit groups separated by \".\". Conforms to RFC 1738.",
-	"paths": "Paths describe a list of load-balancer rules under the specified host.",
+	"":     "IngressRule represents the rules mapping the paths under a specified host to the related backend services.",
+	"host": "Host is the fully qualified domain name of a network host, as defined by RFC 3986. Note the following deviations from the \"host\" part of the URI as defined in the RFC: 1. IPs are not allowed. Currently an IngressRuleValue can only apply to the\n\t  IP in the Spec of the parent Ingress.\n2. The `:` delimiter is not respected because ports are not allowed.\n\t  Currently the port of an Ingress is implicitly :80 for http and\n\t  :443 for https.\nBoth these may change in the future. Incoming requests are matched against the Host before the IngressRuleValue.",
 }
 
 func (IngressRule) SwaggerDoc() map[string]string {
 	return map_IngressRule
 }
 
+var map_IngressRuleValue = map[string]string{
+	"":     "IngressRuleValue represents a rule to apply against incoming requests. If the rule is satisfied, the request is routed to the specified backend.",
+	"http": "Currently mixing different types of rules in a single Ingress is disallowed, so exactly one of the following must be set.",
+}
+
+func (IngressRuleValue) SwaggerDoc() map[string]string {
+	return map_IngressRuleValue
+}
+
 var map_IngressSpec = map[string]string{
-	"":      "IngressSpec describes the Ingress the user wishes to exist.",
-	"rules": "A list of rules used to configure the Ingress. http://<host>:<port>/<path>?<searchpart> -> IngressBackend Where parts of the url conform to RFC 1738.",
+	"":        "IngressSpec describes the Ingress the user wishes to exist.",
+	"backend": "A default backend capable of servicing requests that don't match any IngressRule. It is optional to allow the loadbalancer controller or defaulting logic to specify a global default.",
+	"rules":   "A list of host rules used to configure the Ingress.",
 }
 
 func (IngressSpec) SwaggerDoc() map[string]string {
@@ -285,10 +302,10 @@ func (JobList) SwaggerDoc() map[string]string {
 
 var map_JobSpec = map[string]string{
 	"":            "JobSpec describes how the job execution will look like.",
-	"parallelism": "Parallelism specifies the maximum desired number of pods the job should run at any given time. The actual number of pods running in steady state will be less than this number when ((.spec.completions - .status.successful) < .spec.parallelism), i.e. when the work left to do is less than max parallelism.",
-	"completions": "Completions specifies the desired number of successfully finished pods the job should be run with. Defaults to 1.",
-	"selector":    "Selector is a label query over pods that should match the pod count.",
-	"template":    "Template is the object that describes the pod that will be created when executing a job.",
+	"parallelism": "Parallelism specifies the maximum desired number of pods the job should run at any given time. The actual number of pods running in steady state will be less than this number when ((.spec.completions - .status.successful) < .spec.parallelism), i.e. when the work left to do is less than max parallelism. More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md",
+	"completions": "Completions specifies the desired number of successfully finished pods the job should be run with. Defaults to 1. More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md",
+	"selector":    "Selector is a label query over pods that should match the pod count. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md#label-selectors",
+	"template":    "Template is the object that describes the pod that will be created when executing a job. More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md",
 }
 
 func (JobSpec) SwaggerDoc() map[string]string {
@@ -297,12 +314,12 @@ func (JobSpec) SwaggerDoc() map[string]string {
 
 var map_JobStatus = map[string]string{
 	"":               "JobStatus represents the current state of a Job.",
-	"conditions":     "Conditions represent the latest available observations of an object's current state.",
+	"conditions":     "Conditions represent the latest available observations of an object's current state. More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md",
 	"startTime":      "StartTime represents time when the job was acknowledged by the Job Manager. It is not guaranteed to be set in happens-before order across separate operations. It is represented in RFC3339 form and is in UTC.",
 	"completionTime": "CompletionTime represents time when the job was completed. It is not guaranteed to be set in happens-before order across separate operations. It is represented in RFC3339 form and is in UTC.",
 	"active":         "Active is the number of actively running pods.",
 	"successful":     "Successful is the number of pods which reached Phase Succeeded.",
-	"unsuccessful":   "Unsuccessful is the number of pods failures, this applies only to jobs created with RestartPolicyNever, otherwise this value will always be 0.",
+	"unsuccessful":   "Unsuccessful is the number of pods which reached Phase Failed.",
 }
 
 func (JobStatus) SwaggerDoc() map[string]string {
