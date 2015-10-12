@@ -52,11 +52,11 @@ var (
 	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
 )
 
-func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_api.ReplicationController) error {
-	glog.V(2).Infof("Deleting rc %s/%s...", ns, rc.Name)
+func deleteAll(fm kubeFramework, service *kube_api.Service, rc *kube_api.ReplicationController) error {
+	glog.V(2).Infof("Deleting rc %s/%s...", rc.Namespace, rc.Name)
 	retries := 5
 	for {
-		if err := fm.DeleteRC(ns, rc); err != nil {
+		if err := fm.DeleteRC(rc.Namespace, rc); err != nil {
 			glog.V(2).Infof("Failed to delete rc: %v", err)
 			if retries <= 0 {
 				return err
@@ -66,12 +66,12 @@ func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_
 		}
 		retries--
 	}
-	glog.V(2).Infof("Deleted rc %s/%s.", ns, rc.Name)
+	glog.V(2).Infof("Deleted rc %s/%s.", rc.Namespace, rc.Name)
 
-	glog.V(2).Infof("Deleting service %s/%s.", ns, service.Name)
+	glog.V(2).Infof("Deleting service %s/%s.", service.Namespace, service.Name)
 	retries = 5
 	for {
-		if err := fm.DeleteService(ns, service); err != nil {
+		if err := fm.DeleteService(service.Namespace, service); err != nil {
 			glog.V(2).Infof("Failed to delete service: %v", err)
 			if retries <= 0 {
 				return err
@@ -81,11 +81,12 @@ func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_
 		}
 		retries--
 	}
-	glog.V(2).Infof("Deleted service %s/%s.", ns, service.Name)
+	glog.V(2).Infof("Deleted service %s/%s.", service.Namespace, service.Name)
 	return nil
 }
 
-func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kube_api.ReplicationController) error {
+func createAll(fm kubeFramework, service **kube_api.Service, rc **kube_api.ReplicationController) error {
+	ns := (*rc).Namespace
 	glog.V(2).Infof("Creating rc %s/%s...", ns, (*rc).Name)
 	if newRc, err := fm.CreateRC(ns, *rc); err != nil {
 		glog.V(2).Infof("Failed to create rc: %v", err)
@@ -94,7 +95,7 @@ func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kub
 		*rc = newRc
 	}
 	glog.V(2).Infof("Created rc %s/%s.", ns, (*rc).Name)
-
+	ns = (*service).Namespace
 	glog.V(2).Infof("Creating service %s/%s...", ns, (*service).Name)
 	if newSvc, err := fm.CreateService(ns, *service); err != nil {
 		glog.V(2).Infof("Failed to create service: %v", err)
@@ -146,12 +147,13 @@ func buildAndPushHeapsterImage(hostnames []string) error {
 	return os.Chdir(curwd)
 }
 
-func getHeapsterRcAndSvc(fm kubeFramework) (*kube_api.Service, *kube_api.ReplicationController, error) {
+func getHeapsterRcAndSvc(fm kubeFramework, namespace string) (*kube_api.Service, *kube_api.ReplicationController, error) {
 	// Add test docker image
 	rc, err := fm.ParseRC(*heapsterControllerFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse heapster controller - %v", err)
 	}
+	rc.Namespace = namespace
 	rc.Spec.Template.Spec.Containers[0].Image = *heapsterImage
 	rc.Spec.Template.Spec.Containers[0].ImagePullPolicy = kube_api.PullNever
 	// increase logging level
@@ -160,7 +162,7 @@ func getHeapsterRcAndSvc(fm kubeFramework) (*kube_api.Service, *kube_api.Replica
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse heapster service - %v", err)
 	}
-
+	svc.Namespace = namespace
 	return svc, rc, nil
 }
 
@@ -676,18 +678,17 @@ func apiTest(kubeVersion string) error {
 		return err
 	}
 	// Create heapster pod and service.
-	svc, rc, err := getHeapsterRcAndSvc(fm)
+	svc, rc, err := getHeapsterRcAndSvc(fm, *namespace)
 	if err != nil {
 		return err
 	}
-	ns := *namespace
-	if err := deleteAll(fm, ns, svc, rc); err != nil {
+	if err := deleteAll(fm, svc, rc); err != nil {
 		return err
 	}
-	if err := createAll(fm, ns, &svc, &rc); err != nil {
+	if err := createAll(fm, &svc, &rc); err != nil {
 		return err
 	}
-	if err := fm.WaitUntilPodRunning(ns, rc.Spec.Template.Labels, time.Minute); err != nil {
+	if err := fm.WaitUntilPodRunning(rc.Namespace, rc.Spec.Template.Labels, time.Minute); err != nil {
 		return err
 	}
 	if err := fm.WaitUntilServiceActive(svc, time.Minute); err != nil {
@@ -749,7 +750,7 @@ func apiTest(kubeVersion string) error {
 		attempts--
 		time.Sleep(time.Second * 10)
 	}
-	deleteAll(fm, ns, svc, rc)
+	deleteAll(fm, svc, rc)
 	removeHeapsterImage(fm)
 	return nil
 }
