@@ -170,6 +170,10 @@
 			"Rev": "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
 		},
 		{
+			"ImportPath": "github.com/pborman/uuid",
+			"Rev": "cccd189d45f7ac3368a0d127efb7f4d08ae0b655"
+		},
+		{
 			"ImportPath": "github.com/progrium/go-extpoints",
 			"Comment": "go-plugins-43-g529a176",
 			"Rev": "529a176f52394e48e8882dd70a01732f1bb480f3"

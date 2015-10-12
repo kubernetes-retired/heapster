@@ -1766,3 +1766,211 @@ func ValidateResourceQuotaStatusUpdate(newResourceQuota, oldResourceQuota *api.R
 	}
 	for k := range newResourceQuota.Status.Hard {
 		allErrs = append(allErrs, validateResourceName(string(k), string(newResourceQuota.TypeMeta.Kind))...)
+	}
+	for k := range newResourceQuota.Status.Used {
+		allErrs = append(allErrs, validateResourceName(string(k), string(newResourceQuota.TypeMeta.Kind))...)
+	}
+	newResourceQuota.Spec = oldResourceQuota.Spec
+	return allErrs
+}
+
+// ValidateNamespace tests if required fields are set.
+func ValidateNamespace(namespace *api.Namespace) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, ValidateObjectMeta(&namespace.ObjectMeta, false, ValidateNamespaceName).Prefix("metadata")...)
+	for i := range namespace.Spec.Finalizers {
+		allErrs = append(allErrs, validateFinalizerName(string(namespace.Spec.Finalizers[i]))...)
+	}
+	return allErrs
+}
+
+// Validate finalizer names
+func validateFinalizerName(stringValue string) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	if !validation.IsQualifiedName(stringValue) {
+		return append(allErrs, errs.NewFieldInvalid("spec.finalizers", stringValue, qualifiedNameErrorMsg))
+	}
+
+	if len(strings.Split(stringValue, "/")) == 1 {
+		if !api.IsStandardFinalizerName(stringValue) {
+			return append(allErrs, errs.NewFieldInvalid("spec.finalizers", stringValue, fmt.Sprintf("finalizer name is neither a standard finalizer name nor is it fully qualified")))
+		}
+	}
+
+	return errs.ValidationErrorList{}
+}
+
+// ValidateNamespaceUpdate tests to make sure a namespace update can be applied.
+// newNamespace is updated with fields that cannot be changed
+func ValidateNamespaceUpdate(newNamespace *api.Namespace, oldNamespace *api.Namespace) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, ValidateObjectMetaUpdate(&newNamespace.ObjectMeta, &oldNamespace.ObjectMeta).Prefix("metadata")...)
+	newNamespace.Spec.Finalizers = oldNamespace.Spec.Finalizers
+	newNamespace.Status = oldNamespace.Status
+	return allErrs
+}
+
+// ValidateNamespaceStatusUpdate tests to see if the update is legal for an end user to make. newNamespace is updated with fields
+// that cannot be changed.
+func ValidateNamespaceStatusUpdate(newNamespace, oldNamespace *api.Namespace) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, ValidateObjectMetaUpdate(&newNamespace.ObjectMeta, &oldNamespace.ObjectMeta).Prefix("metadata")...)
+	newNamespace.Spec = oldNamespace.Spec
+	if newNamespace.DeletionTimestamp.IsZero() {
+		if newNamespace.Status.Phase != api.NamespaceActive {
+			allErrs = append(allErrs, errs.NewFieldInvalid("Status.Phase", newNamespace.Status.Phase, "A namespace may only be in active status if it does not have a deletion timestamp."))
+		}
+	} else {
+		if newNamespace.Status.Phase != api.NamespaceTerminating {
+			allErrs = append(allErrs, errs.NewFieldInvalid("Status.Phase", newNamespace.Status.Phase, "A namespace may only be in terminating status if it has a deletion timestamp."))
+		}
+	}
+	return allErrs
+}
+
+// ValidateNamespaceFinalizeUpdate tests to see if the update is legal for an end user to make.
+// newNamespace is updated with fields that cannot be changed.
+func ValidateNamespaceFinalizeUpdate(newNamespace, oldNamespace *api.Namespace) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, ValidateObjectMetaUpdate(&newNamespace.ObjectMeta, &oldNamespace.ObjectMeta).Prefix("metadata")...)
+	for i := range newNamespace.Spec.Finalizers {
+		allErrs = append(allErrs, validateFinalizerName(string(newNamespace.Spec.Finalizers[i]))...)
+	}
+	newNamespace.Status = oldNamespace.Status
+	return allErrs
+}
+
+// ValidateEndpoints tests if required fields are set.
+func ValidateEndpoints(endpoints *api.Endpoints) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, ValidateObjectMeta(&endpoints.ObjectMeta, true, ValidateEndpointsName).Prefix("metadata")...)
+	allErrs = append(allErrs, validateEndpointSubsets(endpoints.Subsets).Prefix("subsets")...)
+	return allErrs
+}
+
+func validateEndpointSubsets(subsets []api.EndpointSubset) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+
+	for i := range subsets {
+		ss := &subsets[i]
+
+		ssErrs := errs.ValidationErrorList{}
+
+		if len(ss.Addresses) == 0 && len(ss.NotReadyAddresses) == 0 {
+			ssErrs = append(ssErrs, errs.NewFieldRequired("addresses or notReadyAddresses"))
+		}
+		if len(ss.Ports) == 0 {
+			ssErrs = append(ssErrs, errs.NewFieldRequired("ports"))
+		}
+		for addr := range ss.Addresses {
+			ssErrs = append(ssErrs, validateEndpointAddress(&ss.Addresses[addr]).PrefixIndex(addr).Prefix("addresses")...)
+		}
+		for port := range ss.Ports {
+			ssErrs = append(ssErrs, validateEndpointPort(&ss.Ports[port], len(ss.Ports) > 1).PrefixIndex(port).Prefix("ports")...)
+		}
+
+		allErrs = append(allErrs, ssErrs.PrefixIndex(i)...)
+	}
+
+	return allErrs
+}
+
+func validateEndpointAddress(address *api.EndpointAddress) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	if !validation.IsValidIPv4(address.IP) {
+		allErrs = append(allErrs, errs.NewFieldInvalid("ip", address.IP, "invalid IPv4 address"))
+		return allErrs
+	}
+	return validateIpIsNotLinkLocalOrLoopback(address.IP, "ip")
+}
+
+func validateIpIsNotLinkLocalOrLoopback(ipAddress, fieldName string) errs.ValidationErrorList {
+	// We disallow some IPs as endpoints or external-ips.  Specifically, loopback addresses are
+	// nonsensical and link-local addresses tend to be used for node-centric purposes (e.g. metadata service).
+	allErrs := errs.ValidationErrorList{}
+	ip := net.ParseIP(ipAddress)
+	if ip == nil {
+		allErrs = append(allErrs, errs.NewFieldInvalid(fieldName, ipAddress, "not a valid IP address"))
+		return allErrs
+	}
+	if ip.IsLoopback() {
+		allErrs = append(allErrs, errs.NewFieldInvalid(fieldName, ipAddress, "may not be in the loopback range (127.0.0.0/8)"))
+	}
+	if ip.IsLinkLocalUnicast() {
+		allErrs = append(allErrs, errs.NewFieldInvalid(fieldName, ipAddress, "may not be in the link-local range (169.254.0.0/16)"))
+	}
+	if ip.IsLinkLocalMulticast() {
+		allErrs = append(allErrs, errs.NewFieldInvalid(fieldName, ipAddress, "may not be in the link-local multicast range (224.0.0.0/24)"))
+	}
+	return allErrs
+}
+
+func validateEndpointPort(port *api.EndpointPort, requireName bool) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	if requireName && port.Name == "" {
+		allErrs = append(allErrs, errs.NewFieldRequired("name"))
+	} else if port.Name != "" {
+		if !validation.IsDNS1123Label(port.Name) {
+			allErrs = append(allErrs, errs.NewFieldInvalid("name", port.Name, DNS1123LabelErrorMsg))
+		}
+	}
+	if !validation.IsValidPortNum(port.Port) {
+		allErrs = append(allErrs, errs.NewFieldInvalid("port", port.Port, portRangeErrorMsg))
+	}
+	if len(port.Protocol) == 0 {
+		allErrs = append(allErrs, errs.NewFieldRequired("protocol"))
+	} else if !supportedPortProtocols.Has(string(port.Protocol)) {
+		allErrs = append(allErrs, errs.NewFieldValueNotSupported("protocol", port.Protocol, supportedPortProtocols.List()))
+	}
+	return allErrs
+}
+
+// ValidateEndpointsUpdate tests to make sure an endpoints update can be applied.
+func ValidateEndpointsUpdate(oldEndpoints, newEndpoints *api.Endpoints) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, ValidateObjectMetaUpdate(&newEndpoints.ObjectMeta, &oldEndpoints.ObjectMeta).Prefix("metadata")...)
+	allErrs = append(allErrs, validateEndpointSubsets(newEndpoints.Subsets).Prefix("subsets")...)
+	return allErrs
+}
+
+// ValidateSecurityContext ensure the security context contains valid settings
+func ValidateSecurityContext(sc *api.SecurityContext) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	//this should only be true for testing since SecurityContext is defaulted by the api
+	if sc == nil {
+		return allErrs
+	}
+
+	if sc.Privileged != nil {
+		if *sc.Privileged && !capabilities.Get().AllowPrivileged {
+			allErrs = append(allErrs, errs.NewFieldForbidden("privileged", sc.Privileged))
+		}
+	}
+
+	if sc.RunAsUser != nil {
+		if *sc.RunAsUser < 0 {
+			allErrs = append(allErrs, errs.NewFieldInvalid("runAsUser", *sc.RunAsUser, "runAsUser cannot be negative"))
+		}
+	}
+	return allErrs
+}
+
+func ValidatePodLogOptions(opts *api.PodLogOptions) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	if opts.TailLines != nil && *opts.TailLines < 0 {
+		allErrs = append(allErrs, errs.NewFieldInvalid("tailLines", *opts.TailLines, "tailLines must be a non-negative integer or nil"))
+	}
+	if opts.LimitBytes != nil && *opts.LimitBytes < 1 {
+		allErrs = append(allErrs, errs.NewFieldInvalid("limitBytes", *opts.LimitBytes, "limitBytes must be a positive integer or nil"))
+	}
+	switch {
+	case opts.SinceSeconds != nil && opts.SinceTime != nil:
+		allErrs = append(allErrs, errs.NewFieldInvalid("sinceSeconds", *opts.SinceSeconds, "only one of sinceTime or sinceSeconds can be provided"))
+		allErrs = append(allErrs, errs.NewFieldInvalid("sinceTime", *opts.SinceTime, "only one of sinceTime or sinceSeconds can be provided"))
+	case opts.SinceSeconds != nil:
+		if *opts.SinceSeconds < 1 {
+			allErrs = append(allErrs, errs.NewFieldInvalid("sinceSeconds", *opts.SinceSeconds, "sinceSeconds must be a positive integer"))
+		}
+	}
+	return allErrs
+}

@@ -24,7 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/latest"
 	"k8s.io/kubernetes/pkg/api/testapi"
-	"k8s.io/kubernetes/pkg/client"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util"
 )
@@ -37,7 +37,7 @@ func TestCreate(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Version()})
+	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
 	kubeNodes, err := NewKubeNodes(client)
 	require.NoError(t, err)
 	_, err = kubeNodes.List()
@@ -46,7 +46,7 @@ func TestCreate(t *testing.T) {
 
 func body(obj runtime.Object) string {
 	if obj != nil {
-		bs, _ := latest.Codec.Encode(obj)
+		bs, _ := latest.GroupOrDie("").Codec.Encode(obj)
 		body := string(bs)
 		return body
 	}
@@ -96,7 +96,7 @@ func TestNodes(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	kubeClient := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Version()})
+	kubeClient := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
 	kubeNodes, err := NewKubeNodes(kubeClient)
 	require.NoError(t, err)
 	nodeList, err := kubeNodes.List()

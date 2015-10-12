@@ -23,7 +23,8 @@ import (
 	"k8s.io/heapster/sinks/cache"
 	"k8s.io/heapster/sources/api"
 	kubeapi "k8s.io/kubernetes/pkg/api"
-	kubeclient "k8s.io/kubernetes/pkg/client"
+	kubeapiunv "k8s.io/kubernetes/pkg/api/unversioned"
+	kubeclient "k8s.io/kubernetes/pkg/client/unversioned"
 	kubefields "k8s.io/kubernetes/pkg/fields"
 	kubelabels "k8s.io/kubernetes/pkg/labels"
 	kubewatch "k8s.io/kubernetes/pkg/watch"
@@ -151,7 +152,7 @@ func (eventSource *eventsSourceImpl) watchLoop(eventClient kubeclient.EventInter
 		}
 
 		if watchUpdate.Type == kubewatch.Error {
-			if status, ok := watchUpdate.Object.(*kubeapi.Status); ok {
+			if status, ok := watchUpdate.Object.(*kubeapiunv.Status); ok {
 				err := fmt.Errorf("Error during watch: %#v", status)
 				errorChan <- err
 				return
