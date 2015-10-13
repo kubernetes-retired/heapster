@@ -365,7 +365,6 @@ func (self *realKubeFramework) DeleteService(ns string, service *api.Service) er
 }
 
 func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController) (*api.ReplicationController, error) {
-	rc.Namespace = ns
 	return self.kubeClient.ReplicationControllers(ns).Create(rc)
 }
 
