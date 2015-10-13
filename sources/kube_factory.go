@@ -26,9 +26,9 @@ import (
 	"k8s.io/heapster/sources/api"
 	"k8s.io/heapster/sources/datasource"
 	"k8s.io/heapster/sources/nodes"
-	kube_client "k8s.io/kubernetes/pkg/client"
-	kubeClientCmd "k8s.io/kubernetes/pkg/client/clientcmd"
-	kubeClientCmdApi "k8s.io/kubernetes/pkg/client/clientcmd/api"
+	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	kubeClientCmdApi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 )
 
 const (
@@ -173,6 +173,7 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 		Port:            uint(kubeletPort),
 		EnableHttps:     kubeletHttps,
 		TLSClientConfig: kubeConfig.TLSClientConfig,
+		BearerToken:     kubeConfig.BearerToken,
 	}
 
 	kubeletApi, err := datasource.NewKubelet(kubeletConfig)

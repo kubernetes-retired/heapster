@@ -25,7 +25,7 @@ import (
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/util/gce"
 	kube_api "k8s.io/kubernetes/pkg/api"
-	kube_time "k8s.io/kubernetes/pkg/util"
+	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 type fakeHttpClient struct {
@@ -107,7 +107,7 @@ func TestStoreEventsEmptyInput(t *testing.T) {
 func TestStoreEventsSingleEventInput(t *testing.T) {
 	// Arrange
 	fakeSink := NewFakeSink()
-	eventTime := kube_time.Unix(12345, 0)
+	eventTime := kube_api_unv.Unix(12345, 0)
 	events := []kube_api.Event{
 		{
 			Reason:         "event1",
@@ -143,8 +143,8 @@ func TestStoreEventsSingleEventInput(t *testing.T) {
 func TestStoreEventsMultipleEventInput(t *testing.T) {
 	// Arrange
 	fakeSink := NewFakeSink()
-	event1Time := kube_time.Unix(12345, 0)
-	event2Time := kube_time.Unix(12366, 0)
+	event1Time := kube_api_unv.Unix(12345, 0)
+	event2Time := kube_api_unv.Unix(12366, 0)
 	events := []kube_api.Event{
 		{
 			Reason:         "event1",

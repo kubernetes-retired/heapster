@@ -17,6 +17,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
@@ -42,6 +43,10 @@ var (
 	argPort            = flag.Int("port", 8082, "port to listen to")
 	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
+	argTLSCertFile     = flag.String("tls_cert", "", "file containing TLS certificate")
+	argTLSKeyFile      = flag.String("tls_key", "", "file containing TLS key")
+	argTLSClientCAFile = flag.String("tls_client_ca", "", "file containing TLS client CA for client cert validation")
+	argAllowedUsers    = flag.String("allowed_users", "", "comma-separated list of allowed users")
 	argSources         manager.Uris
 	argSinks           manager.Uris
 )
@@ -64,7 +69,26 @@ func main() {
 	handler := setupHandlers(sources, sink, manager)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
-	glog.Fatal(http.ListenAndServe(addr, handler))
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: handler,
+	}
+
+	if len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) > 0 {
+		if len(*argTLSClientCAFile) > 0 {
+			authHandler, err := newAuthHandler(handler)
+			if err != nil {
+				glog.Fatal(err)
+			}
+			server.Handler = authHandler
+			server.TLSConfig = &tls.Config{ClientAuth: tls.RequestClientCert}
+		}
+
+		glog.Fatal(server.ListenAndServeTLS(*argTLSCertFile, *argTLSKeyFile))
+	} else {
+		glog.Fatal(server.ListenAndServe())
+	}
 }
 
 func validateFlags() error {
@@ -76,6 +100,12 @@ func validateFlags() error {
 	}
 	if *argSinkFrequency >= *argCacheDuration {
 		return fmt.Errorf("sink frequency '%d' is expected to be lesser than cache duration '%d'", *argSinkFrequency, *argCacheDuration)
+	}
+	if (len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) == 0) || (len(*argTLSCertFile) == 0 && len(*argTLSKeyFile) > 0) {
+		return fmt.Errorf("both TLS certificate & key are required to enable TLS serving")
+	}
+	if len(*argTLSClientCAFile) > 0 && len(*argTLSCertFile) == 0 {
+		return fmt.Errorf("client cert authentication requires TLS certificate & key")
 	}
 	return nil
 }

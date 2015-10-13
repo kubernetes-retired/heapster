@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"k8s.io/heapster/sources/api"
-	kube_client "k8s.io/kubernetes/pkg/client"
+	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 type Host struct {

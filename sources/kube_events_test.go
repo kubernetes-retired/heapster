@@ -23,7 +23,7 @@ import (
 	"k8s.io/heapster/sinks/cache"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
-	"k8s.io/kubernetes/pkg/client"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util"
 )
 
@@ -36,7 +36,7 @@ func TestEventsBasic(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Version()})
+	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
 	cache := cache.NewCache(time.Hour, time.Hour)
 	source := NewKubeEvents(client, cache)
 	_, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute))

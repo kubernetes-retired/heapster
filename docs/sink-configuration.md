@@ -70,12 +70,23 @@ To use the Hawkular-Metrics sink add the following flag:
 --sink=hawkular:<HAWKULAR_SERVER_URL>[?<OPTIONS>]
 ```
 
-If `HAWKULAR_SERVER_URL` includes any path, the default `hawkular/metrics` is overridden.
+If `HAWKULAR_SERVER_URL` includes any path, the default `hawkular/metrics` is overridden. To use SSL, the `HAWKULAR_SERVER_URL` has to start with `https`
 
 The following options are available:
 
 * `tenant` - Hawkular-Metrics tenantId (default: `heapster`)
 * `labelToTenant` - Hawkular-Metrics uses given label's value as tenant value when storing data
+* `useServiceAccount` - Sink will use the service account token to authorize to Hawkular-Metrics (requires Openshift)
+* `insecure` - SSL connection will not verify the certificates
+* `caCert` - A path to the CA Certificate file that will be used in the connection
+* `auth` - Kubernetes authentication file that will be used for constructing the TLSConfig
+* `user` - Username to connect to the Hawkular-Metrics server
+* `pass` - Password to connect to the Hawkular-Metrics server
+* `filter` - Allows bypassing the store of matching metrics, any number of `filter` parameters can be given with a syntax of `filter=operation(param)`. Supported operations and their params:
+  * `label` - The syntax is `label(labelName:regexp)` where `labelName` is 1:1 match and `regexp` to use for matching is given after `:` delimiter
+  * `name` - The syntax is `name(regexp)` where MetricName is matched (such as `cpu/usage`) with a `regexp` filter
+
+A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. 
 
 ## Modifying the sinks at runtime
 
