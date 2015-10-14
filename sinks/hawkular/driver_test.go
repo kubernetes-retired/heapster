@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -187,10 +188,13 @@ func integSink(uri string) (*hawkularSink, error) {
 // Test that we have single registered model
 // Test that the tags for metric is updated..
 func TestRegister(t *testing.T) {
+	m := &sync.Mutex{}
 	definitionsCalled := make(map[string]bool)
 	updateTagsCalled := false
 
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m.Lock()
+		defer m.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 
 		if strings.Contains(r.RequestURI, "metrics?type=") {
@@ -261,10 +265,13 @@ func TestRegister(t *testing.T) {
 
 // Store timeseries with both gauges and cumulatives
 func TestStoreTimeseries(t *testing.T) {
-	var calls int
-	var ids []string
+	m := &sync.Mutex{}
+	ids := make([]string, 0, 2)
+	calls := make([]string, 0, 2)
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		m.Lock()
+		defer m.Unlock()
+		calls = append(calls, r.RequestURI)
 		w.Header().Set("Content-Type", "application/json")
 
 		typ := r.RequestURI[strings.Index(r.RequestURI, "hawkular/metrics/")+17:]
@@ -350,7 +357,7 @@ func TestStoreTimeseries(t *testing.T) {
 
 	err = hSink.StoreTimeseries([]sink_api.Timeseries{ts, tsg})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, calls)
+	assert.Equal(t, 2, len(calls))
 	assert.Equal(t, 2, len(ids))
 
 	assert.NotEqual(t, ids[0], ids[1])
@@ -388,8 +395,11 @@ func TestUserPass(t *testing.T) {
 }
 
 func TestFiltering(t *testing.T) {
+	m := &sync.Mutex{}
 	mH := []metrics.MetricHeader{}
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m.Lock()
+		defer m.Unlock()
 		if strings.Contains(r.RequestURI, "data") {
 			defer r.Body.Close()
 			b, err := ioutil.ReadAll(r.Body)
