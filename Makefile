@@ -4,7 +4,7 @@ TAG = v0.18.1
 PREFIX = gcr.io/google_containers
 FLAGS = 
 
-SUPPORTED_KUBE_VERSIONS = "1.0.5"
+SUPPORTED_KUBE_VERSIONS = "1.0.6"
 TEST_NAMESPACE = heapster-e2e-tests
 
 deps:
@@ -21,7 +21,7 @@ sanitize:
 	hooks/check_generate.sh
 
 test-unit: clean deps sanitize build
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go test --test.short -race ./... $(FLAGS)
+	GOOS=linux GOARCH=amd64 godep go test --test.short -race ./... $(FLAGS)
 
 test-unit-cov: clean deps sanitize build
 	hooks/coverage.sh
