@@ -47,7 +47,7 @@ under a given node, along with their latest CPU and Memory Usage values.
 `/api/v1/model/nodes/{node-name}/metrics/`: Returns a list of available
 node-level metrics.
 
-`/api/v1/model/metrics/nodes/{node-name}/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
+`/api/v1/model/nodes/{node-name}/metrics/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested node-level metric, within the time range specified by `start` and `end`. 
 
 `/api/v1/model/nodes/{node-name}/stats/`: Exposes the average, max and 95th
