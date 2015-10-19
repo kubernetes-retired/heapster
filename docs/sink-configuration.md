@@ -68,7 +68,7 @@ The following options are available:
 
 * `tenant` - Hawkular-Metrics tenantId (default: `heapster`)
 * `labelToTenant` - Hawkular-Metrics uses given label's value as tenant value when storing data
-* `useServiceAccount` - Sink will use the service account token to authorize to Hawkular-Metrics (requires Openshift)
+* `useServiceAccount` - Sink will use the service account token to authorize to Hawkular-Metrics (requires OpenShift)
 * `insecure` - SSL connection will not verify the certificates
 * `caCert` - A path to the CA Certificate file that will be used in the connection
 * `auth` - Kubernetes authentication file that will be used for constructing the TLSConfig
@@ -78,7 +78,7 @@ The following options are available:
   * `label` - The syntax is `label(labelName:regexp)` where `labelName` is 1:1 match and `regexp` to use for matching is given after `:` delimiter
   * `name` - The syntax is `name(regexp)` where MetricName is matched (such as `cpu/usage`) with a `regexp` filter
 
-A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. 
+A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported.
 
 ## Modifying the sinks at runtime
 

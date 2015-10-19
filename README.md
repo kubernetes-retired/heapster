@@ -23,12 +23,12 @@ The current version of Storage Schema is documented [here](docs/storage-schema.m
 ### Running Heapster on Kubernetes
 
 To run Heapster on a Kubernetes cluster with,
-- InfluxDB use [this guide](docs/influxdb.md). 
+- InfluxDB use [this guide](docs/influxdb.md).
 - Google Cloud Monitoring and Google Cloud Logging use [this guide](docs/google.md).
 
-### Running Heapster on Openshift
+### Running Heapster on OpenShift
 
-Using Heapster to monitor an Openshift cluster requires some additional changes to the Kubernetes instructions to allow communication between the Heapster instance and Openshift's secured endpoints. To run a combination of Heapster and Hawkular-Metrics, follow [this guide](https://github.com/hawkular/hawkular-metrics/blob/master/containers/README.adoc). 
+Using Heapster to monitor an OpenShift cluster requires some additional changes to the Kubernetes instructions to allow communication between the Heapster instance and OpenShift's secured endpoints. To run a combination of Heapster and Hawkular-Metrics, follow [this guide](https://github.com/hawkular/hawkular-metrics/blob/master/containers/README.adoc).
 
 ### Running Heapster on CoreOS
 
