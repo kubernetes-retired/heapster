@@ -43,9 +43,9 @@ func NewFakeKafkaProducer() *fakeKafkaProducer {
 	return &fakeKafkaProducer{[]msgProducedToKafka{}}
 }
 
-func (producer *fakeKafkaProducer) Produce(topic string, partition int32, messages ...*proto.Message) (offset int64, err error) {
-	for index := range messages {
-		producer.msgs = append(producer.msgs, msgProducedToKafka{string(messages[index].Value)})
+func (producer *fakeKafkaProducer) Produce(topic string, partition int32, messages ...*proto.Message) (int64, error) {
+	for _, msg := range messages {
+		producer.msgs = append(producer.msgs, msgProducedToKafka{string(msg.Value)})
 	}
 	return 0, nil
 }

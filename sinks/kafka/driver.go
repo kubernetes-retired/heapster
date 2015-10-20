@@ -29,14 +29,14 @@ import (
 )
 
 const (
-	partition                int32         = 0
-	brokerClientID           string        = "kafka-sink"
-	brokerDialTimeout        time.Duration = 10 * time.Second
-	brokerDialRetryLimit     int           = 10
-	brokerDialRetryWait      time.Duration = 500 * time.Millisecond
-	brokerAllowTopicCreation bool          = true
-	brokerLeaderRetryLimit   int           = 10
-	brokerLeaderRetryWait    time.Duration = 500 * time.Millisecond
+	partition                = 0
+	brokerClientID           = "kafka-sink"
+	brokerDialTimeout        = 10 * time.Second
+	brokerDialRetryLimit     = 1
+	brokerDialRetryWait      = 500 * time.Millisecond
+	brokerAllowTopicCreation = true
+	brokerLeaderRetryLimit   = 10
+	brokerLeaderRetryWait    = 500 * time.Millisecond
 )
 
 type kafkaSink struct {
