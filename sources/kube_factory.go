@@ -102,6 +102,10 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 			kubeConfig.Host = configOverrides.ClusterInfo.Server
 		}
 		kubeConfig.Version = configOverrides.ClusterInfo.APIVersion
+		kubeConfig.Insecure = configOverrides.ClusterInfo.InsecureSkipTLSVerify
+		if configOverrides.ClusterInfo.InsecureSkipTLSVerify {
+			kubeConfig.TLSClientConfig.CAFile = ""
+		}
 	} else {
 		authFile := ""
 		if len(opts["auth"]) > 0 {
