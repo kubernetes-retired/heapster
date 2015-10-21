@@ -32,7 +32,7 @@ const (
 	partition                = 0
 	brokerClientID           = "kafka-sink"
 	brokerDialTimeout        = 10 * time.Second
-	brokerDialRetryLimit     = 1
+	brokerDialRetryLimit     = 10
 	brokerDialRetryWait      = 500 * time.Millisecond
 	brokerAllowTopicCreation = true
 	brokerLeaderRetryLimit   = 10
@@ -116,7 +116,10 @@ func init() {
 
 func NewKafkaSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSink, error) {
 	var kafkaSink kafkaSink
-	opts, _ := url.ParseQuery(uri.RawQuery)
+	opts, err := url.ParseQuery(uri.RawQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parser url's query string: %s", err)
+	}
 
 	if len(opts["timeseriestopic"]) < 1 {
 		return nil, fmt.Errorf("There is no timeseriestopic assign for config kafka-sink")
@@ -144,8 +147,7 @@ func NewKafkaSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSi
 
 	broker, err := kafka.Dial(kafkaSink.sinkBrokerHosts, brokerConf)
 	if err != nil {
-		glog.Errorf("connect to kafka cluster fail: %s", err)
-		return nil, fmt.Errorf("connect to kafka cluster fail: %s", err)
+		return nil, fmt.Errorf("failed to connect to kafka cluster: %s", err)
 	}
 	defer broker.Close()
 

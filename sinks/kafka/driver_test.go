@@ -67,13 +67,6 @@ func NewFakeSink() fakeKafkaSink {
 	}
 }
 
-func TestStoreEventsNilInput(t *testing.T) {
-	fakeSink := NewFakeSink()
-	err := fakeSink.StoreEvents(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(fakeSink.fakeProducer.msgs))
-}
-
 func TestStoreEventsEmptyInput(t *testing.T) {
 	fakeSink := NewFakeSink()
 	err := fakeSink.StoreEvents([]kube_api.Event{})
@@ -96,8 +89,9 @@ func TestStoreEventsSingleEventInput(t *testing.T) {
 		},
 	}
 	//expect msg string
-	eventsJson, _ := json.Marshal(events[0])
-	err := fakeSink.StoreEvents(events)
+	eventsJson, err := json.Marshal(events[0])
+	assert.NoError(t, err)
+	err = fakeSink.StoreEvents(events)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(fakeSink.fakeProducer.msgs))
 	assert.Equal(t, eventsJson, fakeSink.fakeProducer.msgs[0].message)
@@ -130,17 +124,12 @@ func TestStoreEventsMultipleEventsInput(t *testing.T) {
 	err := fakeSink.StoreEvents(events)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(fakeSink.fakeProducer.msgs))
-	events0Json, _ := json.Marshal(events[0])
-	events1Json, _ := json.Marshal(events[1])
+	events0Json, err := json.Marshal(events[0])
+	assert.NoError(t, err)
+	events1Json, err := json.Marshal(events[1])
+	assert.NoError(t, err)
 	assert.Equal(t, string(events0Json), fakeSink.fakeProducer.msgs[0].message)
 	assert.Equal(t, string(events1Json), fakeSink.fakeProducer.msgs[1].message)
-}
-
-func TestStoreTimeseriesNilInput(t *testing.T) {
-	fakeSink := NewFakeSink()
-	err := fakeSink.StoreTimeseries(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(fakeSink.fakeProducer.msgs))
 }
 
 func TestStoreTimeseriesEmptyInput(t *testing.T) {
@@ -182,7 +171,8 @@ func TestStoreTimeseriesSingleTimeserieInput(t *testing.T) {
 	err := fakeSink.StoreTimeseries(timeseries)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(fakeSink.fakeProducer.msgs))
-	timeseries1Json, _ := json.Marshal(timeseries[0])
+	timeseries1Json, err := json.Marshal(timeseries[0])
+	assert.NoError(t, err)
 	assert.Equal(t, string(timeseries1Json), fakeSink.fakeProducer.msgs[0].message)
 }
 
@@ -230,8 +220,10 @@ func TestStoreTimeseriesMultipleTimeseriesInput(t *testing.T) {
 	err := fakeSink.StoreTimeseries(timeseries)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(fakeSink.fakeProducer.msgs))
-	timeseries0Json, _ := json.Marshal(timeseries[0])
-	timeseries1Json, _ := json.Marshal(timeseries[1])
+	timeseries0Json, err := json.Marshal(timeseries[0])
+	assert.NoError(t, err)
+	timeseries1Json, err := json.Marshal(timeseries[1])
+	assert.NoError(t, err)
 	assert.Equal(t, string(timeseries0Json), fakeSink.fakeProducer.msgs[0].message)
 	assert.Equal(t, string(timeseries1Json), fakeSink.fakeProducer.msgs[1].message)
 }
