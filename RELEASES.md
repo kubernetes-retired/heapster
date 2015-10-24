@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.18.3 (10-23-2015)
+- Various fixes to Hawkular sink.
+
 ## 0.18.2 (10-2-2015)
 - Export metrics in increasing time order to sinks.
 
