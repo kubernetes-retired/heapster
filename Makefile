@@ -1,6 +1,6 @@
 all: build
 
-TAG = v0.18.2
+TAG = v0.18.3
 PREFIX = gcr.io/google_containers
 FLAGS = 
 
@@ -18,7 +18,7 @@ sanitize:
 	hooks/check_generate.sh
 
 test-unit: clean deps sanitize build
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go test --test.short -race ./... $(FLAGS)
+	GOOS=linux GOARCH=amd64 godep go test --test.short -race ./... $(FLAGS)
 
 test-unit-cov: clean deps sanitize build
 	hooks/coverage.sh
