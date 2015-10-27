@@ -103,6 +103,11 @@ func TestPodsParsing(t *testing.T) {
 					},
 				},
 			},
+			{
+				Status: kube_api.PodStatus{
+					Phase: kube_api.PodFailed,
+				},
+			},
 		},
 	}
 	handler := util.FakeHandler{

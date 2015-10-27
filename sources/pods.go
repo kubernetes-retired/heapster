@@ -125,6 +125,11 @@ func (self *realPodsApi) List(nodeList *nodes.NodeList) ([]api.Pod, error) {
 	selectedPods := []podNodePair{}
 	// TODO(vishh): Avoid this loop by setting a node selector on the watcher.
 	for i, pod := range pods {
+		switch pod.Status.Phase {
+		case kapi.PodSucceeded:
+		case kapi.PodFailed:
+			continue
+		}
 		if nodeInfo, ok := nodeList.Items[nodes.Host(pod.Spec.NodeName)]; ok {
 			nsObj, exists, err := self.namespaceStore.GetByKey(pod.Namespace)
 			if err != nil {
