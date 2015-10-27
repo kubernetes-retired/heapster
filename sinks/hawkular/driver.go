@@ -37,11 +37,11 @@ import (
 )
 
 const (
-	unitsTag       string = "units"
-	descriptionTag string = "_description"
-	descriptorTag  string = "descriptor_name"
-	groupTag       string = "group_id"
-	separator      string = "/"
+	unitsTag       = "units"
+	descriptionTag = "_description"
+	descriptorTag  = "descriptor_name"
+	groupTag       = "group_id"
+	separator      = "/"
 
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
