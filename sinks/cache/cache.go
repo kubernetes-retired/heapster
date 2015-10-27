@@ -82,19 +82,19 @@ type Cache interface {
 	StorePods([]source_api.Pod) error
 	StoreContainers([]source_api.Container) error
 	// TODO: Handle events.
-	// GetPods returns a list of pod elements in the cache between 'start' and 'end'.
+	// GetPods returns a list of pod elements holding the metrics between 'start' and 'end' in the cache.
 	// If 'start' is zero, it returns all the elements up until 'end'.
 	// If 'end' is zero, it returns all the elements from 'start'.
 	// If both 'start' and 'end' are zero, it returns all the elements in the cache.
 	GetPods(start, end time.Time) []*PodElement
 
-	// GetNodes returns a list of pod elements in the cache between 'start' and 'end'.
+	// GetNodes returns a list of container elements holding the node level metrics between 'start' and 'end' in the cache.
 	// If 'start' is zero, it returns all the elements up until 'end'.
 	// If 'end' is zero, it returns all the elements from 'start'.
 	// If both 'start' and 'end' are zero, it returns all the elements in the cache.
 	GetNodes(start, end time.Time) []*ContainerElement
 
-	// GetFreeContainers returns a list of pod elements in the cache between 'start' and 'end'.
+	// GetFreeContainers returns a list of container elements holding the metrics between 'start' and 'end' in the cache.
 	// If 'start' is zero, it returns all the elements up until 'end'.
 	// If 'end' is zero, it returns all the elements from 'start'.
 	// If both 'start' and 'end' are zero, it returns all the elements in the cache.
