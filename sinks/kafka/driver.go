@@ -32,11 +32,11 @@ const (
 	partition                = 0
 	brokerClientID           = "kafka-sink"
 	brokerDialTimeout        = 10 * time.Second
-	brokerDialRetryLimit     = 10
-	brokerDialRetryWait      = 500 * time.Millisecond
+	brokerDialRetryLimit     = 1
+	brokerDialRetryWait      = 0
 	brokerAllowTopicCreation = true
-	brokerLeaderRetryLimit   = 10
-	brokerLeaderRetryWait    = 500 * time.Millisecond
+	brokerLeaderRetryLimit   = 1
+	brokerLeaderRetryWait    = 0
 )
 
 type kafkaSink struct {
@@ -44,6 +44,22 @@ type kafkaSink struct {
 	timeSeriesTopic string
 	eventsTopic     string
 	sinkBrokerHosts []string
+}
+
+type kafkaSinkPoint struct {
+	MetricsName      string
+	MetricsValue     interface{}
+	MetricsTimestamp time.Time
+	MetricsTags      map[string]string
+}
+
+type kafkaSinkEvent struct {
+	EventMessage        string
+	EventReason         string
+	EventTimestamp      time.Time
+	EventCount          int
+	EventInvolvedObject interface{}
+	EventSource         interface{}
 }
 
 // START: ExternalSink interface implementations
@@ -61,7 +77,25 @@ func (self *kafkaSink) StoreTimeseries(timeseries []sink_api.Timeseries) error {
 		return nil
 	}
 	for _, t := range timeseries {
-		err := self.produceKafkaMessage(t, self.timeSeriesTopic)
+		seriesName := t.Point.Name
+		if t.MetricDescriptor.Units.String() != "" {
+			seriesName = fmt.Sprintf("%s_%s", seriesName, t.MetricDescriptor.Units.String())
+		}
+		if t.MetricDescriptor.Type.String() != "" {
+			seriesName = fmt.Sprintf("%s_%s", seriesName, t.MetricDescriptor.Type.String())
+		}
+		sinkPoint := kafkaSinkPoint{
+			MetricsName:      seriesName,
+			MetricsValue:     t.Point.Value,
+			MetricsTimestamp: t.Point.End.UTC(),
+			MetricsTags:      make(map[string]string, len(t.Point.Labels)),
+		}
+		for key, value := range t.Point.Labels {
+			if value != "" {
+				sinkPoint.MetricsTags[key] = value
+			}
+		}
+		err := self.produceKafkaMessage(sinkPoint, self.timeSeriesTopic)
 		if err != nil {
 			return fmt.Errorf("failed to produce Kafka messages: %s", err)
 		}
@@ -74,7 +108,16 @@ func (self *kafkaSink) StoreEvents(events []kube_api.Event) error {
 		return nil
 	}
 	for _, event := range events {
-		err := self.produceKafkaMessage(event, self.eventsTopic)
+		sinkEvent := kafkaSinkEvent{
+			EventMessage:        event.Message,
+			EventReason:         event.Reason,
+			EventTimestamp:      event.LastTimestamp.UTC(),
+			EventCount:          event.Count,
+			EventInvolvedObject: event.InvolvedObject,
+			EventSource:         event.Source,
+		}
+
+		err := self.produceKafkaMessage(sinkEvent, self.eventsTopic)
 		if err != nil {
 			return fmt.Errorf("failed to produce Kafka messages: %s", err)
 		}
@@ -124,7 +167,7 @@ func NewKafkaSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSi
 	if len(opts["timeseriestopic"]) < 1 {
 		return nil, fmt.Errorf("There is no timeseriestopic assign for config kafka-sink")
 	}
-	kafkaSink.timeSeriesTopic = opts["eventstopic"][0]
+	kafkaSink.timeSeriesTopic = opts["timeseriestopic"][0]
 
 	if len(opts["eventstopic"]) < 1 {
 		return nil, fmt.Errorf("There is no eventstopic assign for config kafka-sink")

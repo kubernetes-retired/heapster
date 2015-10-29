@@ -15,10 +15,11 @@
 package kafka
 
 import (
-	"encoding/json"
+	_ "encoding/json"
 	"testing"
 	"time"
 
+	"fmt"
 	"github.com/optiopay/kafka/proto"
 	"github.com/stretchr/testify/assert"
 	sink_api "k8s.io/heapster/sinks/api"
@@ -89,33 +90,35 @@ func TestStoreEventsSingleEventInput(t *testing.T) {
 		},
 	}
 	//expect msg string
-	eventsJson, err := json.Marshal(events[0])
+	timeStr, err := eventTime.MarshalJSON()
 	assert.NoError(t, err)
+
+	msgString := fmt.Sprintf(`{"EventMessage":"","EventReason":"%s","EventTimestamp":%s,"EventCount":0,"EventInvolvedObject":{},"EventSource":{"host":"%s"}}`, eventReason, string(timeStr), eventSourceHostname)
 	err = fakeSink.StoreEvents(events)
 	assert.NoError(t, err)
+
 	assert.Equal(t, 1, len(fakeSink.fakeProducer.msgs))
-	assert.Equal(t, eventsJson, fakeSink.fakeProducer.msgs[0].message)
+	assert.Equal(t, msgString, fakeSink.fakeProducer.msgs[0].message)
 }
 
 func TestStoreEventsMultipleEventsInput(t *testing.T) {
 	fakeSink := NewFakeSink()
-	event1Time := kube_api_unv.Unix(12345, 0)
-	event2Time := kube_api_unv.Unix(12366, 0)
+	eventTime := kube_api_unv.Unix(12345, 0)
 	event1SourceHostname := "event1HostName"
 	event2SourceHostname := "event2HostName"
-	event1Reason := "event1"
-	event2Reason := "event2"
+	event1Reason := "eventReason1"
+	event2Reason := "eventReason2"
 	events := []kube_api.Event{
 		{
 			Reason:        event1Reason,
-			LastTimestamp: event1Time,
+			LastTimestamp: eventTime,
 			Source: kube_api.EventSource{
 				Host: event1SourceHostname,
 			},
 		},
 		{
 			Reason:        event2Reason,
-			LastTimestamp: event2Time,
+			LastTimestamp: eventTime,
 			Source: kube_api.EventSource{
 				Host: event2SourceHostname,
 			},
@@ -124,12 +127,15 @@ func TestStoreEventsMultipleEventsInput(t *testing.T) {
 	err := fakeSink.StoreEvents(events)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(fakeSink.fakeProducer.msgs))
-	events0Json, err := json.Marshal(events[0])
+
+	timeStr, err := eventTime.MarshalJSON()
 	assert.NoError(t, err)
-	events1Json, err := json.Marshal(events[1])
-	assert.NoError(t, err)
-	assert.Equal(t, string(events0Json), fakeSink.fakeProducer.msgs[0].message)
-	assert.Equal(t, string(events1Json), fakeSink.fakeProducer.msgs[1].message)
+
+	msgString1 := fmt.Sprintf(`{"EventMessage":"","EventReason":"%s","EventTimestamp":%s,"EventCount":0,"EventInvolvedObject":{},"EventSource":{"host":"%s"}}`, event1Reason, string(timeStr), event1SourceHostname)
+	assert.Equal(t, msgString1, fakeSink.fakeProducer.msgs[0].message)
+
+	msgString2 := fmt.Sprintf(`{"EventMessage":"","EventReason":"%s","EventTimestamp":%s,"EventCount":0,"EventInvolvedObject":{},"EventSource":{"host":"%s"}}`, event2Reason, string(timeStr), event2SourceHostname)
+	assert.Equal(t, msgString2, fakeSink.fakeProducer.msgs[1].message)
 }
 
 func TestStoreTimeseriesEmptyInput(t *testing.T) {
@@ -152,12 +158,13 @@ func TestStoreTimeseriesSingleTimeserieInput(t *testing.T) {
 	l[sink_api.LabelHostname.Key] = "localhost"
 	l[sink_api.LabelContainerName.Key] = "docker"
 	l[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	timeNow := time.Now()
 
 	p := sink_api.Point{
 		Name:   "test/metric/1",
 		Labels: l,
-		Start:  time.Now(),
-		End:    time.Now(),
+		Start:  timeNow,
+		End:    timeNow,
 		Value:  int64(123456),
 	}
 
@@ -170,10 +177,15 @@ func TestStoreTimeseriesSingleTimeserieInput(t *testing.T) {
 
 	err := fakeSink.StoreTimeseries(timeseries)
 	assert.NoError(t, err)
+
 	assert.Equal(t, 1, len(fakeSink.fakeProducer.msgs))
-	timeseries1Json, err := json.Marshal(timeseries[0])
+
+	timeStr, err := timeNow.MarshalJSON()
 	assert.NoError(t, err)
-	assert.Equal(t, string(timeseries1Json), fakeSink.fakeProducer.msgs[0].message)
+
+	msgString := fmt.Sprintf(`{"MetricsName":"test/metric/1_cumulative","MetricsValue":123456,"MetricsTimestamp":%s,"MetricsTags":{"container_name":"docker","hostname":"localhost","pod_id":"aaaa-bbbb-cccc-dddd","test":"notvisible"}}`, timeStr)
+
+	assert.Equal(t, msgString, fakeSink.fakeProducer.msgs[0].message)
 }
 
 func TestStoreTimeseriesMultipleTimeseriesInput(t *testing.T) {
@@ -189,21 +201,22 @@ func TestStoreTimeseriesMultipleTimeseriesInput(t *testing.T) {
 	l[sink_api.LabelHostname.Key] = "localhost"
 	l[sink_api.LabelContainerName.Key] = "docker"
 	l[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	timeNow := time.Now()
 
 	p1 := sink_api.Point{
 		Name:   "test/metric/1",
 		Labels: l,
-		Start:  time.Now(),
-		End:    time.Now(),
+		Start:  timeNow,
+		End:    timeNow,
 		Value:  int64(123456),
 	}
 
 	p2 := sink_api.Point{
 		Name:   "test/metric/1",
 		Labels: l,
-		Start:  time.Now(),
-		End:    time.Now(),
-		Value:  int64(123456),
+		Start:  timeNow,
+		End:    timeNow,
+		Value:  int64(654321),
 	}
 
 	timeseries := []sink_api.Timeseries{
@@ -219,11 +232,15 @@ func TestStoreTimeseriesMultipleTimeseriesInput(t *testing.T) {
 
 	err := fakeSink.StoreTimeseries(timeseries)
 	assert.NoError(t, err)
+
 	assert.Equal(t, 2, len(fakeSink.fakeProducer.msgs))
-	timeseries0Json, err := json.Marshal(timeseries[0])
+
+	timeStr, err := timeNow.MarshalJSON()
 	assert.NoError(t, err)
-	timeseries1Json, err := json.Marshal(timeseries[1])
-	assert.NoError(t, err)
-	assert.Equal(t, string(timeseries0Json), fakeSink.fakeProducer.msgs[0].message)
-	assert.Equal(t, string(timeseries1Json), fakeSink.fakeProducer.msgs[1].message)
+
+	msgString1 := fmt.Sprintf(`{"MetricsName":"test/metric/1_cumulative","MetricsValue":123456,"MetricsTimestamp":%s,"MetricsTags":{"container_name":"docker","hostname":"localhost","pod_id":"aaaa-bbbb-cccc-dddd","test":"notvisible"}}`, timeStr)
+	assert.Equal(t, msgString1, fakeSink.fakeProducer.msgs[0].message)
+
+	msgString2 := fmt.Sprintf(`{"MetricsName":"test/metric/1_cumulative","MetricsValue":654321,"MetricsTimestamp":%s,"MetricsTags":{"container_name":"docker","hostname":"localhost","pod_id":"aaaa-bbbb-cccc-dddd","test":"notvisible"}}`, timeStr)
+	assert.Equal(t, msgString2, fakeSink.fakeProducer.msgs[1].message)
 }
