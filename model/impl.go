@@ -384,7 +384,7 @@ func (rc *realModel) GetCacheListener() cache.CacheListener {
 		NamespaceEvicted: func(namespace string) { rc.deleteNamespace(namespace) },
 		PodEvicted:       func(namespace string, podName string) { rc.deletePod(namespace, podName) },
 		PodContainerEvicted: func(namespace string, podName string, containerName string) {
-			// do nothing at this moment.
+			rc.deletePodContainer(namespace, podName, containerName)
 		},
 		FreeContainerEvicted: func(hostName string, containerName string) { rc.deleteFreeContainer(hostName, containerName) },
 	}
@@ -514,5 +514,20 @@ func (rc *realModel) deleteFreeContainer(hostname, name string) {
 	// Get Node pointer
 	if node, ok := rc.Nodes[hostname]; ok {
 		delete(node.FreeContainers, name)
+	}
+}
+
+// deletePodContainer deletes a container from the belonging pod in the given namespace.
+// deletePodContainer receives a name of the target namespace, a name of the belonging pod,
+// and a name of the container to be deleted.
+func (rc *realModel) deletePodContainer(namespace, podName, containerName string) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
+	// Delete pod container from the belonging pod in the target namespace
+	if namespaceInfo, ok := rc.Namespaces[namespace]; ok {
+		if podInfo, ok := namespaceInfo.Pods[podName]; ok {
+			delete(podInfo.Containers, containerName)
+		}
 	}
 }
