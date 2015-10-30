@@ -505,7 +505,8 @@ func (rc *realModel) updateFreeContainer(ce *cache.ContainerElement) (time.Time,
 	return latest_time, err
 }
 
-// updateFreeContainer updates Free Container-level information from a ContainerElement
+// deleteFreeContainer deletes a free container from the belonging node.
+// deleteFreeContainer receives a host name of the belonging node, and a name of the free container.
 func (rc *realModel) deleteFreeContainer(hostname, name string) {
 	rc.lock.Lock()
 	defer rc.lock.Unlock()
