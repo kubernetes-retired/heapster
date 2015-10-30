@@ -1026,3 +1026,34 @@ func cacheFactory() cache.Cache {
 
 	return source_cache
 }
+
+// TestDeleteFreeContainer tests all flows of deleteFreeContainer.
+func TestDeleteFreeContainer(t *testing.T) {
+	var (
+		cluster           = newRealModel(time.Minute)
+		ce                = containerElementFactory(nil)
+		assert            = assert.New(t)
+		freeContainerName = "testFreeContainerName"
+		hostName          = "testhost"
+	)
+
+	// Add a free container with the specific container name and host name
+	ce.Name = freeContainerName
+	ce.Hostname = hostName
+	_, err := cluster.updateFreeContainer(ce)
+	assert.NoError(err)
+	nodeInfo := cluster.Nodes[hostName]
+	assert.NotNil(nodeInfo)
+	assert.Equal(1, len(nodeInfo.FreeContainers))
+
+	// First call : try to delete newly added free container
+	cluster.deleteFreeContainer(hostName, freeContainerName)
+	nodeInfo = cluster.Nodes[hostName]
+	assert.NotNil(nodeInfo)
+	assert.Equal(0, len(nodeInfo.FreeContainers))
+	assert.Nil(nodeInfo.FreeContainers[freeContainerName])
+
+	// Second call: already deleted
+	cluster.deleteFreeContainer(hostName, freeContainerName)
+	// No panic etc.
+}
