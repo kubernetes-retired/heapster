@@ -1057,3 +1057,43 @@ func TestDeleteFreeContainer(t *testing.T) {
 	cluster.deleteFreeContainer(hostName, freeContainerName)
 	// No panic etc.
 }
+
+// TestDeletePodContainer tests all flows of deletePodContainer.
+func TestDeletePodContainer(t *testing.T) {
+	var (
+		cluster = newRealModel(time.Minute)
+		podElem = podElementFactory()
+		assert  = assert.New(t)
+	)
+
+	// Initialize the cluster model with a pod with fake pod container
+	timestamp, err := cluster.updatePod(podElem)
+	assert.NoError(err)
+	assert.NotEqual(timestamp, time.Time{})
+	assert.NotNil(cluster.Nodes[podElem.Hostname])
+	podInfo := cluster.Nodes[podElem.Hostname].Pods[getPodKey(podElem.Namespace, podElem.Name)]
+	assert.NotNil(cluster.Namespaces[podElem.Namespace])
+	assert.Equal(podInfo, cluster.Namespaces[podElem.Namespace].Pods[podElem.Name])
+	assert.Equal(podInfo.Labels, podElem.Labels)
+
+	// Record the number of pod containers after initialization
+	containersNumAfterAdded := len(podInfo.Containers)
+	assert.NotEqual(0, containersNumAfterAdded)
+
+	// Record the names to be used to invoke deletePodContainer
+	namespace := podInfo.Namespace
+	podName := podInfo.Name
+	var containerName string
+	for name, _ := range podInfo.Containers {
+		containerName = name
+		break
+	}
+
+	// First call : try to delete newly added pod container
+	cluster.deletePodContainer(namespace, podName, containerName)
+	assert.Equal(containersNumAfterAdded, len(podInfo.Containers)+1)
+
+	// Second call: already deleted
+	cluster.deletePodContainer(namespace, podName, containerName)
+	// No panic etc.
+}
