@@ -88,12 +88,12 @@ Normally, kafka server has multi brokers, so brokers' list need be configured fo
 So, we can set `KAFKA_SERVER_URL` to a dummy value, and provide kafka brokers' list in url's query string.
 Besides,the following options need be set in query string:
 
-* `timeseriestopic` - Kafka's topic for timeseries
-* `eventstopic` - Kafka's topic for events
+* `timeseriestopic` - Kafka's topic for timeseries. Default: `heapster-metrics`
+* `eventstopic` - Kafka's topic for events. Default: `heapster-events`
 
 Like this:
 
-    --sink=kafka:http://kafka/?brokers=0.0.0.0:9092&brokers=0.0.0.0:9093&timeseriestopic=test&eventstopic=test
+    --sink="kafka:?brokers=0.0.0.0:9092&brokers=0.0.0.0:9093"
 
 ## Modifying the sinks at runtime
 

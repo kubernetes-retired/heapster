@@ -20,9 +20,11 @@ import (
 	"time"
 
 	"fmt"
+
 	"github.com/optiopay/kafka/proto"
 	"github.com/stretchr/testify/assert"
 	sink_api "k8s.io/heapster/sinks/api"
+	sinkutil "k8s.io/heapster/sinks/util"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
 )
@@ -59,10 +61,11 @@ func NewFakeSink() fakeKafkaSink {
 	fakesinkBrokerHosts := make([]string, 2)
 	return fakeKafkaSink{
 		&kafkaSink{
-			producer,
-			fakeTimeSeriesTopic,
-			fakeEventsTopic,
-			fakesinkBrokerHosts,
+			producer:        producer,
+			timeSeriesTopic: fakeTimeSeriesTopic,
+			eventsTopic:     fakeEventsTopic,
+			sinkBrokerHosts: fakesinkBrokerHosts,
+			ci:              sinkutil.NewClientInitializer("test", func() error { return nil }, func() error { return nil }, time.Millisecond),
 		},
 		producer,
 	}
@@ -180,7 +183,7 @@ func TestStoreTimeseriesSingleTimeserieInput(t *testing.T) {
 
 	assert.Equal(t, 1, len(fakeSink.fakeProducer.msgs))
 
-	timeStr, err := timeNow.MarshalJSON()
+	timeStr, err := timeNow.UTC().MarshalJSON()
 	assert.NoError(t, err)
 
 	msgString := fmt.Sprintf(`{"MetricsName":"test/metric/1_cumulative","MetricsValue":123456,"MetricsTimestamp":%s,"MetricsTags":{"container_name":"docker","hostname":"localhost","pod_id":"aaaa-bbbb-cccc-dddd","test":"notvisible"}}`, timeStr)
@@ -235,7 +238,7 @@ func TestStoreTimeseriesMultipleTimeseriesInput(t *testing.T) {
 
 	assert.Equal(t, 2, len(fakeSink.fakeProducer.msgs))
 
-	timeStr, err := timeNow.MarshalJSON()
+	timeStr, err := timeNow.UTC().MarshalJSON()
 	assert.NoError(t, err)
 
 	msgString1 := fmt.Sprintf(`{"MetricsName":"test/metric/1_cumulative","MetricsValue":123456,"MetricsTimestamp":%s,"MetricsTags":{"container_name":"docker","hostname":"localhost","pod_id":"aaaa-bbbb-cccc-dddd","test":"notvisible"}}`, timeStr)
