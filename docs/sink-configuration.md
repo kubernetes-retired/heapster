@@ -80,6 +80,23 @@ The following options are available:
 
 A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported.
 
+### Kafka
+This sink supports monitoring metrics and events.
+To use the kafka sink add the following flag:
+
+    --sink=kafka:<KAFKA_SERVER_URL>[?<OPTIONS>]
+
+Normally, kafka server has multi brokers, so brokers' list need be configured for producer.
+So, we can set `KAFKA_SERVER_URL` to a dummy value, and provide kafka brokers' list in url's query string.
+Besides,the following options need be set in query string:
+
+* `timeseriestopic` - Kafka's topic for timeseries. Default: `heapster-metrics`
+* `eventstopic` - Kafka's topic for events. Default: `heapster-events`
+
+Like this:
+
+    --sink="kafka:?brokers=0.0.0.0:9092&brokers=0.0.0.0:9093"
+
 ## Modifying the sinks at runtime
 
 Using the `/api/v1/sinks` endpoint, it is possible to fetch the sinks
