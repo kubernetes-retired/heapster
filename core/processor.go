@@ -12,11 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package processor
-
-import (
-	. "k8s.io/heapster/types"
-)
+package core
 
 type DataProcessor interface {
 	Process(*DataBatch) *DataBatch

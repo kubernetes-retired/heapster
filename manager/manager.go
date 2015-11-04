@@ -17,7 +17,7 @@ package manager
 import (
 	"time"
 
-	"k8s.io/heapster/processor"
+	"k8s.io/heapster/core"
 	"k8s.io/heapster/sinks"
 	"k8s.io/heapster/sources"
 )
@@ -31,14 +31,14 @@ type Manager interface {
 
 type realManager struct {
 	sources    sources.SourceManager
-	processors []processor.DataProcessor
+	processors []core.DataProcessor
 	sinks      sinks.SinkManager
 	lastSync   time.Time
 	resolution time.Duration
 	stopChan   chan struct{}
 }
 
-func NewManager(sources sources.SourceManager, processors []processor.DataProcessor, sinks sinks.SinkManager, res time.Duration) (Manager, error) {
+func NewManager(sources sources.SourceManager, processors []core.DataProcessor, sinks sinks.SinkManager, res time.Duration) (Manager, error) {
 	return &realManager{
 		sources:    sources,
 		processors: processors,
