@@ -28,9 +28,9 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/heapster/manager"
+	"k8s.io/heapster/core"
 	"k8s.io/heapster/sinks"
-	"k8s.io/heapster/sinks/cache"
-	source_api "k8s.io/heapster/sources/api"
+	"k8s.io/heapster/sources"
 	"k8s.io/heapster/version"
 )
 
@@ -114,35 +114,26 @@ func validateFlags() error {
 	return nil
 }
 
-func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, error) {
-	c := cache.NewCache(*argCacheDuration, time.Minute)
-	sources, err := newSources(c)
+func doWork() (sources.SourceManager, sinks.SinkManager, manager.Manager, error) {
+	sourceManager, err := sources.NewSourceManager()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	sinkManager, err := sinks.NewExternalSinkManager(nil, c, *argSinkFrequency)
+	sinkManager, err := sinks.NewSinkManager()
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	// Spawn the Model Housekeeping goroutine even if the model is not enabled.
-	// This will allow the model to be activated/deactivated in runtime.
-	modelDuration := *argModelFrequency
-	if (*argCacheDuration).Nanoseconds() < modelDuration.Nanoseconds() {
-		modelDuration = *argCacheDuration
-	}
-
-	manager, err := manager.NewManager(sources, sinkManager, *argStatsResolution, *argCacheDuration, c, *argUseModel, *argModelResolution,
-		modelDuration)
-	if err != nil {
+	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, 30 * time.Minute)
+/*	if err != nil {
 		return nil, nil, nil, err
 	}
 	if err := manager.SetSinkUris(argSinks); err != nil {
 		return nil, nil, nil, err
 	}
-
+*/
 	manager.Start()
-	return sources, sinkManager, manager, nil
+	return sourceManager, sinkManager, manager, nil
 }
 
 func setMaxProcs() {

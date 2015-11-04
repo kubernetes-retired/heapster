@@ -15,13 +15,10 @@
 package v1
 
 import (
-	"net/http"
-
 	restful "github.com/emicklei/go-restful"
+        sinksApi "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/api/v1/types"
 	"k8s.io/heapster/manager"
-	sinksApi "k8s.io/heapster/sinks/api"
-	"k8s.io/heapster/util"
 )
 
 type Api struct {
@@ -114,108 +111,18 @@ func separateLabels(labels map[string]string) (map[string]string, map[string]str
 
 func (a *Api) exportMetricsSchema(request *restful.Request, response *restful.Response) {
 	result := types.TimeseriesSchema{}
-	for _, label := range sinksApi.CommonLabels() {
-		result.CommonLabels = append(result.CommonLabels, types.LabelDescriptor{
-			Key:         label.Key,
-			Description: label.Description,
-		})
-	}
-	for _, label := range sinksApi.PodLabels() {
-		result.PodLabels = append(result.PodLabels, types.LabelDescriptor{
-			Key:         label.Key,
-			Description: label.Description,
-		})
-	}
-
-	for _, metric := range sinksApi.SupportedStatMetrics() {
-		md := types.MetricDescriptor{
-			Name:        metric.Name,
-			Description: metric.Description,
-			Type:        metric.Type.String(),
-			ValueType:   metric.ValueType.String(),
-			Units:       metric.Units.String(),
-		}
-		for _, label := range metric.Labels {
-			md.Labels = append(md.Labels, types.LabelDescriptor{
-				Key:         label.Key,
-				Description: label.Description,
-			})
-		}
-		result.Metrics = append(result.Metrics, md)
-	}
 	response.WriteEntity(result)
 }
 
 func (a *Api) exportMetrics(request *restful.Request, response *restful.Response) {
-	points, err := a.manager.ExportMetrics()
-	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
-		return
-	}
-
-	// Group points by target labels.
-	timeseriesForTargetLabels := map[string]*types.Timeseries{}
-	for _, point := range points {
-		targetLabels, otherLabels := separateLabels(point.Labels)
-		labelsStr := util.LabelsToString(targetLabels, ",")
-
-		// Add timeseries if it does not exist.
-		timeseries, ok := timeseriesForTargetLabels[labelsStr]
-		if !ok {
-			timeseries = &types.Timeseries{
-				Metrics: map[string][]types.Point{},
-				Labels:  targetLabels,
-			}
-			timeseriesForTargetLabels[labelsStr] = timeseries
-		}
-
-		// Add point to this timeseries
-		timeseries.Metrics[point.Name] = append(timeseries.Metrics[point.Name], types.Point{
-			Start:  point.Start,
-			End:    point.End,
-			Labels: otherLabels,
-			Value:  point.Value,
-		})
-	}
-
-	// Turn into a slice.
-	timeseries := make([]*types.Timeseries, 0, len(timeseriesForTargetLabels))
-	for _, val := range timeseriesForTargetLabels {
-		timeseries = append(timeseries, val)
-	}
-
+	timeseries := make([]*types.Timeseries, 0)
 	response.WriteEntity(timeseries)
 }
 
 func (a *Api) setSinks(req *restful.Request, resp *restful.Response) {
-	sinkUris := new([]string)
-	if err := req.ReadEntity(sinkUris); err != nil {
-		resp.WriteError(http.StatusBadRequest, err)
-		return
-	}
-	var uris manager.Uris
-	for _, s := range *sinkUris {
-		if err := uris.Set(s); err != nil {
-			resp.WriteError(http.StatusBadRequest, err)
-			return
-		}
-	}
-	if err := a.manager.SetSinkUris(uris); err != nil {
-		resp.WriteError(http.StatusInternalServerError, err)
-		return
-	}
 }
 
 func (a *Api) getSinks(req *restful.Request, resp *restful.Response) {
-	sinkUris := a.manager.SinkUris()
 	var strs []string
-	if sinkUris == nil {
-		strs = make([]string, 0)
-	} else {
-		strs = make([]string, 0, len(sinkUris))
-		for _, u := range sinkUris {
-			strs = append(strs, u.String())
-		}
-	}
 	resp.WriteEntity(strs)
 }

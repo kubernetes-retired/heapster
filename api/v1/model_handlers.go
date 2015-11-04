@@ -16,16 +16,10 @@ package v1
 
 import (
 	"errors"
-	"net/http"
-	"strings"
-	"time"
 
 	restful "github.com/emicklei/go-restful"
-	"github.com/golang/glog"
 
 	"k8s.io/heapster/api/v1/types"
-	model_api "k8s.io/heapster/model"
-	"k8s.io/heapster/store/statstore"
 )
 
 // errModelNotActivated is the error that is returned by the API handlers
@@ -373,408 +367,84 @@ func (a *Api) containerPaths(request *restful.Request, response *restful.Respons
 	response.WriteEntity(entities)
 }
 
-// makeExternalEntityList converts the result of model's getX methods to the external type.
-func makeExternalEntityList(list []model_api.EntityListEntry) []types.ExternalEntityListEntry {
-	res := make([]types.ExternalEntityListEntry, 0, len(list))
-	for _, item := range list {
-		newItem := types.ExternalEntityListEntry{
-			Name:     item.Name,
-			CPUUsage: item.CPUUsage,
-			MemUsage: item.MemUsage,
-		}
-		res = append(res, newItem)
-	}
-	return res
-}
-
 // allNodes returns a list of all the available node names in the model.
 func (a *Api) allNodes(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-	response.WriteEntity(makeExternalEntityList(model.GetNodes()))
 }
 
 // allNamespaces returns a list of all the available namespaces in the model.
 func (a *Api) allNamespaces(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-	response.WriteEntity(makeExternalEntityList(model.GetNamespaces()))
 }
 
 // allPods returns a list of all the available pods in the model.
 func (a *Api) allPods(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-	namespace := request.PathParameter("namespace-name")
-	response.WriteEntity(makeExternalEntityList(model.GetPods(namespace)))
 }
 
 // allPodContainers returns a list of all the available pod containers in the model.
 func (a *Api) allPodContainers(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-	namespace := request.PathParameter("namespace-name")
-	pod := request.PathParameter("pod-name")
-	response.WriteEntity(makeExternalEntityList(model.GetPodContainers(namespace, pod)))
 }
 
 // allFreeContainers returns a list of all the available free containers in the cluster.
 func (a *Api) allFreeContainers(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-	node := request.PathParameter("node-name")
-	response.WriteEntity(makeExternalEntityList(model.GetFreeContainers(node)))
 }
 
 // nodePods returns a list of all the available API paths that are available for a node.
 func (a *Api) nodePods(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-	}
-	node := request.PathParameter("node-name")
-	response.WriteEntity(makeExternalEntityList(model.GetNodePods(node)))
 }
 
 // availableMetrics returns a list of available metric names.
 // These metric names can be used to extract metrics from the various model entities.
 func (a *Api) availableMetrics(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-	result := model.GetAvailableMetrics()
-	response.WriteEntity(result)
 }
 
 // clusterStats returns a map of StatBundles for each usage metric of the Cluster entity.
 func (a *Api) clusterStats(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-	}
-	res, err := model.GetClusterStats()
-	if err != nil {
-		response.WriteError(400, err)
-	}
-	response.WriteEntity(exportStatsResult(res))
 }
 
 // clusterMetrics returns a metric timeseries for a metric of the Cluster entity.
 func (a *Api) clusterMetrics(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-
-	timeseries, new_stamp, err := model.GetClusterMetric(model_api.ClusterMetricRequest{
-		MetricRequest: parseMetricRequest(request, response),
-	})
-	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
-		glog.Errorf("unable to get cluster metric: %s", err)
-		return
-	}
-	response.WriteEntity(exportTimeseries(timeseries, new_stamp))
 }
 
 // nodeStats returns a map of StatBundles for each usage metric of a Node entity.
 func (a *Api) nodeStats(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-	}
-	res, err := model.GetNodeStats(model_api.NodeRequest{
-		NodeName: request.PathParameter("node-name"),
-	})
-	if err != nil {
-		response.WriteError(400, err)
-	}
-	response.WriteEntity(exportStatsResult(res))
 }
 
 // nodeMetrics returns a metric timeseries for a metric of the Node entity.
 func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-
-	timeseries, new_stamp, err := model.GetNodeMetric(model_api.NodeMetricRequest{
-		NodeName:      request.PathParameter("node-name"),
-		MetricRequest: parseMetricRequest(request, response),
-	})
-	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
-		glog.Errorf("unable to get node metric: %s", err)
-		return
-	}
-	response.WriteEntity(exportTimeseries(timeseries, new_stamp))
 }
 
 // namespaceStats returns a map of StatBundles for each usage metric of a Namespace entity.
 func (a *Api) namespaceStats(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-	}
-	res, err := model.GetNamespaceStats(model_api.NamespaceRequest{
-		NamespaceName: request.PathParameter("namespace-name"),
-	})
-	if err != nil {
-		response.WriteError(400, err)
-	}
-	response.WriteEntity(exportStatsResult(res))
 }
 
 // namespaceMetrics returns a metric timeseries for a metric of the Namespace entity.
 func (a *Api) namespaceMetrics(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-
-	timeseries, new_stamp, err := model.GetNamespaceMetric(model_api.NamespaceMetricRequest{
-		NamespaceName: request.PathParameter("namespace-name"),
-		MetricRequest: parseMetricRequest(request, response),
-	})
-	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
-		glog.Errorf("unable to get namespace metric: %s", err)
-		return
-	}
-	response.WriteEntity(exportTimeseries(timeseries, new_stamp))
 }
 
 // podStats returns a map of StatBundles for each usage metric of a Pod entity.
 func (a *Api) podStats(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-	}
-	res, err := model.GetPodStats(model_api.PodRequest{
-		NamespaceName: request.PathParameter("namespace-name"),
-		PodName:       request.PathParameter("pod-name"),
-	})
-	if err != nil {
-		response.WriteError(400, err)
-	}
-	response.WriteEntity(exportStatsResult(res))
 }
 
 // podMetrics returns a metric timeseries for a metric of the Pod entity.
 func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-
-	timeseries, new_stamp, err := model.GetPodMetric(model_api.PodMetricRequest{
-		NamespaceName: request.PathParameter("namespace-name"),
-		PodName:       request.PathParameter("pod-name"),
-		MetricRequest: parseMetricRequest(request, response),
-	})
-	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
-		glog.Errorf("unable to get pod metric: %s", err)
-		return
-	}
-	response.WriteEntity(exportTimeseries(timeseries, new_stamp))
 }
 
 func (a *Api) podListMetrics(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-	batchResult, new_stamp, err := model.GetBatchPodMetric(model_api.BatchPodRequest{
-		NamespaceName: request.PathParameter("namespace-name"),
-		PodNames:      strings.Split(request.PathParameter("pod-list"), ","),
-		MetricName:    request.PathParameter("metric-name"),
-		Start:         parseRequestParam("start", request, response),
-		End:           parseRequestParam("end", request, response),
-	})
-	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
-		glog.Errorf("unable to get pod list metric: %s", err)
-		return
-	}
-	metricResultList := types.MetricResultList{
-		Items: make([]types.MetricResult, len(batchResult)),
-	}
-	for i, metrics := range batchResult {
-		metricResultList.Items[i] = exportTimeseries(metrics, new_stamp)
-	}
-	response.WriteEntity(metricResultList)
 }
 
 // podContainerStats returns a map of StatBundles for each usage metric of a PodContainer entity.
 func (a *Api) podContainerStats(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-	}
-	res, err := model.GetPodContainerStats(model_api.PodContainerRequest{
-		NamespaceName: request.PathParameter("namespace-name"),
-		PodName:       request.PathParameter("pod-name"),
-		ContainerName: request.PathParameter("container-name"),
-	})
-	if err != nil {
-		response.WriteError(400, err)
-	}
-	response.WriteEntity(exportStatsResult(res))
 }
 
 // podContainerMetrics returns a metric timeseries for a metric of a Pod Container entity.
 // podContainerMetrics uses the namespace-name/pod-name/container-name path.
 func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-
-	timeseries, new_stamp, err := model.GetPodContainerMetric(model_api.PodContainerMetricRequest{
-		NamespaceName: request.PathParameter("namespace-name"),
-		PodName:       request.PathParameter("pod-name"),
-		ContainerName: request.PathParameter("container-name"),
-		MetricRequest: parseMetricRequest(request, response),
-	})
-	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
-		glog.Errorf("unable to get pod container metric: %s", err)
-		return
-	}
-	response.WriteEntity(exportTimeseries(timeseries, new_stamp))
 }
 
 // freeContainerStats returns a map of StatBundles for each usage metric of a free Container entity.
 func (a *Api) freeContainerStats(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-	}
-	res, err := model.GetFreeContainerStats(model_api.FreeContainerRequest{
-		NodeName:      request.PathParameter("node-name"),
-		ContainerName: request.PathParameter("container-name"),
-	})
-	if err != nil {
-		response.WriteError(400, err)
-	}
-	response.WriteEntity(exportStatsResult(res))
 }
 
 // freeContainerMetrics returns a metric timeseries for a metric of the Container entity.
 // freeContainerMetrics addresses only free containers, by using the node-name/container-name path.
 func (a *Api) freeContainerMetrics(request *restful.Request, response *restful.Response) {
-	model := a.manager.GetModel()
-	if model == nil {
-		response.WriteError(400, errModelNotActivated)
-		return
-	}
-
-	timeseries, new_stamp, err := model.GetFreeContainerMetric(model_api.FreeContainerMetricRequest{
-		NodeName:      request.PathParameter("node-name"),
-		ContainerName: request.PathParameter("container-name"),
-		MetricRequest: parseMetricRequest(request, response),
-	})
-	if err != nil {
-		response.WriteError(http.StatusInternalServerError, err)
-		glog.Errorf("unable to get free container metric: %s", err)
-		return
-	}
-	response.WriteEntity(exportTimeseries(timeseries, new_stamp))
-}
-
-// parseMetricRequest returns a MetricRequest from the metric-related query and path parameters of the request.
-func parseMetricRequest(request *restful.Request, response *restful.Response) model_api.MetricRequest {
-	return model_api.MetricRequest{
-		MetricName: request.PathParameter("metric-name"),
-		Start:      parseRequestParam("start", request, response),
-		End:        parseRequestParam("end", request, response),
-	}
-}
-
-// parseRequestParam parses a time.Time from a named QueryParam, using the RFC3339 format.
-// parseRequestParam receives a request and a response as inputs, and returns the parsed time.
-func parseRequestParam(param string, request *restful.Request, response *restful.Response) time.Time {
-	var err error
-	query_param := request.QueryParameter(param)
-	req_stamp := time.Time{}
-	if query_param != "" {
-		req_stamp, err = time.Parse(time.RFC3339, query_param)
-		if err != nil {
-			// Timestamp parameter cannot be parsed
-			response.WriteError(http.StatusInternalServerError, err)
-			glog.Errorf("timestamp argument cannot be parsed: %s", err)
-			return time.Time{}
-		}
-	}
-	return req_stamp
-}
-
-// exportStatsResult renders a model.StatsResult into a StatsResponse.
-func exportStatsResult(res *model_api.StatsResult) types.StatsResponse {
-	resMap := make(map[string]types.ExternalStatBundle)
-	for key, val := range res.ByName {
-		resMap[key] = types.ExternalStatBundle{
-			Minute: exportStat(val.Minute),
-			Hour:   exportStat(val.Hour),
-			Day:    exportStat(val.Day),
-		}
-	}
-	return types.StatsResponse{
-		Uptime: uint64(res.Uptime.Seconds()),
-		Stats:  resMap,
-	}
-}
-
-// exportStats converts an internal model_api.Stats type to the external Stats type.
-func exportStat(stat model_api.Stats) types.Stats {
-	return types.Stats{
-		// exportStats converts an internal model_api.Stats type to the external Stats type.
-		Average:     stat.Average,
-		NinetyFifth: stat.NinetyFifth,
-		Max:         stat.Max,
-	}
-}
-
-// exportTimeseries renders a []statstore.TimePoint and a timestamp into a MetricResult.
-func exportTimeseries(ts []statstore.TimePoint, stamp time.Time) types.MetricResult {
-	// Convert each statstore.TimePoint to a MetricPoint
-	res_metrics := []types.MetricPoint{}
-	for _, metric := range ts {
-		newMP := types.MetricPoint{
-			Timestamp: metric.Timestamp,
-			Value:     metric.Value,
-		}
-		res_metrics = append(res_metrics, newMP)
-	}
-
-	result := types.MetricResult{
-		Metrics:         res_metrics,
-		LatestTimestamp: stamp,
-	}
-	return result
 }

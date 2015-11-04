@@ -15,7 +15,7 @@
 package sinks
 
 import (
-	. "k8s.io/heapster/types"
+	. "k8s.io/heapster/core"
 )
 
 type SinkManager interface {
