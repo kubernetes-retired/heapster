@@ -115,7 +115,7 @@ func validateFlags() error {
 }
 
 func doWork() (sources.SourceManager, sinks.SinkManager, manager.Manager, error) {
-	sourceManager, err := sources.NewSourceManager()
+	sourceManager, err := sources.NewSourceManager(&sources.KubeletProvider{})
 	if err != nil {
 		return nil, nil, nil, err
 	}

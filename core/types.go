@@ -39,11 +39,11 @@ type MetricValue struct {
 }
 
 type MetricSet struct {
-	MetricValue map[string]MetricValue
-	Labels      map[string]string
+	MetricValues map[string]MetricValue
+	Labels       map[string]string
 }
 
 type DataBatch struct {
-	Timestamp time.Time
-	MetricSet map[string]MetricSet
+	Timestamp  time.Time
+	MetricSets map[string]*MetricSet
 }

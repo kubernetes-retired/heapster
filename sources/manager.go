@@ -15,21 +15,115 @@
 package sources
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/golang/glog"
 	. "k8s.io/heapster/core"
 )
 
+const (
+	MetricsScrapeTimeout = 20 * time.Second
+)
+
+// A place from where the metrics should be scraped.
+type MetricsSource interface {
+	ScrapeMetrics(start, end time.Time) *DataBatch
+}
+
+// Kubelet-provided metrics for pod and system container.
+type KubeletMetricsSource struct {
+	host string
+	port int
+}
+
+func (this *KubeletMetricsSource) String() string {
+	return fmt.Sprintf("kubelet:%s:%d", this.host, this.port)
+}
+
+func (this *KubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
+	var tmp DataBatch
+	return &tmp
+}
+
+// Provider of list of sources to be scaped.
+type MetricsSourceProvider interface {
+	GetMetricsSources() []MetricsSource
+}
+
+type KubeletProvider struct {
+}
+
+func (this *KubeletProvider) GetMetricsSources() []MetricsSource {
+	return []MetricsSource{}
+}
+
 type SourceManager interface {
+	// Scrapes sources in parallel and combines the responses.
 	ScrapeSources(start, end time.Time) *DataBatch
 }
 
-func NewSourceManager() (SourceManager, error) {
-	return &realSourceManager{}, nil
+func NewSourceManager(metricsSourceProvider MetricsSourceProvider) (SourceManager, error) {
+	return &realSourceManager{
+		metricsSourceProvider: metricsSourceProvider,
+	}, nil
 }
 
-type realSourceManager struct{}
+type realSourceManager struct {
+	metricsSourceProvider MetricsSourceProvider
+}
 
-func (m *realSourceManager) ScrapeSources(start, end time.Time) *DataBatch {
-	return nil
+func (this *realSourceManager) ScrapeSources(start, end time.Time) *DataBatch {
+	sources := this.metricsSourceProvider.GetMetricsSources()
+
+	responseChannel := make(chan *DataBatch)
+	timeout := time.Now().Add(MetricsScrapeTimeout)
+
+	for _, source := range sources {
+		go func(channel chan *DataBatch, start, end, timeout time.Time) {
+			glog.Infof("Querying source: %s", source)
+			metrics := source.ScrapeMetrics(start, end)
+			now := time.Now()
+			if !now.Before(timeout) {
+				glog.Warningf("Failed to get %s response in time", source)
+				return
+			}
+			timeForResponse := timeout.Sub(now)
+
+			select {
+			case channel <- metrics:
+				// passed the response correctly.
+				return
+			case <-time.After(timeForResponse):
+				glog.Warningf("Failed to send the response back %s", source)
+				return
+			}
+		}(responseChannel, start, end, timeout)
+	}
+	response := DataBatch{
+		Timestamp: end,
+		MetricSets: map[string]*MetricSet{},
+	}
+
+	for i := range sources {
+		now := time.Now()
+		if !now.Before(timeout) {
+			glog.Warningf("Failed to get all responses in time (got %d/%d)", i, len(sources))
+			break
+		}
+
+		select {
+		case dataBatch := <-responseChannel:
+			if dataBatch != nil {
+				for key, value := range dataBatch.MetricSets {
+					response.MetricSets[key] = value
+				}
+			}
+		case <-time.After(timeout.Sub(now)):
+			glog.Warningf("Failed to get all responses in time (got %d/%d)", i, len(sources))
+			break
+		}
+	}
+
+	return &response
 }
