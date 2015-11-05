@@ -25,24 +25,16 @@ type mockClient struct {
 	closed    bool
 }
 
-func (self *mockClient) Connect() error                     { self.connected = true; return nil }
-func (self *mockClient) Close() error                       { self.closed = true; return nil }
-func (self *mockClient) SendEvent(*riemann_api.Event) error { return nil }
-func getMock() riemannClient                                { return &mockClient{} }
+func (rs *mockClient) Connect() error                                    { rs.connected = true; return nil }
+func (rs *mockClient) Close() error                                      { rs.closed = true; return nil }
+func (rs *mockClient) SendEvent(*riemann_api.Event) error                { return nil }
+func (rs *mockClient) QueryEvents(_ string) ([]riemann_api.Event, error) { return nil, nil }
+func getMock() riemannClient                                             { return &mockClient{} }
 
 var _ = Describe("Driver", func() {
-	Describe("new", func() {
-		It("creates a new Riemann sink pointing to the requested instance", func() {
-			var _, err = new(getMock, riemannConfig{})
-			Expect(err).To(BeNil())
-		})
-		// func new(addr string) (sink_api.ExternalSink, error) { return nil, nil }
-	})
-
 	Describe("Name", func() {
 		It("gives a user-friendly string describing the sink", func() {
-			var subject, err = new(getMock, riemannConfig{})
-			Expect(err).To(BeNil())
+			var subject = &riemannSink{getMock(), riemannConfig{}, nil}
 
 			var name = subject.Name()
 
@@ -51,25 +43,24 @@ var _ = Describe("Driver", func() {
 	})
 
 	Describe("Register", func() {
-		// func (self *riemannSink) Register(descriptor []sink_api.MetricDescriptor) error { return nil }
+		// func (rs *riemannSink) Register(descriptor []sink_api.MetricDescriptor) error { return nil }
 		It("registers a metric with Riemann (no-op)", func() {})
 	})
 
 	PDescribe("StoreTimeseries", func() {
-		// func (self *riemannSink) StoreTimeseries(ts []sink_api.Timeseries) error { return nil }
+		// func (rs *riemannSink) StoreTimeseries(ts []sink_api.Timeseries) error { return nil }
 		It("sends a collection of Timeseries to Riemann", func() {})
 	})
 
 	PDescribe("StoreEvents", func() {
-		// func (self *riemannSink) StoreEvents(event []kube_api.Event) error { return nil }
+		// func (rs *riemannSink) StoreEvents(event []kube_api.Event) error { return nil }
 		It("sends a collection of Kubernetes Events to Riemann", func() {})
 	})
 
 	Describe("DebugInfo", func() {
-		// func (self *riemannSink) DebugInfo() string { return "" }
+		// func (rs *riemannSink) DebugInfo() string { return "" }
 		It("gives debug information specific to Riemann", func() {
-			var subject, err = new(getMock, riemannConfig{})
-			Expect(err).To(BeNil())
+			var subject = &riemannSink{getMock(), riemannConfig{}, nil}
 			var debugInfo = subject.DebugInfo()
 			Expect(debugInfo).ToNot(Equal(""))
 		})
