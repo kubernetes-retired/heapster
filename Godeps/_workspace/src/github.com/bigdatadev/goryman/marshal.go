@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"time"
 
-	pb "github.com/golang/protobuf/proto"
 	"github.com/bigdatadev/goryman/proto"
+	pb "github.com/golang/protobuf/proto"
 )
 
 // EventToProtocolBuffer converts an Event type to a proto.Event

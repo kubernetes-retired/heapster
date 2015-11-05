@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"

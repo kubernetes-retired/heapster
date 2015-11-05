@@ -1,18 +1,16 @@
-/*
-   Copyright 2014 CoreOS, Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
+// Copyright 2014 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package registry
 
@@ -21,7 +19,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
+	etcd "github.com/coreos/etcd/client"
+
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/unit"
@@ -38,13 +37,13 @@ const (
 // reported before being moved to a machine-specific namespace
 // https://github.com/coreos/fleet/issues/638
 func (r *EtcdRegistry) legacyUnitStatePath(jobName string) string {
-	return path.Join(r.keyPrefix, statePrefix, jobName)
+	return r.prefixed(statePrefix, jobName)
 }
 
 // unitStatesNamespace generates a keypath of a namespace containing all
 // UnitState objects for a particular job
 func (r *EtcdRegistry) unitStatesNamespace(jobName string) string {
-	return path.Join(r.keyPrefix, statesPrefix, jobName)
+	return r.prefixed(statesPrefix, jobName)
 }
 
 // unitStatePath generates a keypath where the UnitState object for a given
@@ -63,7 +62,7 @@ func (r *EtcdRegistry) UnitStates() (states []*unit.UnitState, err error) {
 	}
 
 	var sorted MUSKeys
-	for key, _ := range mus {
+	for key := range mus {
 		sorted = append(sorted, key)
 	}
 	sort.Sort(sorted)
@@ -95,12 +94,12 @@ func (mk MUSKeys) Swap(i, j int) { mk[i], mk[j] = mk[j], mk[i] }
 // statesByMUSKey returns a map of all UnitStates stored in the registry indexed by MUSKey
 func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
 	mus := make(map[MUSKey]*unit.UnitState)
-	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, statesPrefix),
+	key := r.prefixed(statesPrefix)
+	opts := &etcd.GetOptions{
 		Recursive: true,
 	}
-	res, err := r.etcd.Do(&req)
-	if err != nil && !isKeyNotFound(err) {
+	res, err := r.kAPI.Get(r.ctx(), key, opts)
+	if err != nil && !isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		return nil, err
 	}
 	if res != nil {
@@ -127,13 +126,10 @@ func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
 // getUnitState retrieves the current UnitState, if any exists, for the
 // given unit that originates from the indicated machine
 func (r *EtcdRegistry) getUnitState(uName, machID string) (*unit.UnitState, error) {
-	req := etcd.Get{
-		Key: r.unitStatePath(machID, uName),
-	}
-	res, err := r.etcd.Do(&req)
-
+	key := r.unitStatePath(machID, uName)
+	res, err := r.kAPI.Get(r.ctx(), key, nil)
 	if err != nil {
-		if isKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
 		return nil, err
@@ -155,49 +151,39 @@ func (r *EtcdRegistry) SaveUnitState(jobName string, unitState *unit.UnitState, 
 		return
 	}
 
-	json, err := marshal(usm)
+	val, err := marshal(usm)
 	if err != nil {
 		log.Errorf("Error marshalling UnitState: %v", err)
 		return
 	}
 
-	legacyKey := r.legacyUnitStatePath(jobName)
-	req := etcd.Set{
-		Key:   legacyKey,
-		Value: json,
-		TTL:   ttl,
+	opts := &etcd.SetOptions{
+		TTL: ttl,
 	}
-	r.etcd.Do(&req)
+
+	legacyKey := r.legacyUnitStatePath(jobName)
+	r.kAPI.Set(r.ctx(), legacyKey, val, opts)
 
 	newKey := r.unitStatePath(unitState.MachineID, jobName)
-	req = etcd.Set{
-		Key:   newKey,
-		Value: json,
-		TTL:   ttl,
-	}
-	r.etcd.Do(&req)
+	r.kAPI.Set(r.ctx(), newKey, val, opts)
 }
 
 // Delete the state from the Registry for the given Job's Unit
 func (r *EtcdRegistry) RemoveUnitState(jobName string) error {
 	// TODO(jonboulle): consider https://github.com/coreos/fleet/issues/465
 	legacyKey := r.legacyUnitStatePath(jobName)
-	req := etcd.Delete{
-		Key: legacyKey,
-	}
-	_, err := r.etcd.Do(&req)
-	if err != nil && !isKeyNotFound(err) {
+	_, err := r.kAPI.Delete(r.ctx(), legacyKey, nil)
+	if err != nil && !isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		return err
 	}
 
 	// TODO(jonboulle): deal properly with multiple states
 	newKey := r.unitStatesNamespace(jobName)
-	req = etcd.Delete{
-		Key:       newKey,
+	opts := &etcd.DeleteOptions{
 		Recursive: true,
 	}
-	_, err = r.etcd.Do(&req)
-	if err != nil && !isKeyNotFound(err) {
+	_, err = r.kAPI.Delete(r.ctx(), newKey, opts)
+	if err != nil && !isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		return err
 	}
 	return nil

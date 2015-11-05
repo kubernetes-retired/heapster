@@ -16,15 +16,16 @@ package riemann
 
 import (
 	"fmt"
+	"net/url"
+	"reflect"
+	"runtime"
+	"strconv"
+
 	riemann_api "github.com/bigdatadev/goryman"
 	"github.com/golang/glog"
 	"k8s.io/heapster/extpoints"
 	sink_api "k8s.io/heapster/sinks/api"
 	kube_api "k8s.io/kubernetes/pkg/api"
-	"net/url"
-	"reflect"
-	"runtime"
-	"strconv"
 )
 
 // The basic internal type for this package; it obeys the sink_api.ExternalSink

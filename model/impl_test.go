@@ -1084,7 +1084,7 @@ func TestDeletePodContainer(t *testing.T) {
 	namespace := podInfo.Namespace
 	podName := podInfo.Name
 	var containerName string
-	for name, _ := range podInfo.Containers {
+	for name := range podInfo.Containers {
 		containerName = name
 		break
 	}

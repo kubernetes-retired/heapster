@@ -8,8 +8,8 @@ import (
 	"net"
 	"time"
 
-	pb "github.com/golang/protobuf/proto"
 	"github.com/bigdatadev/goryman/proto"
+	pb "github.com/golang/protobuf/proto"
 )
 
 // GorymanClient is a client library to send events to Riemann

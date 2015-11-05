@@ -1,7 +1,5 @@
 package goryman
 
-import ()
-
 // State is a wrapper for Riemann states
 type State struct {
 	Ttl         float32

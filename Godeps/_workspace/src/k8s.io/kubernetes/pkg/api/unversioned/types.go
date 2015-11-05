@@ -17,6 +17,8 @@ limitations under the License.
 // Package unversioned contains API types that are common to all versions.
 package unversioned
 
+import "strings"
+
 // TypeMeta describes an individual object in an API response or request
 // with strings representing the type of the object and its API schema version.
 // Structures that are versioned or persisted should inline TypeMeta.
@@ -25,13 +27,13 @@ type TypeMeta struct {
 	// Servers may infer this from the endpoint the client submits requests to.
 	// Cannot be updated.
 	// In CamelCase.
-	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds
+	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds
 	Kind string `json:"kind,omitempty"`
 
 	// APIVersion defines the versioned schema of this representation of an object.
 	// Servers should convert recognized schemas to the latest internal value, and
 	// may reject unrecognized values.
-	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources
+	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#resources
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
@@ -48,7 +50,7 @@ type ListMeta struct {
 	// Value must be treated as opaque by clients and passed unmodified back to the server.
 	// Populated by the system.
 	// Read-only.
-	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#concurrency-control-and-consistency
+	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#concurrency-control-and-consistency
 	ResourceVersion string `json:"resourceVersion,omitempty"`
 }
 
@@ -56,12 +58,12 @@ type ListMeta struct {
 type Status struct {
 	TypeMeta `json:",inline"`
 	// Standard list metadata.
-	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds
+	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds
 	ListMeta `json:"metadata,omitempty"`
 
 	// Status of the operation.
 	// One of: "Success" or "Failure".
-	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
+	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status
 	Status string `json:"status,omitempty"`
 	// A human-readable description of the status of this operation.
 	Message string `json:"message,omitempty"`
@@ -91,7 +93,7 @@ type StatusDetails struct {
 	Name string `json:"name,omitempty"`
 	// The kind attribute of the resource associated with the status StatusReason.
 	// On some operations may differ from the requested resource Kind.
-	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds
+	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds
 	Kind string `json:"kind,omitempty"`
 	// The Causes array includes more details associated with the StatusReason
 	// failure. Not all StatusReasons may provide detailed causes.
@@ -268,4 +270,95 @@ const (
 	CauseTypeUnexpectedServerResponse CauseType = "UnexpectedServerResponse"
 )
 
-func (*Status) IsAnAPIObject() {}
+func (*Status) IsAnAPIObject()          {}
+func (*APIVersions) IsAnAPIObject()     {}
+func (*APIGroupList) IsAnAPIObject()    {}
+func (*APIGroup) IsAnAPIObject()        {}
+func (*APIResourceList) IsAnAPIObject() {}
+
+// APIVersions lists the versions that are available, to allow clients to
+// discover the API at /api, which is the root path of the legacy v1 API.
+type APIVersions struct {
+	TypeMeta `json:",inline"`
+	// versions are the api versions that are available.
+	Versions []string `json:"versions"`
+}
+
+// APIGroupList is a list of APIGroup, to allow clients to discover the API at
+// /apis.
+type APIGroupList struct {
+	TypeMeta `json:",inline"`
+	// groups is a list of APIGroup.
+	Groups []APIGroup `json:"groups"`
+}
+
+// APIGroup contains the name, the supported versions, and the preferred version
+// of a group.
+type APIGroup struct {
+	TypeMeta `json:",inline"`
+	// name is the name of the group.
+	Name string `json:"name"`
+	// versions are the versions supported in this group.
+	Versions []GroupVersion `json:"versions"`
+	// preferredVersion is the version preferred by the API server, which
+	// probably is the storage version.
+	PreferredVersion GroupVersion `json:"preferredVersion,omitempty"`
+}
+
+// GroupVersion contains the "group/version" and "version" string of a version.
+// It is made a struct to keep extensiblity.
+type GroupVersion struct {
+	// groupVersion specifies the API group and version in the form "group/version"
+	GroupVersion string `json:"groupVersion"`
+	// version specifies the version in the form of "version". This is to save
+	// the clients the trouble of splitting the GroupVersion.
+	Version string `json:"version"`
+}
+
+// APIResource specifies the name of a resource and whether it is namespaced.
+type APIResource struct {
+	// name is the name of the resource.
+	Name string `json:"name"`
+	// namespaced indicates if a resource is namespaced or not.
+	Namespaced bool `json:"namespaced"`
+}
+
+// APIResourceList is a list of APIResource, it is used to expose the name of the
+// resources supported in a specific group and version, and if the resource
+// is namespaced.
+type APIResourceList struct {
+	TypeMeta `json:",inline"`
+	// groupVersion is the group and version this APIResourceList is for.
+	GroupVersion string `json:"groupVersion"`
+	// resources contains the name of the resources and if they are namespaced.
+	APIResources []APIResource `json:"resources"`
+}
+
+// RootPaths lists the paths available at root.
+// For example: "/healthz", "/apis".
+type RootPaths struct {
+	// paths are the paths available at root.
+	Paths []string `json:"paths"`
+}
+
+// TODO: remove me when watch is refactored
+func LabelSelectorQueryParam(version string) string {
+	return "labelSelector"
+}
+
+// TODO: remove me when watch is refactored
+func FieldSelectorQueryParam(version string) string {
+	return "fieldSelector"
+}
+
+// String returns available api versions as a human-friendly version string.
+func (apiVersions APIVersions) String() string {
+	return strings.Join(apiVersions.Versions, ",")
+}
+
+func (apiVersions APIVersions) GoString() string {
+	return apiVersions.String()
+}
+
+// Patch is provided to give a concrete name and type to the Kubernetes PATCH request body.
+type Patch struct{}
