@@ -29,7 +29,7 @@ The build steps are as follows, [go](https://github.com/golang) and [godep](http
 
 **Step 2: Build the source code**
 
-	cd kubernetes/heapster
+	cd k8s.io/heapster
 	make
 
 Then you can get the heapster binary in current path.
