@@ -81,11 +81,13 @@ func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start
 		hostCopy := containers[hostIndex]
 		hostContainer = &hostCopy
 		containers = append(containers[:hostIndex], containers[hostIndex+1:]...)
+		// This is temporary workaround for #399. To make unit consistent with cadvisor normalize to a conversion factor of 1024.
+		hostContainer.Spec.Cpu.Limit = info.CpuCapacity * 1024 / 1000
+		hostContainer.Spec.Memory.Limit = info.MemCapacity
+		return hostContainer, containers, nil
+	} else {
+		return nil, []api.Container{}, fmt.Errorf("Host container not found")
 	}
-	// This is temporary workaround for #399. To make unit consistent with cadvisor normalize to a conversion factor of 1024.
-	hostContainer.Spec.Cpu.Limit = info.CpuCapacity * 1024 / 1000
-	hostContainer.Spec.Memory.Limit = info.MemCapacity
-	return hostContainer, containers, nil
 }
 
 // Returns the host containers, non-Kubernetes containers, and an error (if any).
