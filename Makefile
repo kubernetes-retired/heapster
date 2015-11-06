@@ -2,7 +2,7 @@ all: build
 
 TAG = v0.18.1
 PREFIX = gcr.io/google_containers
-FLAGS = 
+FLAGS =
 
 SUPPORTED_KUBE_VERSIONS = "1.0.6"
 TEST_NAMESPACE = heapster-e2e-tests

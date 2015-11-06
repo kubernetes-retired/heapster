@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"time"
 
+	etcd "github.com/coreos/etcd/client"
 	fleetClient "github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/etcd"
 	fleetPkg "github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/golang/glog"
@@ -74,13 +74,16 @@ func getFleetRegistryClient(fleetEndpoints []string) (fleetClient.API, error) {
 	}
 
 	timeout := 3 * time.Second
-
-	eClient, err := etcd.NewClient(fleetEndpoints, trans, timeout)
+	eCfg := etcd.Config{
+		Endpoints: fleetEndpoints,
+		Transport: trans,
+	}
+	eClient, err := etcd.New(eCfg)
 	if err != nil {
 		return nil, err
 	}
-
-	reg := registry.NewEtcdRegistry(eClient, etcdRegistry)
+	kAPI := etcd.NewKeysAPI(eClient)
+	reg := registry.NewEtcdRegistry(kAPI, registry.DefaultKeyPrefix, timeout)
 
 	return &fleetClient.RegistryClient{Registry: reg}, nil
 }

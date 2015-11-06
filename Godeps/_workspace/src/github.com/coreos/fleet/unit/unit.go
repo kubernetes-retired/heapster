@@ -1,24 +1,23 @@
-/*
-   Copyright 2014 CoreOS, Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
+// Copyright 2014 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package unit
 
 import (
 	"bytes"
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -171,6 +170,19 @@ func (h *Hash) Empty() bool {
 	return *h == Hash{}
 }
 
+func HashFromHexString(key string) (Hash, error) {
+	h := Hash{}
+	out, err := hex.DecodeString(key)
+	if err != nil {
+		return h, err
+	}
+	if len(out) != sha1.Size {
+		return h, fmt.Errorf("size of key %q (%d) differs from SHA1 size (%d)", out, len(out), sha1.Size)
+	}
+	copy(h[:], out[:sha1.Size])
+	return h, nil
+}
+
 // UnitState encodes the current state of a unit loaded into a fleet agent
 type UnitState struct {
 	LoadState   string
@@ -208,6 +220,12 @@ type UnitNameInfo struct {
 // an Instance of a Template unit
 func (nu UnitNameInfo) IsInstance() bool {
 	return len(nu.Instance) > 0
+}
+
+// IsTemplate returns a boolean indicating whether the UnitNameInfo appears to be
+// a Template unit
+func (nu UnitNameInfo) IsTemplate() bool {
+	return len(nu.Template) > 0 && !nu.IsInstance()
 }
 
 // NewUnitNameInfo generates a UnitNameInfo from the given name. If the given string

@@ -18,7 +18,6 @@ package unversioned
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -31,15 +30,14 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/metrics"
+	"k8s.io/kubernetes/pkg/conversion/queryparams"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util"
-	"k8s.io/kubernetes/pkg/util/httpstream"
 	"k8s.io/kubernetes/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/watch"
 	watchjson "k8s.io/kubernetes/pkg/watch/json"
@@ -309,13 +307,13 @@ type versionToResourceToFieldMapping map[string]resourceTypeToFieldMapping
 func (v versionToResourceToFieldMapping) filterField(apiVersion, resourceType, field, value string) (newField, newValue string, err error) {
 	rMapping, ok := v[apiVersion]
 	if !ok {
-		glog.Warningf("Field selector: %v - %v - %v - %v: need to check if this is versioned correctly.", apiVersion, resourceType, field, value)
+		glog.Warningf("field selector: %v - %v - %v - %v: need to check if this is versioned correctly.", apiVersion, resourceType, field, value)
 		return field, value, nil
 	}
 	newField, newValue, err = rMapping.filterField(resourceType, field, value)
 	if err != nil {
 		// This is only a warning until we find and fix all of the client's usages.
-		glog.Warningf("Field selector: %v - %v - %v - %v: need to check if this is versioned correctly.", apiVersion, resourceType, field, value)
+		glog.Warningf("field selector: %v - %v - %v - %v: need to check if this is versioned correctly.", apiVersion, resourceType, field, value)
 		return field, value, nil
 	}
 	return newField, newValue, nil
@@ -373,7 +371,7 @@ func (r *Request) FieldsSelectorParam(s fields.Selector) *Request {
 		r.err = err
 		return r
 	}
-	return r.setParam(api.FieldSelectorQueryParam(r.apiVersion), s2.String())
+	return r.setParam(unversioned.FieldSelectorQueryParam(r.apiVersion), s2.String())
 }
 
 // LabelsSelectorParam adds the given selector as a query parameter
@@ -387,7 +385,7 @@ func (r *Request) LabelsSelectorParam(s labels.Selector) *Request {
 	if s.Empty() {
 		return r
 	}
-	return r.setParam(api.LabelSelectorQueryParam(r.apiVersion), s.String())
+	return r.setParam(unversioned.LabelSelectorQueryParam(r.apiVersion), s.String())
 }
 
 // UintParam creates a query parameter with the given value.
@@ -404,6 +402,31 @@ func (r *Request) Param(paramName, s string) *Request {
 		return r
 	}
 	return r.setParam(paramName, s)
+}
+
+// VersionedParams will take the provided object, serialize it to a map[string][]string using the
+// implicit RESTClient API version and the provided object convertor, and then add those as parameters
+// to the request. Use this to provide versioned query parameters from client libraries.
+func (r *Request) VersionedParams(obj runtime.Object, convertor runtime.ObjectConvertor) *Request {
+	if r.err != nil {
+		return r
+	}
+	versioned, err := convertor.ConvertToVersion(obj, r.apiVersion)
+	if err != nil {
+		r.err = err
+		return r
+	}
+	params, err := queryparams.Convert(versioned)
+	if err != nil {
+		r.err = err
+		return r
+	}
+	for k, v := range params {
+		for _, vv := range v {
+			r.setParam(k, vv)
+		}
+	}
+	return r
 }
 
 func (r *Request) setParam(paramName, value string) *Request {
@@ -440,7 +463,7 @@ func (r *Request) Timeout(d time.Duration) *Request {
 // If obj is a string, try to read a file of that name.
 // If obj is a []byte, send it directly.
 // If obj is an io.Reader, use it directly.
-// If obj is a runtime.Object, marshal it correctly.
+// If obj is a runtime.Object, marshal it correctly, and set Content-Type header.
 // Otherwise, set an error.
 func (r *Request) Body(obj interface{}) *Request {
 	if r.err != nil {
@@ -468,6 +491,7 @@ func (r *Request) Body(obj interface{}) *Request {
 		}
 		glog.V(8).Infof("Request Body: %s", string(data))
 		r.body = bytes.NewBuffer(data)
+		r.SetHeader("Content-Type", "application/json")
 	default:
 		r.err = fmt.Errorf("unknown type used for body: %+v", obj)
 	}
@@ -611,41 +635,6 @@ func (r *Request) Stream() (io.ReadCloser, error) {
 		bodyText := string(bodyBytes)
 		return nil, fmt.Errorf("%s while accessing %v: %s", resp.Status, url, bodyText)
 	}
-}
-
-// Upgrade upgrades the request so that it supports multiplexed bidirectional
-// streams. The current implementation uses SPDY, but this could be replaced
-// with HTTP/2 once it's available, or something else.
-func (r *Request) Upgrade(config *Config, newRoundTripperFunc func(*tls.Config) httpstream.UpgradeRoundTripper) (httpstream.Connection, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-
-	tlsConfig, err := TLSConfigFor(config)
-	if err != nil {
-		return nil, err
-	}
-
-	upgradeRoundTripper := newRoundTripperFunc(tlsConfig)
-	wrapper, err := HTTPWrappersForConfig(config, upgradeRoundTripper)
-	if err != nil {
-		return nil, err
-	}
-
-	r.client = &http.Client{Transport: wrapper}
-
-	req, err := http.NewRequest(r.verb, r.URL().String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("Error creating request: %s", err)
-	}
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("Error sending request: %s", err)
-	}
-	defer resp.Body.Close()
-
-	return upgradeRoundTripper.NewConnection(resp)
 }
 
 // request connects to the server and invokes the provided function when a server response is

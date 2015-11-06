@@ -23,6 +23,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/errors"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/golang/glog"
 )
 
 // ValidationErrorType is a machine readable value providing more detail about why
@@ -73,7 +74,7 @@ func (t ValidationErrorType) String() string {
 	case ValidationErrorTypeTooLong:
 		return "too long"
 	default:
-		panic(fmt.Sprintf("unrecognized validation type: %#v", t))
+		glog.Errorf("unrecognized validation type: %#v", t)
 		return ""
 	}
 }
@@ -160,7 +161,7 @@ func (list ValidationErrorList) Prefix(prefix string) ValidationErrorList {
 			}
 			list[i] = err
 		} else {
-			panic(fmt.Sprintf("Programmer error: ValidationErrorList holds non-ValidationError: %#v", list[i]))
+			glog.Warningf("Programmer error: ValidationErrorList holds non-ValidationError: %#v", list[i])
 		}
 	}
 	return list
