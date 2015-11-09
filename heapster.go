@@ -63,11 +63,11 @@ func main() {
 	if err := validateFlags(); err != nil {
 		glog.Fatal(err)
 	}
-	sources, sink, manager, err := doWork()
+	_, _, _, err := doWork()
 	if err != nil {
 		glog.Fatal(err)
 	}
-	handler := setupHandlers(sources, sink, manager)
+	handler := setupHandlers()
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
 
@@ -114,7 +114,7 @@ func validateFlags() error {
 	return nil
 }
 
-func doWork() (sources.SourceManager, sinks.DataSink, manager.Manager, error) {
+func doWork() (sources.MetricsSource, sinks.DataSink, manager.Manager, error) {
 	sourceManager, err := sources.NewSourceManager(&sources.KubeletProvider{})
 	if err != nil {
 		return nil, nil, nil, err

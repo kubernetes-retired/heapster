@@ -17,19 +17,17 @@ package v1
 import (
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/api/v1/types"
-	"k8s.io/heapster/manager"
+
 	sinksApi "k8s.io/heapster/sinks/api"
 )
 
 type Api struct {
-	manager             manager.Manager
 	runningInKubernetes bool
 }
 
 // Create a new Api to serve from the specified cache.
-func NewApi(m manager.Manager, runningInKuberentes bool) *Api {
+func NewApi(runningInKuberentes bool) *Api {
 	return &Api{
-		manager:             m,
 		runningInKubernetes: runningInKuberentes,
 	}
 }

@@ -14,6 +14,9 @@
 
 package integration
 
+/*
+Commented out until the new data flow supports model api
+
 import (
 	"fmt"
 	"testing"
@@ -152,3 +155,4 @@ func TestModelMetricPassing(t *testing.T) {
 	assert.NotEmpty(metrics)
 	assert.InEpsilon(loadAverageMilli, metrics[0].Value, 50)
 }
+*/
