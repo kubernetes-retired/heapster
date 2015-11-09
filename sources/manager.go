@@ -80,7 +80,7 @@ func (this *realSourceManager) ScrapeSources(start, end time.Time) *DataBatch {
 	timeout := time.Now().Add(MetricsScrapeTimeout)
 
 	for _, source := range sources {
-		go func(channel chan *DataBatch, start, end, timeout time.Time) {
+		go func(source MetricsSource, channel chan *DataBatch, start, end, timeout time.Time) {
 			glog.Infof("Querying source: %s", source)
 			metrics := source.ScrapeMetrics(start, end)
 			now := time.Now()
@@ -98,10 +98,10 @@ func (this *realSourceManager) ScrapeSources(start, end time.Time) *DataBatch {
 				glog.Warningf("Failed to send the response back %s", source)
 				return
 			}
-		}(responseChannel, start, end, timeout)
+		}(source, responseChannel, start, end, timeout)
 	}
 	response := DataBatch{
-		Timestamp: end,
+		Timestamp:  end,
 		MetricSets: map[string]*MetricSet{},
 	}
 

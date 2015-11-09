@@ -27,8 +27,8 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"k8s.io/heapster/manager"
 	"k8s.io/heapster/core"
+	"k8s.io/heapster/manager"
 	"k8s.io/heapster/sinks"
 	"k8s.io/heapster/sources"
 	"k8s.io/heapster/version"
@@ -114,24 +114,24 @@ func validateFlags() error {
 	return nil
 }
 
-func doWork() (sources.SourceManager, sinks.SinkManager, manager.Manager, error) {
+func doWork() (sources.SourceManager, sinks.DataSink, manager.Manager, error) {
 	sourceManager, err := sources.NewSourceManager(&sources.KubeletProvider{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	sinkManager, err := sinks.NewSinkManager()
+	sinkManager, err := sinks.NewDataSinkManager([]sinks.DataSink{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, 30 * time.Minute)
-/*	if err != nil {
-		return nil, nil, nil, err
-	}
-	if err := manager.SetSinkUris(argSinks); err != nil {
-		return nil, nil, nil, err
-	}
-*/
+	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, 30*time.Minute)
+	/*	if err != nil {
+			return nil, nil, nil, err
+		}
+		if err := manager.SetSinkUris(argSinks); err != nil {
+			return nil, nil, nil, err
+		}
+	*/
 	manager.Start()
 	return sourceManager, sinkManager, manager, nil
 }

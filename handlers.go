@@ -29,16 +29,16 @@ import (
 
 const pprofBasePath = "/debug/pprof/"
 
-func setupHandlers(sourcesManager sources.SourceManager, sinkManager sinks.SinkManager, m manager.Manager) http.Handler {
+func setupHandlers(sourcesManager sources.SourceManager, sinkManager sinks.DataSink, m manager.Manager) http.Handler {
 
 	runningInKubernetes := true
-	
-/*	for _, source := range sourcesList {
-		if source.Name() == sources.KubePodsSourceName {
-			runningInKubernetes = true
+
+	/*	for _, source := range sourcesList {
+			if source.Name() == sources.KubePodsSourceName {
+				runningInKubernetes = true
+			}
 		}
-	}
-*/
+	*/
 
 	// Make API handler.
 	wsContainer := restful.NewContainer()
@@ -48,11 +48,11 @@ func setupHandlers(sourcesManager sources.SourceManager, sinkManager sinks.SinkM
 
 	// Validation/Debug handler.
 	handleValidate := func(req *restful.Request, resp *restful.Response) {
-/*		err := validate.HandleRequest(resp, sourcesList, sink)
-		if err != nil {
-			fmt.Fprintf(resp, "%s", err)
-		}
-*/
+		/*		err := validate.HandleRequest(resp, sourcesList, sink)
+				if err != nil {
+					fmt.Fprintf(resp, "%s", err)
+				}
+		*/
 	}
 	ws := new(restful.WebService).
 		Path("/validate").
