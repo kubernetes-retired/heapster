@@ -16,9 +16,9 @@ package v1
 
 import (
 	restful "github.com/emicklei/go-restful"
-        sinksApi "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/api/v1/types"
 	"k8s.io/heapster/manager"
+	sinksApi "k8s.io/heapster/sinks/api"
 )
 
 type Api struct {

@@ -32,17 +32,17 @@ type Manager interface {
 type realManager struct {
 	sources    sources.SourceManager
 	processors []core.DataProcessor
-	sinks      sinks.SinkManager
+	sink       sinks.DataSink
 	lastSync   time.Time
 	resolution time.Duration
 	stopChan   chan struct{}
 }
 
-func NewManager(sources sources.SourceManager, processors []core.DataProcessor, sinks sinks.SinkManager, res time.Duration) (Manager, error) {
+func NewManager(sources sources.SourceManager, processors []core.DataProcessor, sink sinks.DataSink, res time.Duration) (Manager, error) {
 	return &realManager{
 		sources:    sources,
 		processors: processors,
-		sinks:      sinks,
+		sink:       sink,
 		lastSync:   time.Now().Round(res),
 		resolution: res,
 		stopChan:   make(chan struct{}),
@@ -68,6 +68,7 @@ func (rm *realManager) Housekeep() {
 			rm.housekeep(start, end)
 			rm.lastSync = end
 		case <-rm.stopChan:
+			rm.sink.Stop()
 			return
 		}
 	}
@@ -78,5 +79,5 @@ func (rm *realManager) housekeep(start, end time.Time) {
 	for _, p := range rm.processors {
 		data = p.Process(data)
 	}
-	rm.sinks.ExportData(data)
+	rm.sink.ExportData(data)
 }
