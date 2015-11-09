@@ -27,7 +27,6 @@ spec:
         - --source=kubernetes:https://kubernetes.default
         - --sink=gcm
         - --sink=gcl
-        - --poll_duration=2m
         - --stats_resolution=1m
         volumeMounts:
         - mountPath: /etc/ssl/certs
