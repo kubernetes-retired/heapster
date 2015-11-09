@@ -58,22 +58,17 @@ func (this *KubeletProvider) GetMetricsSources() []MetricsSource {
 	return []MetricsSource{}
 }
 
-type SourceManager interface {
-	// Scrapes sources in parallel and combines the responses.
-	ScrapeSources(start, end time.Time) *DataBatch
-}
-
-func NewSourceManager(metricsSourceProvider MetricsSourceProvider) (SourceManager, error) {
-	return &realSourceManager{
+func NewSourceManager(metricsSourceProvider MetricsSourceProvider) (MetricsSource, error) {
+	return &sourceManager{
 		metricsSourceProvider: metricsSourceProvider,
 	}, nil
 }
 
-type realSourceManager struct {
+type sourceManager struct {
 	metricsSourceProvider MetricsSourceProvider
 }
 
-func (this *realSourceManager) ScrapeSources(start, end time.Time) *DataBatch {
+func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 	sources := this.metricsSourceProvider.GetMetricsSources()
 
 	responseChannel := make(chan *DataBatch)

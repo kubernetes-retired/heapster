@@ -21,15 +21,12 @@ import (
 
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/api/v1"
-	"k8s.io/heapster/manager"
-	"k8s.io/heapster/sinks"
-	"k8s.io/heapster/sources"
 	"k8s.io/heapster/validate"
 )
 
 const pprofBasePath = "/debug/pprof/"
 
-func setupHandlers(sourcesManager sources.SourceManager, sinkManager sinks.DataSink, m manager.Manager) http.Handler {
+func setupHandlers() http.Handler {
 
 	runningInKubernetes := true
 
@@ -43,7 +40,7 @@ func setupHandlers(sourcesManager sources.SourceManager, sinkManager sinks.DataS
 	// Make API handler.
 	wsContainer := restful.NewContainer()
 	wsContainer.EnableContentEncoding(true)
-	a := v1.NewApi(m, runningInKubernetes)
+	a := v1.NewApi(runningInKubernetes)
 	a.Register(wsContainer)
 
 	// Validation/Debug handler.

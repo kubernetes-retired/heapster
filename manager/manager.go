@@ -20,6 +20,13 @@ import (
 	"k8s.io/heapster/core"
 	"k8s.io/heapster/sinks"
 	"k8s.io/heapster/sources"
+
+	"github.com/golang/glog"
+)
+
+const (
+	scrapeOffset          = 5 * time.Second
+	maxParallelHousekeeps = 3
 )
 
 // Manager provides an interface to control the core of heapster.
@@ -30,23 +37,31 @@ type Manager interface {
 }
 
 type realManager struct {
-	sources    sources.SourceManager
-	processors []core.DataProcessor
-	sink       sinks.DataSink
-	lastSync   time.Time
-	resolution time.Duration
-	stopChan   chan struct{}
+	source                 sources.MetricsSource
+	processors             []core.DataProcessor
+	sink                   sinks.DataSink
+	resolution             time.Duration
+	stopChan               chan struct{}
+	housekeepSemaphoreChan chan struct{}
+	housekeepTimeout       time.Duration
 }
 
-func NewManager(sources sources.SourceManager, processors []core.DataProcessor, sink sinks.DataSink, res time.Duration) (Manager, error) {
-	return &realManager{
-		sources:    sources,
-		processors: processors,
-		sink:       sink,
-		lastSync:   time.Now().Round(res),
-		resolution: res,
-		stopChan:   make(chan struct{}),
-	}, nil
+func NewManager(source sources.MetricsSource, processors []core.DataProcessor, sink sinks.DataSink, res time.Duration) (Manager, error) {
+	manager := realManager{
+		source:                 source,
+		processors:             processors,
+		sink:                   sink,
+		resolution:             res,
+		stopChan:               make(chan struct{}),
+		housekeepSemaphoreChan: make(chan struct{}, maxParallelHousekeeps),
+		housekeepTimeout:       res / 2,
+	}
+
+	for i := 0; i < maxParallelHousekeeps; i++ {
+		manager.housekeepSemaphoreChan <- struct{}{}
+	}
+
+	return &manager, nil
 }
 
 func (rm *realManager) Start() {
@@ -59,14 +74,15 @@ func (rm *realManager) Stop() {
 
 func (rm *realManager) Housekeep() {
 	for {
-		start := rm.lastSync
+		// Always try to get the newest metrics
+		now := time.Now()
+		start := now.Truncate(rm.resolution)
 		end := start.Add(rm.resolution)
-		timeToNextSync := end.Sub(time.Now())
-		// TODO: consider adding some delay here
+		timeToNextSync := end.Add(scrapeOffset).Sub(now)
+
 		select {
 		case <-time.After(timeToNextSync):
 			rm.housekeep(start, end)
-			rm.lastSync = end
 		case <-rm.stopChan:
 			rm.sink.Stop()
 			return
@@ -75,9 +91,28 @@ func (rm *realManager) Housekeep() {
 }
 
 func (rm *realManager) housekeep(start, end time.Time) {
-	data := rm.sources.ScrapeSources(start, end)
-	for _, p := range rm.processors {
-		data = p.Process(data)
+	if !start.Before(end) {
+		glog.Warningf("Wrong time provided to housekeep start:%s end: %s", start, end)
+		return
 	}
-	rm.sink.ExportData(data)
+
+	select {
+	case <-rm.housekeepSemaphoreChan:
+		// ok, good to go
+
+	case <-time.After(rm.housekeepTimeout):
+		glog.Warningf("Spent too long waiting for housekeeping to start")
+		return
+	}
+
+	go func(rm *realManager) {
+		// should always give back the semaphore
+		defer func() { rm.housekeepSemaphoreChan <- struct{}{} }()
+
+		data := rm.source.ScrapeMetrics(start, end)
+		for _, p := range rm.processors {
+			data = p.Process(data)
+		}
+		rm.sink.ExportData(data)
+	}(rm)
 }
