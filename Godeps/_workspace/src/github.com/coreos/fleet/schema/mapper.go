@@ -61,7 +61,7 @@ func MapUnitToSchemaUnit(u *job.Unit, su *job.ScheduledUnit) *Unit {
 
 func MapSchemaUnitsToUnits(entities []*Unit) []job.Unit {
 	units := make([]job.Unit, len(entities))
-	for i, _ := range entities {
+	for i := range entities {
 		entity := entities[i]
 		units[i] = *(MapSchemaUnitToUnit(entity))
 	}
@@ -85,7 +85,7 @@ func MapMachineStateToSchema(ms *machine.MachineState) *Machine {
 
 func MapSchemaToMachineStates(entities []*Machine) []machine.MachineState {
 	machines := make([]machine.MachineState, len(entities))
-	for i, _ := range entities {
+	for i := range entities {
 		me := entities[i]
 
 		ms := machine.MachineState{

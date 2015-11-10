@@ -18,7 +18,6 @@ package util
 
 import (
 	"io"
-	"net/http"
 	"net/url"
 	"strings"
 )
@@ -44,21 +43,4 @@ func IsProbableEOF(err error) bool {
 		return true
 	}
 	return false
-}
-
-var defaultTransport = http.DefaultTransport.(*http.Transport)
-
-// SetTransportDefaults applies the defaults from http.DefaultTransport
-// for the Proxy, Dial, and TLSHandshakeTimeout fields if unset
-func SetTransportDefaults(t *http.Transport) *http.Transport {
-	if t.Proxy == nil {
-		t.Proxy = defaultTransport.Proxy
-	}
-	if t.Dial == nil {
-		t.Dial = defaultTransport.Dial
-	}
-	if t.TLSHandshakeTimeout == 0 {
-		t.TLSHandshakeTimeout = defaultTransport.TLSHandshakeTimeout
-	}
-	return t
 }

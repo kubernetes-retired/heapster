@@ -24,17 +24,17 @@ import (
 
 var unsupportedErr = errors.New("setting OOM scores is unsupported in this build")
 
-func NewOOMAdjuster() *OOMAdjuster {
-	return &OOMAdjuster{
-		ApplyOOMScoreAdj:          unsupportedApplyOOMScoreAdj,
-		ApplyOOMScoreAdjContainer: unsupportedApplyOOMScoreAdjContainer,
+func NewOomAdjuster() *OomAdjuster {
+	return &OomAdjuster{
+		ApplyOomScoreAdj:          unsupportedApplyOomScoreAdj,
+		ApplyOomScoreAdjContainer: unsupportedApplyOomScoreAdjContainer,
 	}
 }
 
-func unsupportedApplyOOMScoreAdj(pid int, oomScoreAdj int) error {
+func unsupportedApplyOomScoreAdj(pid int, oomScoreAdj int) error {
 	return unsupportedErr
 }
 
-func unsupportedApplyOOMScoreAdjContainer(cgroupName string, oomScoreAdj, maxTries int) error {
+func unsupportedApplyOomScoreAdjContainer(cgroupName string, oomScoreAdj, maxTries int) error {
 	return unsupportedErr
 }

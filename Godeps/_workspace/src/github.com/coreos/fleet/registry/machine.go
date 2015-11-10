@@ -1,27 +1,25 @@
-/*
-   Copyright 2014 CoreOS, Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
+// Copyright 2014 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package registry
 
 import (
-	"path"
 	"strings"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
+	etcd "github.com/coreos/etcd/client"
+
 	"github.com/coreos/fleet/machine"
 )
 
@@ -30,15 +28,15 @@ const (
 )
 
 func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
-	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, machinePrefix),
-		Sorted:    true,
+	key := r.prefixed(machinePrefix)
+	opts := &etcd.GetOptions{
+		Sort:      true,
 		Recursive: true,
 	}
 
-	resp, err := r.etcd.Do(&req)
+	resp, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
-		if isKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
 		return
@@ -64,31 +62,26 @@ func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 }
 
 func (r *EtcdRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
-	json, err := marshal(ms)
+	val, err := marshal(ms)
 	if err != nil {
 		return uint64(0), err
 	}
 
-	update := etcd.Update{
-		Key:   path.Join(r.keyPrefix, machinePrefix, ms.ID, "object"),
-		Value: json,
-		TTL:   ttl,
+	key := r.prefixed(machinePrefix, ms.ID, "object")
+	opts := &etcd.SetOptions{
+		PrevExist: etcd.PrevExist,
+		TTL:       ttl,
 	}
-
-	resp, err := r.etcd.Do(&update)
+	resp, err := r.kAPI.Set(r.ctx(), key, val, opts)
 	if err == nil {
 		return resp.Node.ModifiedIndex, nil
 	}
 
 	// If state was not present, explicitly create it so the other members
 	// in the cluster know this is a new member
-	create := etcd.Create{
-		Key:   path.Join(r.keyPrefix, machinePrefix, ms.ID, "object"),
-		Value: json,
-		TTL:   ttl,
-	}
+	opts.PrevExist = etcd.PrevNoExist
 
-	resp, err = r.etcd.Do(&create)
+	resp, err = r.kAPI.Set(r.ctx(), key, val, opts)
 	if err != nil {
 		return uint64(0), err
 	}
@@ -97,11 +90,9 @@ func (r *EtcdRegistry) SetMachineState(ms machine.MachineState, ttl time.Duratio
 }
 
 func (r *EtcdRegistry) RemoveMachineState(machID string) error {
-	req := etcd.Delete{
-		Key: path.Join(r.keyPrefix, machinePrefix, machID, "object"),
-	}
-	_, err := r.etcd.Do(&req)
-	if isKeyNotFound(err) {
+	key := r.prefixed(machinePrefix, machID, "object")
+	_, err := r.kAPI.Delete(r.ctx(), key, nil)
+	if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		err = nil
 	}
 	return err

@@ -236,7 +236,7 @@ func composeResponseMessages(route restful.Route, decl *ApiDeclaration) (message
 	}
 	// sort by code
 	codes := sort.IntSlice{}
-	for code, _ := range route.ResponseErrors {
+	for code := range route.ResponseErrors {
 		codes = append(codes, code)
 	}
 	codes.Sort()

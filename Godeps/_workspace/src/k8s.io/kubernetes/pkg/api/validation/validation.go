@@ -54,7 +54,7 @@ var pdPartitionErrorMsg string = intervalErrorMsg(0, 255)
 var portRangeErrorMsg string = intervalErrorMsg(0, 65536)
 var portNameErrorMsg string = fmt.Sprintf(`must be an IANA_SVC_NAME (at most 15 characters, matching regex %s, it must contain at least one letter [a-z], and hyphens cannot be adjacent to other hyphens): e.g. "http"`, validation.IdentifierNoHyphensBeginEndFmt)
 
-const totalAnnotationSizeLimitB int = 64 * (1 << 10) // 64 kB
+const totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
 
 func ValidateLabelName(labelName, fieldName string) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
@@ -1341,6 +1341,15 @@ func ValidateReplicationControllerUpdate(oldController, controller *api.Replicat
 	return allErrs
 }
 
+// ValidateReplicationControllerStatusUpdate tests if required fields in the replication controller are set.
+func ValidateReplicationControllerStatusUpdate(oldController, controller *api.ReplicationController) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, ValidateObjectMetaUpdate(&controller.ObjectMeta, &oldController.ObjectMeta).Prefix("metadata")...)
+	allErrs = append(allErrs, ValidatePositiveField(int64(controller.Status.Replicas), "status.replicas")...)
+	allErrs = append(allErrs, ValidatePositiveField(int64(controller.Status.ObservedGeneration), "status.observedGeneration")...)
+	return allErrs
+}
+
 // Validates that the given selector is non-empty.
 func ValidateNonEmptySelector(selectorMap map[string]string, fieldName string) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
@@ -1970,6 +1979,27 @@ func ValidatePodLogOptions(opts *api.PodLogOptions) errs.ValidationErrorList {
 	case opts.SinceSeconds != nil:
 		if *opts.SinceSeconds < 1 {
 			allErrs = append(allErrs, errs.NewFieldInvalid("sinceSeconds", *opts.SinceSeconds, "sinceSeconds must be a positive integer"))
+		}
+	}
+	return allErrs
+}
+
+// ValidateLoadBalancerStatus validates required fields on a LoadBalancerStatus
+func ValidateLoadBalancerStatus(status *api.LoadBalancerStatus) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	for _, ingress := range status.Ingress {
+		if len(ingress.IP) > 0 {
+			if isIP := (net.ParseIP(ingress.IP) != nil); !isIP {
+				allErrs = append(allErrs, errs.NewFieldInvalid("ingress.ip", ingress.IP, "must be an IP address"))
+			}
+		}
+		if len(ingress.Hostname) > 0 {
+			if valid, errMsg := NameIsDNSSubdomain(ingress.Hostname, false); !valid {
+				allErrs = append(allErrs, errs.NewFieldInvalid("ingress.hostname", ingress.Hostname, errMsg))
+			}
+			if isIP := (net.ParseIP(ingress.Hostname) != nil); isIP {
+				allErrs = append(allErrs, errs.NewFieldInvalid("ingress.hostname", ingress.Hostname, "must be a DNS name, not ip address"))
+			}
 		}
 	}
 	return allErrs

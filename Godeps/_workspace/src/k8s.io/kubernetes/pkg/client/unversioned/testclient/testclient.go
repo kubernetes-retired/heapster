@@ -20,10 +20,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/emicklei/go-restful/swagger"
-
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/registered"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/version"
@@ -42,8 +41,6 @@ func NewSimpleFake(objects ...runtime.Object) *Fake {
 	fakeClient := &Fake{}
 	fakeClient.AddReactor("*", "*", ObjectReaction(o, api.RESTMapper))
 
-	fakeClient.AddWatchReactor("*", DefaultWatchReactor(watch.NewFake(), nil))
-
 	return fakeClient
 }
 
@@ -59,6 +56,8 @@ type Fake struct {
 	WatchReactionChain []WatchReactor
 	// ProxyReactionChain is the list of proxy reactors that will be attempted for every request in the order they are tried
 	ProxyReactionChain []ProxyReactor
+
+	Resources map[string]*unversioned.APIResourceList
 }
 
 // Reactor is an interface to allow the composition of reaction functions.
@@ -104,7 +103,9 @@ func (c *Fake) AddReactor(verb, resource string, reaction ReactionFunc) {
 
 // PrependReactor adds a reactor to the beginning of the chain
 func (c *Fake) PrependReactor(verb, resource string, reaction ReactionFunc) {
-	c.ReactionChain = append([]Reactor{&SimpleReactor{verb, resource, reaction}}, c.ReactionChain...)
+	newChain := make([]Reactor, 0, len(c.ReactionChain)+1)
+	newChain[0] = &SimpleReactor{verb, resource, reaction}
+	newChain = append(newChain, c.ReactionChain...)
 }
 
 // AddWatchReactor appends a reactor to the end of the chain
@@ -112,19 +113,9 @@ func (c *Fake) AddWatchReactor(resource string, reaction WatchReactionFunc) {
 	c.WatchReactionChain = append(c.WatchReactionChain, &SimpleWatchReactor{resource, reaction})
 }
 
-// PrependWatchReactor adds a reactor to the beginning of the chain
-func (c *Fake) PrependWatchReactor(resource string, reaction WatchReactionFunc) {
-	c.WatchReactionChain = append([]WatchReactor{&SimpleWatchReactor{resource, reaction}}, c.WatchReactionChain...)
-}
-
 // AddProxyReactor appends a reactor to the end of the chain
 func (c *Fake) AddProxyReactor(resource string, reaction ProxyReactionFunc) {
 	c.ProxyReactionChain = append(c.ProxyReactionChain, &SimpleProxyReactor{resource, reaction})
-}
-
-// PrependProxyReactor adds a reactor to the beginning of the chain
-func (c *Fake) PrependProxyReactor(resource string, reaction ProxyReactionFunc) {
-	c.ProxyReactionChain = append([]ProxyReactor{&SimpleProxyReactor{resource, reaction}}, c.ProxyReactionChain...)
 }
 
 // Invokes records the provided Action and then invokes the ReactFn (if provided).
@@ -267,8 +258,12 @@ func (c *Fake) Namespaces() client.NamespaceInterface {
 	return &FakeNamespaces{Fake: c}
 }
 
-func (c *Fake) Experimental() client.ExperimentalInterface {
+func (c *Fake) Extensions() client.ExtensionsInterface {
 	return &FakeExperimental{c}
+}
+
+func (c *Fake) Discovery() client.DiscoveryInterface {
+	return &FakeDiscovery{c}
 }
 
 func (c *Fake) ServerVersion() (*version.Info, error) {
@@ -281,27 +276,17 @@ func (c *Fake) ServerVersion() (*version.Info, error) {
 	return &versionInfo, nil
 }
 
-func (c *Fake) ServerAPIVersions() (*api.APIVersions, error) {
+func (c *Fake) ServerAPIVersions() (*unversioned.APIVersions, error) {
 	action := ActionImpl{}
 	action.Verb = "get"
 	action.Resource = "apiversions"
 
 	c.Invokes(action, nil)
-	return &api.APIVersions{Versions: registered.RegisteredVersions}, nil
+	return &unversioned.APIVersions{Versions: registered.RegisteredVersions}, nil
 }
 
 func (c *Fake) ComponentStatuses() client.ComponentStatusInterface {
 	return &FakeComponentStatuses{Fake: c}
-}
-
-// SwaggerSchema returns an empty swagger.ApiDeclaration for testing
-func (c *Fake) SwaggerSchema(version string) (*swagger.ApiDeclaration, error) {
-	action := ActionImpl{}
-	action.Verb = "get"
-	action.Resource = "/swaggerapi/api/" + version
-
-	c.Invokes(action, nil)
-	return &swagger.ApiDeclaration{}, nil
 }
 
 type FakeExperimental struct {
@@ -330,4 +315,30 @@ func (c *FakeExperimental) Jobs(namespace string) client.JobInterface {
 
 func (c *FakeExperimental) Ingress(namespace string) client.IngressInterface {
 	return &FakeIngress{Fake: c, Namespace: namespace}
+}
+
+type FakeDiscovery struct {
+	*Fake
+}
+
+func (c *FakeDiscovery) ServerResourcesForGroupVersion(groupVersion string) (*unversioned.APIResourceList, error) {
+	action := ActionImpl{
+		Verb:     "get",
+		Resource: "resource",
+	}
+	c.Invokes(action, nil)
+	return c.Resources[groupVersion], nil
+}
+
+func (c *FakeDiscovery) ServerResources() (map[string]*unversioned.APIResourceList, error) {
+	action := ActionImpl{
+		Verb:     "get",
+		Resource: "resource",
+	}
+	c.Invokes(action, nil)
+	return c.Resources, nil
+}
+
+func (c *FakeDiscovery) ServerGroups() (*unversioned.APIGroupList, error) {
+	return nil, nil
 }
