@@ -119,7 +119,7 @@ func doWork() (sources.MetricsSource, sinks.DataSink, manager.Manager, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	sinkManager, err := sinks.NewDataSinkManager([]sinks.DataSink{})
+	sinkManager, err := sinks.NewDataSinkManager([]sinks.DataSink{}, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
 	if err != nil {
 		return nil, nil, nil, err
 	}
