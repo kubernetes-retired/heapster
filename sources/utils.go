@@ -21,11 +21,6 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
-	"k8s.io/heapster/extpoints"
-	"k8s.io/heapster/sinks/cache"
-	"k8s.io/heapster/sources/api"
-	"k8s.io/heapster/sources/datasource"
-	"k8s.io/heapster/sources/nodes"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	kubeClientCmdApi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
@@ -40,10 +35,6 @@ const (
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	defaultInClusterConfig    = true
 )
-
-func init() {
-	extpoints.SourceFactories.Register(CreateKubeSources, "kubernetes")
-}
 
 func getConfigOverrides(uri *url.URL) (*kubeClientCmd.ConfigOverrides, error) {
 	kubeConfigOverride := kubeClientCmd.ConfigOverrides{
@@ -72,7 +63,7 @@ func getConfigOverrides(uri *url.URL) (*kubeClientCmd.ConfigOverrides, error) {
 	return &kubeConfigOverride, nil
 }
 
-func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
+func getKubeConfigs(uri *url.URL) (*kube_client.Config, *kube_client.KubeletConfig, error) {
 	var (
 		kubeConfig *kube_client.Config
 		err        error
@@ -81,21 +72,21 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 	opts := uri.Query()
 	configOverrides, err := getConfigOverrides(uri)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	inClusterConfig := defaultInClusterConfig
 	if len(opts["inClusterConfig"]) > 0 {
 		inClusterConfig, err = strconv.ParseBool(opts["inClusterConfig"][0])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	if inClusterConfig {
 		kubeConfig, err = kube_client.InClusterConfig()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if configOverrides.ClusterInfo.Server != "" {
@@ -116,7 +107,7 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 			if kubeConfig, err = kubeClientCmd.NewNonInteractiveDeferredLoadingClientConfig(
 				&kubeClientCmd.ClientConfigLoadingRules{ExplicitPath: authFile},
 				configOverrides).ClientConfig(); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		} else {
 			kubeConfig = &kube_client.Config{
@@ -127,17 +118,17 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 		}
 	}
 	if len(kubeConfig.Host) == 0 {
-		return nil, fmt.Errorf("invalid kubernetes master url specified")
+		return nil, nil, fmt.Errorf("invalid kubernetes master url specified")
 	}
 	if len(kubeConfig.Version) == 0 {
-		return nil, fmt.Errorf("invalid kubernetes API version specified")
+		return nil, nil, fmt.Errorf("invalid kubernetes API version specified")
 	}
 
 	useServiceAccount := defaultUseServiceAccount
 	if len(opts["useServiceAccount"]) >= 1 {
 		useServiceAccount, err = strconv.ParseBool(opts["useServiceAccount"][0])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -148,17 +139,11 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 		}
 	}
 
-	kubeClient := kube_client.NewOrDie(kubeConfig)
-
-	nodesApi, err := nodes.NewKubeNodes(kubeClient)
-	if err != nil {
-		return nil, err
-	}
 	kubeletPort := defaultKubeletPort
 	if len(opts["kubeletPort"]) >= 1 {
 		kubeletPort, err = strconv.Atoi(opts["kubeletPort"][0])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -166,7 +151,7 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 	if len(opts["kubeletHttps"]) >= 1 {
 		kubeletHttps, err = strconv.ParseBool(opts["kubeletHttps"][0])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	glog.Infof("Using Kubernetes client with master %q and version %q\n", kubeConfig.Host, kubeConfig.Version)
@@ -179,14 +164,5 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 		BearerToken:     kubeConfig.BearerToken,
 	}
 
-	kubeletApi, err := datasource.NewKubelet(kubeletConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	kubePodsSource := NewKubePodMetrics(kubeletPort, kubeletApi, nodesApi, newPodsApi(kubeClient))
-	kubeNodeSource := NewKubeNodeMetrics(kubeletPort, kubeletApi, nodesApi)
-	kubeEventsSource := NewKubeEvents(kubeClient, c)
-
-	return []api.Source{kubePodsSource, kubeNodeSource, kubeEventsSource}, nil
+	return kubeConfig, kubeletConfig, nil
 }

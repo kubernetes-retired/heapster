@@ -15,11 +15,9 @@
 package datasource
 
 import (
-	"net/http"
 	"time"
 
 	"k8s.io/heapster/sources/api"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 type Host struct {
@@ -36,28 +34,4 @@ type Cadvisor interface {
 
 func NewCadvisor() Cadvisor {
 	return &cadvisorSource{}
-}
-
-type Kubelet interface {
-	// GetContainer returns container spec and stats for the container pointed to by 'host.Resource', running on the kubelet specified in 'host.IP'.
-	// TODO(vishh): Once kubelet exposes a get all stats API, modify this API to return stats for all Pods.
-	GetContainer(host Host, start, end time.Time) (containers *api.Container, err error)
-
-	// Get stats for all non-Kubernetes containers.
-	GetAllRawContainers(host Host, start, end time.Time) ([]api.Container, error)
-}
-
-func NewKubelet(kubeletConfig *kube_client.KubeletConfig) (Kubelet, error) {
-	transport, err := kube_client.MakeTransport(kubeletConfig)
-	if err != nil {
-		return nil, err
-	}
-	c := &http.Client{
-		Transport: transport,
-		Timeout:   kubeletConfig.HTTPTimeout,
-	}
-	return &kubeletSource{
-		config: kubeletConfig,
-		client: c,
-	}, nil
 }

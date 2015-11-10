@@ -20,6 +20,8 @@ import (
 	"k8s.io/heapster/sources/api"
 	"k8s.io/heapster/sources/datasource"
 	"k8s.io/heapster/sources/nodes"
+	"k8s.io/kubernetes/pkg/api/latest"
+	"k8s.io/kubernetes/pkg/runtime"
 )
 
 type fakeNodesApi struct {
@@ -45,4 +47,13 @@ func (self *fakeKubeletApi) GetContainer(host datasource.Host, start, end time.T
 
 func (self *fakeKubeletApi) GetAllRawContainers(host datasource.Host, start, end time.Time) ([]api.Container, error) {
 	return self.containers, nil
+}
+
+func body(obj runtime.Object) string {
+	if obj != nil {
+		bs, _ := latest.GroupOrDie("").Codec.Encode(obj)
+		body := string(bs)
+		return body
+	}
+	return ""
 }

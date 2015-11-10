@@ -25,21 +25,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	"k8s.io/heapster/sources/api"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
-// TODO(vmarmol): Use Kubernetes' if we export it as an API.
-const kubernetesPodNameLabel = "io.kubernetes.pod.name"
-
-type kubeletSource struct {
+type KubeletClient struct {
 	config *kube_client.KubeletConfig
 	client *http.Client
 }
 
-func (self *kubeletSource) postRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
+func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
 	response, err := client.Do(req)
 	if err != nil {
 		return err
@@ -59,7 +55,7 @@ func (self *kubeletSource) postRequestAndGetValue(client *http.Client, req *http
 	return nil
 }
 
-func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
+func (self *KubeletClient) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
 	if len(containerInfo.Stats) == 0 {
 		return nil
 	}
@@ -73,43 +69,6 @@ func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api
 	}
 
 	return container
-}
-
-func (self *kubeletSource) getContainer(url string, start, end time.Time) (*api.Container, error) {
-	// TODO: Get rid of 'NumStats' once cadvisor supports time range queries without specifying that.
-	body, err := json.Marshal(cadvisor.ContainerInfoRequest{Start: start, End: end, NumStats: int(time.Minute / time.Second)})
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("GET", url, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	var containerInfo cadvisor.ContainerInfo
-	client := self.client
-	if client == nil {
-		client = http.DefaultClient
-	}
-	err = self.postRequestAndGetValue(client, req, &containerInfo)
-	if err != nil {
-		glog.V(2).Infof("failed to get stats from kubelet url: %s - %s\n", url, err)
-		return nil, err
-	}
-	glog.V(4).Infof("url: %q, body: %q, data: %+v", url, string(body), containerInfo)
-	return self.parseStat(&containerInfo), nil
-}
-
-func (self *kubeletSource) GetContainer(host Host, start, end time.Time) (container *api.Container, err error) {
-	scheme := "http"
-	if self.config != nil && self.config.EnableHttps {
-		scheme = "https"
-	}
-
-	url := fmt.Sprintf("%s://%s:%d/%s", scheme, host.IP, host.Port, host.Resource)
-	glog.V(3).Infof("about to query kubelet using url: %q", url)
-
-	return self.getContainer(url, start, end)
 }
 
 // TODO(vmarmol): Use Kubernetes' if we export it as an API.
@@ -137,7 +96,7 @@ type statsRequest struct {
 }
 
 // Get stats for all non-Kubernetes containers.
-func (self *kubeletSource) GetAllRawContainers(host Host, start, end time.Time) ([]api.Container, error) {
+func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) ([]api.Container, error) {
 	scheme := "http"
 	if self.config != nil && self.config.EnableHttps {
 		scheme = "https"
@@ -147,7 +106,11 @@ func (self *kubeletSource) GetAllRawContainers(host Host, start, end time.Time) 
 	return self.getAllContainers(url, start, end)
 }
 
-func (self *kubeletSource) getAllContainers(url string, start, end time.Time) ([]api.Container, error) {
+func (self *KubeletClient) GetPort() int {
+	return int(self.config.Port)
+}
+
+func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([]api.Container, error) {
 	// Request data from all subcontainers.
 	request := statsRequest{
 		ContainerName: "/",
@@ -175,14 +138,8 @@ func (self *kubeletSource) getAllContainers(url string, start, end time.Time) ([
 		return nil, fmt.Errorf("failed to get all container stats from Kubelet URL %q: %v", url, err)
 	}
 
-	// TODO(vmarmol): Use this for all stats gathering.
-	// Don't include the Kubernetes containers, those are included elsewhere.
 	result := make([]api.Container, 0, len(containers))
 	for _, containerInfo := range containers {
-		if _, ok := containerInfo.Spec.Labels[kubernetesPodNameLabel]; ok {
-			continue
-		}
-
 		cont := self.parseStat(&containerInfo)
 		if cont != nil {
 			result = append(result, *cont)
@@ -190,4 +147,19 @@ func (self *kubeletSource) getAllContainers(url string, start, end time.Time) ([
 	}
 
 	return result, nil
+}
+
+func NewKubeletClient(kubeletConfig *kube_client.KubeletConfig) (*KubeletClient, error) {
+	transport, err := kube_client.MakeTransport(kubeletConfig)
+	if err != nil {
+		return nil, err
+	}
+	c := &http.Client{
+		Transport: transport,
+		Timeout:   kubeletConfig.HTTPTimeout,
+	}
+	return &KubeletClient{
+		config: kubeletConfig,
+		client: c,
+	}, nil
 }

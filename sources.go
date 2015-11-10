@@ -18,11 +18,10 @@ import (
 	"fmt"
 
 	"k8s.io/heapster/extpoints"
-	"k8s.io/heapster/sinks/cache"
 	"k8s.io/heapster/sources/api"
 )
 
-func newSources(c cache.Cache) ([]api.Source, error) {
+func newSources() ([]api.Source, error) {
 	var sources []api.Source
 	for _, u := range argSources {
 		factory := extpoints.SourceFactories.Lookup(u.Key)
@@ -30,7 +29,7 @@ func newSources(c cache.Cache) ([]api.Source, error) {
 			return nil, fmt.Errorf("Unknown source: %s", u.Key)
 		}
 
-		createdSources, err := factory(&u.Val, c)
+		createdSources, err := factory(&u.Val)
 		if err != nil {
 			return nil, err
 		}
