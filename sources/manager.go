@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	MetricsScrapeTimeout = 20 * time.Second
+	DefaultMetricsScrapeTimeout = 20 * time.Second
 )
 
 // A place from where the metrics should be scraped.
@@ -58,21 +58,23 @@ func (this *KubeletProvider) GetMetricsSources() []MetricsSource {
 	return []MetricsSource{}
 }
 
-func NewSourceManager(metricsSourceProvider MetricsSourceProvider) (MetricsSource, error) {
+func NewSourceManager(metricsSourceProvider MetricsSourceProvider, metricsScrapeTimeout time.Duration) (MetricsSource, error) {
 	return &sourceManager{
 		metricsSourceProvider: metricsSourceProvider,
+		metricsScrapeTimeout:  metricsScrapeTimeout,
 	}, nil
 }
 
 type sourceManager struct {
 	metricsSourceProvider MetricsSourceProvider
+	metricsScrapeTimeout  time.Duration
 }
 
 func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 	sources := this.metricsSourceProvider.GetMetricsSources()
 
 	responseChannel := make(chan *DataBatch)
-	timeout := time.Now().Add(MetricsScrapeTimeout)
+	timeout := time.Now().Add(this.metricsScrapeTimeout)
 
 	for _, source := range sources {
 		go func(source MetricsSource, channel chan *DataBatch, start, end, timeout time.Time) {
@@ -100,6 +102,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 		MetricSets: map[string]*MetricSet{},
 	}
 
+responseloop:
 	for i := range sources {
 		now := time.Now()
 		if !now.Before(timeout) {
@@ -116,7 +119,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 			}
 		case <-time.After(timeout.Sub(now)):
 			glog.Warningf("Failed to get all responses in time (got %d/%d)", i, len(sources))
-			break
+			break responseloop
 		}
 	}
 

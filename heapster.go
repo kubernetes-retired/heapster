@@ -115,7 +115,7 @@ func validateFlags() error {
 }
 
 func doWork() (sources.MetricsSource, sinks.DataSink, manager.Manager, error) {
-	sourceManager, err := sources.NewSourceManager(&sources.KubeletProvider{})
+	sourceManager, err := sources.NewSourceManager(&sources.KubeletProvider{}, sources.DefaultMetricsScrapeTimeout)
 	if err != nil {
 		return nil, nil, nil, err
 	}
