@@ -15,7 +15,6 @@
 package sources
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/golang/glog"
@@ -31,31 +30,9 @@ type MetricsSource interface {
 	ScrapeMetrics(start, end time.Time) *DataBatch
 }
 
-// Kubelet-provided metrics for pod and system container.
-type KubeletMetricsSource struct {
-	host string
-	port int
-}
-
-func (this *KubeletMetricsSource) String() string {
-	return fmt.Sprintf("kubelet:%s:%d", this.host, this.port)
-}
-
-func (this *KubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
-	var tmp DataBatch
-	return &tmp
-}
-
 // Provider of list of sources to be scaped.
 type MetricsSourceProvider interface {
 	GetMetricsSources() []MetricsSource
-}
-
-type KubeletProvider struct {
-}
-
-func (this *KubeletProvider) GetMetricsSources() []MetricsSource {
-	return []MetricsSource{}
 }
 
 func NewSourceManager(metricsSourceProvider MetricsSourceProvider, metricsScrapeTimeout time.Duration) (MetricsSource, error) {
@@ -71,6 +48,7 @@ type sourceManager struct {
 }
 
 func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
+	glog.Infof("Scraping metrics start: %s, end: %s", start, end)
 	sources := this.metricsSourceProvider.GetMetricsSources()
 
 	responseChannel := make(chan *DataBatch)

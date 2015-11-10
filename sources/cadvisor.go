@@ -27,7 +27,6 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/heapster/extpoints"
-	"k8s.io/heapster/sinks/cache"
 	"k8s.io/heapster/sources/api"
 	"k8s.io/heapster/sources/datasource"
 	"k8s.io/heapster/sources/nodes"
@@ -113,7 +112,7 @@ func (cs *cadvisorSource) Name() string {
 	return "Cadvisor Source"
 }
 
-func NewCadvisorSources(uri *url.URL, _ cache.Cache) ([]api.Source, error) {
+func NewCadvisorSources(uri *url.URL) ([]api.Source, error) {
 	switch uri.Path {
 	case "coreos", "fleet":
 		return newCoreosSources(uri.Query())

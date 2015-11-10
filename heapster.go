@@ -115,7 +115,15 @@ func validateFlags() error {
 }
 
 func doWork() (sources.MetricsSource, sinks.DataSink, manager.Manager, error) {
-	sourceManager, err := sources.NewSourceManager(&sources.KubeletProvider{}, sources.DefaultMetricsScrapeTimeout)
+	// TODO: change to handle multiple sources
+	if len(argSources) != 1 {
+		glog.Fatal("wrong number of sources specified")
+	}
+	sourceProvider, err := sources.NewKubeletProvider(&argSources[0].Val)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	sourceManager, err := sources.NewSourceManager(sourceProvider, sources.DefaultMetricsScrapeTimeout)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -124,7 +132,7 @@ func doWork() (sources.MetricsSource, sinks.DataSink, manager.Manager, error) {
 		return nil, nil, nil, err
 	}
 
-	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, 30*time.Minute)
+	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, time.Minute)
 	/*	if err != nil {
 			return nil, nil, nil, err
 		}
