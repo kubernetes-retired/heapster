@@ -76,13 +76,12 @@ func (tsdbSink *openTSDBSink) StoreTimeseries(timeseries []sink_api.Timeseries) 
 	for _, series := range timeseries {
 		dataPoints = append(dataPoints, tsdbSink.timeSeriesToPoint(&series))
 	}
-	resp, err := tsdbSink.client.Put(dataPoints, opentsdb.PutRespWithSummary)
+	_, err := tsdbSink.client.Put(dataPoints, opentsdb.PutRespWithSummary)
 	if err != nil {
 		glog.Errorf("Failed to write timeseries to opentsdb - %v", err)
 		tsdbSink.recordWriteFailure()
 		return err
 	}
-	glog.Infof("OpenTSDB response: %s", resp.String())
 	return nil
 }
 
@@ -100,13 +99,12 @@ func (tsdbSink *openTSDBSink) StoreEvents(events []kube_api.Event) error {
 			dataPoints = append(dataPoints, *datapointPtr)
 		}
 	}
-	resp, err := tsdbSink.client.Put(dataPoints, opentsdb.PutRespWithSummary)
+	_, err := tsdbSink.client.Put(dataPoints, opentsdb.PutRespWithSummary)
 	if err != nil {
 		glog.Errorf("Failed to write events to opentsdb - %v", err)
 		tsdbSink.recordWriteFailure()
 		return err
 	}
-	glog.Infof("OpenTSDB response: %s", resp.String())
 	return nil
 }
 

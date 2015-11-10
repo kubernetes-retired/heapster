@@ -110,6 +110,17 @@ The following options are available:
 * `tags` - FIXME. Default. `none`
 * `storeEvents` - Control storage of events. Default: `true`
 
+### OpenTSDB
+This sink supports monitoring metrics and events.
+To use the opentsdb sink add the following flag:
+
+    --sink=opentsdb:<OPENTSDB_SERVER_URL>
+
+Currently, accessing opentsdb via its rest apis doesn't need any authentication, so you
+can enable opentsdb sink like this:
+
+    --sink=opentsdb:http://192.168.1.8:4242
+
 ## Modifying the sinks at runtime
 
 Using the `/api/v1/sinks` endpoint, it is possible to fetch the sinks
