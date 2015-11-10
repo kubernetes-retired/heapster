@@ -33,8 +33,8 @@ type DataSink interface {
 }
 
 const (
-	sinkExportDataTimeout = 20 * time.Second
-	sinkStopTimeout       = 60 * time.Second
+	DefaultSinkExportDataTimeout = 20 * time.Second
+	DefaultSinkStopTimeout       = 60 * time.Second
 )
 
 type sinkHolder struct {
@@ -47,10 +47,12 @@ type sinkHolder struct {
 // only to these sinks that completed their previous exports. Data that could not be
 // pushed in the defined time is dropped and not retried.
 type sinkManager struct {
-	sinkHolders []sinkHolder
+	sinkHolders       []sinkHolder
+	exportDataTimeout time.Duration
+	stopTimeout       time.Duration
 }
 
-func NewDataSinkManager(sinks []DataSink) (DataSink, error) {
+func NewDataSinkManager(sinks []DataSink, exportDataTimeout, stopTimeout time.Duration) (DataSink, error) {
 	sinkHolders := []sinkHolder{}
 	for _, sink := range sinks {
 		sh := sinkHolder{
@@ -65,6 +67,7 @@ func NewDataSinkManager(sinks []DataSink) (DataSink, error) {
 				case data := <-sh.dataBatchChannel:
 					sh.sink.ExportData(data)
 				case isStop := <-sh.stopChannel:
+					glog.V(2).Infof("Stop received: %s", sh.sink.Name())
 					if isStop {
 						sh.sink.Stop()
 						return
@@ -73,7 +76,11 @@ func NewDataSinkManager(sinks []DataSink) (DataSink, error) {
 			}
 		}(sh)
 	}
-	return &sinkManager{sinkHolders: sinkHolders}, nil
+	return &sinkManager{
+		sinkHolders:       sinkHolders,
+		exportDataTimeout: exportDataTimeout,
+		stopTimeout:       stopTimeout,
+	}, nil
 }
 
 // Guarantees that the export will complete in sinkExportDataTimeout.
@@ -81,15 +88,17 @@ func (this *sinkManager) ExportData(data *DataBatch) {
 	var wg sync.WaitGroup
 	for _, sh := range this.sinkHolders {
 		wg.Add(1)
-		go func(sh sinkHolder, wg sync.WaitGroup) {
+		go func(sh sinkHolder, wg *sync.WaitGroup) {
 			defer wg.Done()
+			glog.V(2).Infof("Pushing data to: %s", sh.sink.Name())
 			select {
 			case sh.dataBatchChannel <- data:
+				glog.V(2).Infof("Data push completed: %s", sh.sink.Name())
 				// everything ok
-			case <-time.After(sinkExportDataTimeout):
-				glog.Warningf("Failed to push data to sink %s", sh.sink.Name())
+			case <-time.After(this.exportDataTimeout):
+				glog.Warningf("Failed to push data to sink: %s", sh.sink.Name())
 			}
-		}(sh, wg)
+		}(sh, &wg)
 	}
 	// Wait for all pushes to complete or timeout.
 	wg.Wait()
@@ -101,12 +110,16 @@ func (this *sinkManager) Name() string {
 
 func (this *sinkManager) Stop() {
 	for _, sh := range this.sinkHolders {
+		glog.V(2).Infof("Running stop for: %s", sh.sink.Name())
+
 		go func(sh sinkHolder) {
 			select {
 			case sh.stopChannel <- true:
 				// everything ok
-			case <-time.After(sinkStopTimeout):
-				glog.Warningf("Failed to stop sink %s", sh.sink.Name())
+				glog.V(2).Infof("Stop sent to sink: %s", sh.sink.Name())
+
+			case <-time.After(this.stopTimeout):
+				glog.Warningf("Failed to stop sink: %s", sh.sink.Name())
 			}
 			return
 		}(sh)
