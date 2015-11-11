@@ -17,7 +17,11 @@
 		},
 		{
 			"ImportPath": "github.com/bluebreezecf/opentsdb-goclient/client",
-			"Rev": "4bbfd333434dfd794c4d5dceac0257b290014e7a"
+			"Rev": "2ddb54cc73419e58d20e917a60bb902349fae4cf"
+		},
+		{
+			"ImportPath": "github.com/bluebreezecf/opentsdb-goclient/config",
+			"Rev": "2ddb54cc73419e58d20e917a60bb902349fae4cf"
 		},
 		{
 			"ImportPath": "github.com/bigdatadev/goryman",

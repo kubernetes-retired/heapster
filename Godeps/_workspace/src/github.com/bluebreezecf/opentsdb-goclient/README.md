@@ -17,7 +17,7 @@ mkdir -p $GOPATH/src/github.com/bluebreezecf
 cd $GOPATH/src/github.com/bluebreezecf
 git clone https://github.com/bluebreezecf/opentsdb-goclient.git
 
-vi sample.go //Use the real host and port of an existing OpenTSDB in Line 30: NewClient("127.0.0.1:4242")
+vi sample.go //Use the real host and port of an existing OpenTSDB in Line 33: OpentsdbHost: "127.0.0.1:4242"
 go run sample.go
 
 ```

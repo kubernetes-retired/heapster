@@ -32,6 +32,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/bluebreezecf/opentsdb-goclient/config"
 )
 
 const (
@@ -47,7 +49,7 @@ const (
 	PutRespWithDetails = "details"
 
 	QueryPath = "/api/query"
-	//The three keys in the rateOption parameter of the QueryParam
+	// The three keys in the rateOption parameter of the QueryParam
 	QueryRateOptionCounter    = "counter"    // The corresponding value type is bool
 	QueryRateOptionCounterMax = "counterMax" // The corresponding value type is int,int64
 	QueryRateOptionResetValue = "resetValue" // The corresponding value type is int,int64
@@ -57,7 +59,7 @@ const (
 	SerializersPath = "/api/serializers"
 	StatsPath       = "/api/stats"
 	SuggestPath     = "/api/suggest"
-	//Only the one of the three query type can be used in SuggestParam, UIDMetaData:
+	// Only the one of the three query type can be used in SuggestParam, UIDMetaData:
 	TypeMetrics = "metrics"
 	TypeTagk    = "tagk"
 	TypeTagv    = "tagv"
@@ -71,6 +73,23 @@ const (
 	UIDMetaDataPath    = "/api/uid/uidmeta"
 	UIDAssignPath      = "/api/uid/assign"
 	TSMetaDataPath     = "/api/uid/tsmeta"
+
+	// The above three constants are used in /put
+	DefaultMaxPutPointsNum = 75
+	DefaultDetectDeltaNum  = 3
+	// Unit is bytes, and assumes that config items of 'tsd.http.request.enable_chunked = true'
+	// and 'tsd.http.request.max_chunk = 40960' are all in the opentsdb.conf:
+	DefaultMaxContentLength = 40960
+)
+
+var (
+	DefaultTransport = &http.Transport{
+		MaxIdleConnsPerHost: 10,
+		Dial: (&net.Dialer{
+			Timeout:   DefaultDialTimeout,
+			KeepAlive: KeepAliveTimeout,
+		}).Dial,
+	}
 )
 
 // Client defines the sdk methods, by which other go applications can
@@ -366,30 +385,41 @@ type Client interface {
 // pre-defined rest apis of OpenTSDB.
 // A non-nil error instance returned means currently the target OpenTSDB
 // designated with the given endpoint is not connectable.
-func NewClient(opentsdbEndpoint string) Client {
-	client := &http.Client{
-		Transport: &http.Transport{
-			MaxIdleConnsPerHost: 10,
-			Dial: (&net.Dialer{
-				Timeout:   DefaultDialTimeout,
-				KeepAlive: KeepAliveTimeout,
-			}).Dial,
-		},
+func NewClient(opentsdbCfg config.OpenTSDBConfig) (Client, error) {
+	opentsdbCfg.OpentsdbHost = strings.TrimSpace(opentsdbCfg.OpentsdbHost)
+	if len(opentsdbCfg.OpentsdbHost) <= 0 {
+		return nil, errors.New("The OpentsdbEndpoint of the given config should not be empty.")
 	}
-	tsdbEndpoint := fmt.Sprintf("http://%s", opentsdbEndpoint)
+	transport := opentsdbCfg.Transport
+	if transport == nil {
+		transport = DefaultTransport
+	}
+	client := &http.Client{
+		Transport: transport,
+	}
+	if opentsdbCfg.MaxPutPointsNum <= 0 {
+		opentsdbCfg.MaxPutPointsNum = DefaultMaxPutPointsNum
+	}
+	if opentsdbCfg.DetectDeltaNum <= 0 {
+		opentsdbCfg.DetectDeltaNum = DefaultDetectDeltaNum
+	}
+	if opentsdbCfg.MaxContentLength <= 0 {
+		opentsdbCfg.MaxContentLength = DefaultMaxContentLength
+	}
+	tsdbEndpoint := fmt.Sprintf("http://%s", opentsdbCfg.OpentsdbHost)
 	clientImpl := clientImpl{
 		tsdbEndpoint: tsdbEndpoint,
-		tsdbHost:     opentsdbEndpoint,
 		client:       client,
+		opentsdbCfg:  opentsdbCfg,
 	}
-	return &clientImpl
+	return &clientImpl, nil
 }
 
 // The private implementation of Client interface.
 type clientImpl struct {
 	tsdbEndpoint string
-	tsdbHost     string
 	client       *http.Client
+	opentsdbCfg  config.OpenTSDBConfig
 }
 
 // Response defines the common behaviours all the specific response for
@@ -465,7 +495,7 @@ func (c *clientImpl) isValidOperateMethod(method string) bool {
 }
 
 func (c *clientImpl) Ping() error {
-	conn, err := net.DialTimeout("tcp", c.tsdbHost, DefaultDialTimeout)
+	conn, err := net.DialTimeout("tcp", c.opentsdbCfg.OpentsdbHost, DefaultDialTimeout)
 	if err != nil {
 		return errors.New(fmt.Sprintf("The target OpenTSDB is unreachable: %v", err))
 	}

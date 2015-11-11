@@ -21,15 +21,25 @@ package main
 
 import (
 	"fmt"
-	"github.com/bluebreezecf/opentsdb-goclient/client"
 	"math/rand"
 	"time"
+
+	"github.com/bluebreezecf/opentsdb-goclient/client"
+	"github.com/bluebreezecf/opentsdb-goclient/config"
 )
 
 func main() {
-	tsdbClient := client.NewClient("127.0.0.1:4242")
+	opentsdbCfg := config.OpenTSDBConfig{
+		OpentsdbHost: "127.0.0.1:4242",
+	}
+	tsdbClient, err := client.NewClient(opentsdbCfg)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
 	//0. Ping
-	if err := tsdbClient.Ping(); err != nil {
+	if err = tsdbClient.Ping(); err != nil {
 		fmt.Println(err.Error())
 		return
 	}

@@ -22,7 +22,8 @@ import (
 	"strings"
 	"sync"
 
-	opentsdb "github.com/bluebreezecf/opentsdb-goclient/client"
+	opentsdbclient "github.com/bluebreezecf/opentsdb-goclient/client"
+	opentsdbcfg "github.com/bluebreezecf/opentsdb-goclient/config"
 	"github.com/golang/glog"
 	"k8s.io/heapster/extpoints"
 	sink_api "k8s.io/heapster/sinks/api"
@@ -47,14 +48,14 @@ var (
 // communicate with the target OpenTSDB for current openTSDBSink instance.
 type openTSDBClient interface {
 	Ping() error
-	Put(datapoints []opentsdb.DataPoint, queryParam string) (*opentsdb.PutResponse, error)
+	Put(datapoints []opentsdbclient.DataPoint, queryParam string) (*opentsdbclient.PutResponse, error)
 }
 
 type openTSDBSink struct {
 	client openTSDBClient
 	sync.RWMutex
 	writeFailures int
-	host          string
+	config        opentsdbcfg.OpenTSDBConfig
 }
 
 func (tsdbSink *openTSDBSink) Register(metrics []sink_api.MetricDescriptor) error {
@@ -72,13 +73,13 @@ func (tsdbSink *openTSDBSink) StoreTimeseries(timeseries []sink_api.Timeseries) 
 	if err := tsdbSink.client.Ping(); err != nil {
 		return err
 	}
-	dataPoints := make([]opentsdb.DataPoint, 0, len(timeseries))
+	dataPoints := make([]opentsdbclient.DataPoint, 0, len(timeseries))
 	for _, series := range timeseries {
 		dataPoints = append(dataPoints, tsdbSink.timeSeriesToPoint(&series))
 	}
-	_, err := tsdbSink.client.Put(dataPoints, opentsdb.PutRespWithSummary)
+	_, err := tsdbSink.client.Put(dataPoints, opentsdbclient.PutRespWithSummary)
 	if err != nil {
-		glog.Errorf("Failed to write timeseries to opentsdb - %v", err)
+		glog.Errorf("failed to write timeseries to opentsdb - %v", err)
 		tsdbSink.recordWriteFailure()
 		return err
 	}
@@ -92,16 +93,16 @@ func (tsdbSink *openTSDBSink) StoreEvents(events []kube_api.Event) error {
 	if err := tsdbSink.client.Ping(); err != nil {
 		return err
 	}
-	dataPoints := make([]opentsdb.DataPoint, 0, len(events))
+	dataPoints := make([]opentsdbclient.DataPoint, 0, len(events))
 	for _, event := range events {
 		datapointPtr := tsdbSink.eventToPoint(&event)
 		if datapointPtr != nil {
 			dataPoints = append(dataPoints, *datapointPtr)
 		}
 	}
-	_, err := tsdbSink.client.Put(dataPoints, opentsdb.PutRespWithSummary)
+	_, err := tsdbSink.client.Put(dataPoints, opentsdbclient.PutRespWithSummary)
 	if err != nil {
-		glog.Errorf("Failed to write events to opentsdb - %v", err)
+		glog.Errorf("failed to write events to opentsdb - %v", err)
 		tsdbSink.recordWriteFailure()
 		return err
 	}
@@ -111,7 +112,7 @@ func (tsdbSink *openTSDBSink) StoreEvents(events []kube_api.Event) error {
 func (tsdbSink *openTSDBSink) DebugInfo() string {
 	buf := bytes.Buffer{}
 	buf.WriteString("Sink Type: OpenTSDB\n")
-	buf.WriteString(fmt.Sprintf("\tclient: Host %s", tsdbSink.host))
+	buf.WriteString(fmt.Sprintf("\tclient: Host %s", tsdbSink.config.OpentsdbHost))
 	buf.WriteString(tsdbSink.getState())
 	buf.WriteString("\n")
 	return buf.String()
@@ -122,8 +123,8 @@ func (tsdbSink *openTSDBSink) Name() string {
 }
 
 // timeSeriesToPoint transfers the contents holding in the given pointer of sink_api.Timeseries
-// into the instance of opentsdb.DataPoint
-func (tsdbSink *openTSDBSink) timeSeriesToPoint(timeseries *sink_api.Timeseries) opentsdb.DataPoint {
+// into the instance of opentsdbclient.DataPoint
+func (tsdbSink *openTSDBSink) timeSeriesToPoint(timeseries *sink_api.Timeseries) opentsdbclient.DataPoint {
 	seriesName := strings.Replace(timeseries.Point.Name, "/", "_", -1)
 	if timeseries.MetricDescriptor.Units.String() != "" {
 		seriesName = fmt.Sprintf("%s_%s", seriesName, timeseries.MetricDescriptor.Units.String())
@@ -131,7 +132,7 @@ func (tsdbSink *openTSDBSink) timeSeriesToPoint(timeseries *sink_api.Timeseries)
 	if timeseries.MetricDescriptor.Type.String() != "" {
 		seriesName = fmt.Sprintf("%s_%s", seriesName, timeseries.MetricDescriptor.Type.String())
 	}
-	datapoint := opentsdb.DataPoint{
+	datapoint := opentsdbclient.DataPoint{
 		Metric:    seriesName,
 		Tags:      make(map[string]string, len(timeseries.Point.Labels)),
 		Value:     timeseries.Point.Value,
@@ -148,9 +149,9 @@ func (tsdbSink *openTSDBSink) timeSeriesToPoint(timeseries *sink_api.Timeseries)
 }
 
 // eventToPoint transfers the contents holding in the given pointer of sink_api.Event
-// into the instance of opentsdb.DataPoint
-func (tsdbSink *openTSDBSink) eventToPoint(event *kube_api.Event) *opentsdb.DataPoint {
-	datapoint := opentsdb.DataPoint{
+// into the instance of opentsdbclient.DataPoint
+func (tsdbSink *openTSDBSink) eventToPoint(event *kube_api.Event) *opentsdbclient.DataPoint {
+	datapoint := opentsdbclient.DataPoint{
 		Metric: eventMetricName,
 		Tags: map[string]string{
 			eventUID:  string(event.UID),
@@ -161,7 +162,7 @@ func (tsdbSink *openTSDBSink) eventToPoint(event *kube_api.Event) *opentsdb.Data
 	if valueStr, err := getEventValue(event); err == nil {
 		datapoint.Value = valueStr
 	} else {
-		glog.Errorf("Error occurs when trying to get event info - %v", err)
+		glog.Errorf("error occurs when trying to get event info - %v", err)
 		return nil
 	}
 
@@ -184,7 +185,7 @@ func getEventValue(event *kube_api.Event) (string, error) {
 // secureTags just fills in the default key-value pair for the tags, if there is no tags for
 // current datapoint. Otherwise, the opentsdb will return error and the operation of putting
 // datapoint will be failed.
-func (tsdbSink *openTSDBSink) secureTags(datapoint *opentsdb.DataPoint) {
+func (tsdbSink *openTSDBSink) secureTags(datapoint *opentsdbclient.DataPoint) {
 	if len(datapoint.Tags) == 0 {
 		datapoint.Tags[defaultTagName] = defaultTagValue
 	}
@@ -202,12 +203,16 @@ func (tsdbSink *openTSDBSink) getState() string {
 	return fmt.Sprintf("\tNumber of write failures: %d\n", tsdbSink.writeFailures)
 }
 
-func new(opentsdbHost string) sink_api.ExternalSink {
-	opentsdbClient := opentsdb.NewClient(opentsdbHost)
+func new(opentsdbHost string) (sink_api.ExternalSink, error) {
+	cfg := opentsdbcfg.OpenTSDBConfig{OpentsdbHost: opentsdbHost}
+	opentsdbClient, err := opentsdbclient.NewClient(cfg)
+	if err != nil {
+		return nil, err
+	}
 	return &openTSDBSink{
 		client: opentsdbClient,
-		host:   opentsdbHost,
-	}
+		config: cfg,
+	}, nil
 }
 
 func init() {
@@ -219,8 +224,11 @@ func CreateOpenTSDBSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.Exte
 	if len(uri.Host) > 0 {
 		host = uri.Host
 	}
-	tsdbSink := new(host)
-	glog.Infof("Created opentsdb sink with host: %v", host)
+	tsdbSink, err := new(host)
+	if err != nil {
+		return nil, err
+	}
+	glog.Infof("created opentsdb sink with host: %v", host)
 
 	return []sink_api.ExternalSink{tsdbSink}, nil
 }

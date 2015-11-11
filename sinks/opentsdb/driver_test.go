@@ -20,6 +20,7 @@ import (
 	"time"
 
 	opentsdb "github.com/bluebreezecf/opentsdb-goclient/client"
+	opentsdbcfg "github.com/bluebreezecf/opentsdb-goclient/config"
 	"github.com/stretchr/testify/assert"
 	sink_api "k8s.io/heapster/sinks/api"
 	kube_api "k8s.io/kubernetes/pkg/api"
@@ -83,10 +84,11 @@ func NewFakeOpenTSDBSink(successfulPing, successfulPut bool) fakeOpenTSDBSink {
 		successfulPing: successfulPing,
 		successfulPut:  successfulPut,
 	}
+	cfg := opentsdbcfg.OpenTSDBConfig{OpentsdbHost: fakeOpenTSDBHost}
 	return fakeOpenTSDBSink{
 		&openTSDBSink{
 			client: client,
-			host:   fakeOpenTSDBHost,
+			config: cfg,
 		},
 		client,
 	}

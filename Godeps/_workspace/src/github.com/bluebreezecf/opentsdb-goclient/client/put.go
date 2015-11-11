@@ -47,6 +47,9 @@ type DataPoint struct {
 	Value interface{} `json:"value"`
 
 	// A map of tag name/tag value pairs. At least one pair must be supplied.
+	// Don't use too many tags, keep it to a fairly small number, usually up to 4 or 5 tags
+	// (By default, OpenTSDB supports a maximum of 8 tags, which can be modified by add
+	// configuration item 'tsd.storage.max_tags' in opentsdb.conf).
 	Tags map[string]string `json:"tags"`
 }
 
@@ -108,18 +111,84 @@ func (c *clientImpl) Put(datas []DataPoint, queryParam string) (*PutResponse, er
 	} else {
 		putEndpoint = fmt.Sprintf("%s%s", c.tsdbEndpoint, PutPath)
 	}
-	reqBodyCnt, err := getPutBodyContents(datas)
+
+	dataGroups, err := c.splitProperGroups(datas)
 	if err != nil {
 		return nil, err
 	}
-	putResp := PutResponse{}
-	if err = c.sendRequest(PostMethod, putEndpoint, reqBodyCnt, &putResp); err != nil {
-		return nil, err
+
+	responses := make([]PutResponse, 0)
+	for _, datapoints := range dataGroups {
+		// The datas have been marshalled successfully in splitProperGroups(),
+		// so now the returned error is always nil.
+		reqBodyCnt, _ := getPutBodyContents(datapoints)
+		putResp := PutResponse{}
+		if err = c.sendRequest(PostMethod, putEndpoint, reqBodyCnt, &putResp); err != nil {
+			// This kind of error only occurs during the process of sending request,
+			// not including the scene of inserting datapoints into opentsdb.
+			// So just return error once it happens.
+			return nil, err
+		}
+		responses = append(responses, putResp)
 	}
-	if putResp.StatusCode == 200 {
-		return &putResp, nil
+
+	globalResp := PutResponse{}
+	globalResp.StatusCode = 200
+	for _, resp := range responses {
+		globalResp.Failed = globalResp.Failed + resp.Failed
+		globalResp.Success = globalResp.Success + resp.Success
+		globalResp.Errors = append(globalResp.Errors, resp.Errors...)
+		if resp.StatusCode != 200 && globalResp.StatusCode == 200 {
+			globalResp.StatusCode = resp.StatusCode
+		}
 	}
-	return nil, parsePutErrorMsg(&putResp)
+	if globalResp.StatusCode == 200 {
+		return &globalResp, nil
+	}
+	return nil, parsePutErrorMsg(&globalResp)
+}
+
+// splitProperGroups splits the given datapoints into groups, whose content size is
+// not larger than c.opentsdbCfg.MaxContentLength.
+// This method is an assurement of avoiding Put failure, when the content length of
+// the given datapoints in a single /api/put request exceeded the value of
+// tsd.http.request.max_chunk in the opentsdb config file.
+func (c *clientImpl) splitProperGroups(datapoints []DataPoint) ([][]DataPoint, error) {
+	datasBytes, err := json.Marshal(&datapoints)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal the datapoints to be put: %v", err)
+	}
+	datapointGroups := make([][]DataPoint, 0)
+	if len(datasBytes) > c.opentsdbCfg.MaxContentLength {
+		datapointsSize := len(datapoints)
+		endIndex := datapointsSize
+		if endIndex > c.opentsdbCfg.MaxPutPointsNum {
+			endIndex = c.opentsdbCfg.MaxPutPointsNum
+		}
+		startIndex := 0
+		for endIndex <= datapointsSize {
+			tempdps := datapoints[startIndex:endIndex]
+			tempSize := len(tempdps)
+			// After successful unmarshal, the above marshal is definitly without error
+			tempdpsBytes, _ := json.Marshal(&tempdps)
+			if len(tempdpsBytes) <= c.opentsdbCfg.MaxContentLength {
+				datapointGroups = append(datapointGroups, tempdps)
+				startIndex = endIndex
+				endIndex = startIndex + tempSize
+				if endIndex > datapointsSize {
+					endIndex = datapointsSize
+				}
+			} else {
+				endIndex = endIndex - c.opentsdbCfg.DetectDeltaNum
+			}
+			if startIndex >= datapointsSize {
+				break
+			}
+		}
+	} else {
+		datapointGroups = append(datapointGroups, datapoints)
+	}
+	return datapointGroups, nil
 }
 
 func parsePutErrorMsg(resp *PutResponse) error {
