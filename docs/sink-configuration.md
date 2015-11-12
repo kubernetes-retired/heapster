@@ -88,11 +88,11 @@ To use the kafka sink add the following flag:
 
 Normally, kafka server has multi brokers, so brokers' list need be configured for producer.
 So, we provide kafka brokers' list and topics about timeseries & topic in url's query string.
-Options should be set in query string, like this:
+Options can be set in query string, like this:
 
-* `brokers` - Kafka's brokers' list
-* `timeseriestopic` - Kafka's topic for timeseries. 
-* `eventstopic` - Kafka's topic for events.
+* `brokers` - Kafka's brokers' list. 
+* `timeseriestopic` - Kafka's topic for timeseries. Default value : `heapster-metrics`
+* `eventstopic` - Kafka's topic for events.Default value : `heapster-events`
 
 For example, 
 
