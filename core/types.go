@@ -44,6 +44,7 @@ type MetricSet struct {
 }
 
 type DataBatch struct {
-	Timestamp  time.Time
+	Timestamp time.Time
+	// Should use key functions from ms_keys.go
 	MetricSets map[string]*MetricSet
 }
