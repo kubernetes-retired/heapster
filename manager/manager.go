@@ -18,8 +18,6 @@ import (
 	"time"
 
 	"k8s.io/heapster/core"
-	"k8s.io/heapster/sinks"
-	"k8s.io/heapster/sources"
 
 	"github.com/golang/glog"
 )
@@ -37,16 +35,16 @@ type Manager interface {
 }
 
 type realManager struct {
-	source                 sources.MetricsSource
+	source                 core.MetricsSource
 	processors             []core.DataProcessor
-	sink                   sinks.DataSink
+	sink                   core.DataSink
 	resolution             time.Duration
 	stopChan               chan struct{}
 	housekeepSemaphoreChan chan struct{}
 	housekeepTimeout       time.Duration
 }
 
-func NewManager(source sources.MetricsSource, processors []core.DataProcessor, sink sinks.DataSink, res time.Duration) (Manager, error) {
+func NewManager(source core.MetricsSource, processors []core.DataProcessor, sink core.DataSink, res time.Duration) (Manager, error) {
 	manager := realManager{
 		source:                 source,
 		processors:             processors,

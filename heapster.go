@@ -114,7 +114,7 @@ func validateFlags() error {
 	return nil
 }
 
-func doWork() (sources.MetricsSource, sinks.DataSink, manager.Manager, error) {
+func doWork() (core.MetricsSource, core.DataSink, manager.Manager, error) {
 	// TODO: change to handle multiple sources
 	if len(argSources) != 1 {
 		glog.Fatal("wrong number of sources specified")
@@ -127,7 +127,7 @@ func doWork() (sources.MetricsSource, sinks.DataSink, manager.Manager, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	sinkManager, err := sinks.NewDataSinkManager([]sinks.DataSink{}, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
+	sinkManager, err := sinks.NewDataSinkManager([]core.DataSink{}, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
 	if err != nil {
 		return nil, nil, nil, err
 	}

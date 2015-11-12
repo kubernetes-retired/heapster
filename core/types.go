@@ -47,3 +47,18 @@ type DataBatch struct {
 	Timestamp  time.Time
 	MetricSets map[string]*MetricSet
 }
+
+// A place from where the metrics should be scraped.
+type MetricsSource interface {
+	ScrapeMetrics(start, end time.Time) *DataBatch
+}
+
+type DataSink interface {
+	Name() string
+
+	// Exports data to the external storge. The funciton should be synchronous/blocking and finish only
+	// after the given DataBatch was written. This will allow sink manager to push data only to these
+	// sinks that finished writing the previous data.
+	ExportData(*DataBatch)
+	Stop()
+}
