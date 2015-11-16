@@ -18,56 +18,15 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/heapster/core"
+	"k8s.io/heapster/util"
 )
 
-type dummyMetricsSource struct {
-	latency   time.Duration
-	metricSet core.MetricSet
-}
-
-func (this *dummyMetricsSource) ScrapeMetrics(start, end time.Time) *core.DataBatch {
-	time.Sleep(this.latency)
-	return &core.DataBatch{
-		Timestamp: end,
-		MetricSets: map[string]*core.MetricSet{
-			this.metricSet.Labels["name"]: &this.metricSet,
-		},
-	}
-}
-
-func dummyMetricSet(name string) core.MetricSet {
-	return core.MetricSet{
-		MetricValues: map[string]core.MetricValue{},
-		Labels: map[string]string{
-			"name": name,
-		},
-	}
-}
-
-type dummyMetricsSourceProvider struct {
-	sources []MetricsSource
-}
-
-func (this *dummyMetricsSourceProvider) GetMetricsSources() []MetricsSource {
-	return this.sources
-}
-
 func TestAllSourcesReplyInTime(t *testing.T) {
-	metricsSourceProvider := dummyMetricsSourceProvider{
-		sources: []MetricsSource{
-			&dummyMetricsSource{
-				latency:   time.Second,
-				metricSet: dummyMetricSet("s1"),
-			},
-			&dummyMetricsSource{
-				latency:   time.Second,
-				metricSet: dummyMetricSet("s2"),
-			},
-		},
-	}
+	metricsSourceProvider := util.NewDummyMetricsSourceProvider(
+		util.NewDummyMetricsSource("s1", time.Second),
+		util.NewDummyMetricsSource("s2", time.Second))
 
-	manager, _ := NewSourceManager(&metricsSourceProvider, time.Second*5)
+	manager, _ := NewSourceManager(metricsSourceProvider, time.Second*3)
 	now := time.Now()
 	end := now.Truncate(10 * time.Second)
 	dataBatch := manager.ScrapeMetrics(end.Add(-10*time.Second), end)
@@ -92,20 +51,11 @@ func TestAllSourcesReplyInTime(t *testing.T) {
 }
 
 func TestOneSourcesReplyInTime(t *testing.T) {
-	metricsSourceProvider := dummyMetricsSourceProvider{
-		sources: []MetricsSource{
-			&dummyMetricsSource{
-				latency:   time.Second,
-				metricSet: dummyMetricSet("s1"),
-			},
-			&dummyMetricsSource{
-				latency:   time.Second * 30,
-				metricSet: dummyMetricSet("s2"),
-			},
-		},
-	}
+	metricsSourceProvider := util.NewDummyMetricsSourceProvider(
+		util.NewDummyMetricsSource("s1", time.Second),
+		util.NewDummyMetricsSource("s2", 30*time.Second))
 
-	manager, _ := NewSourceManager(&metricsSourceProvider, time.Second*3)
+	manager, _ := NewSourceManager(metricsSourceProvider, time.Second*3)
 	now := time.Now()
 	end := now.Truncate(10 * time.Second)
 	dataBatch := manager.ScrapeMetrics(end.Add(-10*time.Second), end)
@@ -134,20 +84,11 @@ func TestOneSourcesReplyInTime(t *testing.T) {
 }
 
 func TestNoSourcesReplyInTime(t *testing.T) {
-	metricsSourceProvider := dummyMetricsSourceProvider{
-		sources: []MetricsSource{
-			&dummyMetricsSource{
-				latency:   time.Second * 30,
-				metricSet: dummyMetricSet("s1"),
-			},
-			&dummyMetricsSource{
-				latency:   time.Second * 30,
-				metricSet: dummyMetricSet("s2"),
-			},
-		},
-	}
+	metricsSourceProvider := util.NewDummyMetricsSourceProvider(
+		util.NewDummyMetricsSource("s1", 30*time.Second),
+		util.NewDummyMetricsSource("s2", 30*time.Second))
 
-	manager, _ := NewSourceManager(&metricsSourceProvider, time.Second*3)
+	manager, _ := NewSourceManager(metricsSourceProvider, time.Second*3)
 	now := time.Now()
 	end := now.Truncate(10 * time.Second)
 	dataBatch := manager.ScrapeMetrics(end.Add(-10*time.Second), end)

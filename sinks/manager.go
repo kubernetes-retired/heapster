@@ -19,18 +19,8 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	. "k8s.io/heapster/core"
+	"k8s.io/heapster/core"
 )
-
-type DataSink interface {
-	Name() string
-
-	// Exports data to the external storge. The funciton should be synchronous/blocking and finish only
-	// after the given DataBatch was written. This will allow sink manager to push data only to these
-	// sinks that finished writing the previous data.
-	ExportData(*DataBatch)
-	Stop()
-}
 
 const (
 	DefaultSinkExportDataTimeout = 20 * time.Second
@@ -38,8 +28,8 @@ const (
 )
 
 type sinkHolder struct {
-	sink             DataSink
-	dataBatchChannel chan *DataBatch
+	sink             core.DataSink
+	dataBatchChannel chan *core.DataBatch
 	stopChannel      chan bool
 }
 
@@ -52,12 +42,12 @@ type sinkManager struct {
 	stopTimeout       time.Duration
 }
 
-func NewDataSinkManager(sinks []DataSink, exportDataTimeout, stopTimeout time.Duration) (DataSink, error) {
+func NewDataSinkManager(sinks []core.DataSink, exportDataTimeout, stopTimeout time.Duration) (core.DataSink, error) {
 	sinkHolders := []sinkHolder{}
 	for _, sink := range sinks {
 		sh := sinkHolder{
 			sink:             sink,
-			dataBatchChannel: make(chan *DataBatch),
+			dataBatchChannel: make(chan *core.DataBatch),
 			stopChannel:      make(chan bool),
 		}
 		sinkHolders = append(sinkHolders, sh)
@@ -84,7 +74,7 @@ func NewDataSinkManager(sinks []DataSink, exportDataTimeout, stopTimeout time.Du
 }
 
 // Guarantees that the export will complete in sinkExportDataTimeout.
-func (this *sinkManager) ExportData(data *DataBatch) {
+func (this *sinkManager) ExportData(data *core.DataBatch) {
 	var wg sync.WaitGroup
 	for _, sh := range this.sinkHolders {
 		wg.Add(1)

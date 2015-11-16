@@ -25,11 +25,6 @@ const (
 	DefaultMetricsScrapeTimeout = 20 * time.Second
 )
 
-// A place from where the metrics should be scraped.
-type MetricsSource interface {
-	ScrapeMetrics(start, end time.Time) *DataBatch
-}
-
 // Provider of list of sources to be scaped.
 type MetricsSourceProvider interface {
 	GetMetricsSources() []MetricsSource
