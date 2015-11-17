@@ -118,7 +118,8 @@ func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, 
 	c := cache.NewCache(*argCacheDuration, time.Minute)
 	sources, err := newSources(c)
 	if err != nil {
-		return nil, nil, nil, err
+		// Do not fail heapster is source setup fails for any reason.
+		glog.Errorf("failed to setup sinks - %v", err)
 	}
 	sinkManager, err := sinks.NewExternalSinkManager(nil, c, *argSinkFrequency)
 	if err != nil {
@@ -138,7 +139,8 @@ func doWork() ([]source_api.Source, sinks.ExternalSinkManager, manager.Manager, 
 		return nil, nil, nil, err
 	}
 	if err := manager.SetSinkUris(argSinks); err != nil {
-		return nil, nil, nil, err
+		// Do not fail heapster is sink setup fails for any reason.
+		glog.Errorf("failed to setup sinks - %v", err)
 	}
 
 	manager.Start()

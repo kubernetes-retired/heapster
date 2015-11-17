@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/heapster/extpoints"
 	"k8s.io/heapster/sinks/cache"
@@ -24,6 +25,7 @@ import (
 
 func newSources(c cache.Cache) ([]api.Source, error) {
 	var sources []api.Source
+	var errors []string
 	for _, u := range argSources {
 		factory := extpoints.SourceFactories.Lookup(u.Key)
 		if factory == nil {
@@ -32,9 +34,14 @@ func newSources(c cache.Cache) ([]api.Source, error) {
 
 		createdSources, err := factory(&u.Val, c)
 		if err != nil {
-			return nil, err
+			errors = append(errors, err.Error())
 		}
 		sources = append(sources, createdSources...)
 	}
-	return sources, nil
+	var err error
+	if len(errors) > 0 {
+		err = fmt.Errorf("encountered following errors while setting up sources - %v", strings.Join(errors, "; "))
+	}
+
+	return sources, err
 }

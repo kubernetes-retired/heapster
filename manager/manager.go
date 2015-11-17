@@ -252,7 +252,9 @@ func onlyKeepLatestStat(cont *cache.ContainerElement) {
 func (rm *realManager) SetSinkUris(sinkUris Uris) error {
 	sinks, err := newSinks(sinkUris, rm.resolution)
 	if err != nil {
-		return err
+		// Skip sink setup errors here. We do not want to fail if one or more
+		// sinks fail.
+		glog.Error(err)
 	}
 	if err := rm.sinkManager.SetSinks(sinks); err != nil {
 		return err
