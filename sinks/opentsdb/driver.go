@@ -21,21 +21,25 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	opentsdbclient "github.com/bluebreezecf/opentsdb-goclient/client"
 	opentsdbcfg "github.com/bluebreezecf/opentsdb-goclient/config"
 	"github.com/golang/glog"
 	"k8s.io/heapster/extpoints"
 	sink_api "k8s.io/heapster/sinks/api"
+	sinkutil "k8s.io/heapster/sinks/util"
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
 const (
-	defaultTagName   = "defaultTagName"
-	defaultTagValue  = "defaultTagValue"
-	eventMetricName  = "log_events"
-	eventUID         = "uid"
-	opentsdbSinkName = "OpenTSDB Sink"
+	defaultTagName      = "defaultTagName"
+	defaultTagValue     = "defaultTagValue"
+	eventMetricName     = "events"
+	eventUID            = "uid"
+	opentsdbSinkName    = "OpenTSDB Sink"
+	sinkRegisterName    = "opentsdb"
+	defaultOpentsdbHost = "127.0.0.1:4242"
 )
 
 var (
@@ -56,6 +60,7 @@ type openTSDBSink struct {
 	sync.RWMutex
 	writeFailures int
 	config        opentsdbcfg.OpenTSDBConfig
+	ci            sinkutil.ClientInitializer
 }
 
 func (tsdbSink *openTSDBSink) Register(metrics []sink_api.MetricDescriptor) error {
@@ -67,7 +72,7 @@ func (tsdbSink *openTSDBSink) Unregister(metrics []sink_api.MetricDescriptor) er
 }
 
 func (tsdbSink *openTSDBSink) StoreTimeseries(timeseries []sink_api.Timeseries) error {
-	if timeseries == nil || len(timeseries) <= 0 {
+	if !tsdbSink.ci.Done() || timeseries == nil || len(timeseries) <= 0 {
 		return nil
 	}
 	if err := tsdbSink.client.Ping(); err != nil {
@@ -87,7 +92,7 @@ func (tsdbSink *openTSDBSink) StoreTimeseries(timeseries []sink_api.Timeseries) 
 }
 
 func (tsdbSink *openTSDBSink) StoreEvents(events []kube_api.Event) error {
-	if events == nil || len(events) <= 0 {
+	if !tsdbSink.ci.Done() || events == nil || len(events) <= 0 {
 		return nil
 	}
 	if err := tsdbSink.client.Ping(); err != nil {
@@ -114,6 +119,9 @@ func (tsdbSink *openTSDBSink) DebugInfo() string {
 	buf.WriteString("Sink Type: OpenTSDB\n")
 	buf.WriteString(fmt.Sprintf("\tclient: Host %s", tsdbSink.config.OpentsdbHost))
 	buf.WriteString(tsdbSink.getState())
+	if !tsdbSink.ci.Done() {
+		buf.WriteString(fmt.Sprintf("opentsdb client has not been initialized yet.\n"))
+	}
 	buf.WriteString("\n")
 	return buf.String()
 }
@@ -203,7 +211,15 @@ func (tsdbSink *openTSDBSink) getState() string {
 	return fmt.Sprintf("\tNumber of write failures: %d\n", tsdbSink.writeFailures)
 }
 
-func new(opentsdbHost string) (sink_api.ExternalSink, error) {
+func (tsdbSink *openTSDBSink) ping() error {
+	return tsdbSink.client.Ping()
+}
+
+func (tsdbSink *openTSDBSink) setupClient() error {
+	return nil
+}
+
+func new(opentsdbHost string) (*openTSDBSink, error) {
 	cfg := opentsdbcfg.OpenTSDBConfig{OpentsdbHost: opentsdbHost}
 	opentsdbClient, err := opentsdbclient.NewClient(cfg)
 	if err != nil {
@@ -216,11 +232,11 @@ func new(opentsdbHost string) (sink_api.ExternalSink, error) {
 }
 
 func init() {
-	extpoints.SinkFactories.Register(CreateOpenTSDBSink, "opentsdb")
+	extpoints.SinkFactories.Register(CreateOpenTSDBSink, sinkRegisterName)
 }
 
 func CreateOpenTSDBSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSink, error) {
-	host := "127.0.0.1:4242"
+	host := defaultOpentsdbHost
 	if len(uri.Host) > 0 {
 		host = uri.Host
 	}
@@ -229,6 +245,6 @@ func CreateOpenTSDBSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.Exte
 		return nil, err
 	}
 	glog.Infof("created opentsdb sink with host: %v", host)
-
+	tsdbSink.ci = sinkutil.NewClientInitializer(sinkRegisterName, tsdbSink.setupClient, tsdbSink.ping, 10*time.Second)
 	return []sink_api.ExternalSink{tsdbSink}, nil
 }

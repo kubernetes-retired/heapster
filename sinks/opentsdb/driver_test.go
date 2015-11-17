@@ -16,13 +16,16 @@ package opentsdb
 
 import (
 	"fmt"
+	"net/url"
 	"testing"
 	"time"
 
 	opentsdb "github.com/bluebreezecf/opentsdb-goclient/client"
 	opentsdbcfg "github.com/bluebreezecf/opentsdb-goclient/config"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/heapster/extpoints"
 	sink_api "k8s.io/heapster/sinks/api"
+	sink_util "k8s.io/heapster/sinks/util"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/types"
@@ -89,6 +92,7 @@ func NewFakeOpenTSDBSink(successfulPing, successfulPut bool) fakeOpenTSDBSink {
 		&openTSDBSink{
 			client: client,
 			config: cfg,
+			ci:     sink_util.NewClientInitializer("test", func() error { return nil }, func() error { return nil }, time.Millisecond),
 		},
 		client,
 	}
@@ -278,6 +282,27 @@ func TestDebugInfo(t *testing.T) {
 	assert.Contains(t, debugInfo, "Sink Type: OpenTSDB")
 	assert.Contains(t, debugInfo, "client: Host "+fakeOpenTSDBHost)
 	assert.Contains(t, debugInfo, "Number of write failures:")
+}
+
+func TestCreateOpenTSDBSinkWithEmptyInputs(t *testing.T) {
+	extSinks, err := CreateOpenTSDBSink(&url.URL{}, extpoints.HeapsterConf{})
+	assert.NoError(t, err)
+	assert.NotNil(t, extSinks)
+	assert.Equal(t, 1, len(extSinks))
+	tsdbSink, ok := extSinks[0].(*openTSDBSink)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, defaultOpentsdbHost, tsdbSink.config.OpentsdbHost)
+}
+
+func TestCreateOpenTSDBSinkWithNoEmptyInputs(t *testing.T) {
+	fakeOpentsdbHost := "192.168.8.23:4242"
+	extSinks, err := CreateOpenTSDBSink(&url.URL{Host: fakeOpentsdbHost}, extpoints.HeapsterConf{})
+	assert.NoError(t, err)
+	assert.NotNil(t, extSinks)
+	assert.Equal(t, 1, len(extSinks))
+	tsdbSink, ok := extSinks[0].(*openTSDBSink)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, fakeOpentsdbHost, tsdbSink.config.OpentsdbHost)
 }
 
 func generateFakeEvents() []kube_api.Event {
