@@ -68,10 +68,13 @@ func (us *Uris) String() string {
 }
 
 func (us *Uris) Set(value string) error {
-	var u Uri
-	if err := u.Set(value); err != nil {
-		return err
+	values := strings.Split(value, ",")
+	for _, item := range values {
+		var u Uri
+		if err := u.Set(item); err != nil {
+			return err
+		}
+		*us = append(*us, u)
 	}
-	*us = append(*us, u)
 	return nil
 }

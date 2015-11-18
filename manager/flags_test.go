@@ -121,7 +121,7 @@ func TestUrisString(t *testing.T) {
 	}
 }
 
-func TestUrisSet(t *testing.T) {
+func TestUrisSetWithOneSinkInput(t *testing.T) {
 	tests := [...]struct {
 		in      []string
 		want    Uris
@@ -163,4 +163,19 @@ func TestUrisSet(t *testing.T) {
 			assert.Equal(t, c.want, uris)
 		}
 	}
+}
+
+func TestUrisSetWithMultipleSinksInput(t *testing.T) {
+	expectedUris := Uris{
+		Uri{Key: "gcm"},
+		Uri{
+			Key: "influxdb",
+			Val: url.URL{Path: "foo"},
+		},
+	}
+	testInput := "gcm,influxdb:foo"
+	var actualUris Uris
+	err := actualUris.Set(testInput)
+	assert.Nil(t, err)
+	assert.Equal(t, expectedUris, actualUris)
 }
