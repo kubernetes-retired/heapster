@@ -127,9 +127,9 @@ echo '["gcm", "influxdb:http://monitoring-influxdb:8086"]' | curl \
 
 ## Using multiple sinks
 
-It can activate multiple sinks described in the above sections for a heapster by using multiple `--sink=...` flags.
+Heapster can be configured to send k8s metrics and events to multiple sinks by specifying the`--sink=...` flag multiple times.
 
-For example, to use gcm and influxdb as sinks of the given heapster at the same time, you can use the following:
+For example, to send data to both gcm and influxdb at the same time, you can use the following:
 
 ```shell
     --sink=gcm --sink=influxdb:http://monitoring-influxdb:80/
