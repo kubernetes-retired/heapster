@@ -124,3 +124,13 @@ echo '["gcm", "influxdb:http://monitoring-influxdb:8086"]' | curl \
     -H "Accept: application/json" -H "Content-Type: application/json" \
     https://<master-ip>/api/v1/proxy/namespaces/kube-system/services/monitoring-heapster/api/v1/sinks
 ```
+
+## Using multiple sinks
+
+Heapster can be configured to send k8s metrics and events to multiple sinks by specifying the`--sink=...` flag multiple times.
+
+For example, to send data to both gcm and influxdb at the same time, you can use the following:
+
+```shell
+    --sink=gcm --sink=influxdb:http://monitoring-influxdb:80/
+```
