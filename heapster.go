@@ -132,7 +132,8 @@ func doWork() (core.MetricsSource, core.DataSink, manager.Manager, error) {
 		return nil, nil, nil, err
 	}
 
-	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, time.Minute)
+	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, time.Minute,
+		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
 	/*	if err != nil {
 			return nil, nil, nil, err
 		}

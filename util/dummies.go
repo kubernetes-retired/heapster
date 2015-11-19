@@ -113,3 +113,18 @@ func NewDummyMetricsSourceProvider(sources ...core.MetricsSource) *DummyMetricsS
 		sources: sources,
 	}
 }
+
+type DummyDataProcessor struct {
+	latency time.Duration
+}
+
+func (this *DummyDataProcessor) Process(data *core.DataBatch) *core.DataBatch {
+	time.Sleep(this.latency)
+	return data
+}
+
+func NewDummyDataProcessor(latency time.Duration) *DummyDataProcessor {
+	return &DummyDataProcessor{
+		latency: latency,
+	}
+}

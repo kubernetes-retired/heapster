@@ -23,12 +23,10 @@ import (
 )
 
 const (
-	scrapeOffset          = 5 * time.Second
-	maxParallelHousekeeps = 3
+	DefaultScrapeOffset   = 5 * time.Second
+	DefaultMaxParallelism = 3
 )
 
-// Manager provides an interface to control the core of heapster.
-// Implementations are not required to be thread safe.
 type Manager interface {
 	Start()
 	Stop()
@@ -39,23 +37,26 @@ type realManager struct {
 	processors             []core.DataProcessor
 	sink                   core.DataSink
 	resolution             time.Duration
+	scrapeOffset           time.Duration
 	stopChan               chan struct{}
 	housekeepSemaphoreChan chan struct{}
 	housekeepTimeout       time.Duration
 }
 
-func NewManager(source core.MetricsSource, processors []core.DataProcessor, sink core.DataSink, res time.Duration) (Manager, error) {
+func NewManager(source core.MetricsSource, processors []core.DataProcessor, sink core.DataSink, resolution time.Duration,
+	scrapeOffset time.Duration, maxParallelism int) (Manager, error) {
 	manager := realManager{
 		source:                 source,
 		processors:             processors,
 		sink:                   sink,
-		resolution:             res,
+		resolution:             resolution,
+		scrapeOffset:           scrapeOffset,
 		stopChan:               make(chan struct{}),
-		housekeepSemaphoreChan: make(chan struct{}, maxParallelHousekeeps),
-		housekeepTimeout:       res / 2,
+		housekeepSemaphoreChan: make(chan struct{}, maxParallelism),
+		housekeepTimeout:       resolution / 2,
 	}
 
-	for i := 0; i < maxParallelHousekeeps; i++ {
+	for i := 0; i < maxParallelism; i++ {
 		manager.housekeepSemaphoreChan <- struct{}{}
 	}
 
@@ -76,7 +77,7 @@ func (rm *realManager) Housekeep() {
 		now := time.Now()
 		start := now.Truncate(rm.resolution)
 		end := start.Add(rm.resolution)
-		timeToNextSync := end.Add(scrapeOffset).Sub(now)
+		timeToNextSync := end.Add(rm.scrapeOffset).Sub(now)
 
 		select {
 		case <-time.After(timeToNextSync):

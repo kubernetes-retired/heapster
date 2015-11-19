@@ -63,3 +63,7 @@ type DataSink interface {
 	ExportData(*DataBatch)
 	Stop()
 }
+
+type DataProcessor interface {
+	Process(*DataBatch) *DataBatch
+}
