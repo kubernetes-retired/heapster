@@ -32,6 +32,21 @@ const (
 	ValueDouble
 )
 
+type UnitsType int8
+
+const (
+	// A counter metric.
+	UnitsCount UnitsType = iota
+	// A metric in bytes.
+	UnitsBytes
+	// A metric in milliseconds.
+	UnitsMilliseconds
+	// A metric in nanoseconds.
+	UnitsNanoseconds
+	// A metric in millicores.
+	UnitsMillicores
+)
+
 type MetricValue struct {
 	MetricType MetricType
 	ValueType  ValueType

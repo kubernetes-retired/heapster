@@ -37,7 +37,7 @@ func TestAllSourcesReplyInTime(t *testing.T) {
 	}
 
 	present := make(map[string]bool)
-	for key, _ := range dataBatch.MetricSets {
+	for key := range dataBatch.MetricSets {
 		present[key] = true
 	}
 
@@ -70,7 +70,7 @@ func TestOneSourcesReplyInTime(t *testing.T) {
 	}
 
 	present := make(map[string]bool)
-	for key, _ := range dataBatch.MetricSets {
+	for key := range dataBatch.MetricSets {
 		present[key] = true
 	}
 
@@ -103,7 +103,7 @@ func TestNoSourcesReplyInTime(t *testing.T) {
 	}
 
 	present := make(map[string]bool)
-	for key, _ := range dataBatch.MetricSets {
+	for key := range dataBatch.MetricSets {
 		present[key] = true
 	}
 

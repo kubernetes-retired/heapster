@@ -26,7 +26,7 @@ var (
 	MetricSetTypePod             = "pod"
 	MetricSetTypeNamespace       = "ns"
 	MetricSetTypeNode            = "node"
-	MetricSetTypeCluster         = "clustre"
+	MetricSetTypeCluster         = "cluster"
 
 	LabelPodId = LabelDescriptor{
 		Key:         "pod_id",
