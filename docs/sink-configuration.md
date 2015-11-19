@@ -124,3 +124,13 @@ echo '["gcm", "influxdb:http://monitoring-influxdb:8086"]' | curl \
     -H "Accept: application/json" -H "Content-Type: application/json" \
     https://<master-ip>/api/v1/proxy/namespaces/kube-system/services/monitoring-heapster/api/v1/sinks
 ```
+
+## Using multiple sinks
+
+It can activate multiple sinks described in the above sections for a heapster by using multiple `--sink=...` flags.
+
+For example, to use gcm and influxdb as sinks of the given heapster at the same time, you can use the following:
+
+```shell
+    --sink=gcm --sink=influxdb:http://monitoring-influxdb:80/
+```
