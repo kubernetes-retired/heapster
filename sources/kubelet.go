@@ -56,12 +56,12 @@ func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *Metr
 		Labels:       map[string]string{},
 	}
 
-	for _, supported := range SupportedMetrics {
-		if supported.HasValue(&c.Spec) {
-			m := supported.GetValue(&c.Spec, c.Stats[0])
-			m.MetricType = supported.Type
-			m.ValueType = supported.ValueType
-			cMetrics.MetricValues[supported.Name] = m
+	for _, metric := range StandardMetrics {
+		if metric.HasValue(&c.Spec) {
+			m := metric.GetValue(&c.Spec, c.Stats[0])
+			m.MetricType = metric.Type
+			m.ValueType = metric.ValueType
+			cMetrics.MetricValues[metric.Name] = m
 		}
 	}
 

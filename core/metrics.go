@@ -20,10 +20,7 @@ import (
 	source_api "k8s.io/heapster/sources/api"
 )
 
-// Stub out for testing
-var timeSince = time.Since
-
-var SupportedMetrics = []SupportedMetric{
+var StandardMetrics = []Metric{
 	{
 		MetricDescriptor: MetricDescriptor{
 			Name:        "uptime",
@@ -36,7 +33,7 @@ var SupportedMetrics = []SupportedMetric{
 			return !spec.CreationTime.IsZero()
 		},
 		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: timeSince(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}
+			return MetricValue{Value: time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}
 		},
 	},
 	{
@@ -306,8 +303,8 @@ type MetricDescriptor struct {
 	Units     UnitsType
 }
 
-// SupportedMetric represents a resource usage stat metric.
-type SupportedMetric struct {
+// Metric represents a resource usage stat metric.
+type Metric struct {
 	MetricDescriptor
 
 	// Returns whether this metric is present.
