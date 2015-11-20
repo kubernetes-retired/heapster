@@ -30,6 +30,7 @@ import (
 	"k8s.io/heapster/core"
 	"k8s.io/heapster/manager"
 	"k8s.io/heapster/sinks"
+	logsink "k8s.io/heapster/sinks/log"
 	"k8s.io/heapster/sources"
 	"k8s.io/heapster/version"
 )
@@ -127,7 +128,7 @@ func doWork() (core.MetricsSource, core.DataSink, manager.Manager, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	sinkManager, err := sinks.NewDataSinkManager([]core.DataSink{}, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
+	sinkManager, err := sinks.NewDataSinkManager([]core.DataSink{logsink.NewLogSink()}, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
 	if err != nil {
 		return nil, nil, nil, err
 	}
