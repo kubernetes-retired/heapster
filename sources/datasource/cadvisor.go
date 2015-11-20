@@ -30,6 +30,7 @@ import (
 type cadvisorSource struct{}
 
 func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
+	glog.V(5).Infof("got %d stats for container %q", len(containerInfo.Stats), containerInfo.Name)
 	container := &api.Container{
 		Name:  containerInfo.Name,
 		Spec:  api.ContainerSpec{ContainerSpec: containerInfo.Spec},
@@ -44,7 +45,7 @@ func (self *cadvisorSource) parseStat(containerInfo *cadvisor.ContainerInfo) *ap
 
 func (self *cadvisorSource) getAllContainers(client *cadvisorClient.Client, start, end time.Time) (subcontainers []*api.Container, root *api.Container, err error) {
 	allContainers, err := client.SubcontainersInfo("/",
-		&cadvisor.ContainerInfoRequest{Start: start, End: end})
+		&cadvisor.ContainerInfoRequest{Start: start, End: end, NumStats: int(end.Sub(start) / time.Second)})
 	if err != nil {
 		return nil, nil, err
 	}

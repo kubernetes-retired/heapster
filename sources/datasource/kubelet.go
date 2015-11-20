@@ -77,7 +77,7 @@ func (self *kubeletSource) parseStat(containerInfo *cadvisor.ContainerInfo) *api
 
 func (self *kubeletSource) getContainer(url string, start, end time.Time) (*api.Container, error) {
 	// TODO: Get rid of 'NumStats' once cadvisor supports time range queries without specifying that.
-	body, err := json.Marshal(cadvisor.ContainerInfoRequest{Start: start, End: end, NumStats: int(time.Minute / time.Second)})
+	body, err := json.Marshal(cadvisor.ContainerInfoRequest{Start: start, End: end, NumStats: int(end.Sub(start) / time.Second)})
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +153,7 @@ func (self *kubeletSource) getAllContainers(url string, start, end time.Time) ([
 		ContainerName: "/",
 		Start:         start,
 		End:           end,
+		NumStats:      1,
 		Subcontainers: true,
 	}
 	body, err := json.Marshal(request)

@@ -144,8 +144,11 @@ func (rm *realManager) HousekeepModel() {
 
 func (rm *realManager) Housekeep() {
 	for {
-		start := rm.lastSync
-		end := start.Add(rm.resolution)
+		end := rm.lastSync.Add(rm.resolution)
+		// We need only one sample every housekeeping. Issue #638.
+		// Collecting two samples to work-around situations where
+		// the source might have skipped a second.
+		start := end.Add(-2 * time.Second)
 		timeToNextSync := end.Sub(time.Now())
 		// TODO: consider adding some delay here
 		select {
