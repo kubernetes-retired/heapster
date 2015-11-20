@@ -21,271 +21,298 @@ import (
 )
 
 var StandardMetrics = []Metric{
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "uptime",
-			Description: "Number of milliseconds since the container was started",
-			Type:        MetricCumulative,
-			ValueType:   ValueInt64,
-			Units:       UnitsMilliseconds,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return !spec.CreationTime.IsZero()
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "cpu/usage",
-			Description: "Cumulative CPU usage on all cores",
-			Type:        MetricCumulative,
-			ValueType:   ValueInt64,
-			Units:       UnitsNanoseconds,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasCpu
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(stat.Cpu.Usage.Total)}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "cpu/limit",
-			Description: "CPU hard limit in millicores.",
-			Type:        MetricGauge,
-			ValueType:   ValueInt64,
-			Units:       UnitsCount,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasCpu && (spec.Cpu.Limit > 0)
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			// Normalize to a conversion factor of 1000.
-			return MetricValue{Value: int64(spec.Cpu.Limit*1000) / 1024}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "cpu/request",
-			Description: "CPU request (the guaranteed amount of resources) in millicores. This metric is Kubernetes specific.",
-			Type:        MetricGauge,
-			ValueType:   ValueInt64,
-			Units:       UnitsCount,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.CpuRequest > 0
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: spec.CpuRequest}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "memory/usage",
-			Description: "Total memory usage",
-			Type:        MetricGauge,
-			ValueType:   ValueInt64,
-			Units:       UnitsBytes,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasMemory
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(stat.Memory.Usage)}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "memory/working_set",
-			Description: "Total working set usage. Working set is the memory being used and not easily dropped by the kernel",
-			Type:        MetricGauge,
-			ValueType:   ValueInt64,
-			Units:       UnitsBytes,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasMemory
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(stat.Memory.WorkingSet)}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "memory/limit",
-			Description: "Memory hard limit in bytes.",
-			Type:        MetricGauge,
-			ValueType:   ValueInt64,
-			Units:       UnitsBytes,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasMemory && (spec.Memory.Limit > 0)
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(spec.Memory.Limit)}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "memory/request",
-			Description: "Memory request (the guaranteed amount of resources) in bytes. This metric is Kubernetes specific.",
-			Type:        MetricGauge,
-			ValueType:   ValueInt64,
-			Units:       UnitsBytes,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.MemoryRequest > 0
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: spec.MemoryRequest}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "memory/page_faults",
-			Description: "Number of page faults",
-			Type:        MetricCumulative,
-			ValueType:   ValueInt64,
-			Units:       UnitsCount,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasMemory
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(stat.Memory.ContainerData.Pgfault)}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "memory/major_page_faults",
-			Description: "Number of major page faults",
-			Type:        MetricCumulative,
-			ValueType:   ValueInt64,
-			Units:       UnitsCount,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasMemory
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(stat.Memory.ContainerData.Pgmajfault)}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "network/rx",
-			Description: "Cumulative number of bytes received over the network",
-			Type:        MetricCumulative,
-			ValueType:   ValueInt64,
-			Units:       UnitsBytes,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasNetwork
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(stat.Network.RxBytes)}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "network/rx_errors",
-			Description: "Cumulative number of errors while receiving over the network",
-			Type:        MetricCumulative,
-			ValueType:   ValueInt64,
-			Units:       UnitsCount,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasNetwork
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(stat.Network.RxErrors)}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "network/tx",
-			Description: "Cumulative number of bytes sent over the network",
-			Type:        MetricCumulative,
-			ValueType:   ValueInt64,
-			Units:       UnitsBytes,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasNetwork
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(stat.Network.TxBytes)}
-		},
-	},
-	{
-		MetricDescriptor: MetricDescriptor{
-			Name:        "network/tx_errors",
-			Description: "Cumulative number of errors while sending over the network",
-			Type:        MetricCumulative,
-			ValueType:   ValueInt64,
-			Units:       UnitsCount,
-		},
-		HasValue: func(spec *source_api.ContainerSpec) bool {
-			return spec.HasNetwork
-		},
-		GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-			return MetricValue{Value: int64(stat.Network.TxErrors)}
-		},
-	},
-	// TODO: figure out whether we need those metrics and align our abstraction to handle it
+	MetricUptime,
+	MetricCpuUsage,
+	MetricCpuLimit,
+	MetricCpuRequest,
+	MetricMemoruUsage,
+	MetricMemoryWorkingSet,
+	MetricMemoryLimit,
+	MetricMemoryRequest,
+	MetricMemoryPageFaults,
+	MetricMemoryMajorPageFaults,
+	MetricNetworkRx,
+	MetricNetworkRxErrors,
+	MetricNetworkTx,
+	MetricNetworkTxErrors}
 
-	// {
-	// 	MetricDescriptor: MetricDescriptor{
-	// 		Name:        "filesystem/usage",
-	// 		Description: "Total number of bytes consumed on a filesystem",
-	// 		Type:        MetricGauge,
-	// 		ValueType:   ValueInt64,
-	// 		Units:       UnitsBytes,
-	// 		Labels:      metricLabels,
-	// 	},
-	// 	HasValue: func(spec *source_api.ContainerSpec) bool {
-	// 		return spec.HasFilesystem
-	// 	},
-	// 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
-	// 		result := make([]InternalPoint, 0, len(stat.Filesystem))
-	// 		for _, fs := range stat.Filesystem {
-	// 			result = append(result, InternalPoint{
-	// 				Value: int64(fs.Usage),
-	// 				Labels: map[string]string{
-	// 					LabelResourceID.Key: fs.Device,
-	// 				},
-	// 			})
-	// 		}
-	// 		return result
-	// 	},
-	// },
-	// {
-	// 	MetricDescriptor: MetricDescriptor{
-	// 		Name:        "filesystem/limit",
-	// 		Description: "The total size of filesystem in bytes",
-	// 		Type:        MetricGauge,
-	// 		ValueType:   ValueInt64,
-	// 		Units:       UnitsBytes,
-	// 		Labels:      metricLabels,
-	// 	},
-	// 	HasValue: func(spec *source_api.ContainerSpec) bool {
-	// 		return spec.HasFilesystem
-	// 	},
-	// 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
-	// 		result := make([]InternalPoint, 0, len(stat.Filesystem))
-	// 		for _, fs := range stat.Filesystem {
-	// 			result = append(result, InternalPoint{
-	// 				Value: int64(fs.Limit),
-	// 				Labels: map[string]string{
-	// 					LabelResourceID.Key: fs.Device,
-	// 				},
-	// 			})
-	// 		}
-	// 		return result
-	// 	},
-	// 	OnlyExportIfChanged: true,
-	// },
+var MetricUptime = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "uptime",
+		Description: "Number of milliseconds since the container was started",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsMilliseconds,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return !spec.CreationTime.IsZero()
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}
+	},
 }
+var MetricCpuUsage = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/usage",
+		Description: "Cumulative CPU usage on all cores",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsNanoseconds,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasCpu
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(stat.Cpu.Usage.Total)}
+	},
+}
+
+var MetricCpuLimit = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/limit",
+		Description: "CPU hard limit in millicores.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasCpu && (spec.Cpu.Limit > 0)
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		// Normalize to a conversion factor of 1000.
+		return MetricValue{Value: int64(spec.Cpu.Limit*1000) / 1024}
+	},
+}
+
+var MetricCpuRequest = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/request",
+		Description: "CPU request (the guaranteed amount of resources) in millicores. This metric is Kubernetes specific.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.CpuRequest > 0
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: spec.CpuRequest}
+	},
+}
+
+var MetricMemoruUsage = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/usage",
+		Description: "Total memory usage",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasMemory
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(stat.Memory.Usage)}
+	},
+}
+
+var MetricMemoryWorkingSet = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/working_set",
+		Description: "Total working set usage. Working set is the memory being used and not easily dropped by the kernel",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasMemory
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(stat.Memory.WorkingSet)}
+	},
+}
+
+var MetricMemoryLimit = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/limit",
+		Description: "Memory hard limit in bytes.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasMemory && (spec.Memory.Limit > 0)
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(spec.Memory.Limit)}
+	},
+}
+
+var MetricMemoryRequest = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/request",
+		Description: "Memory request (the guaranteed amount of resources) in bytes. This metric is Kubernetes specific.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.MemoryRequest > 0
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: spec.MemoryRequest}
+	},
+}
+
+var MetricMemoryPageFaults = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/page_faults",
+		Description: "Number of page faults",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasMemory
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(stat.Memory.ContainerData.Pgfault)}
+	},
+}
+
+var MetricMemoryMajorPageFaults = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/major_page_faults",
+		Description: "Number of major page faults",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasMemory
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(stat.Memory.ContainerData.Pgmajfault)}
+	},
+}
+
+var MetricNetworkRx = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "network/rx",
+		Description: "Cumulative number of bytes received over the network",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasNetwork
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(stat.Network.RxBytes)}
+	},
+}
+
+var MetricNetworkRxErrors = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "network/rx_errors",
+		Description: "Cumulative number of errors while receiving over the network",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasNetwork
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(stat.Network.RxErrors)}
+	},
+}
+
+var MetricNetworkTx = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "network/tx",
+		Description: "Cumulative number of bytes sent over the network",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasNetwork
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(stat.Network.TxBytes)}
+	},
+}
+
+var MetricNetworkTxErrors = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "network/tx_errors",
+		Description: "Cumulative number of errors while sending over the network",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+	HasValue: func(spec *source_api.ContainerSpec) bool {
+		return spec.HasNetwork
+	},
+	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+		return MetricValue{Value: int64(stat.Network.TxErrors)}
+	},
+}
+
+// TODO: figure out whether we need those metrics and align our abstraction to handle it
+
+// {
+// 	MetricDescriptor: MetricDescriptor{
+// 		Name:        "filesystem/usage",
+// 		Description: "Total number of bytes consumed on a filesystem",
+// 		Type:        MetricGauge,
+// 		ValueType:   ValueInt64,
+// 		Units:       UnitsBytes,
+// 		Labels:      metricLabels,
+// 	},
+// 	HasValue: func(spec *source_api.ContainerSpec) bool {
+// 		return spec.HasFilesystem
+// 	},
+// 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
+// 		result := make([]InternalPoint, 0, len(stat.Filesystem))
+// 		for _, fs := range stat.Filesystem {
+// 			result = append(result, InternalPoint{
+// 				Value: int64(fs.Usage),
+// 				Labels: map[string]string{
+// 					LabelResourceID.Key: fs.Device,
+// 				},
+// 			})
+// 		}
+// 		return result
+// 	},
+// },
+// {
+// 	MetricDescriptor: MetricDescriptor{
+// 		Name:        "filesystem/limit",
+// 		Description: "The total size of filesystem in bytes",
+// 		Type:        MetricGauge,
+// 		ValueType:   ValueInt64,
+// 		Units:       UnitsBytes,
+// 		Labels:      metricLabels,
+// 	},
+// 	HasValue: func(spec *source_api.ContainerSpec) bool {
+// 		return spec.HasFilesystem
+// 	},
+// 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
+// 		result := make([]InternalPoint, 0, len(stat.Filesystem))
+// 		for _, fs := range stat.Filesystem {
+// 			result = append(result, InternalPoint{
+// 				Value: int64(fs.Limit),
+// 				Labels: map[string]string{
+// 					LabelResourceID.Key: fs.Device,
+// 				},
+// 			})
+// 		}
+// 		return result
+// 	},
+// 	OnlyExportIfChanged: true,
+// },
 
 type MetricDescriptor struct {
 	// The unique name of the metric.
