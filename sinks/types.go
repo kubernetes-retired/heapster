@@ -15,19 +15,10 @@
 // This package implements the various storage backends supported by heapster.
 package sinks
 
-import "k8s.io/heapster/sinks/api"
-
 // TODO: Once in-memory storage is implemented, make the manager extract data from the in-memory store periodically.
 type Sink interface {
 	// Sync starts exporting stats periodically to backends.
 	// Returns a channel that can be used to stop syncing.
 	Sync() chan<- struct{}
 	DebugInfo() string
-}
-
-type ExternalSinkManager interface {
-	Sink
-	// SetSinks changes the sinks to be used and registers/unregisters
-	// them accordingly.
-	SetSinks([]v1.ExternalSink) error
 }

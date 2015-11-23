@@ -21,7 +21,6 @@ import (
 
 	. "k8s.io/heapster/core"
 	"k8s.io/heapster/sources/api"
-	"k8s.io/heapster/sources/datasource"
 
 	"github.com/golang/glog"
 	kube_api "k8s.io/kubernetes/pkg/api"
@@ -39,8 +38,8 @@ const (
 
 // Kubelet-provided metrics for pod and system container.
 type kubeletMetricsSource struct {
-	host          datasource.Host
-	kubeletClient *datasource.KubeletClient
+	host          Host
+	kubeletClient *KubeletClient
 	hostname      string
 	hostId        string
 }
@@ -116,7 +115,7 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 type kubeletProvider struct {
 	nodeLister    *cache.StoreToNodeLister
 	reflector     *cache.Reflector
-	kubeletClient *datasource.KubeletClient
+	kubeletClient *KubeletClient
 }
 
 func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
@@ -133,7 +132,7 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 			continue
 		}
 		sources = append(sources, &kubeletMetricsSource{
-			host:          datasource.Host{IP: ip, Port: this.kubeletClient.GetPort()},
+			host:          Host{IP: ip, Port: this.kubeletClient.GetPort()},
 			kubeletClient: this.kubeletClient,
 			hostname:      hostname,
 			hostId:        node.Spec.ExternalID,
@@ -170,7 +169,7 @@ func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 		return nil, err
 	}
 	kubeClient := kube_client.NewOrDie(kubeConfig)
-	kubeletClient, err := datasource.NewKubeletClient(kubeletConfig)
+	kubeletClient, err := NewKubeletClient(kubeletConfig)
 	if err != nil {
 		return nil, err
 	}
