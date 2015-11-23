@@ -47,18 +47,19 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 	sources := this.metricsSourceProvider.GetMetricsSources()
 
 	responseChannel := make(chan *DataBatch)
-	timeout := time.Now().Add(this.metricsScrapeTimeout)
+	startTime := time.Now()
+	timeoutTime := startTime.Add(this.metricsScrapeTimeout)
 
 	for _, source := range sources {
-		go func(source MetricsSource, channel chan *DataBatch, start, end, timeout time.Time) {
+		go func(source MetricsSource, channel chan *DataBatch, start, end, timeoutTime time.Time) {
 			glog.Infof("Querying source: %s", source)
 			metrics := source.ScrapeMetrics(start, end)
 			now := time.Now()
-			if !now.Before(timeout) {
+			if !now.Before(timeoutTime) {
 				glog.Warningf("Failed to get %s response in time", source)
 				return
 			}
-			timeForResponse := timeout.Sub(now)
+			timeForResponse := timeoutTime.Sub(now)
 
 			select {
 			case channel <- metrics:
@@ -68,7 +69,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 				glog.Warningf("Failed to send the response back %s", source)
 				return
 			}
-		}(source, responseChannel, start, end, timeout)
+		}(source, responseChannel, start, end, timeoutTime)
 	}
 	response := DataBatch{
 		Timestamp:  end,
@@ -78,7 +79,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 responseloop:
 	for i := range sources {
 		now := time.Now()
-		if !now.Before(timeout) {
+		if !now.Before(timeoutTime) {
 			glog.Warningf("Failed to get all responses in time (got %d/%d)", i, len(sources))
 			break
 		}
@@ -90,11 +91,12 @@ responseloop:
 					response.MetricSets[key] = value
 				}
 			}
-		case <-time.After(timeout.Sub(now)):
+		case <-time.After(timeoutTime.Sub(now)):
 			glog.Warningf("Failed to get all responses in time (got %d/%d)", i, len(sources))
 			break responseloop
 		}
 	}
+	glog.Infof("ScrapeMetrics:  time: %s  size: %d", time.Now().Sub(startTime), len(response.MetricSets))
 
 	return &response
 }
