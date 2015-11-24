@@ -76,6 +76,8 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 		MetricSets: map[string]*MetricSet{},
 	}
 
+	latencies := make([]int, 11)
+
 responseloop:
 	for i := range sources {
 		now := time.Now()
@@ -91,12 +93,21 @@ responseloop:
 					response.MetricSets[key] = value
 				}
 			}
+			latency := now.Sub(startTime)
+			bucket := int(latency.Seconds())
+			if bucket >= len(latencies) {
+				bucket = len(latencies) - 1
+			}
+			latencies[bucket]++
+
 		case <-time.After(timeoutTime.Sub(now)):
 			glog.Warningf("Failed to get all responses in time (got %d/%d)", i, len(sources))
 			break responseloop
 		}
 	}
 	glog.Infof("ScrapeMetrics:  time: %s  size: %d", time.Now().Sub(startTime), len(response.MetricSets))
-
+	for i, value := range latencies {
+		glog.Infof("   scrape  bucket %d: %d", i, value)
+	}
 	return &response
 }
