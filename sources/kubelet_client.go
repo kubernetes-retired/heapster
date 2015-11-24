@@ -15,7 +15,7 @@
 // This file implements a cadvisor datasource, that collects metrics from an instance
 // of cadvisor runing on a specific host.
 
-package datasource
+package sources
 
 import (
 	"bytes"
@@ -30,9 +30,24 @@ import (
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
+type Host struct {
+	IP       string
+	Port     int
+	Resource string
+}
+
 type KubeletClient struct {
 	config *kube_client.KubeletConfig
 	client *http.Client
+}
+
+func sampleContainerStats(stats []*cadvisor.ContainerStats) []*api.ContainerStats {
+	if len(stats) == 0 {
+		return []*api.ContainerStats{}
+	}
+	return []*api.ContainerStats{{
+		ContainerStats: *stats[0],
+	}}
 }
 
 func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
