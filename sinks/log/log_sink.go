@@ -33,7 +33,7 @@ func (this *LogSink) Stop() {
 	// Do nothing.
 }
 
-func (this *LogSink) ExportData(batch *core.DataBatch) {
+func batchToString(batch *core.DataBatch) string {
 	var buffer bytes.Buffer
 	buffer.WriteString(fmt.Sprintf("DataBatch     Timestamp: %s\n\n", batch.Timestamp))
 	for key, ms := range batch.MetricSets {
@@ -45,11 +45,21 @@ func (this *LogSink) ExportData(batch *core.DataBatch) {
 		}
 		buffer.WriteString(fmt.Sprintf("%sMetrics:\n", padding))
 		for metricName, metricValue := range ms.MetricValues {
-			buffer.WriteString(fmt.Sprintf("%s%s%s = %s\n", padding, padding, metricName, metricValue.Value))
+			if val, ok := metricValue.Value.(*int64); ok {
+				buffer.WriteString(fmt.Sprintf("%s%s%s = %v\n", padding, padding, metricName, *val))
+			} else if val, ok := metricValue.Value.(*float64); ok {
+				buffer.WriteString(fmt.Sprintf("%s%s%s = %v\n", padding, padding, metricName, *val))
+			} else {
+				buffer.WriteString(fmt.Sprintf("%s%s%s = ?\n", padding, padding, metricName))
+			}
 		}
 		buffer.WriteString("\n")
 	}
-	glog.Info(buffer)
+	return buffer.String()
+}
+
+func (this *LogSink) ExportData(batch *core.DataBatch) {
+	glog.Info(batchToString(batch))
 }
 
 func NewLogSink() *LogSink {
