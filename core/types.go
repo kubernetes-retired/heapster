@@ -29,7 +29,7 @@ type ValueType int8
 
 const (
 	ValueInt64 ValueType = iota
-	ValueDouble
+	ValueFloat
 )
 
 type UnitsType int8
@@ -48,9 +48,10 @@ const (
 )
 
 type MetricValue struct {
+	IntValue   int64
+	FloatValue float32
 	MetricType MetricType
 	ValueType  ValueType
-	Value      interface{}
 }
 
 type MetricSet struct {

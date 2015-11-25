@@ -31,12 +31,13 @@ func TestSimpleWrite(t *testing.T) {
 		Timestamp:  now,
 		MetricSets: make(map[string]*core.MetricSet),
 	}
-	val := int64(31415)
 	batch.MetricSets["pod1"] = &core.MetricSet{
 		Labels: map[string]string{"bzium": "hocuspocus"},
 		MetricValues: map[string]core.MetricValue{
 			"m1": core.MetricValue{
-				Value: &val,
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricGauge,
+				IntValue:   31415,
 			},
 		},
 	}

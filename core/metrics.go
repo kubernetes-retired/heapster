@@ -48,7 +48,10 @@ var MetricUptime = Metric{
 		return !spec.CreationTime.IsZero()
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricCumulative,
+			IntValue:   time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}
 	},
 }
 var MetricCpuUsage = Metric{
@@ -63,7 +66,10 @@ var MetricCpuUsage = Metric{
 		return spec.HasCpu
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(stat.Cpu.Usage.Total)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricCumulative,
+			IntValue:   int64(stat.Cpu.Usage.Total)}
 	},
 }
 
@@ -80,7 +86,10 @@ var MetricCpuLimit = Metric{
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
 		// Normalize to a conversion factor of 1000.
-		return MetricValue{Value: int64(spec.Cpu.Limit*1000) / 1024}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricGauge,
+			IntValue:   int64(spec.Cpu.Limit*1000) / 1024}
 	},
 }
 
@@ -96,7 +105,10 @@ var MetricCpuRequest = Metric{
 		return spec.CpuRequest > 0
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: spec.CpuRequest}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricGauge,
+			IntValue:   spec.CpuRequest}
 	},
 }
 
@@ -112,7 +124,10 @@ var MetricMemoruUsage = Metric{
 		return spec.HasMemory
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(stat.Memory.Usage)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricGauge,
+			IntValue:   int64(stat.Memory.Usage)}
 	},
 }
 
@@ -128,7 +143,10 @@ var MetricMemoryWorkingSet = Metric{
 		return spec.HasMemory
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(stat.Memory.WorkingSet)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricGauge,
+			IntValue:   int64(stat.Memory.WorkingSet)}
 	},
 }
 
@@ -144,7 +162,10 @@ var MetricMemoryLimit = Metric{
 		return spec.HasMemory && (spec.Memory.Limit > 0)
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(spec.Memory.Limit)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricGauge,
+			IntValue:   int64(spec.Memory.Limit)}
 	},
 }
 
@@ -160,7 +181,10 @@ var MetricMemoryRequest = Metric{
 		return spec.MemoryRequest > 0
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: spec.MemoryRequest}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricGauge,
+			IntValue:   spec.MemoryRequest}
 	},
 }
 
@@ -176,7 +200,10 @@ var MetricMemoryPageFaults = Metric{
 		return spec.HasMemory
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(stat.Memory.ContainerData.Pgfault)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricCumulative,
+			IntValue:   int64(stat.Memory.ContainerData.Pgfault)}
 	},
 }
 
@@ -192,7 +219,10 @@ var MetricMemoryMajorPageFaults = Metric{
 		return spec.HasMemory
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(stat.Memory.ContainerData.Pgmajfault)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricCumulative,
+			IntValue:   int64(stat.Memory.ContainerData.Pgmajfault)}
 	},
 }
 
@@ -208,7 +238,10 @@ var MetricNetworkRx = Metric{
 		return spec.HasNetwork
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(stat.Network.RxBytes)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricCumulative,
+			IntValue:   int64(stat.Network.RxBytes)}
 	},
 }
 
@@ -224,7 +257,10 @@ var MetricNetworkRxErrors = Metric{
 		return spec.HasNetwork
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(stat.Network.RxErrors)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricCumulative,
+			IntValue:   int64(stat.Network.RxErrors)}
 	},
 }
 
@@ -240,7 +276,10 @@ var MetricNetworkTx = Metric{
 		return spec.HasNetwork
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(stat.Network.TxBytes)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricCumulative,
+			IntValue:   int64(stat.Network.TxBytes)}
 	},
 }
 
@@ -256,7 +295,10 @@ var MetricNetworkTxErrors = Metric{
 		return spec.HasNetwork
 	},
 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{Value: int64(stat.Network.TxErrors)}
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricCumulative,
+			IntValue:   int64(stat.Network.TxErrors)}
 	},
 }
 
