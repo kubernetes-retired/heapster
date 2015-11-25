@@ -57,10 +57,7 @@ func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *Metr
 
 	for _, metric := range StandardMetrics {
 		if metric.HasValue(&c.Spec) {
-			m := metric.GetValue(&c.Spec, c.Stats[0])
-			m.MetricType = metric.Type
-			m.ValueType = metric.ValueType
-			cMetrics.MetricValues[metric.Name] = m
+			cMetrics.MetricValues[metric.Name] = metric.GetValue(&c.Spec, c.Stats[0])
 		}
 	}
 

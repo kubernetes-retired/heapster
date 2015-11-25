@@ -45,10 +45,10 @@ func batchToString(batch *core.DataBatch) string {
 		}
 		buffer.WriteString(fmt.Sprintf("%sMetrics:\n", padding))
 		for metricName, metricValue := range ms.MetricValues {
-			if val, ok := metricValue.Value.(*int64); ok {
-				buffer.WriteString(fmt.Sprintf("%s%s%s = %v\n", padding, padding, metricName, *val))
-			} else if val, ok := metricValue.Value.(*float64); ok {
-				buffer.WriteString(fmt.Sprintf("%s%s%s = %v\n", padding, padding, metricName, *val))
+			if core.ValueInt64 == metricValue.ValueType {
+				buffer.WriteString(fmt.Sprintf("%s%s%s = %d\n", padding, padding, metricName, metricValue.IntValue))
+			} else if core.ValueFloat == metricValue.ValueType {
+				buffer.WriteString(fmt.Sprintf("%s%s%s = %f\n", padding, padding, metricName, metricValue.FloatValue))
 			} else {
 				buffer.WriteString(fmt.Sprintf("%s%s%s = ?\n", padding, padding, metricName))
 			}
