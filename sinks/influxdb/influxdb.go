@@ -55,26 +55,48 @@ const (
 	valueField = "value"
 	// Event special tags
 	dbNotFoundError = "database not found"
+
+	// Maximum number of influxdb Points to be sent in one batch.
+	maxSendBatchSize = 10000
 )
 
 func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
-	if err := sink.createDatabase(); err != nil {
-		glog.Errorf("Failed to create infuxdb: %v", err)
-	}
-	// TODO: Divide into multiple batches.
 	dataPoints := make([]influxdb.Point, 0, 0)
 	for _, metricSet := range dataBatch.MetricSets {
 		for metricName, metricValue := range metricSet.MetricValues {
+
+			var value interface{}
+			if core.ValueInt64 == metricValue.ValueType {
+				value = metricValue.IntValue
+			} else if core.ValueFloat == metricValue.ValueType {
+				value = metricValue.FloatValue
+			} else {
+				continue
+			}
+
 			point := influxdb.Point{
 				Measurement: metricName,
 				Tags:        metricSet.Labels,
 				Fields: map[string]interface{}{
-					"value": metricValue,
+					"value": value,
 				},
 				Time: dataBatch.Timestamp.UTC(),
 			}
 			dataPoints = append(dataPoints, point)
+			if len(dataPoints) >= maxSendBatchSize {
+				sink.sendData(dataPoints)
+				dataPoints = make([]influxdb.Point, 0, 0)
+			}
 		}
+	}
+	if len(dataPoints) >= 0 {
+		sink.sendData(dataPoints)
+	}
+}
+
+func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
+	if err := sink.createDatabase(); err != nil {
+		glog.Errorf("Failed to create infuxdb: %v", err)
 	}
 	bp := influxdb.BatchPoints{
 		Points:          dataPoints,
