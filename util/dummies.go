@@ -118,9 +118,9 @@ type DummyDataProcessor struct {
 	latency time.Duration
 }
 
-func (this *DummyDataProcessor) Process(data *core.DataBatch) *core.DataBatch {
+func (this *DummyDataProcessor) Process(data *core.DataBatch) (*core.DataBatch, error) {
 	time.Sleep(this.latency)
-	return data
+	return data, nil
 }
 
 func NewDummyDataProcessor(latency time.Duration) *DummyDataProcessor {

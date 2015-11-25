@@ -81,5 +81,5 @@ type DataSink interface {
 }
 
 type DataProcessor interface {
-	Process(*DataBatch) *DataBatch
+	Process(*DataBatch) (*DataBatch, error)
 }
