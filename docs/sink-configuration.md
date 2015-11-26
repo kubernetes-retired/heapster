@@ -84,18 +84,19 @@ A combination of `insecure` / `caCert` / `auth` is not supported, only a single 
 This sink supports monitoring metrics and events.
 To use the kafka sink add the following flag:
 
-    --sink=kafka:<KAFKA_SERVER_URL>[?<OPTIONS>]
+    --sink="kafka:<?<OPTIONS>>"
 
 Normally, kafka server has multi brokers, so brokers' list need be configured for producer.
-So, we can set `KAFKA_SERVER_URL` to a dummy value, and provide kafka brokers' list in url's query string.
-Besides, the following options can be set in query string:
+So, we provide kafka brokers' list and topics about timeseries & topic in url's query string.
+Options can be set in query string, like this:
 
-* `timeseriestopic` - Kafka's topic for timeseries. Default: `heapster-metrics`
-* `eventstopic` - Kafka's topic for events. Default: `heapster-events`
+* `brokers` - Kafka's brokers' list. 
+* `timeseriestopic` - Kafka's topic for timeseries. Default value : `heapster-metrics`
+* `eventstopic` - Kafka's topic for events.Default value : `heapster-events`
 
-Like this:
+For example, 
 
-    --sink="kafka:?brokers=0.0.0.0:9092&brokers=0.0.0.0:9093"
+    --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&timeseriestopic=testseries&eventstopic=testtopic"
 
 ### Riemann
 This sink supports metrics and events.
