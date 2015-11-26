@@ -29,11 +29,13 @@ import (
 	"k8s.io/kubernetes/pkg/fields"
 )
 
-// TODO: following constants are copied from k8s, change to use them directly
 const (
+	infraContainerName = "POD"
+	// TODO: following constants are copied from k8s, change to use them directly
 	kubernetesPodNameLabel      = "io.kubernetes.pod.name"
 	kubernetesPodNamespaceLabel = "io.kubernetes.pod.namespace"
 	kubernetesPodUID            = "io.kubernetes.pod.uid"
+	kubernetesContainerLabel    = "io.kubernetes.container.name"
 )
 
 // Kubelet-provided metrics for pod and system container.
@@ -55,12 +57,6 @@ func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *Metr
 		Labels:       map[string]string{},
 	}
 
-	for _, metric := range StandardMetrics {
-		if metric.HasValue(&c.Spec) {
-			cMetrics.MetricValues[metric.Name] = metric.GetValue(&c.Spec, c.Stats[0])
-		}
-	}
-
 	if isNode(c) {
 		metricSetKey = NodeKey(this.hostname)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
@@ -70,8 +66,10 @@ func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *Metr
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeSystemContainer
 		cMetrics.Labels[LabelContainerName.Key] = cName
 	} else {
-		// TODO: figure out why "io.kubernetes.container.name" is not set
-		cName := c.Name
+		cName := c.Spec.Labels[kubernetesContainerLabel]
+		if cName == infraContainerName {
+			return "", nil
+		}
 		ns := c.Spec.Labels[kubernetesPodNamespaceLabel]
 		podName := c.Spec.Labels[kubernetesPodNameLabel]
 		metricSetKey = PodContainerKey(ns, podName, cName)
@@ -81,6 +79,12 @@ func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *Metr
 		cMetrics.Labels[LabelPodName.Key] = podName
 		cMetrics.Labels[LabelPodNamespace.Key] = ns
 		cMetrics.Labels[LabelContainerBaseImage.Key] = c.Spec.Image
+	}
+
+	for _, metric := range StandardMetrics {
+		if metric.HasValue(&c.Spec) {
+			cMetrics.MetricValues[metric.Name] = metric.GetValue(&c.Spec, c.Stats[0])
+		}
 	}
 
 	// common labels
@@ -105,6 +109,9 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 	}
 	for _, c := range containers {
 		name, metrics := this.decodeMetrics(&c)
+		if name == "" {
+			continue
+		}
 		result.MetricSets[name] = metrics
 	}
 	return result
