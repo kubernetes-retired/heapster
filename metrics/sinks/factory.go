@@ -30,6 +30,7 @@ import (
 	"k8s.io/heapster/metrics/sinks/monasca"
 	"k8s.io/heapster/metrics/sinks/opentsdb"
 	"k8s.io/heapster/metrics/sinks/riemann"
+	"k8s.io/heapster/metrics/sinks/elasticsearch"
 )
 
 type SinkFactory struct {
@@ -57,6 +58,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return riemann.CreateRiemannSink(&uri.Val)
 	case "opentsdb":
 		return opentsdb.CreateOpenTSDBSink(&uri.Val)
+	case "elasticsearch":
+		return elasticsearch.NewElasticSearchSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
