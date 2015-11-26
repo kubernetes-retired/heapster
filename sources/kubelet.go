@@ -80,13 +80,14 @@ func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *Metr
 		cMetrics.Labels[LabelPodId.Key] = c.Spec.Labels[kubernetesPodUID]
 		cMetrics.Labels[LabelPodName.Key] = podName
 		cMetrics.Labels[LabelPodNamespace.Key] = ns
+		cMetrics.Labels[LabelContainerBaseImage.Key] = c.Spec.Image
 	}
 
 	// common labels
 	cMetrics.Labels[LabelHostname.Key] = this.hostname
 	cMetrics.Labels[LabelHostID.Key] = this.hostId
 
-	// TODO: add labels: LabelPodNamespaceUID, LabelLabels, LabelResourceID, LabelContainerBaseImage
+	// TODO: add labels: LabelPodNamespaceUID, LabelLabels, LabelResourceID
 
 	return metricSetKey, cMetrics
 }
