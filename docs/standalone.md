@@ -94,7 +94,7 @@ I0911 13:42:03.662594   21041 heapster.go:68] Starting heapster on port 8082
 
 ### Test it out
 If you got debug information as before, means that the heapster is working normally.You can test it by calling its [RESTful API](https://github.com/kubernetes/heapster/blob/master/docs/model.md).  
-You can use some restful tools to test, or just run a `curl` command (_ heapster implements gzip encoding, so we need add gunzip in command "curl"_).  
+You can use some restful tools to test, or just run a `curl` command. 
 
 	curl http://0.0.0.0:8082/api/v1/model/stats/
 
@@ -227,3 +227,7 @@ and you will get the response like this:
  }
 
 ```
+By default, API responses are not compressed. Heapster supports gzip compression of responses via standard [content negotiation](https://en.wikipedia.org/wiki/Content_negotiation). To enable, set the value of the `Accept-Encoding` to `gzip`. The corresponding `curl` command will be like:
+
+    curl http://0.0.0.0:8082/api/v1/model/stats/ -H "Accept-Encoding:gzip" | gunzip
+
