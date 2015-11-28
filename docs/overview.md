@@ -36,4 +36,14 @@ Heapster can push data to multiple sinks. Heapster currently supports the follow
     * `https://console.developers.google.com/project/<project_ID>/logs?service=custom.googleapis.com`
       * Where `project_ID` is the project ID of the Google Cloud Platform project ID.
     * Select `kubernetes.io/events` from the `All logs` drop down menu.
-
+* Hawkular
+  * This sink supports monitoring metrics only.Hawkular is a an opensource monitoring solution, 
+    it provides a set of REST services that makes it easy to store metrics, display metrics.
+  * See [sink-configuration.md](https://github.com/kubernetes/heapster/blob/master/docs/sink-configuration.md#hawkular-metrics) for information on how to config the Hawkular sink.
+* Kafka
+  * This sink supports monitoring metrics and events.Kafka is a high-throughput distributed messaging system.
+  * See [sink-configuration.md](https://github.com/kubernetes/heapster/blob/master/docs/sink-configuration.md#kafka) for information on how to config the Kafka sink.
+* Riemann
+  * This sink supports metrics and events.Riemann is a network monitoring system, 
+    it can aggregate events from your servers and applications with a powerful stream processing language.
+  * See [sink-configuration.md](https://github.com/kubernetes/heapster/blob/master/docs/sink-configuration.md#riemann) for information on how to config the Riemann sink.
