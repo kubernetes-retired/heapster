@@ -1,4 +1,4 @@
-Configuring sources
+Configuring sinks
 ===================
 
 Heapster can store data into different backends (sinks). These are specified on the command line
