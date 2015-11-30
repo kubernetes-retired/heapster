@@ -108,6 +108,32 @@ func (this *MetricSink) GetMetric(metricName string, keys []string, start, end t
 	return result
 }
 
+func (this *MetricSink) GetMetricNames(key string) []string {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	metricNames := make(map[string]bool)
+	for _, batch := range this.longStore {
+		if set, found := batch.MetricSets[key]; found {
+			for key := range set.MetricValues {
+				metricNames[key] = true
+			}
+		}
+	}
+	for _, batch := range this.shortStore {
+		if set, found := batch.MetricSets[key]; found {
+			for key := range set.MetricValues {
+				metricNames[key] = true
+			}
+		}
+	}
+	result := make([]string, 0, len(metricNames))
+	for key := range metricNames {
+		result = append(result, key)
+	}
+	return result
+}
+
 func (this *MetricSink) trimDataBatch(batch *core.DataBatch) *core.DataBatch {
 	result := core.DataBatch{
 		Timestamp:  batch.Timestamp,

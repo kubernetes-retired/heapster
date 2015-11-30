@@ -133,4 +133,9 @@ func TestGetMetrics(t *testing.T) {
 
 	//nothing is in time window
 	assert.Equal(t, 0, len(metrics.GetMetric("m2", []string{key}, now.Add(-10*time.Second), now)[key]))
+
+	metricNames := metrics.GetMetricNames(key)
+	assert.Equal(t, 2, len(metricNames))
+	assert.Contains(t, metricNames, "m1")
+	assert.Contains(t, metricNames, "m2")
 }
