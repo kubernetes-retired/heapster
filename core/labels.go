@@ -36,9 +36,14 @@ var (
 		Key:         "pod_name",
 		Description: "The name of the pod",
 	}
+	// Deprecated label
 	LabelPodNamespace = LabelDescriptor{
 		Key:         "pod_namespace",
 		Description: "The namespace of the pod",
+	}
+	LabelNamespaceName = LabelDescriptor{
+		Key:         "namespace_name",
+		Description: "The name of the namespace",
 	}
 	LabelPodNamespaceUID = LabelDescriptor{
 		Key:         "namespace_id",

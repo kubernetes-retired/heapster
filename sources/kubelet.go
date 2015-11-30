@@ -77,6 +77,8 @@ func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *Metr
 		cMetrics.Labels[LabelContainerName.Key] = cName
 		cMetrics.Labels[LabelPodId.Key] = c.Spec.Labels[kubernetesPodUID]
 		cMetrics.Labels[LabelPodName.Key] = podName
+		cMetrics.Labels[LabelNamespaceName.Key] = ns
+		// Needed for backward compatibility
 		cMetrics.Labels[LabelPodNamespace.Key] = ns
 		cMetrics.Labels[LabelContainerBaseImage.Key] = c.Spec.Image
 	}
