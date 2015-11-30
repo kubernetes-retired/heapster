@@ -17,8 +17,6 @@ package v1
 import (
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/api/v1/types"
-
-	sinksApi "k8s.io/heapster/sinks/api"
 )
 
 type Api struct {
@@ -72,39 +70,6 @@ func (a *Api) Register(container *restful.Container) {
 	container.Add(ws)
 
 	a.RegisterModel(container)
-}
-
-// Labels used by the target schema. A target schema uniquely identifies a container.
-var targetLabelNames = map[string]struct{}{
-	sinksApi.LabelPodId.Key:              {},
-	sinksApi.LabelPodName.Key:            {},
-	sinksApi.LabelPodNamespace.Key:       {},
-	sinksApi.LabelContainerName.Key:      {},
-	sinksApi.LabelLabels.Key:             {},
-	sinksApi.LabelHostname.Key:           {},
-	sinksApi.LabelHostID.Key:             {},
-	sinksApi.LabelPodNamespaceUID.Key:    {},
-	sinksApi.LabelContainerBaseImage.Key: {},
-}
-
-// Separates target schema labels from other labels.
-func separateLabels(labels map[string]string) (map[string]string, map[string]string) {
-	targetLabels := make(map[string]string, len(targetLabelNames))
-	otherLabels := make(map[string]string, len(labels)-len(targetLabels))
-	for label := range labels {
-		// Ignore blank labels.
-		if label == "" {
-			continue
-		}
-
-		if _, ok := targetLabelNames[label]; ok {
-			targetLabels[label] = labels[label]
-		} else {
-			otherLabels[label] = labels[label]
-		}
-	}
-
-	return targetLabels, otherLabels
 }
 
 func (a *Api) exportMetricsSchema(request *restful.Request, response *restful.Response) {
