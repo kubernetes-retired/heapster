@@ -71,6 +71,7 @@ func (self *decoder) getPodLabels(pod *cache.PodElement) map[string]string {
 	labels[LabelLabels.Key] = util.LabelsToString(pod.Labels, ",")
 	labels[LabelHostname.Key] = pod.Hostname
 	labels[LabelHostID.Key] = pod.ExternalID
+	labels[LabelNodeName.Key] = pod.NodeName
 
 	return labels
 }
@@ -105,6 +106,11 @@ func (self *decoder) getContainerMetrics(container *cache.ContainerElement, labe
 	if _, exists := labels[LabelHostID.Key]; !exists {
 		labels[LabelHostID.Key] = container.ExternalID
 	}
+
+	if _, exists := labels[LabelNodeName.Key]; !exists {
+		labels[LabelNodeName.Key] = container.NodeName
+	}
+
 	// One metric value per data point.
 	var result []Timeseries
 	labelsAsString := util.LabelsToString(labels, ",")

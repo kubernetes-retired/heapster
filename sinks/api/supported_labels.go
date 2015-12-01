@@ -54,6 +54,10 @@ var (
 		Key:         "host_id",
 		Description: "Identifier specific to a host. Set by cloud provider or user",
 	}
+	LabelNodeName = LabelDescriptor{
+		Key:         "node_name",
+		Description: "The name of the node",
+	}
 	LabelContainerBaseImage = LabelDescriptor{
 		Key:         "container_base_image",
 		Description: "User-defined image name that is run inside the container",
@@ -63,6 +67,7 @@ var (
 var commonLabels = []LabelDescriptor{
 	LabelHostname,
 	LabelHostID,
+	LabelNodeName,
 	LabelContainerName,
 	LabelContainerBaseImage,
 }

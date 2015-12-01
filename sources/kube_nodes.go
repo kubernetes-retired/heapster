@@ -66,6 +66,7 @@ func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start
 	hostIndex := -1
 	hostString := string(host)
 	externalID := string(info.ExternalID)
+	nodeName := string(info.NodeName)
 	for i := range containers {
 		if containers[i].Name == rootContainer {
 			hostIndex = i
@@ -75,6 +76,7 @@ func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start
 		}
 		containers[i].Hostname = hostString
 		containers[i].ExternalID = externalID
+		containers[i].NodeName = nodeName
 	}
 	var hostContainer *api.Container = nil
 	if hostIndex >= 0 {

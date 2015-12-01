@@ -191,7 +191,7 @@ func (self *hawkularSink) idName(p *sink_api.Point) string {
 	if p.Labels[sink_api.LabelPodId.Key] != "" {
 		n = append(n, p.Labels[sink_api.LabelPodId.Key])
 	} else {
-		n = append(n, p.Labels[sink_api.LabelHostID.Key])
+		n = append(n, p.Labels[sink_api.LabelNodeName.Key])
 	}
 	n = append(n, p.Name)
 

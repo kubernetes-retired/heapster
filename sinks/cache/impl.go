@@ -185,6 +185,7 @@ func (rc *realCache) StorePods(pods []source_api.Pod) error {
 				Hostname:     pod.Hostname,
 				Labels:       pod.Labels,
 				ExternalID:   pod.ExternalID,
+				NodeName:     pod.NodeName,
 			}
 			rc.pods[pod.ID] = pe
 		}
@@ -227,6 +228,7 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 			ne.node.Hostname = cont.Hostname
 			ne.node.Name = NodeContainerName
 			ne.node.ExternalID = cont.ExternalID
+			ne.node.NodeName = cont.NodeName
 			ce = ne.node
 		} else {
 			var ok bool
@@ -237,6 +239,7 @@ func (rc *realCache) StoreContainers(containers []source_api.Container) error {
 					Name:       cont.Name,
 					Hostname:   cont.Hostname,
 					ExternalID: cont.ExternalID,
+					NodeName:   cont.NodeName,
 				}
 				ne.freeContainers[cont.Name] = ce
 			}

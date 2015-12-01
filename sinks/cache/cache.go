@@ -29,6 +29,7 @@ type Metadata struct {
 	Hostname     string
 	Labels       map[string]string
 	ExternalID   string
+	NodeName     string
 	LastUpdate   time.Time
 }
 

@@ -92,6 +92,10 @@ func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string, erro
 	if node.Spec.ExternalID != "" {
 		nodeInfo.ExternalID = node.Spec.ExternalID
 	}
+
+	if node.Name != "" {
+		nodeInfo.NodeName = node.Name
+	}
 	cpu := node.Status.Capacity[api.ResourceCPU]
 	mem := node.Status.Capacity[api.ResourceMemory]
 	nodeInfo.CpuCapacity = uint64(cpu.MilliValue())

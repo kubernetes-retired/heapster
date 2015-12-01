@@ -30,6 +30,8 @@ type Info struct {
 	InternalIP string
 	// An optional ID assigned to nodes by either the cloud provider or user.
 	ExternalID string
+	// The name of the node
+	NodeName string
 	// Cpu capacity of node in millicores.
 	CpuCapacity uint64
 	// Memory capacity of node in bytes.

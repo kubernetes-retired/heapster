@@ -63,8 +63,8 @@ func TestSuccessCase(t *testing.T) {
 	nodeList, err := nodesApi.List()
 	require.NoError(t, err)
 	assert.Len(t, nodeList.Items, 2)
-	assert.Equal(t, nodeList.Items["a"], Info{"1.2.3.4", "1.2.3.4", "", 0, 0})
-	assert.Equal(t, nodeList.Items["b"], Info{"1.2.3.5", "1.2.3.5", "", 0, 0})
+	assert.Equal(t, nodeList.Items["a"], Info{"1.2.3.4", "1.2.3.4", "", "", 0, 0})
+	assert.Equal(t, nodeList.Items["b"], Info{"1.2.3.5", "1.2.3.5", "", "", 0, 0})
 }
 
 func TestFailureCase(t *testing.T) {
