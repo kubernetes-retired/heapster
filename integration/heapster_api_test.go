@@ -28,7 +28,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 	api_v1 "k8s.io/heapster/api/v1/types"
-	"k8s.io/heapster/model"
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
 	kube_api "k8s.io/kubernetes/pkg/api"
@@ -481,38 +480,6 @@ func getStringResult(fm kubeFramework, svc *kube_api.Service, url string) ([]str
 	return data, nil
 }
 
-func getStatsResponse(fm kubeFramework, svc *kube_api.Service, url string) (*api_v1.StatsResponse, error) {
-	body, err := getDataFromProxy(fm, svc, url)
-	if err != nil {
-		return nil, err
-	}
-	var data api_v1.StatsResponse
-	if err := json.Unmarshal(body, &data); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
-		return nil, err
-	}
-	if len(data.Stats) == 0 {
-		return nil, fmt.Errorf("empty stats")
-	}
-	return &data, nil
-}
-
-func getEntityListEntry(fm kubeFramework, svc *kube_api.Service, url string) ([]model.EntityListEntry, error) {
-	body, err := getDataFromProxy(fm, svc, url)
-	if err != nil {
-		return nil, err
-	}
-	var data []model.EntityListEntry
-	if err := json.Unmarshal(body, &data); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
-		return nil, err
-	}
-	if len(data) == 0 {
-		return nil, fmt.Errorf("empty data")
-	}
-	return data, nil
-}
-
 func checkMetricResultSanity(metrics *api_v1.MetricResult) error {
 	if len(metrics.Metrics) == 0 {
 		return fmt.Errorf("empty metrics")
@@ -588,16 +555,7 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 		)
 
 		stringUrlsToCheck = append(stringUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/nodes/%s", node),
 			fmt.Sprintf("/api/v1/model/nodes/%s/metrics", node),
-		)
-
-		statsUrlsToCheck = append(statsUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/nodes/%s/stats", node),
-		)
-
-		entityListEntryUrlsToCheck = append(entityListEntryUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/nodes/%s/pods", node),
 		)
 	}
 
@@ -614,23 +572,9 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pod-list/%s,%s/metrics/%s", pod.Namespace, pod.Name, pod.Name, "cpu-usage"))
 
 		stringUrlsToCheck = append(stringUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/namespaces/%s", pod.Namespace),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/metrics", pod.Namespace),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s", pod.Namespace, pod.Name),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/metrics", pod.Namespace, pod.Name),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s", pod.Namespace, pod.Name, containerName),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/metrics", pod.Namespace, pod.Name, containerName),
-		)
-
-		entityListEntryUrlsToCheck = append(entityListEntryUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods", pod.Namespace),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers", pod.Namespace, pod.Name),
-		)
-
-		statsUrlsToCheck = append(statsUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/namespaces/%s/stats", pod.Namespace),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/stats", pod.Namespace, pod.Name),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/stats", pod.Namespace, pod.Name, containerName),
 		)
 	}
 
@@ -654,21 +598,6 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 			return fmt.Errorf("error while querying %s: %v", url, err)
 		}
 	}
-
-	for _, url := range statsUrlsToCheck {
-		_, err := getStatsResponse(fm, svc, url)
-		if err != nil {
-			return fmt.Errorf("error while querying %s: %v", url, err)
-		}
-	}
-
-	for _, url := range entityListEntryUrlsToCheck {
-		_, err := getEntityListEntry(fm, svc, url)
-		if err != nil {
-			return fmt.Errorf("error while querying %s: %v", url, err)
-		}
-	}
-
 	return nil
 }
 
