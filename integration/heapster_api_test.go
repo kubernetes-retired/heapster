@@ -29,7 +29,6 @@ import (
 	"github.com/stretchr/testify/require"
 	api_v1 "k8s.io/heapster/api/v1/types"
 	sink_api "k8s.io/heapster/sinks/api"
-	"k8s.io/heapster/sinks/cache"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	apiErrors "k8s.io/kubernetes/pkg/api/errors"
 	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
@@ -291,7 +290,7 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 					return fmt.Errorf("hostname label missing on container %+v", ts)
 				}
 
-				if cName == cache.NodeContainerName {
+				if cName == "machine" {
 					actualNodes[hostname] = true
 				}
 				if _, exists := expectedSystemContainers[cName]; exists {
