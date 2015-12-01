@@ -16,10 +16,16 @@ package v1
 
 import (
 	"errors"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
 
 	restful "github.com/emicklei/go-restful"
 
 	"k8s.io/heapster/api/v1/types"
+	"k8s.io/heapster/core"
+	"k8s.io/heapster/sinks/metric"
 )
 
 // errModelNotActivated is the error that is returned by the API handlers
@@ -31,8 +37,7 @@ var errModelNotActivated = errors.New("the model is not activated")
 // The start and end times should be specified as a string, formatted according to RFC 3339.
 func (a *Api) RegisterModel(container *restful.Container) {
 	ws := new(restful.WebService)
-	ws.
-		Path("/api/v1/model").
+	ws.Path("/api/v1/model").
 		Doc("Root endpoint of the stats model").
 		Consumes("*/*").
 		Produces(restful.MIME_JSON)
@@ -180,53 +185,167 @@ func (a *Api) RegisterModel(container *restful.Container) {
 
 // availableMetrics returns a list of available cluster metric names.
 func (a *Api) availableClusterMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricNamesRequest(core.ClusterKey(), response)
 }
 
 // availableMetrics returns a list of available node metric names.
 func (a *Api) availableNodeMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricNamesRequest(core.NodeKey(request.PathParameter("node-name")), response)
 }
 
 // availableMetrics returns a list of available namespace metric names.
 func (a *Api) availableNamespaceMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricNamesRequest(core.NamespaceKey(request.PathParameter("namespace-name")), response)
 }
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availablePodMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricNamesRequest(
+		core.PodKey(request.PathParameter("namespace-name"),
+			request.PathParameter("pod-name")), response)
 }
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availablePodContainerMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricNamesRequest(
+		core.PodContainerKey(request.PathParameter("namespace-name"),
+			request.PathParameter("pod-name"),
+			request.PathParameter("container-name"),
+		), response)
 }
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availableFreeContainerMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricNamesRequest(
+		core.NodeContainerKey(request.PathParameter("node-name"),
+			request.PathParameter("container-name"),
+		), response)
 }
 
 // clusterMetrics returns a metric timeseries for a metric of the Cluster entity.
 func (a *Api) clusterMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricRequest(core.ClusterKey(), request, response)
 }
 
 // nodeMetrics returns a metric timeseries for a metric of the Node entity.
 func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricRequest(core.NodeKey(request.PathParameter("node-name")),
+		request, response)
 }
 
 // namespaceMetrics returns a metric timeseries for a metric of the Namespace entity.
 func (a *Api) namespaceMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricRequest(core.NamespaceKey(request.PathParameter("namespace-name")),
+		request, response)
 }
 
 // podMetrics returns a metric timeseries for a metric of the Pod entity.
 func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricRequest(
+		core.PodKey(request.PathParameter("namespace-name"),
+			request.PathParameter("pod-name")),
+		request, response)
 }
 
 func (a *Api) podListMetrics(request *restful.Request, response *restful.Response) {
+	start, end, err := getStartEndTime(request)
+	if err != nil {
+		response.WriteError(http.StatusBadRequest, err)
+		return
+	}
+	keys := strings.Split(request.PathParameter("pod-list"), ",")
+	metrics := a.metricSink.GetMetric(request.PathParameter("metric-name"),
+		keys, start, end)
+	result := types.MetricResultList{
+		Items: make([]types.MetricResult, 0, len(keys)),
+	}
+	for _, key := range keys {
+		result.Items = append(result.Items, exportTimestampedMetricValue(metrics[key]))
+	}
+	response.WriteEntity(result)
 }
 
 // podContainerMetrics returns a metric timeseries for a metric of a Pod Container entity.
 // podContainerMetrics uses the namespace-name/pod-name/container-name path.
 func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricRequest(
+		core.PodContainerKey(request.PathParameter("namespace-name"),
+			request.PathParameter("pod-name"),
+			request.PathParameter("container-name"),
+		),
+		request, response)
 }
 
 // freeContainerMetrics returns a metric timeseries for a metric of the Container entity.
 // freeContainerMetrics addresses only free containers, by using the node-name/container-name path.
 func (a *Api) freeContainerMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricRequest(
+		core.NodeContainerKey(request.PathParameter("node-name"),
+			request.PathParameter("container-name"),
+		),
+		request, response)
+}
+
+// parseRequestParam parses a time.Time from a named QueryParam, using the RFC3339 format.
+func parseTimeParam(queryParam string, defaultValue time.Time) (time.Time, error) {
+	if queryParam != "" {
+		reqStamp, err := time.Parse(time.RFC3339, queryParam)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("timestamp argument cannot be parsed: %s", err)
+		}
+		return reqStamp, nil
+	}
+	return defaultValue, nil
+}
+
+func (a *Api) processMetricRequest(key string, request *restful.Request, response *restful.Response) {
+	start, end, err := getStartEndTime(request)
+	if err != nil {
+		response.WriteError(http.StatusBadRequest, err)
+		return
+	}
+	metrics := a.metricSink.GetMetric(request.PathParameter("metric-name"), []string{key}, start, end)
+	converted := exportTimestampedMetricValue(metrics[key])
+	response.WriteEntity(converted)
+}
+
+func (a *Api) processMetricNamesRequest(key string, response *restful.Response) {
+	metricNames := a.metricSink.GetMetricNames(key)
+	response.WriteEntity(metricNames)
+}
+
+func getStartEndTime(request *restful.Request) (time.Time, time.Time, error) {
+	start, err := parseTimeParam(request.QueryParameter("start"), time.Time{})
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	end, err := parseTimeParam(request.QueryParameter("end"), time.Now())
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return start, end, nil
+}
+
+func exportTimestampedMetricValue(values []metricsink.TimestampedMetricValue) types.MetricResult {
+	result := types.MetricResult{
+		Metrics: make([]types.MetricPoint, 0, len(values)),
+	}
+	for _, value := range values {
+		if result.LatestTimestamp.Before(value.Timestamp) {
+			result.LatestTimestamp = value.Timestamp
+		}
+		// TODO: clean up types in model api
+		var intValue int64
+		if value.ValueType == core.ValueInt64 {
+			intValue = value.IntValue
+		} else {
+			intValue = int64(value.FloatValue)
+		}
+
+		result.Metrics = append(result.Metrics, types.MetricPoint{
+			Timestamp: value.Timestamp,
+			Value:     uint64(intValue),
+		})
+	}
+	return result
 }
