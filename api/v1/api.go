@@ -17,24 +17,26 @@ package v1
 import (
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/api/v1/types"
+	"k8s.io/heapster/sinks/metric"
 )
 
 type Api struct {
 	runningInKubernetes bool
+	metricSink          *metricsink.MetricSink
 }
 
 // Create a new Api to serve from the specified cache.
-func NewApi(runningInKuberentes bool) *Api {
+func NewApi(runningInKuberentes bool, metricSink *metricsink.MetricSink) *Api {
 	return &Api{
 		runningInKubernetes: runningInKuberentes,
+		metricSink:          metricSink,
 	}
 }
 
 // Register the mainApi on the specified endpoint.
 func (a *Api) Register(container *restful.Container) {
 	ws := new(restful.WebService)
-	ws.
-		Path("/api/v1/metric-export").
+	ws.Path("/api/v1/metric-export").
 		Doc("Exports the latest point for all Heapster metrics").
 		Produces(restful.MIME_JSON)
 	ws.Route(ws.GET("").
@@ -69,7 +71,9 @@ func (a *Api) Register(container *restful.Container) {
 		Writes([]string{}))
 	container.Add(ws)
 
-	a.RegisterModel(container)
+	if a.metricSink != nil {
+		a.RegisterModel(container)
+	}
 }
 
 func (a *Api) exportMetricsSchema(request *restful.Request, response *restful.Response) {

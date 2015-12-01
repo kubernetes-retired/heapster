@@ -30,7 +30,8 @@ import (
 	"k8s.io/heapster/core"
 	"k8s.io/heapster/manager"
 	"k8s.io/heapster/sinks"
-	logsink "k8s.io/heapster/sinks/log"
+	"k8s.io/heapster/sinks/log"
+	"k8s.io/heapster/sinks/metric"
 	"k8s.io/heapster/sources"
 	"k8s.io/heapster/version"
 )
@@ -64,11 +65,37 @@ func main() {
 	if err := validateFlags(); err != nil {
 		glog.Fatal(err)
 	}
-	_, _, _, err := doWork()
+
+	if len(argSources) != 1 {
+		glog.Fatal("wrong number of sources specified")
+	}
+	sourceProvider, err := sources.NewKubeletProvider(&argSources[0].Val)
 	if err != nil {
 		glog.Fatal(err)
 	}
-	handler := setupHandlers()
+	sourceManager, err := sources.NewSourceManager(sourceProvider, sources.DefaultMetricsScrapeTimeout)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	metricSink := metricsink.NewMetricSink(125*time.Second, 15*time.Minute,
+		// TODO: switch to instant cpu usage once available
+		[]string{
+			core.MetricCpuUsage.MetricDescriptor.Name,
+			core.MetricMemoruUsage.MetricDescriptor.Name})
+
+	sinkManager, err := sinks.NewDataSinkManager([]core.DataSink{logsink.NewLogSink(), metricSink}, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, time.Minute,
+		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	manager.Start()
+
+	handler := setupHandlers(metricSink)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
 
@@ -113,37 +140,6 @@ func validateFlags() error {
 		return fmt.Errorf("client cert authentication requires TLS certificate & key")
 	}
 	return nil
-}
-
-func doWork() (core.MetricsSource, core.DataSink, manager.Manager, error) {
-	// TODO: change to handle multiple sources
-	if len(argSources) != 1 {
-		glog.Fatal("wrong number of sources specified")
-	}
-	sourceProvider, err := sources.NewKubeletProvider(&argSources[0].Val)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	sourceManager, err := sources.NewSourceManager(sourceProvider, sources.DefaultMetricsScrapeTimeout)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	sinkManager, err := sinks.NewDataSinkManager([]core.DataSink{logsink.NewLogSink()}, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, time.Minute,
-		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
-	/*	if err != nil {
-			return nil, nil, nil, err
-		}
-		if err := manager.SetSinkUris(argSinks); err != nil {
-			return nil, nil, nil, err
-		}
-	*/
-	manager.Start()
-	return sourceManager, sinkManager, manager, nil
 }
 
 func setMaxProcs() {
