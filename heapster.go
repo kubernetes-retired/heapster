@@ -37,27 +37,20 @@ import (
 )
 
 var (
-	argStatsResolution = flag.Duration("stats_resolution", 5*time.Second, "The resolution at which heapster will retain stats.")
-	argSinkFrequency   = flag.Duration("sink_frequency", 10*time.Second, "Frequency at which data will be pushed to sinks")
-	argCacheDuration   = flag.Duration("cache_duration", 4*time.Minute, "The total duration of the historical data that will be cached by heapster.")
-	argUseModel        = flag.Bool("use_model", true, "When true, the internal model representation will be used")
-	argModelResolution = flag.Duration("model_resolution", 1*time.Minute, "The resolution of the timeseries stored in the model. Applies only if use_model is true")
-	argModelFrequency  = flag.Duration("model_frequency", 145*time.Second, "Frequency at which model will be updated. Applies only if use_model is true")
-	argPort            = flag.Int("port", 8082, "port to listen to")
-	argIp              = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
-	argMaxProcs        = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
-	argTLSCertFile     = flag.String("tls_cert", "", "file containing TLS certificate")
-	argTLSKeyFile      = flag.String("tls_key", "", "file containing TLS key")
-	argTLSClientCAFile = flag.String("tls_client_ca", "", "file containing TLS client CA for client cert validation")
-	argAllowedUsers    = flag.String("allowed_users", "", "comma-separated list of allowed users")
-	argSources         manager.Uris
-	argSinks           manager.Uris
+	argMetricResolution = flag.Duration("metric_resolution", 30*time.Second, "The resolution at which heapster will retain metrics.")
+	argPort             = flag.Int("port", 8082, "port to listen to")
+	argIp               = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
+	argMaxProcs         = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
+	argTLSCertFile      = flag.String("tls_cert", "", "file containing TLS certificate")
+	argTLSKeyFile       = flag.String("tls_key", "", "file containing TLS key")
+	argTLSClientCAFile  = flag.String("tls_client_ca", "", "file containing TLS client CA for client cert validation")
+	argAllowedUsers     = flag.String("allowed_users", "", "comma-separated list of allowed users")
+	argSources          manager.Uris
 )
 
 func main() {
 	defer glog.Flush()
 	flag.Var(&argSources, "source", "source(s) to watch")
-	flag.Var(&argSinks, "sink", "external sink(s) that receive data")
 	flag.Parse()
 	setMaxProcs()
 	glog.Infof(strings.Join(os.Args, " "))
@@ -88,7 +81,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, time.Minute,
+	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, *argMetricResolution,
 		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
 	if err != nil {
 		glog.Fatal(err)
@@ -121,17 +114,8 @@ func main() {
 }
 
 func validateFlags() error {
-	if *argStatsResolution < time.Second {
-		return fmt.Errorf("stats resolution needs to be greater than a second - %d", *argStatsResolution)
-	}
-	if *argUseModel && (*argStatsResolution >= *argModelResolution) {
-		return fmt.Errorf("stats resolution '%d' is not less than model resolution '%d'", *argStatsResolution, *argModelResolution)
-	}
-	if *argSinkFrequency >= *argCacheDuration {
-		return fmt.Errorf("sink frequency '%d' is expected to be lesser than cache duration '%d'", *argSinkFrequency, *argCacheDuration)
-	}
-	if *argModelFrequency <= *argModelResolution {
-		return fmt.Errorf("model frequency '%d' is expected to be greater than model resolution '%d'", *argModelFrequency, *argModelResolution)
+	if *argMetricResolution < 5*time.Second {
+		return fmt.Errorf("metric resolution needs to be greater than 5 seconds - %d", *argMetricResolution)
 	}
 	if (len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) == 0) || (len(*argTLSCertFile) == 0 && len(*argTLSKeyFile) > 0) {
 		return fmt.Errorf("both TLS certificate & key are required to enable TLS serving")
