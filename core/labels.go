@@ -73,6 +73,11 @@ var (
 		Key:         "container_base_image",
 		Description: "User-defined image name that is run inside the container",
 	}
+	// The label is populated only for GCM
+	LabelCustomMetricName = LabelDescriptor{
+		Key:         "custom_metric_name",
+		Description: "User-defined name of the exported custom metric",
+	}
 )
 
 type LabelDescriptor struct {
