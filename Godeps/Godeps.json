@@ -25,51 +25,6 @@
 			"Rev": "980670afcebfd86727505b3061d8667195234816"
 		},
 		{
-			"ImportPath": "github.com/coreos/fleet/client",
-			"Comment": "v0.3.2-1023-g1b9073c",
-			"Rev": "1b9073ca18676d5e32bca6901e6dd765d66b7c2b"
-		},
-		{
-			"ImportPath": "github.com/coreos/fleet/etcd",
-			"Comment": "v0.3.2-1023-g1b9073c",
-			"Rev": "1b9073ca18676d5e32bca6901e6dd765d66b7c2b"
-		},
-		{
-			"ImportPath": "github.com/coreos/fleet/job",
-			"Comment": "v0.3.2-1023-g1b9073c",
-			"Rev": "1b9073ca18676d5e32bca6901e6dd765d66b7c2b"
-		},
-		{
-			"ImportPath": "github.com/coreos/fleet/log",
-			"Comment": "v0.3.2-1023-g1b9073c",
-			"Rev": "1b9073ca18676d5e32bca6901e6dd765d66b7c2b"
-		},
-		{
-			"ImportPath": "github.com/coreos/fleet/machine",
-			"Comment": "v0.3.2-1023-g1b9073c",
-			"Rev": "1b9073ca18676d5e32bca6901e6dd765d66b7c2b"
-		},
-		{
-			"ImportPath": "github.com/coreos/fleet/pkg",
-			"Comment": "v0.3.2-1023-g1b9073c",
-			"Rev": "1b9073ca18676d5e32bca6901e6dd765d66b7c2b"
-		},
-		{
-			"ImportPath": "github.com/coreos/fleet/registry",
-			"Comment": "v0.3.2-1023-g1b9073c",
-			"Rev": "1b9073ca18676d5e32bca6901e6dd765d66b7c2b"
-		},
-		{
-			"ImportPath": "github.com/coreos/fleet/schema",
-			"Comment": "v0.3.2-1023-g1b9073c",
-			"Rev": "1b9073ca18676d5e32bca6901e6dd765d66b7c2b"
-		},
-		{
-			"ImportPath": "github.com/coreos/fleet/unit",
-			"Comment": "v0.3.2-1023-g1b9073c",
-			"Rev": "1b9073ca18676d5e32bca6901e6dd765d66b7c2b"
-		},
-		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
 			"Rev": "6fe83ccda8fb9b7549c9ab4ba47f47858bc950aa"
 		},
@@ -103,11 +58,6 @@
 			"Rev": "73eab50ed6320687ce236ffceeec5485498c4d62"
 		},
 		{
-			"ImportPath": "github.com/docker/libcontainer/netlink",
-			"Comment": "v2.2.1-2-g73eab50",
-			"Rev": "73eab50ed6320687ce236ffceeec5485498c4d62"
-		},
-		{
 			"ImportPath": "github.com/docker/libcontainer/system",
 			"Comment": "v2.2.1-2-g73eab50",
 			"Rev": "73eab50ed6320687ce236ffceeec5485498c4d62"
@@ -136,11 +86,6 @@
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
 			"Rev": "655cdfa588ea190e901bc5590e65d5621688847c"
-		},
-		{
-			"ImportPath": "github.com/google/cadvisor/client",
-			"Comment": "v0.19.2",
-			"Rev": "aa6f80814bc6fdb43a0ed12719658225420ffb7d"
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/info/v1",
@@ -201,10 +146,6 @@
 			"ImportPath": "github.com/influxdb/influxdb/tsdb",
 			"Comment": "v0.9.2.1",
 			"Rev": "b237c68bab4756507baf6840023be103853e77db"
-		},
-		{
-			"ImportPath": "github.com/jonboulle/clockwork",
-			"Rev": "3f831b65b61282ba6bece21b91beea2edc4c887a"
 		},
 		{
 			"ImportPath": "github.com/juju/ratelimit",
@@ -276,10 +217,6 @@
 			"Rev": "67f25490433376b5f7da086c0b9283fcdeca3a7b"
 		},
 		{
-			"ImportPath": "google.golang.org/api/googleapi",
-			"Rev": "aa91ac681e18e52b1a0dfe29b9d8354e88c0dcf5"
-		},
-		{
 			"ImportPath": "google.golang.org/cloud/compute/metadata",
 			"Rev": "542bfb014d8e28df6e27be847dfdc40c510dab1a"
 		},
@@ -323,11 +260,6 @@
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/client/unversioned",
-			"Comment": "v1.1.0-alpha.1-1820-g120e872",
-			"Rev": "120e87277a096b5bb3a6a88b5e8c69675de5eb10"
-		},
-		{
-			"ImportPath": "k8s.io/kubernetes/pkg/controller/framework",
 			"Comment": "v1.1.0-alpha.1-1820-g120e872",
 			"Rev": "120e87277a096b5bb3a6a88b5e8c69675de5eb10"
 		},
