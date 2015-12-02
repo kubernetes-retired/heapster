@@ -17,7 +17,8 @@ limitations under the License.
 package unversioned
 
 import (
-	"k8s.io/kubernetes/pkg/apis/experimental"
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/watch"
@@ -29,58 +30,58 @@ type DaemonSetsNamespacer interface {
 }
 
 type DaemonSetInterface interface {
-	List(selector labels.Selector) (*experimental.DaemonSetList, error)
-	Get(name string) (*experimental.DaemonSet, error)
-	Create(ctrl *experimental.DaemonSet) (*experimental.DaemonSet, error)
-	Update(ctrl *experimental.DaemonSet) (*experimental.DaemonSet, error)
-	UpdateStatus(ctrl *experimental.DaemonSet) (*experimental.DaemonSet, error)
+	List(label labels.Selector, field fields.Selector) (*extensions.DaemonSetList, error)
+	Get(name string) (*extensions.DaemonSet, error)
+	Create(ctrl *extensions.DaemonSet) (*extensions.DaemonSet, error)
+	Update(ctrl *extensions.DaemonSet) (*extensions.DaemonSet, error)
+	UpdateStatus(ctrl *extensions.DaemonSet) (*extensions.DaemonSet, error)
 	Delete(name string) error
-	Watch(label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error)
+	Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error)
 }
 
 // daemonSets implements DaemonsSetsNamespacer interface
 type daemonSets struct {
-	r  *ExperimentalClient
+	r  *ExtensionsClient
 	ns string
 }
 
-func newDaemonSets(c *ExperimentalClient, namespace string) *daemonSets {
+func newDaemonSets(c *ExtensionsClient, namespace string) *daemonSets {
 	return &daemonSets{c, namespace}
 }
 
 // Ensure statically that daemonSets implements DaemonSetsInterface.
 var _ DaemonSetInterface = &daemonSets{}
 
-func (c *daemonSets) List(selector labels.Selector) (result *experimental.DaemonSetList, err error) {
-	result = &experimental.DaemonSetList{}
-	err = c.r.Get().Namespace(c.ns).Resource("daemonsets").LabelsSelectorParam(selector).Do().Into(result)
+func (c *daemonSets) List(label labels.Selector, field fields.Selector) (result *extensions.DaemonSetList, err error) {
+	result = &extensions.DaemonSetList{}
+	err = c.r.Get().Namespace(c.ns).Resource("daemonsets").LabelsSelectorParam(label).FieldsSelectorParam(field).Do().Into(result)
 	return
 }
 
 // Get returns information about a particular daemon set.
-func (c *daemonSets) Get(name string) (result *experimental.DaemonSet, err error) {
-	result = &experimental.DaemonSet{}
+func (c *daemonSets) Get(name string) (result *extensions.DaemonSet, err error) {
+	result = &extensions.DaemonSet{}
 	err = c.r.Get().Namespace(c.ns).Resource("daemonsets").Name(name).Do().Into(result)
 	return
 }
 
 // Create creates a new daemon set.
-func (c *daemonSets) Create(daemon *experimental.DaemonSet) (result *experimental.DaemonSet, err error) {
-	result = &experimental.DaemonSet{}
+func (c *daemonSets) Create(daemon *extensions.DaemonSet) (result *extensions.DaemonSet, err error) {
+	result = &extensions.DaemonSet{}
 	err = c.r.Post().Namespace(c.ns).Resource("daemonsets").Body(daemon).Do().Into(result)
 	return
 }
 
 // Update updates an existing daemon set.
-func (c *daemonSets) Update(daemon *experimental.DaemonSet) (result *experimental.DaemonSet, err error) {
-	result = &experimental.DaemonSet{}
+func (c *daemonSets) Update(daemon *extensions.DaemonSet) (result *extensions.DaemonSet, err error) {
+	result = &extensions.DaemonSet{}
 	err = c.r.Put().Namespace(c.ns).Resource("daemonsets").Name(daemon.Name).Body(daemon).Do().Into(result)
 	return
 }
 
 // UpdateStatus updates an existing daemon set status
-func (c *daemonSets) UpdateStatus(daemon *experimental.DaemonSet) (result *experimental.DaemonSet, err error) {
-	result = &experimental.DaemonSet{}
+func (c *daemonSets) UpdateStatus(daemon *extensions.DaemonSet) (result *extensions.DaemonSet, err error) {
+	result = &extensions.DaemonSet{}
 	err = c.r.Put().Namespace(c.ns).Resource("daemonsets").Name(daemon.Name).SubResource("status").Body(daemon).Do().Into(result)
 	return
 }
@@ -91,12 +92,13 @@ func (c *daemonSets) Delete(name string) error {
 }
 
 // Watch returns a watch.Interface that watches the requested daemon sets.
-func (c *daemonSets) Watch(label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error) {
+func (c *daemonSets) Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error) {
 	return c.r.Get().
 		Prefix("watch").
 		Namespace(c.ns).
 		Resource("daemonsets").
-		Param("resourceVersion", resourceVersion).
+		Param("resourceVersion", opts.ResourceVersion).
+		TimeoutSeconds(TimeoutFromListOptions(opts)).
 		LabelsSelectorParam(label).
 		FieldsSelectorParam(field).
 		Watch()

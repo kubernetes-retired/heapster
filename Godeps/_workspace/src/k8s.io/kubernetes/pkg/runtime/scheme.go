@@ -423,8 +423,8 @@ func (s *Scheme) ConvertToVersion(in Object, outVersion string) (Object, error) 
 //       API object.
 //  * Only versioned objects should be encoded. This means that, if you pass
 //    a native object, Encode will convert it to a versioned object. For
-//    example, an api.Pod will get converted to a v1beta1.Pod. However, if
-//    you pass in an object that's already versioned (v1beta1.Pod), Encode
+//    example, an api.Pod will get converted to a v1.Pod. However, if
+//    you pass in an object that's already versioned (v1.Pod), Encode
 //    will not modify it.
 //
 // The purpose of the above complex conversion behavior is to allow us to
@@ -478,6 +478,10 @@ func (s *Scheme) DecodeInto(data []byte, obj Object) error {
 
 func (s *Scheme) DecodeIntoWithSpecifiedVersionKind(data []byte, obj Object, version, kind string) error {
 	return s.raw.DecodeIntoWithSpecifiedVersionKind(data, obj, version, kind)
+}
+
+func (s *Scheme) DecodeParametersInto(parameters url.Values, obj Object) error {
+	return s.raw.DecodeParametersInto(parameters, obj)
 }
 
 // Copy does a deep copy of an API object.  Useful mostly for tests.

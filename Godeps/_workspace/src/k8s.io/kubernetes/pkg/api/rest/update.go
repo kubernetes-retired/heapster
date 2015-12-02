@@ -19,8 +19,9 @@ package rest
 import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/util/fielderrors"
+	utilvalidation "k8s.io/kubernetes/pkg/util/validation"
 )
 
 // RESTUpdateStrategy defines the minimum validation, accepted input, and
@@ -35,13 +36,36 @@ type RESTUpdateStrategy interface {
 	AllowCreateOnUpdate() bool
 	// PrepareForUpdate is invoked on update before validation to normalize
 	// the object.  For example: remove fields that are not to be persisted,
-	// sort order-insensitive list fields, etc.
+	// sort order-insensitive list fields, etc.  This should not remove fields
+	// whose presence would be considered a validation error.
 	PrepareForUpdate(obj, old runtime.Object)
-	// ValidateUpdate is invoked after default fields in the object have been filled in before
-	// the object is persisted.
-	ValidateUpdate(ctx api.Context, obj, old runtime.Object) fielderrors.ValidationErrorList
-	// AllowUnconditionalUpdate returns true if the object can be updated unconditionally (irrespective of the latest resource version), when there is no resource version specified in the object.
+	// ValidateUpdate is invoked after default fields in the object have been
+	// filled in before the object is persisted.  This method should not mutate
+	// the object.
+	ValidateUpdate(ctx api.Context, obj, old runtime.Object) utilvalidation.ErrorList
+	// Canonicalize is invoked after validation has succeeded but before the
+	// object has been persisted.  This method may mutate the object.
+	Canonicalize(obj runtime.Object)
+	// AllowUnconditionalUpdate returns true if the object can be updated
+	// unconditionally (irrespective of the latest resource version), when
+	// there is no resource version specified in the object.
 	AllowUnconditionalUpdate() bool
+}
+
+// TODO: add other common fields that require global validation.
+func validateCommonFields(obj, old runtime.Object) utilvalidation.ErrorList {
+	allErrs := utilvalidation.ErrorList{}
+	objectMeta, err := api.ObjectMetaFor(obj)
+	if err != nil {
+		return append(allErrs, utilvalidation.NewInternalError("metadata", err))
+	}
+	oldObjectMeta, err := api.ObjectMetaFor(old)
+	if err != nil {
+		return append(allErrs, utilvalidation.NewInternalError("metadata", err))
+	}
+	allErrs = append(allErrs, validation.ValidateObjectMetaUpdate(objectMeta, oldObjectMeta)...)
+
+	return allErrs
 }
 
 // BeforeUpdate ensures that common operations for all resources are performed on update. It only returns
@@ -59,9 +83,18 @@ func BeforeUpdate(strategy RESTUpdateStrategy, ctx api.Context, obj, old runtime
 	} else {
 		objectMeta.Namespace = api.NamespaceNone
 	}
+
 	strategy.PrepareForUpdate(obj, old)
-	if errs := strategy.ValidateUpdate(ctx, obj, old); len(errs) > 0 {
+
+	// Ensure some common fields, like UID, are validated for all resources.
+	errs := validateCommonFields(obj, old)
+
+	errs = append(errs, strategy.ValidateUpdate(ctx, obj, old)...)
+	if len(errs) > 0 {
 		return errors.NewInvalid(kind, objectMeta.Name, errs)
 	}
+
+	strategy.Canonicalize(obj)
+
 	return nil
 }
