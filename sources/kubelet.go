@@ -132,12 +132,20 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 		Timestamp:  end,
 		MetricSets: map[string]*MetricSet{},
 	}
+	keys := make(map[string]bool)
 	for _, c := range containers {
 		name, metrics := this.decodeMetrics(&c)
 		if name == "" {
 			continue
 		}
 		result.MetricSets[name] = metrics
+		keys[name] = true
+	}
+	// No remember data for pods that have been removed.
+	for key := range this.cpuLastVal {
+		if _, ok := keys[key]; !ok {
+			delete(this.cpuLastVal, key)
+		}
 	}
 	return result
 }
