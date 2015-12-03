@@ -15,9 +15,10 @@
 package sinks
 
 import (
-	_ "k8s.io/heapster/sinks/gcl"
 	_ "k8s.io/heapster/sinks/gcm"
 	_ "k8s.io/heapster/sinks/gcmautoscaling"
 	_ "k8s.io/heapster/sinks/hawkular"
 	_ "k8s.io/heapster/sinks/influxdb"
+	_ "k8s.io/heapster/sinks/log"
+	_ "k8s.io/heapster/sinks/metric"
 )
