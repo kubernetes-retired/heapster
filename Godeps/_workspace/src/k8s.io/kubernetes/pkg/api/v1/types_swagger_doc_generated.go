@@ -132,7 +132,8 @@ var map_Container = map[string]string{
 	"terminationMessagePath": "Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem. Message written is intended to be brief final status, such as an assertion failure message. Defaults to /dev/termination-log. Cannot be updated.",
 	"imagePullPolicy":        "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/images.md#updating-images",
 	"securityContext":        "Security options the pod should run with. More info: http://releases.k8s.io/HEAD/docs/design/security_context.md",
-	"stdin":                  "Whether this container should allocate a buffer for stdin in the container runtime. Default is false.",
+	"stdin":                  "Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.",
+	"stdinOnce":              "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
 	"tty":                    "Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
 }
 
@@ -342,6 +343,7 @@ var map_Event = map[string]string{
 	"firstTimestamp": "The time at which the event was first recorded. (Time of server receipt is in TypeMeta.)",
 	"lastTimestamp":  "The time at which the most recent occurrence of this event was recorded.",
 	"count":          "The number of times this event has occurred.",
+	"type":           "Type of this event (Normal, Warning), new types could be added in the future",
 }
 
 func (Event) SwaggerDoc() map[string]string {
@@ -545,6 +547,7 @@ var map_ListOptions = map[string]string{
 	"fieldSelector":   "A selector to restrict the list of returned objects by their fields. Defaults to everything.",
 	"watch":           "Watch for changes to the described resources and return them as a stream of add, update, and remove notifications. Specify resourceVersion.",
 	"resourceVersion": "When specified with a watch call, shows changes that occur after that particular version of a resource. Defaults to changes from the beginning of history.",
+	"timeoutSeconds":  "Timeout for the list/watch call.",
 }
 
 func (ListOptions) SwaggerDoc() map[string]string {
@@ -973,6 +976,19 @@ func (PodProxyOptions) SwaggerDoc() map[string]string {
 	return map_PodProxyOptions
 }
 
+var map_PodSecurityContext = map[string]string{
+	"":                   "PodSecurityContext holds pod-level security attributes and common container settings. Some fields are also present in container.securityContext.  Field values of container.securityContext take precedence over field values of PodSecurityContext.",
+	"seLinuxOptions":     "The SELinux context to be applied to all containers. If unspecified, the container runtime will allocate a random SELinux context for each container.  May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container.",
+	"runAsUser":          "The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container.",
+	"runAsNonRoot":       "Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.",
+	"supplementalGroups": "A list of groups applied to the first process run in each container, in addition to the container's primary GID.  If unspecified, no groups will be added to any container.",
+	"fsGroup":            "A special supplemental group that applies to all containers in a pod. Some volume types allow the Kubelet to change the ownership of that volume to be owned by the pod:\n\n1. The owning GID will be the FSGroup 2. The setgid bit is set (new files created in the volume will be owned by FSGroup) 3. The permission bits are OR'd with rw-rw ",
+}
+
+func (PodSecurityContext) SwaggerDoc() map[string]string {
+	return map_PodSecurityContext
+}
+
 var map_PodSpec = map[string]string{
 	"":                              "PodSpec is a description of a pod.",
 	"volumes":                       "List of volumes that can be mounted by containers belonging to the pod. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md",
@@ -988,6 +1004,7 @@ var map_PodSpec = map[string]string{
 	"hostNetwork":                   "Host networking requested for this pod. Use the host's network namespace. If this option is set, the ports that will be used must be specified. Default to false.",
 	"hostPID":                       "Use the host's pid namespace. Optional: Default to false.",
 	"hostIPC":                       "Use the host's ipc namespace. Optional: Default to false.",
+	"securityContext":               "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.",
 	"imagePullSecrets":              "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec. If specified, these secrets will be passed to individual puller implementations for them to use. For example, in the case of docker, only DockerConfig type secrets are honored. More info: http://releases.k8s.io/HEAD/docs/user-guide/images.md#specifying-imagepullsecrets-on-a-pod",
 }
 
@@ -1052,9 +1069,12 @@ func (PodTemplateSpec) SwaggerDoc() map[string]string {
 }
 
 var map_Probe = map[string]string{
-	"": "Probe describes a liveness probe to be examined to the container.",
+	"": "Probe describes a health check to be performed against a container to determine whether it is alive or ready to receive traffic.",
 	"initialDelaySeconds": "Number of seconds after the container has started before liveness probes are initiated. More info: http://releases.k8s.io/HEAD/docs/user-guide/pod-states.md#container-probes",
-	"timeoutSeconds":      "Number of seconds after which liveness probes timeout. Defaults to 1 second. More info: http://releases.k8s.io/HEAD/docs/user-guide/pod-states.md#container-probes",
+	"timeoutSeconds":      "Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: http://releases.k8s.io/HEAD/docs/user-guide/pod-states.md#container-probes",
+	"periodSeconds":       "How often (in seconds) to perform the probe. Default to 10 seconds. Minimum value is 1.",
+	"successThreshold":    "Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1. Must be 1 for liveness. Minimum value is 1.",
+	"failureThreshold":    "Minimum consecutive failures for the probe to be considered failed after having succeeded. Defaults to 3. Minimum value is 1.",
 }
 
 func (Probe) SwaggerDoc() map[string]string {
@@ -1182,10 +1202,10 @@ func (ResourceRequirements) SwaggerDoc() map[string]string {
 
 var map_SELinuxOptions = map[string]string{
 	"":      "SELinuxOptions are the labels to be applied to the container",
-	"user":  "User is a SELinux user label that applies to the container. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md",
-	"role":  "Role is a SELinux role label that applies to the container. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md",
-	"type":  "Type is a SELinux type label that applies to the container. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md",
-	"level": "Level is SELinux level label that applies to the container. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md",
+	"user":  "User is a SELinux user label that applies to the container.",
+	"role":  "Role is a SELinux role label that applies to the container.",
+	"type":  "Type is a SELinux type label that applies to the container.",
+	"level": "Level is SELinux level label that applies to the container.",
 }
 
 func (SELinuxOptions) SwaggerDoc() map[string]string {
@@ -1223,12 +1243,12 @@ func (SecretVolumeSource) SwaggerDoc() map[string]string {
 }
 
 var map_SecurityContext = map[string]string{
-	"":               "SecurityContext holds security configuration that will be applied to a container.",
-	"capabilities":   "The linux kernel capabilites that should be added or removed. Default to Container.Capabilities if left unset. More info: http://releases.k8s.io/HEAD/docs/design/security_context.md#security-context",
-	"privileged":     "Run the container in privileged mode. Default to Container.Privileged if left unset. More info: http://releases.k8s.io/HEAD/docs/design/security_context.md#security-context",
-	"seLinuxOptions": "SELinuxOptions are the labels to be applied to the container and volumes. Options that control the SELinux labels applied. More info: http://releases.k8s.io/HEAD/docs/design/security_context.md#security-context",
-	"runAsUser":      "RunAsUser is the UID to run the entrypoint of the container process. The user id that runs the first process in the container. More info: http://releases.k8s.io/HEAD/docs/design/security_context.md#security-context",
-	"runAsNonRoot":   "RunAsNonRoot indicates that the container should be run as a non-root user. If the RunAsUser field is not explicitly set then the kubelet may check the image for a specified user or perform defaulting to specify a user.",
+	"":               "SecurityContext holds security configuration that will be applied to a container. Some fields are present in both SecurityContext and PodSecurityContext.  When both are set, the values in SecurityContext take precedence.",
+	"capabilities":   "The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime.",
+	"privileged":     "Run container in privileged mode. Processes in privileged containers are essentially equivalent to root on the host. Defaults to false.",
+	"seLinuxOptions": "The SELinux context to be applied to the container. If unspecified, the container runtime will allocate a random SELinux context for each container.  May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.",
+	"runAsUser":      "The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.",
+	"runAsNonRoot":   "Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.",
 }
 
 func (SecurityContext) SwaggerDoc() map[string]string {

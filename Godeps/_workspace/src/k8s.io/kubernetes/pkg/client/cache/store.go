@@ -116,6 +116,8 @@ type cache struct {
 	keyFunc KeyFunc
 }
 
+var _ Store = &cache{}
+
 // Add inserts an item into the cache.
 func (c *cache) Add(obj interface{}) error {
 	key, err := c.keyFunc(obj)
@@ -176,7 +178,7 @@ func (c *cache) ByIndex(indexName, indexKey string) ([]interface{}, error) {
 // Get returns the requested item, or sets exists=false.
 // Get is completely threadsafe as long as you treat all items as immutable.
 func (c *cache) Get(obj interface{}) (item interface{}, exists bool, err error) {
-	key, _ := c.keyFunc(obj)
+	key, err := c.keyFunc(obj)
 	if err != nil {
 		return nil, false, KeyError{obj, err}
 	}

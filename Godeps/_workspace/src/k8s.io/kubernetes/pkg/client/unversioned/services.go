@@ -20,6 +20,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/watch"
 )
 
@@ -30,13 +31,13 @@ type ServicesNamespacer interface {
 
 // ServiceInterface has methods to work with Service resources.
 type ServiceInterface interface {
-	List(selector labels.Selector) (*api.ServiceList, error)
+	List(label labels.Selector, field fields.Selector) (*api.ServiceList, error)
 	Get(name string) (*api.Service, error)
 	Create(srv *api.Service) (*api.Service, error)
 	Update(srv *api.Service) (*api.Service, error)
 	Delete(name string) error
-	Watch(label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error)
-	ProxyGet(name, path string, params map[string]string) ResponseWrapper
+	Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error)
+	ProxyGet(scheme, name, port, path string, params map[string]string) ResponseWrapper
 }
 
 // services implements ServicesNamespacer interface
@@ -51,12 +52,13 @@ func newServices(c *Client, namespace string) *services {
 }
 
 // List takes a selector, and returns the list of services that match that selector
-func (c *services) List(selector labels.Selector) (result *api.ServiceList, err error) {
+func (c *services) List(label labels.Selector, field fields.Selector) (result *api.ServiceList, err error) {
 	result = &api.ServiceList{}
 	err = c.r.Get().
 		Namespace(c.ns).
 		Resource("services").
-		LabelsSelectorParam(selector).
+		LabelsSelectorParam(label).
+		FieldsSelectorParam(field).
 		Do().
 		Into(result)
 	return
@@ -89,24 +91,24 @@ func (c *services) Delete(name string) error {
 }
 
 // Watch returns a watch.Interface that watches the requested services.
-func (c *services) Watch(label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error) {
+func (c *services) Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error) {
 	return c.r.Get().
 		Prefix("watch").
 		Namespace(c.ns).
 		Resource("services").
-		Param("resourceVersion", resourceVersion).
+		VersionedParams(&opts, api.Scheme).
 		LabelsSelectorParam(label).
 		FieldsSelectorParam(field).
 		Watch()
 }
 
 // ProxyGet returns a response of the service by calling it through the proxy.
-func (c *services) ProxyGet(name, path string, params map[string]string) ResponseWrapper {
+func (c *services) ProxyGet(scheme, name, port, path string, params map[string]string) ResponseWrapper {
 	request := c.r.Get().
 		Prefix("proxy").
 		Namespace(c.ns).
 		Resource("services").
-		Name(name).
+		Name(util.JoinSchemeNamePort(scheme, name, port)).
 		Suffix(path)
 	for k, v := range params {
 		request = request.Param(k, v)

@@ -292,6 +292,7 @@ func autoconvert_api_Container_To_v1_Container(in *api.Container, out *Container
 		out.SecurityContext = nil
 	}
 	out.Stdin = in.Stdin
+	out.StdinOnce = in.StdinOnce
 	out.TTY = in.TTY
 	return nil
 }
@@ -697,6 +698,7 @@ func autoconvert_api_Event_To_v1_Event(in *api.Event, out *Event, s conversion.S
 		return err
 	}
 	out.Count = in.Count
+	out.Type = in.Type
 	return nil
 }
 
@@ -1126,6 +1128,12 @@ func autoconvert_api_ListOptions_To_v1_ListOptions(in *api.ListOptions, out *Lis
 	}
 	out.Watch = in.Watch
 	out.ResourceVersion = in.ResourceVersion
+	if in.TimeoutSeconds != nil {
+		out.TimeoutSeconds = new(int64)
+		*out.TimeoutSeconds = *in.TimeoutSeconds
+	} else {
+		out.TimeoutSeconds = nil
+	}
 	return nil
 }
 
@@ -1880,10 +1888,6 @@ func autoconvert_api_Pod_To_v1_Pod(in *api.Pod, out *Pod, s conversion.Scope) er
 	return nil
 }
 
-func convert_api_Pod_To_v1_Pod(in *api.Pod, out *Pod, s conversion.Scope) error {
-	return autoconvert_api_Pod_To_v1_Pod(in, out, s)
-}
-
 func autoconvert_api_PodAttachOptions_To_v1_PodAttachOptions(in *api.PodAttachOptions, out *PodAttachOptions, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*api.PodAttachOptions))(in)
@@ -2084,9 +2088,13 @@ func autoconvert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conv
 	}
 	out.ServiceAccountName = in.ServiceAccountName
 	out.NodeName = in.NodeName
-	out.HostNetwork = in.HostNetwork
-	out.HostPID = in.HostPID
-	out.HostIPC = in.HostIPC
+	if in.SecurityContext != nil {
+		if err := s.Convert(&in.SecurityContext, &out.SecurityContext, 0); err != nil {
+			return err
+		}
+	} else {
+		out.SecurityContext = nil
+	}
 	if in.ImagePullSecrets != nil {
 		out.ImagePullSecrets = make([]LocalObjectReference, len(in.ImagePullSecrets))
 		for i := range in.ImagePullSecrets {
@@ -2236,6 +2244,9 @@ func autoconvert_api_Probe_To_v1_Probe(in *api.Probe, out *Probe, s conversion.S
 	}
 	out.InitialDelaySeconds = in.InitialDelaySeconds
 	out.TimeoutSeconds = in.TimeoutSeconds
+	out.PeriodSeconds = in.PeriodSeconds
+	out.SuccessThreshold = in.SuccessThreshold
+	out.FailureThreshold = in.FailureThreshold
 	return nil
 }
 
@@ -2645,7 +2656,12 @@ func autoconvert_api_SecurityContext_To_v1_SecurityContext(in *api.SecurityConte
 	} else {
 		out.RunAsUser = nil
 	}
-	out.RunAsNonRoot = in.RunAsNonRoot
+	if in.RunAsNonRoot != nil {
+		out.RunAsNonRoot = new(bool)
+		*out.RunAsNonRoot = *in.RunAsNonRoot
+	} else {
+		out.RunAsNonRoot = nil
+	}
 	return nil
 }
 
@@ -3301,6 +3317,7 @@ func autoconvert_v1_Container_To_api_Container(in *Container, out *api.Container
 		out.SecurityContext = nil
 	}
 	out.Stdin = in.Stdin
+	out.StdinOnce = in.StdinOnce
 	out.TTY = in.TTY
 	return nil
 }
@@ -3706,6 +3723,7 @@ func autoconvert_v1_Event_To_api_Event(in *Event, out *api.Event, s conversion.S
 		return err
 	}
 	out.Count = in.Count
+	out.Type = in.Type
 	return nil
 }
 
@@ -4135,6 +4153,12 @@ func autoconvert_v1_ListOptions_To_api_ListOptions(in *ListOptions, out *api.Lis
 	}
 	out.Watch = in.Watch
 	out.ResourceVersion = in.ResourceVersion
+	if in.TimeoutSeconds != nil {
+		out.TimeoutSeconds = new(int64)
+		*out.TimeoutSeconds = *in.TimeoutSeconds
+	} else {
+		out.TimeoutSeconds = nil
+	}
 	return nil
 }
 
@@ -4889,10 +4913,6 @@ func autoconvert_v1_Pod_To_api_Pod(in *Pod, out *api.Pod, s conversion.Scope) er
 	return nil
 }
 
-func convert_v1_Pod_To_api_Pod(in *Pod, out *api.Pod, s conversion.Scope) error {
-	return autoconvert_v1_Pod_To_api_Pod(in, out, s)
-}
-
 func autoconvert_v1_PodAttachOptions_To_api_PodAttachOptions(in *PodAttachOptions, out *api.PodAttachOptions, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*PodAttachOptions))(in)
@@ -5094,9 +5114,16 @@ func autoconvert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conv
 	out.ServiceAccountName = in.ServiceAccountName
 	// in.DeprecatedServiceAccount has no peer in out
 	out.NodeName = in.NodeName
-	out.HostNetwork = in.HostNetwork
-	out.HostPID = in.HostPID
-	out.HostIPC = in.HostIPC
+	// in.HostNetwork has no peer in out
+	// in.HostPID has no peer in out
+	// in.HostIPC has no peer in out
+	if in.SecurityContext != nil {
+		if err := s.Convert(&in.SecurityContext, &out.SecurityContext, 0); err != nil {
+			return err
+		}
+	} else {
+		out.SecurityContext = nil
+	}
 	if in.ImagePullSecrets != nil {
 		out.ImagePullSecrets = make([]api.LocalObjectReference, len(in.ImagePullSecrets))
 		for i := range in.ImagePullSecrets {
@@ -5246,6 +5273,9 @@ func autoconvert_v1_Probe_To_api_Probe(in *Probe, out *api.Probe, s conversion.S
 	}
 	out.InitialDelaySeconds = in.InitialDelaySeconds
 	out.TimeoutSeconds = in.TimeoutSeconds
+	out.PeriodSeconds = in.PeriodSeconds
+	out.SuccessThreshold = in.SuccessThreshold
+	out.FailureThreshold = in.FailureThreshold
 	return nil
 }
 
@@ -5653,7 +5683,12 @@ func autoconvert_v1_SecurityContext_To_api_SecurityContext(in *SecurityContext, 
 	} else {
 		out.RunAsUser = nil
 	}
-	out.RunAsNonRoot = in.RunAsNonRoot
+	if in.RunAsNonRoot != nil {
+		out.RunAsNonRoot = new(bool)
+		*out.RunAsNonRoot = *in.RunAsNonRoot
+	} else {
+		out.RunAsNonRoot = nil
+	}
 	return nil
 }
 

@@ -21,6 +21,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
 func addDefaultingFuncs() {
@@ -83,8 +84,8 @@ func addDefaultingFuncs() {
 				if sp.Protocol == "" {
 					sp.Protocol = ProtocolTCP
 				}
-				if sp.TargetPort == util.NewIntOrStringFromInt(0) || sp.TargetPort == util.NewIntOrStringFromString("") {
-					sp.TargetPort = util.NewIntOrStringFromInt(sp.Port)
+				if sp.TargetPort == intstr.FromInt(0) || sp.TargetPort == intstr.FromString("") {
+					sp.TargetPort = intstr.FromInt(sp.Port)
 				}
 			}
 		},
@@ -116,6 +117,9 @@ func addDefaultingFuncs() {
 			if obj.HostNetwork {
 				defaultHostNetworkPorts(&obj.Containers)
 			}
+			if obj.SecurityContext == nil {
+				obj.SecurityContext = &PodSecurityContext{}
+			}
 			if obj.TerminationGracePeriodSeconds == nil {
 				period := int64(DefaultTerminationGracePeriodSeconds)
 				obj.TerminationGracePeriodSeconds = &period
@@ -124,6 +128,15 @@ func addDefaultingFuncs() {
 		func(obj *Probe) {
 			if obj.TimeoutSeconds == 0 {
 				obj.TimeoutSeconds = 1
+			}
+			if obj.PeriodSeconds == 0 {
+				obj.PeriodSeconds = 10
+			}
+			if obj.SuccessThreshold == 0 {
+				obj.SuccessThreshold = 1
+			}
+			if obj.FailureThreshold == 0 {
+				obj.FailureThreshold = 3
 			}
 		},
 		func(obj *Secret) {

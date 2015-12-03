@@ -28,15 +28,14 @@ import (
 	"k8s.io/kubernetes/pkg/api/registered"
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apis/experimental"
+	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/types"
-	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/intstr"
 
 	"github.com/google/gofuzz"
-	"speter.net/go/exp/math/dec/inf"
 )
 
 // FuzzerFor can randomly populate api objects that are destined for version.
@@ -92,27 +91,31 @@ func FuzzerFor(t *testing.T, version string, src rand.Source) *fuzz.Fuzzer {
 			j.LabelSelector, _ = labels.Parse("a=b")
 			j.FieldSelector, _ = fields.ParseSelector("a=b")
 		},
-		func(j *api.PodSpec, c fuzz.Continue) {
-			c.FuzzNoCustom(j)
+		func(j *unversioned.ListOptions, c fuzz.Continue) {
+			// TODO: add some parsing
+			label, _ := labels.Parse("a=b")
+			j.LabelSelector = unversioned.LabelSelector{label}
+			field, _ := fields.ParseSelector("a=b")
+			j.FieldSelector = unversioned.FieldSelector{field}
+		},
+		func(s *api.PodSpec, c fuzz.Continue) {
+			c.FuzzNoCustom(s)
 			// has a default value
 			ttl := int64(30)
 			if c.RandBool() {
 				ttl = int64(c.Uint32())
 			}
-			j.TerminationGracePeriodSeconds = &ttl
+			s.TerminationGracePeriodSeconds = &ttl
+
+			c.Fuzz(s.SecurityContext)
+
+			if s.SecurityContext == nil {
+				s.SecurityContext = new(api.PodSecurityContext)
+			}
 		},
 		func(j *api.PodPhase, c fuzz.Continue) {
 			statuses := []api.PodPhase{api.PodPending, api.PodRunning, api.PodFailed, api.PodUnknown}
 			*j = statuses[c.Rand.Intn(len(statuses))]
-		},
-		func(j *api.PodTemplateSpec, c fuzz.Continue) {
-			// TODO: v1beta1/2 can't round trip a nil template correctly, fix by having v1beta1/2
-			// conversion compare converted object to nil via DeepEqual
-			j.ObjectMeta = api.ObjectMeta{}
-			c.Fuzz(&j.ObjectMeta)
-			j.ObjectMeta = api.ObjectMeta{Labels: j.ObjectMeta.Labels}
-			j.Spec = api.PodSpec{}
-			c.Fuzz(&j.Spec)
 		},
 		func(j *api.Binding, c fuzz.Continue) {
 			c.Fuzz(&j.ObjectMeta)
@@ -122,25 +125,25 @@ func FuzzerFor(t *testing.T, version string, src rand.Source) *fuzz.Fuzzer {
 			c.FuzzNoCustom(j) // fuzz self without calling this function again
 			//j.TemplateRef = nil // this is required for round trip
 		},
-		func(j *experimental.DeploymentStrategy, c fuzz.Continue) {
+		func(j *extensions.DeploymentStrategy, c fuzz.Continue) {
 			c.FuzzNoCustom(j) // fuzz self without calling this function again
 			// Ensure that strategyType is one of valid values.
-			strategyTypes := []experimental.DeploymentStrategyType{experimental.RecreateDeploymentStrategyType, experimental.RollingUpdateDeploymentStrategyType}
+			strategyTypes := []extensions.DeploymentStrategyType{extensions.RecreateDeploymentStrategyType, extensions.RollingUpdateDeploymentStrategyType}
 			j.Type = strategyTypes[c.Rand.Intn(len(strategyTypes))]
-			if j.Type != experimental.RollingUpdateDeploymentStrategyType {
+			if j.Type != extensions.RollingUpdateDeploymentStrategyType {
 				j.RollingUpdate = nil
 			} else {
-				rollingUpdate := experimental.RollingUpdateDeployment{}
+				rollingUpdate := extensions.RollingUpdateDeployment{}
 				if c.RandBool() {
-					rollingUpdate.MaxUnavailable = util.NewIntOrStringFromInt(int(c.RandUint64()))
-					rollingUpdate.MaxSurge = util.NewIntOrStringFromInt(int(c.RandUint64()))
+					rollingUpdate.MaxUnavailable = intstr.FromInt(int(c.RandUint64()))
+					rollingUpdate.MaxSurge = intstr.FromInt(int(c.RandUint64()))
 				} else {
-					rollingUpdate.MaxSurge = util.NewIntOrStringFromString(fmt.Sprintf("%d%%", c.RandUint64()))
+					rollingUpdate.MaxSurge = intstr.FromString(fmt.Sprintf("%d%%", c.RandUint64()))
 				}
 				j.RollingUpdate = &rollingUpdate
 			}
 		},
-		func(j *experimental.JobSpec, c fuzz.Continue) {
+		func(j *extensions.JobSpec, c fuzz.Continue) {
 			c.FuzzNoCustom(j) // fuzz self without calling this function again
 			completions := c.Rand.Int()
 			parallelism := c.Rand.Int()
@@ -182,15 +185,6 @@ func FuzzerFor(t *testing.T, version string, src rand.Source) *fuzz.Fuzzer {
 			pm[c.RandString()] = docker.PortMapping{
 				c.RandString(): c.RandString(),
 			}
-		},
-		func(q *resource.Quantity, c fuzz.Continue) {
-			// Real Quantity fuzz testing is done elsewhere;
-			// this limited subset of functionality survives
-			// round-tripping to v1beta1/2.
-			q.Amount = &inf.Dec{}
-			q.Format = resource.DecimalExponent
-			//q.Amount.SetScale(inf.Scale(-c.Intn(12)))
-			q.Amount.SetUnscaled(c.Int63n(1000))
 		},
 		func(q *api.ResourceRequirements, c fuzz.Continue) {
 			randomQuantity := func() resource.Quantity {
@@ -277,6 +271,18 @@ func FuzzerFor(t *testing.T, version string, src rand.Source) *fuzz.Fuzzer {
 			c.FuzzNoCustom(ct)                                          // fuzz self without calling this function again
 			ct.TerminationMessagePath = "/" + ct.TerminationMessagePath // Must be non-empty
 		},
+		func(p *api.Probe, c fuzz.Continue) {
+			c.FuzzNoCustom(p)
+			// These fields have default values.
+			intFieldsWithDefaults := [...]string{"TimeoutSeconds", "PeriodSeconds", "SuccessThreshold", "FailureThreshold"}
+			v := reflect.ValueOf(p).Elem()
+			for _, field := range intFieldsWithDefaults {
+				f := v.FieldByName(field)
+				if f.Int() == 0 {
+					f.SetInt(1)
+				}
+			}
+		},
 		func(ev *api.EnvVar, c fuzz.Continue) {
 			ev.Name = c.RandString()
 			if c.RandBool() {
@@ -285,30 +291,26 @@ func FuzzerFor(t *testing.T, version string, src rand.Source) *fuzz.Fuzzer {
 				ev.ValueFrom = &api.EnvVarSource{}
 				ev.ValueFrom.FieldRef = &api.ObjectFieldSelector{}
 
-				versions := registered.RegisteredVersions
+				versions := registered.RegisteredGroupVersions
 
-				ev.ValueFrom.FieldRef.APIVersion = versions[c.Rand.Intn(len(versions))]
+				ev.ValueFrom.FieldRef.APIVersion = versions[c.Rand.Intn(len(versions))].String()
 				ev.ValueFrom.FieldRef.FieldPath = c.RandString()
 			}
 		},
 		func(sc *api.SecurityContext, c fuzz.Continue) {
 			c.FuzzNoCustom(sc) // fuzz self without calling this function again
-			priv := c.RandBool()
-			sc.Privileged = &priv
-			sc.Capabilities = &api.Capabilities{
-				Add:  make([]api.Capability, 0),
-				Drop: make([]api.Capability, 0),
+			if c.RandBool() {
+				priv := c.RandBool()
+				sc.Privileged = &priv
 			}
-			c.Fuzz(&sc.Capabilities.Add)
-			c.Fuzz(&sc.Capabilities.Drop)
-		},
-		func(e *api.Event, c fuzz.Continue) {
-			c.FuzzNoCustom(e) // fuzz self without calling this function again
-			// Fix event count to 1, otherwise, if a v1beta1 or v1beta2 event has a count set arbitrarily, it's count is ignored
-			if e.FirstTimestamp.IsZero() {
-				e.Count = 1
-			} else {
-				c.Fuzz(&e.Count)
+
+			if c.RandBool() {
+				sc.Capabilities = &api.Capabilities{
+					Add:  make([]api.Capability, 0),
+					Drop: make([]api.Capability, 0),
+				}
+				c.Fuzz(&sc.Capabilities.Add)
+				c.Fuzz(&sc.Capabilities.Drop)
 			}
 		},
 		func(s *api.Secret, c fuzz.Continue) {
@@ -347,10 +349,10 @@ func FuzzerFor(t *testing.T, version string, src rand.Source) *fuzz.Fuzzer {
 				c.Fuzz(&ss.Ports[0])
 			}
 			for i := range ss.Ports {
-				switch ss.Ports[i].TargetPort.Kind {
-				case util.IntstrInt:
+				switch ss.Ports[i].TargetPort.Type {
+				case intstr.Int:
 					ss.Ports[i].TargetPort.IntVal = 1 + ss.Ports[i].TargetPort.IntVal%65535 // non-zero
-				case util.IntstrString:
+				case intstr.String:
 					ss.Ports[i].TargetPort.StrVal = "x" + ss.Ports[i].TargetPort.StrVal // non-empty
 				}
 			}
@@ -359,10 +361,16 @@ func FuzzerFor(t *testing.T, version string, src rand.Source) *fuzz.Fuzzer {
 			c.FuzzNoCustom(n)
 			n.Spec.ExternalID = "external"
 		},
-		func(s *experimental.APIVersion, c fuzz.Continue) {
+		func(s *extensions.APIVersion, c fuzz.Continue) {
 			// We can't use c.RandString() here because it may generate empty
 			// string, which will cause tests failure.
 			s.APIGroup = "something"
+		},
+		func(s *extensions.HorizontalPodAutoscalerSpec, c fuzz.Continue) {
+			c.FuzzNoCustom(s) // fuzz self without calling this function again
+			minReplicas := c.Rand.Int()
+			s.MinReplicas = &minReplicas
+			s.CPUUtilization = &extensions.CPUTargetUtilization{TargetPercentage: int(c.RandUint64())}
 		},
 	)
 	return f

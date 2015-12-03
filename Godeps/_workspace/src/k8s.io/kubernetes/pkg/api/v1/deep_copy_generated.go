@@ -26,7 +26,7 @@ import (
 	unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 	conversion "k8s.io/kubernetes/pkg/conversion"
 	runtime "k8s.io/kubernetes/pkg/runtime"
-	util "k8s.io/kubernetes/pkg/util"
+	intstr "k8s.io/kubernetes/pkg/util/intstr"
 	inf "speter.net/go/exp/math/dec/inf"
 )
 
@@ -34,8 +34,6 @@ func deepCopy_resource_Quantity(in resource.Quantity, out *resource.Quantity, c 
 	if in.Amount != nil {
 		if newVal, err := c.DeepCopy(in.Amount); err != nil {
 			return err
-		} else if newVal == nil {
-			out.Amount = nil
 		} else {
 			out.Amount = newVal.(*inf.Dec)
 		}
@@ -274,6 +272,7 @@ func deepCopy_v1_Container(in Container, out *Container, c *conversion.Cloner) e
 		out.SecurityContext = nil
 	}
 	out.Stdin = in.Stdin
+	out.StdinOnce = in.StdinOnce
 	out.TTY = in.TTY
 	return nil
 }
@@ -546,6 +545,7 @@ func deepCopy_v1_Event(in Event, out *Event, c *conversion.Cloner) error {
 		return err
 	}
 	out.Count = in.Count
+	out.Type = in.Type
 	return nil
 }
 
@@ -635,7 +635,7 @@ func deepCopy_v1_GlusterfsVolumeSource(in GlusterfsVolumeSource, out *GlusterfsV
 
 func deepCopy_v1_HTTPGetAction(in HTTPGetAction, out *HTTPGetAction, c *conversion.Cloner) error {
 	out.Path = in.Path
-	if err := deepCopy_util_IntOrString(in.Port, &out.Port, c); err != nil {
+	if err := deepCopy_intstr_IntOrString(in.Port, &out.Port, c); err != nil {
 		return err
 	}
 	out.Host = in.Host
@@ -845,6 +845,12 @@ func deepCopy_v1_ListOptions(in ListOptions, out *ListOptions, c *conversion.Clo
 	out.FieldSelector = in.FieldSelector
 	out.Watch = in.Watch
 	out.ResourceVersion = in.ResourceVersion
+	if in.TimeoutSeconds != nil {
+		out.TimeoutSeconds = new(int64)
+		*out.TimeoutSeconds = *in.TimeoutSeconds
+	} else {
+		out.TimeoutSeconds = nil
+	}
 	return nil
 }
 
@@ -1501,6 +1507,44 @@ func deepCopy_v1_PodProxyOptions(in PodProxyOptions, out *PodProxyOptions, c *co
 	return nil
 }
 
+func deepCopy_v1_PodSecurityContext(in PodSecurityContext, out *PodSecurityContext, c *conversion.Cloner) error {
+	if in.SELinuxOptions != nil {
+		out.SELinuxOptions = new(SELinuxOptions)
+		if err := deepCopy_v1_SELinuxOptions(*in.SELinuxOptions, out.SELinuxOptions, c); err != nil {
+			return err
+		}
+	} else {
+		out.SELinuxOptions = nil
+	}
+	if in.RunAsUser != nil {
+		out.RunAsUser = new(int64)
+		*out.RunAsUser = *in.RunAsUser
+	} else {
+		out.RunAsUser = nil
+	}
+	if in.RunAsNonRoot != nil {
+		out.RunAsNonRoot = new(bool)
+		*out.RunAsNonRoot = *in.RunAsNonRoot
+	} else {
+		out.RunAsNonRoot = nil
+	}
+	if in.SupplementalGroups != nil {
+		out.SupplementalGroups = make([]int64, len(in.SupplementalGroups))
+		for i := range in.SupplementalGroups {
+			out.SupplementalGroups[i] = in.SupplementalGroups[i]
+		}
+	} else {
+		out.SupplementalGroups = nil
+	}
+	if in.FSGroup != nil {
+		out.FSGroup = new(int64)
+		*out.FSGroup = *in.FSGroup
+	} else {
+		out.FSGroup = nil
+	}
+	return nil
+}
+
 func deepCopy_v1_PodSpec(in PodSpec, out *PodSpec, c *conversion.Cloner) error {
 	if in.Volumes != nil {
 		out.Volumes = make([]Volume, len(in.Volumes))
@@ -1550,6 +1594,14 @@ func deepCopy_v1_PodSpec(in PodSpec, out *PodSpec, c *conversion.Cloner) error {
 	out.HostNetwork = in.HostNetwork
 	out.HostPID = in.HostPID
 	out.HostIPC = in.HostIPC
+	if in.SecurityContext != nil {
+		out.SecurityContext = new(PodSecurityContext)
+		if err := deepCopy_v1_PodSecurityContext(*in.SecurityContext, out.SecurityContext, c); err != nil {
+			return err
+		}
+	} else {
+		out.SecurityContext = nil
+	}
 	if in.ImagePullSecrets != nil {
 		out.ImagePullSecrets = make([]LocalObjectReference, len(in.ImagePullSecrets))
 		for i := range in.ImagePullSecrets {
@@ -1662,6 +1714,9 @@ func deepCopy_v1_Probe(in Probe, out *Probe, c *conversion.Cloner) error {
 	}
 	out.InitialDelaySeconds = in.InitialDelaySeconds
 	out.TimeoutSeconds = in.TimeoutSeconds
+	out.PeriodSeconds = in.PeriodSeconds
+	out.SuccessThreshold = in.SuccessThreshold
+	out.FailureThreshold = in.FailureThreshold
 	return nil
 }
 
@@ -1971,7 +2026,12 @@ func deepCopy_v1_SecurityContext(in SecurityContext, out *SecurityContext, c *co
 	} else {
 		out.RunAsUser = nil
 	}
-	out.RunAsNonRoot = in.RunAsNonRoot
+	if in.RunAsNonRoot != nil {
+		out.RunAsNonRoot = new(bool)
+		*out.RunAsNonRoot = *in.RunAsNonRoot
+	} else {
+		out.RunAsNonRoot = nil
+	}
 	return nil
 }
 
@@ -2075,7 +2135,7 @@ func deepCopy_v1_ServicePort(in ServicePort, out *ServicePort, c *conversion.Clo
 	out.Name = in.Name
 	out.Protocol = in.Protocol
 	out.Port = in.Port
-	if err := deepCopy_util_IntOrString(in.TargetPort, &out.TargetPort, c); err != nil {
+	if err := deepCopy_intstr_IntOrString(in.TargetPort, &out.TargetPort, c); err != nil {
 		return err
 	}
 	out.NodePort = in.NodePort
@@ -2132,7 +2192,7 @@ func deepCopy_v1_ServiceStatus(in ServiceStatus, out *ServiceStatus, c *conversi
 }
 
 func deepCopy_v1_TCPSocketAction(in TCPSocketAction, out *TCPSocketAction, c *conversion.Cloner) error {
-	if err := deepCopy_util_IntOrString(in.Port, &out.Port, c); err != nil {
+	if err := deepCopy_intstr_IntOrString(in.Port, &out.Port, c); err != nil {
 		return err
 	}
 	return nil
@@ -2297,8 +2357,8 @@ func deepCopy_runtime_RawExtension(in runtime.RawExtension, out *runtime.RawExte
 	return nil
 }
 
-func deepCopy_util_IntOrString(in util.IntOrString, out *util.IntOrString, c *conversion.Cloner) error {
-	out.Kind = in.Kind
+func deepCopy_intstr_IntOrString(in intstr.IntOrString, out *intstr.IntOrString, c *conversion.Cloner) error {
+	out.Type = in.Type
 	out.IntVal = in.IntVal
 	out.StrVal = in.StrVal
 	return nil
@@ -2393,6 +2453,7 @@ func init() {
 		deepCopy_v1_PodList,
 		deepCopy_v1_PodLogOptions,
 		deepCopy_v1_PodProxyOptions,
+		deepCopy_v1_PodSecurityContext,
 		deepCopy_v1_PodSpec,
 		deepCopy_v1_PodStatus,
 		deepCopy_v1_PodStatusResult,
@@ -2429,7 +2490,7 @@ func init() {
 		deepCopy_v1_VolumeMount,
 		deepCopy_v1_VolumeSource,
 		deepCopy_runtime_RawExtension,
-		deepCopy_util_IntOrString,
+		deepCopy_intstr_IntOrString,
 	)
 	if err != nil {
 		// if one of the deep copy functions is malformed, detect it immediately.

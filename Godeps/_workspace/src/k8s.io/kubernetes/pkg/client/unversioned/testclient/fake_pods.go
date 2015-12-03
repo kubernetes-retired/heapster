@@ -18,6 +18,7 @@ package testclient
 
 import (
 	"k8s.io/kubernetes/pkg/api"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/watch"
@@ -76,8 +77,8 @@ func (c *FakePods) Delete(name string, options *api.DeleteOptions) error {
 	return err
 }
 
-func (c *FakePods) Watch(label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error) {
-	return c.Fake.InvokesWatch(NewWatchAction("pods", c.Namespace, label, field, resourceVersion))
+func (c *FakePods) Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error) {
+	return c.Fake.InvokesWatch(NewWatchAction("pods", c.Namespace, label, field, opts))
 }
 
 func (c *FakePods) Bind(binding *api.Binding) error {
@@ -98,4 +99,16 @@ func (c *FakePods) UpdateStatus(pod *api.Pod) (*api.Pod, error) {
 	}
 
 	return obj.(*api.Pod), err
+}
+
+func (c *FakePods) GetLogs(name string, opts *api.PodLogOptions) *client.Request {
+	action := GenericActionImpl{}
+	action.Verb = "get"
+	action.Namespace = c.Namespace
+	action.Resource = "pod"
+	action.Subresource = "logs"
+	action.Value = opts
+
+	_, _ = c.Fake.Invokes(action, &api.Pod{})
+	return &client.Request{}
 }

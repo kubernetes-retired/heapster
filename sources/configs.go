@@ -21,6 +21,7 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	kubeClientCmdApi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
@@ -92,7 +93,7 @@ func getKubeConfigs(uri *url.URL) (*kube_client.Config, *kube_client.KubeletConf
 		if configOverrides.ClusterInfo.Server != "" {
 			kubeConfig.Host = configOverrides.ClusterInfo.Server
 		}
-		kubeConfig.Version = configOverrides.ClusterInfo.APIVersion
+		kubeConfig.GroupVersion = &unversioned.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion}
 		kubeConfig.Insecure = configOverrides.ClusterInfo.InsecureSkipTLSVerify
 		if configOverrides.ClusterInfo.InsecureSkipTLSVerify {
 			kubeConfig.TLSClientConfig.CAFile = ""
@@ -111,16 +112,16 @@ func getKubeConfigs(uri *url.URL) (*kube_client.Config, *kube_client.KubeletConf
 			}
 		} else {
 			kubeConfig = &kube_client.Config{
-				Host:     configOverrides.ClusterInfo.Server,
-				Version:  configOverrides.ClusterInfo.APIVersion,
-				Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
+				Host:         configOverrides.ClusterInfo.Server,
+				GroupVersion: &unversioned.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion},
+				Insecure:     configOverrides.ClusterInfo.InsecureSkipTLSVerify,
 			}
 		}
 	}
 	if len(kubeConfig.Host) == 0 {
 		return nil, nil, fmt.Errorf("invalid kubernetes master url specified")
 	}
-	if len(kubeConfig.Version) == 0 {
+	if len(kubeConfig.GroupVersion.Version) == 0 {
 		return nil, nil, fmt.Errorf("invalid kubernetes API version specified")
 	}
 
@@ -154,7 +155,7 @@ func getKubeConfigs(uri *url.URL) (*kube_client.Config, *kube_client.KubeletConf
 			return nil, nil, err
 		}
 	}
-	glog.Infof("Using Kubernetes client with master %q and version %q\n", kubeConfig.Host, kubeConfig.Version)
+	glog.Infof("Using Kubernetes client with master %q and version %q\n", kubeConfig.Host, kubeConfig.GroupVersion.Version)
 	glog.Infof("Using kubelet port %d", kubeletPort)
 
 	kubeletConfig := &kube_client.KubeletConfig{
