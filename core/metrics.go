@@ -54,6 +54,7 @@ var MetricUptime = Metric{
 			IntValue:   time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}
 	},
 }
+
 var MetricCpuUsage = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "cpu/usage",
@@ -70,6 +71,16 @@ var MetricCpuUsage = Metric{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
 			IntValue:   int64(stat.Cpu.Usage.Total)}
+	},
+}
+
+var MetricCpuUsageRate = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/usage_rate",
+		Description: "CPU usage on all cores in millicores",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
 	},
 }
 
