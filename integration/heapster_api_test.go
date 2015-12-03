@@ -57,7 +57,7 @@ func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_
 	glog.V(2).Infof("Deleting ns %s...", ns)
 	err := fm.DeleteNs(ns)
 	if err != nil {
-		glog.V(2).Infof("Failed to delete %s", ns)
+		glog.Errorf("Failed to delete %s", ns)
 		return err
 	}
 	glog.V(2).Infof("Deleted ns %s.", ns)
@@ -76,7 +76,7 @@ func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kub
 		},
 	}
 	if _, err := fm.CreateNs(&namespace); err != nil {
-		glog.V(2).Infof("Failed to create ns: %v", err)
+		glog.Errorf("Failed to create ns: %v", err)
 		return err
 	}
 
@@ -84,7 +84,7 @@ func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kub
 
 	glog.V(2).Infof("Creating rc %s/%s...", ns, (*rc).Name)
 	if newRc, err := fm.CreateRC(ns, *rc); err != nil {
-		glog.V(2).Infof("Failed to create rc: %v", err)
+		glog.Errorf("Failed to create rc: %v", err)
 		return err
 	} else {
 		*rc = newRc
@@ -93,7 +93,7 @@ func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kub
 
 	glog.V(2).Infof("Creating service %s/%s...", ns, (*service).Name)
 	if newSvc, err := fm.CreateService(ns, *service); err != nil {
-		glog.V(2).Infof("Failed to create service: %v", err)
+		glog.Errorf("Failed to create service: %v", err)
 		return err
 	} else {
 		*service = newSvc

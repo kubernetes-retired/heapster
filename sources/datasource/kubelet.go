@@ -93,7 +93,7 @@ func (self *kubeletSource) getContainer(url string, start, end time.Time) (*api.
 	}
 	err = self.postRequestAndGetValue(client, req, &containerInfo)
 	if err != nil {
-		glog.V(2).Infof("failed to get stats from kubelet url: %s - %s\n", url, err)
+		glog.Errorf("failed to get stats from kubelet url: %s - %s\n", url, err)
 		return nil, err
 	}
 	glog.V(4).Infof("url: %q, body: %q, data: %+v", url, string(body), containerInfo)

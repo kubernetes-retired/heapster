@@ -41,7 +41,7 @@ func (self *fleetNodes) List() (*NodeList, error) {
 	if err != nil {
 		self.apiErrors++
 		self.recentApiError = err
-		glog.V(1).Infof("failed to get list of machines from fleet - %q", err)
+		glog.Errorf("failed to get list of machines from fleet - %q", err)
 		return nil, err
 	}
 	nodeList := newNodeList()

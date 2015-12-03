@@ -56,7 +56,7 @@ func (self *kubeNodeMetrics) updateStats(host nodes.Host, info nodes.Info, start
 	// Get information for all containers.
 	containers, err := self.kubeletApi.GetAllRawContainers(datasource.Host{IP: info.InternalIP, Port: self.kubeletPort}, start, end)
 	if err != nil {
-		glog.V(3).Infof("Failed to get container stats from Kubelet on node %q", host)
+		glog.Errorf("Failed to get container stats from Kubelet on node %q", host)
 		return nil, []api.Container{}, fmt.Errorf("failed to get container stats from Kubelet on node %q: %v", host, err)
 	}
 	if len(containers) == 0 {
