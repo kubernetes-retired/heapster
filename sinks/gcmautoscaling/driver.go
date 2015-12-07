@@ -14,6 +14,7 @@
 
 package gcmautoscaling
 
+/*
 import (
 	"fmt"
 	"net/url"
@@ -283,3 +284,4 @@ func CreateGCMAutoscalingSink(uri *url.URL, conf extpoints.HeapsterConf) ([]sink
 	glog.Infof("created GCM Autocaling sink")
 	return []sink_api.ExternalSink{sink}, err
 }
+*/
