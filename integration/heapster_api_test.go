@@ -28,7 +28,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 	api_v1 "k8s.io/heapster/api/v1/types"
-	sink_api "k8s.io/heapster/sinks/api"
+	"k8s.io/heapster/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	apiErrors "k8s.io/kubernetes/pkg/api/errors"
 	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
@@ -227,7 +227,7 @@ var expectedSystemContainers = map[string]struct{}{
 }
 
 func isContainerBaseImageExpected(ts *api_v1.Timeseries) bool {
-	_, exists := expectedSystemContainers[ts.Labels[sink_api.LabelContainerName.Key]]
+	_, exists := expectedSystemContainers[ts.Labels[core.LabelContainerName.Key]]
 	return !exists
 }
 
@@ -263,8 +263,8 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 	for _, ts := range timeseries {
 		// Verify the relevant labels are present.
 		// All common labels must be present.
-		for _, label := range sink_api.CommonLabels() {
-			if label == sink_api.LabelContainerBaseImage && !isContainerBaseImageExpected(ts) {
+		for _, label := range core.CommonLabels() {
+			if label == core.LabelContainerBaseImage && !isContainerBaseImageExpected(ts) {
 				continue
 			}
 			_, exists := ts.Labels[label.Key]
@@ -272,9 +272,9 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 				return fmt.Errorf("timeseries: %v does not contain common label: %v", ts, label)
 			}
 		}
-		podName, podMetric := ts.Labels[sink_api.LabelPodName.Key]
+		podName, podMetric := ts.Labels[core.LabelPodName.Key]
 		if podMetric {
-			for _, label := range sink_api.PodLabels() {
+			for _, label := range core.PodLabels() {
 				_, exists := ts.Labels[label.Key]
 				if !exists {
 					return fmt.Errorf("timeseries: %v does not contain pod label: %v", ts, label)
@@ -284,8 +284,8 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 		if podMetric {
 			actualPods[podName] = true
 		} else {
-			if cName, ok := ts.Labels[sink_api.LabelContainerName.Key]; ok {
-				hostname, ok := ts.Labels[sink_api.LabelHostname.Key]
+			if cName, ok := ts.Labels[core.LabelContainerName.Key]; ok {
+				hostname, ok := ts.Labels[core.LabelHostname.Key]
 				if !ok {
 					return fmt.Errorf("hostname label missing on container %+v", ts)
 				}
