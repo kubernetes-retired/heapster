@@ -87,3 +87,46 @@ type LabelDescriptor struct {
 	// Description of the label.
 	Description string `json:"description,omitempty"`
 }
+
+var commonLabels = []LabelDescriptor{
+	LabelHostname,
+	LabelHostID,
+	LabelContainerName,
+	LabelContainerBaseImage,
+}
+
+var podLabels = []LabelDescriptor{
+	LabelPodName,
+	LabelPodId,
+	LabelPodNamespace,
+	LabelPodNamespaceUID,
+	LabelLabels,
+}
+
+var metricLabels = []LabelDescriptor{
+	LabelResourceID,
+}
+
+func CommonLabels() []LabelDescriptor {
+	result := make([]LabelDescriptor, len(commonLabels))
+	copy(result, commonLabels)
+	return result
+}
+
+func PodLabels() []LabelDescriptor {
+	result := make([]LabelDescriptor, len(podLabels))
+	copy(result, podLabels)
+	return result
+}
+
+func MetricLabels() []LabelDescriptor {
+	result := make([]LabelDescriptor, len(metricLabels))
+	copy(result, metricLabels)
+	return result
+}
+
+func SupportedLabels() []LabelDescriptor {
+	result := CommonLabels()
+	result = append(result, PodLabels()...)
+	return append(result, MetricLabels()...)
+}

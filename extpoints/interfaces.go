@@ -18,14 +18,13 @@ import (
 	"net/url"
 	"time"
 
-	sinksApi "k8s.io/heapster/sinks/api"
-	sourceApi "k8s.io/heapster/sources/api"
+	"k8s.io/heapster/core"
 )
 
-type SourceFactory func(*url.URL) ([]sourceApi.Source, error)
+type SourceFactory func(*url.URL) ([]core.MetricsSource, error)
 
 type HeapsterConf struct {
 	StatsResolution time.Duration
 }
 
-type SinkFactory func(*url.URL, HeapsterConf) ([]sinksApi.ExternalSink, error)
+type SinkFactory func(*url.URL, HeapsterConf) ([]core.DataSink, error)

@@ -22,7 +22,6 @@ import (
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/api/v1"
 	"k8s.io/heapster/sinks/metric"
-	"k8s.io/heapster/validate"
 )
 
 const pprofBasePath = "/debug/pprof/"
@@ -31,43 +30,11 @@ func setupHandlers(metricSink *metricsink.MetricSink) http.Handler {
 
 	runningInKubernetes := true
 
-	/*	for _, source := range sourcesList {
-			if source.Name() == sources.KubePodsSourceName {
-				runningInKubernetes = true
-			}
-		}
-	*/
-
 	// Make API handler.
 	wsContainer := restful.NewContainer()
 	wsContainer.EnableContentEncoding(true)
 	a := v1.NewApi(runningInKubernetes, metricSink)
 	a.Register(wsContainer)
-
-	// Validation/Debug handler.
-	handleValidate := func(req *restful.Request, resp *restful.Response) {
-		/*		err := validate.HandleRequest(resp, sourcesList, sink)
-				if err != nil {
-					fmt.Fprintf(resp, "%s", err)
-				}
-		*/
-	}
-	ws := new(restful.WebService).
-		Path("/validate").
-		Produces("text/plain")
-	ws.Route(ws.GET("").To(handleValidate)).
-		Doc("get validation information")
-	wsContainer.Add(ws)
-
-	// TODO(jnagal): Add a main status page.
-	// Redirect root to /validate
-	redirectHandler := http.RedirectHandler(validate.ValidatePage, http.StatusTemporaryRedirect)
-	handleRoot := func(req *restful.Request, resp *restful.Response) {
-		redirectHandler.ServeHTTP(resp, req.Request)
-	}
-	ws = new(restful.WebService)
-	ws.Route(ws.GET("/").To(handleRoot))
-	wsContainer.Add(ws)
 
 	handlePprofEndpoint := func(req *restful.Request, resp *restful.Response) {
 		name := strings.TrimPrefix(req.Request.URL.Path, pprofBasePath)
@@ -84,7 +51,7 @@ func setupHandlers(metricSink *metricsink.MetricSink) http.Handler {
 	}
 
 	// Setup pporf handlers.
-	ws = new(restful.WebService).Path(pprofBasePath)
+	ws := new(restful.WebService).Path(pprofBasePath)
 	ws.Route(ws.GET("/{subpath:*}").To(func(req *restful.Request, resp *restful.Response) {
 		handlePprofEndpoint(req, resp)
 	})).Doc("pprof endpoint")
