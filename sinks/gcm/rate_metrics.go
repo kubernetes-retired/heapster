@@ -14,6 +14,7 @@
 
 package gcm
 
+/*
 type rateMetric struct {
 	name        string
 	description string
@@ -50,3 +51,4 @@ var gcmRateMetrics = map[string]rateMetric{
 		description: "Rate of errors transmitting over the network in errors per second",
 	},
 }
+*/

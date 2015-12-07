@@ -14,6 +14,7 @@
 
 package gcm
 
+/*
 import (
 	"fmt"
 	"net/url"
@@ -113,3 +114,4 @@ func CreateGCMSink(uri *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalS
 	glog.Infof("created GCM sink")
 	return []sink_api.ExternalSink{sink}, err
 }
+*/

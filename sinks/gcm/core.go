@@ -14,6 +14,7 @@
 
 package gcm
 
+/*
 import (
 	"bytes"
 	"encoding/json"
@@ -457,3 +458,4 @@ func NewCore() (*GcmCore, error) {
 
 	return core, nil
 }
+*/
