@@ -47,6 +47,20 @@ const (
 	UnitsMillicores
 )
 
+func (self *UnitsType) String() string {
+	switch *self {
+	case UnitsBytes:
+		return "bytes"
+	case UnitsMilliseconds:
+		return "ms"
+	case UnitsNanoseconds:
+		return "ns"
+	case UnitsMillicores:
+		return "millicores"
+	}
+	return ""
+}
+
 type MetricValue struct {
 	IntValue   int64
 	FloatValue float32

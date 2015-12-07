@@ -25,13 +25,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/hawkular/hawkular-client-go/metrics"
-	"k8s.io/heapster/extpoints"
 
-	sink_api "k8s.io/heapster/sinks/api"
-	kube_api "k8s.io/kubernetes/pkg/api"
+	"k8s.io/heapster/core"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 )
@@ -46,8 +45,7 @@ const (
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
-// Filter which Timeseries are stored. Store if returns true, filter if returns false
-type Filter func(*sink_api.Timeseries) bool
+type Filter func(ms *core.MetricSet, metricName string) bool
 type FilterType int
 
 const (
@@ -85,7 +83,7 @@ type hawkularSink struct {
 
 // START: ExternalSink interface implementations
 
-func (self *hawkularSink) Register(mds []sink_api.MetricDescriptor) error {
+func (self *hawkularSink) Register(mds []core.MetricDescriptor) error {
 	// Create model definitions based on the MetricDescriptors
 	for _, md := range mds {
 		hmd := self.descriptorToDefinition(&md)
@@ -134,10 +132,10 @@ func (self *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
 	return nil
 }
 
-func (self *hawkularSink) Unregister(mds []sink_api.MetricDescriptor) error {
+func (self *hawkularSink) Stop() {
 	self.regLock.Lock()
 	defer self.regLock.Unlock()
-	return self.init()
+	self.init()
 }
 
 // Checks that stored definition is up to date with the model
@@ -155,7 +153,7 @@ func (self *hawkularSink) recent(live *metrics.MetricDefinition, model *metrics.
 }
 
 // Transform the MetricDescriptor to a format used by Hawkular-Metrics
-func (self *hawkularSink) descriptorToDefinition(md *sink_api.MetricDescriptor) metrics.MetricDefinition {
+func (self *hawkularSink) descriptorToDefinition(md *core.MetricDescriptor) metrics.MetricDefinition {
 	tags := make(map[string]string)
 	// Postfix description tags with _description
 	for _, l := range md.Labels {
@@ -179,28 +177,28 @@ func (self *hawkularSink) descriptorToDefinition(md *sink_api.MetricDescriptor) 
 	return hmd
 }
 
-func (self *hawkularSink) groupName(p *sink_api.Point) string {
-	n := []string{p.Labels[sink_api.LabelContainerName.Key], p.Name}
+func (self *hawkularSink) groupName(ms *core.MetricSet, metricName string) string {
+	n := []string{ms.Labels[core.LabelContainerName.Key], metricName}
 	return strings.Join(n, separator)
 }
 
-func (self *hawkularSink) idName(p *sink_api.Point) string {
+func (self *hawkularSink) idName(ms *core.MetricSet, metricName string) string {
 	n := make([]string, 0, 3)
-	n = append(n, p.Labels[sink_api.LabelContainerName.Key])
-	if p.Labels[sink_api.LabelPodId.Key] != "" {
-		n = append(n, p.Labels[sink_api.LabelPodId.Key])
+	n = append(n, ms.Labels[core.LabelContainerName.Key])
+	if ms.Labels[core.LabelPodId.Key] != "" {
+		n = append(n, ms.Labels[core.LabelPodId.Key])
 	} else {
-		n = append(n, p.Labels[sink_api.LabelHostID.Key])
+		n = append(n, ms.Labels[core.LabelHostID.Key])
 	}
-	n = append(n, p.Name)
+	n = append(n, metricName)
 
 	return strings.Join(n, separator)
 }
 
 // Check that metrics tags are defined on the Hawkular server and if not,
 // register the metric definition.
-func (self *hawkularSink) registerIfNecessary(t *sink_api.Timeseries, m ...metrics.Modifier) error {
-	key := self.idName(t.Point)
+func (self *hawkularSink) registerIfNecessary(ms *core.MetricSet, metricName string, m ...metrics.Modifier) error {
+	key := self.idName(ms, metricName)
 
 	self.regLock.Lock()
 	defer self.regLock.Unlock()
@@ -209,7 +207,7 @@ func (self *hawkularSink) registerIfNecessary(t *sink_api.Timeseries, m ...metri
 	// the stored metrics cache for example)
 	if _, found := self.reg[key]; !found {
 		// Register the metric descriptor here..
-		if md, f := self.models[t.MetricDescriptor.Name]; f {
+		if md, f := self.models[metricName]; f {
 			// Copy the original map
 			mdd := *md
 			tags := make(map[string]string)
@@ -219,12 +217,12 @@ func (self *hawkularSink) registerIfNecessary(t *sink_api.Timeseries, m ...metri
 			mdd.Tags = tags
 
 			// Set tag values
-			for k, v := range t.Point.Labels {
+			for k, v := range ms.Labels {
 				mdd.Tags[k] = v
 			}
 
-			mdd.Tags[groupTag] = self.groupName(t.Point)
-			mdd.Tags[descriptorTag] = t.MetricDescriptor.Name
+			mdd.Tags[groupTag] = self.groupName(ms, metricName)
+			mdd.Tags[descriptorTag] = metricName
 
 			m = append(m, self.modifiers...)
 
@@ -238,7 +236,7 @@ func (self *hawkularSink) registerIfNecessary(t *sink_api.Timeseries, m ...metri
 			// Add to the lookup table
 			self.reg[key] = &mdd
 		} else {
-			return fmt.Errorf("Could not find definition model with name %s", t.MetricDescriptor.Name)
+			return fmt.Errorf("Could not find definition model with name %s", metricName)
 		}
 	}
 	// TODO Compare the definition tags and update if necessary? Quite expensive operation..
@@ -246,58 +244,60 @@ func (self *hawkularSink) registerIfNecessary(t *sink_api.Timeseries, m ...metri
 	return nil
 }
 
-func (self *hawkularSink) StoreTimeseries(ts []sink_api.Timeseries) error {
-	if len(ts) > 0 {
+func (self *hawkularSink) ExportData(db *core.DataBatch) {
+	totalCount := 0
+	for _, ms := range db.MetricSets {
+		totalCount += len(ms.MetricValues)
+	}
+
+	// TODO: !!!! Limit number of metrics per batch !!!!
+	if len(db.MetricSets) > 0 {
 		tmhs := make(map[string][]metrics.MetricHeader)
 
 		if &self.labelTenant == nil {
-			tmhs[self.client.Tenant] = make([]metrics.MetricHeader, 0, len(ts))
+			tmhs[self.client.Tenant] = make([]metrics.MetricHeader, 0, totalCount)
 		}
 
 		wg := &sync.WaitGroup{}
 
-	Store:
-		for _, t := range ts {
-			t := t
+		for _, ms := range db.MetricSets {
+		Store:
+			for metricName, _ := range ms.MetricValues {
 
-			for _, filter := range self.filters {
-				if !filter(&t) {
-					continue Store
+				for _, filter := range self.filters {
+					if !filter(ms, metricName) {
+						continue Store
+					}
 				}
-			}
 
-			tenant := self.client.Tenant
+				tenant := self.client.Tenant
 
-			if &self.labelTenant != nil {
-				if v, found := t.Point.Labels[self.labelTenant]; found {
-					tenant = v
+				if &self.labelTenant != nil {
+					if v, found := ms.Labels[self.labelTenant]; found {
+						tenant = v
+					}
 				}
+
+				// Registering should not block the processing
+				wg.Add(1)
+				go func(ms *core.MetricSet, metricName string, tenant string) {
+					defer wg.Done()
+					self.registerIfNecessary(ms, metricName, metrics.Tenant(tenant))
+				}(ms, metricName, tenant)
+
+				mH, err := self.pointToMetricHeader(ms, metricName, db.Timestamp)
+				if err != nil {
+					// One transformation error should not prevent the whole process
+					glog.Errorf(err.Error())
+					continue
+				}
+
+				if _, found := tmhs[tenant]; !found {
+					tmhs[tenant] = make([]metrics.MetricHeader, 0)
+				}
+
+				tmhs[tenant] = append(tmhs[tenant], *mH)
 			}
-
-			// Registering should not block the processing
-			wg.Add(1)
-			go func(t *sink_api.Timeseries, tenant string) {
-				defer wg.Done()
-				self.registerIfNecessary(t, metrics.Tenant(tenant))
-			}(&t, tenant)
-
-			if t.MetricDescriptor.ValueType == sink_api.ValueBool {
-				// TODO: Model to availability type once we see some real world examples
-				break
-			}
-
-			mH, err := self.pointToMetricHeader(&t)
-			if err != nil {
-				// One transformation error should not prevent the whole process
-				glog.Errorf(err.Error())
-				continue
-			}
-
-			if _, found := tmhs[tenant]; !found {
-				tmhs[tenant] = make([]metrics.MetricHeader, 0)
-			}
-
-			tmhs[tenant] = append(tmhs[tenant], *mH)
 		}
 
 		for k, v := range tmhs {
@@ -314,39 +314,40 @@ func (self *hawkularSink) StoreTimeseries(ts []sink_api.Timeseries) error {
 		}
 		wg.Wait()
 	}
-	return nil
 }
 
 // Converts Timeseries to metric structure used by the Hawkular
-func (self *hawkularSink) pointToMetricHeader(t *sink_api.Timeseries) (*metrics.MetricHeader, error) {
+func (self *hawkularSink) pointToMetricHeader(ms *core.MetricSet, metricName string, timestamp time.Time) (*metrics.MetricHeader, error) {
 
-	p := t.Point
-	name := self.idName(p)
+	metricValue := ms.MetricValues[metricName]
+	name := self.idName(ms, metricName)
 
-	value, err := metrics.ConvertToFloat64(p.Value)
-	if err != nil {
-		return nil, err
+	var value float64
+	if metricValue.ValueType == core.ValueInt64 {
+		value = float64(metricValue.IntValue)
+	} else {
+		value = float64(metricValue.FloatValue)
 	}
 
 	m := metrics.Datapoint{
 		Value:     value,
-		Timestamp: metrics.UnixMilli(p.End),
+		Timestamp: metrics.UnixMilli(timestamp),
 	}
 
 	mh := &metrics.MetricHeader{
 		Id:   name,
 		Data: []metrics.Datapoint{m},
-		Type: heapsterTypeToHawkularType(t.MetricDescriptor.Type),
+		Type: heapsterTypeToHawkularType(metricValue.MetricType),
 	}
 
 	return mh, nil
 }
 
-func heapsterTypeToHawkularType(t sink_api.MetricType) metrics.MetricType {
+func heapsterTypeToHawkularType(t core.MetricType) metrics.MetricType {
 	switch t {
-	case sink_api.MetricCumulative:
+	case core.MetricCumulative:
 		return metrics.Counter
-	case sink_api.MetricGauge:
+	case core.MetricGauge:
 		return metrics.Gauge
 	default:
 		return metrics.Gauge
@@ -367,18 +368,8 @@ func (self *hawkularSink) DebugInfo() string {
 	return info
 }
 
-func (self *hawkularSink) StoreEvents(events []kube_api.Event) error {
-	return nil
-}
-
 func (self *hawkularSink) Name() string {
 	return "Hawkular-Metrics Sink"
-}
-
-// END: ExternalSink
-
-func init() {
-	extpoints.SinkFactories.Register(NewHawkularSink, "hawkular")
 }
 
 func (self *hawkularSink) init() error {
@@ -537,8 +528,8 @@ func parseFilters(v []string) ([]Filter, error) {
 }
 
 func labelFilter(label string, r *regexp.Regexp) Filter {
-	return func(t *sink_api.Timeseries) bool {
-		for k, v := range t.Point.Labels {
+	return func(ms *core.MetricSet, metricName string) bool {
+		for k, v := range ms.Labels {
 			if k == label {
 				if r.MatchString(v) {
 					return false
@@ -550,17 +541,17 @@ func labelFilter(label string, r *regexp.Regexp) Filter {
 }
 
 func nameFilter(r *regexp.Regexp) Filter {
-	return func(t *sink_api.Timeseries) bool {
-		return !r.MatchString(t.Point.Name)
+	return func(ms *core.MetricSet, metricName string) bool {
+		return !r.MatchString(metricName)
 	}
 }
 
-func NewHawkularSink(u *url.URL, _ extpoints.HeapsterConf) ([]sink_api.ExternalSink, error) {
+func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 	sink := &hawkularSink{
 		uri: u,
 	}
 	if err := sink.init(); err != nil {
 		return nil, err
 	}
-	return []sink_api.ExternalSink{sink}, nil
+	return sink, nil
 }

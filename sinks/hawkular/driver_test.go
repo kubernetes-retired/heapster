@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/hawkular/hawkular-client-go/metrics"
-	sink_api "k8s.io/heapster/sinks/api"
+	"k8s.io/heapster/core"
 
 	assert "github.com/stretchr/testify/require"
 )
@@ -43,16 +43,16 @@ func TestDescriptorTransform(t *testing.T) {
 
 	hSink := dummySink()
 
-	ld := sink_api.LabelDescriptor{
+	ld := core.LabelDescriptor{
 		Key:         "k1",
 		Description: "d1",
 	}
-	smd := sink_api.MetricDescriptor{
+	smd := core.MetricDescriptor{
 		Name:      "test/metric/1",
-		Units:     sink_api.UnitsBytes,
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricGauge,
-		Labels:    []sink_api.LabelDescriptor{ld},
+		Units:     core.UnitsBytes,
+		ValueType: core.ValueInt64,
+		Type:      core.MetricGauge,
+		Labels:    []core.LabelDescriptor{ld},
 	}
 
 	md := hSink.descriptorToDefinition(&smd)
@@ -63,7 +63,7 @@ func TestDescriptorTransform(t *testing.T) {
 	assert.Equal(t, smd.Units.String(), md.Tags[unitsTag])
 	assert.Equal(t, "d1", md.Tags["k1_description"])
 
-	smd.Type = sink_api.MetricCumulative
+	smd.Type = core.MetricCumulative
 
 	md = hSink.descriptorToDefinition(&smd)
 	assert.Equal(t, md.Type, metrics.Counter)
@@ -72,46 +72,43 @@ func TestDescriptorTransform(t *testing.T) {
 func TestMetricTransform(t *testing.T) {
 	hSink := dummySink()
 
-	smd := sink_api.MetricDescriptor{
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricCumulative,
-	}
-
 	l := make(map[string]string)
 	l["spooky"] = "notvisible"
-	l[sink_api.LabelHostname.Key] = "localhost"
-	l[sink_api.LabelHostID.Key] = "localhost"
-	l[sink_api.LabelContainerName.Key] = "docker"
-	l[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	l[core.LabelHostname.Key] = "localhost"
+	l[core.LabelHostID.Key] = "localhost"
+	l[core.LabelContainerName.Key] = "docker"
+	l[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
-	p := sink_api.Point{
-		Name:   "test/metric/1",
+	metricName := "test/metric/1"
+
+	metricSet := core.MetricSet{
 		Labels: l,
-		Start:  time.Now(),
-		End:    time.Now(),
-		Value:  int64(123456),
+		MetricValues: map[string]core.MetricValue{
+			metricName: core.MetricValue{
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricGauge,
+				IntValue:   123456,
+			},
+		},
 	}
 
-	ts := sink_api.Timeseries{
-		MetricDescriptor: &smd,
-		Point:            &p,
-	}
-
-	m, err := hSink.pointToMetricHeader(&ts)
+	now := time.Now()
+	m, err := hSink.pointToMetricHeader(&metricSet, metricName, now)
 	assert.NoError(t, err)
 
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", p.Labels[sink_api.LabelContainerName.Key], p.Labels[sink_api.LabelPodId.Key], p.Name), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key],
+		metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
 
 	assert.Equal(t, 1, len(m.Data))
 	_, ok := m.Data[0].Value.(float64)
 	assert.True(t, ok, "Value should have been converted to float64")
 
-	delete(l, sink_api.LabelPodId.Key)
+	delete(l, core.LabelPodId.Key)
 
-	m, err = hSink.pointToMetricHeader(&ts)
+	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
 	assert.NoError(t, err)
 
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", p.Labels[sink_api.LabelContainerName.Key], p.Labels[sink_api.LabelHostID.Key], p.Name), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelHostID.Key], metricName), m.Id)
 
 }
 
@@ -230,24 +227,24 @@ func TestRegister(t *testing.T) {
 	hSink, err := integSink(s.URL + "?tenant=test-heapster")
 	assert.NoError(t, err)
 
-	md := make([]sink_api.MetricDescriptor, 0, 1)
-	ld := sink_api.LabelDescriptor{
+	md := make([]core.MetricDescriptor, 0, 1)
+	ld := core.LabelDescriptor{
 		Key:         "k1",
 		Description: "d1",
 	}
-	smd := sink_api.MetricDescriptor{
+	smd := core.MetricDescriptor{
 		Name:      "test/metric/1",
-		Units:     sink_api.UnitsBytes,
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricGauge,
-		Labels:    []sink_api.LabelDescriptor{ld},
+		Units:     core.UnitsBytes,
+		ValueType: core.ValueInt64,
+		Type:      core.MetricGauge,
+		Labels:    []core.LabelDescriptor{ld},
 	}
-	smdg := sink_api.MetricDescriptor{
+	smdg := core.MetricDescriptor{
 		Name:      "test/metric/2",
-		Units:     sink_api.UnitsBytes,
-		ValueType: sink_api.ValueDouble,
-		Type:      sink_api.MetricCumulative,
-		Labels:    []sink_api.LabelDescriptor{},
+		Units:     core.UnitsBytes,
+		ValueType: core.ValueFloat,
+		Type:      core.MetricCumulative,
+		Labels:    []core.LabelDescriptor{},
 	}
 
 	md = append(md, smd, smdg)
@@ -307,56 +304,44 @@ func TestStoreTimeseries(t *testing.T) {
 
 	l := make(map[string]string)
 	l["projectId"] = "test-label"
-	l[sink_api.LabelContainerName.Key] = "test-container"
-	l[sink_api.LabelPodId.Key] = "test-podid"
+	l[core.LabelContainerName.Key] = "test-container"
+	l[core.LabelPodId.Key] = "test-podid"
 
 	lg := make(map[string]string)
-	lg[sink_api.LabelContainerName.Key] = "test-container"
-	lg[sink_api.LabelPodId.Key] = "test-podid"
+	lg[core.LabelContainerName.Key] = "test-container"
+	lg[core.LabelPodId.Key] = "test-podid"
 
-	p := sink_api.Point{
-		Name:   "test/metric/1",
+	metricSet1 := core.MetricSet{
 		Labels: l,
-		Start:  time.Now(),
-		End:    time.Now(),
-		Value:  int64(123456),
+		MetricValues: map[string]core.MetricValue{
+			"test/metric/1": core.MetricValue{
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricCumulative,
+				IntValue:   123456,
+			},
+		},
 	}
-	pg := sink_api.Point{
-		Name:   "test/metric/2",
+
+	metricSet2 := core.MetricSet{
 		Labels: lg,
-		Start:  time.Now(),
-		End:    time.Now(),
-		Value:  float64(123.456),
+		MetricValues: map[string]core.MetricValue{
+			"test/metric/2": core.MetricValue{
+				ValueType:  core.ValueFloat,
+				MetricType: core.MetricGauge,
+				FloatValue: 123.456,
+			},
+		},
 	}
 
-	smd := sink_api.MetricDescriptor{
-		Name:      "test/metric/1",
-		Units:     sink_api.UnitsCount,
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricCumulative,
-		Labels:    []sink_api.LabelDescriptor{},
+	data := core.DataBatch{
+		Timestamp: time.Now(),
+		MetricSets: map[string]*core.MetricSet{
+			"pod1": &metricSet1,
+			"pod2": &metricSet2,
+		},
 	}
 
-	smdg := sink_api.MetricDescriptor{
-		Name:      "test/metric/2",
-		Units:     sink_api.UnitsBytes,
-		ValueType: sink_api.ValueDouble,
-		Type:      sink_api.MetricGauge,
-		Labels:    []sink_api.LabelDescriptor{},
-	}
-
-	ts := sink_api.Timeseries{
-		MetricDescriptor: &smd,
-		Point:            &p,
-	}
-
-	tsg := sink_api.Timeseries{
-		MetricDescriptor: &smdg,
-		Point:            &pg,
-	}
-
-	err = hSink.StoreTimeseries([]sink_api.Timeseries{ts, tsg})
-	assert.NoError(t, err)
+	hSink.ExportData(&data)
 	assert.Equal(t, 2, len(calls))
 	assert.Equal(t, 2, len(ids))
 
@@ -378,19 +363,19 @@ func TestUserPass(t *testing.T) {
 	hSink, err := integSink(s.URL + "?user=tester&pass=hidden")
 	assert.NoError(t, err)
 
-	// md := make([]sink_api.MetricDescriptor, 0, 1)
-	ld := sink_api.LabelDescriptor{
+	// md := make([]core.MetricDescriptor, 0, 1)
+	ld := core.LabelDescriptor{
 		Key:         "k1",
 		Description: "d1",
 	}
-	smd := sink_api.MetricDescriptor{
+	smd := core.MetricDescriptor{
 		Name:      "test/metric/1",
-		Units:     sink_api.UnitsBytes,
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricGauge,
-		Labels:    []sink_api.LabelDescriptor{ld},
+		Units:     core.UnitsBytes,
+		ValueType: core.ValueInt64,
+		Type:      core.MetricGauge,
+		Labels:    []core.LabelDescriptor{ld},
 	}
-	err = hSink.Register([]sink_api.MetricDescriptor{smd})
+	err = hSink.Register([]core.MetricDescriptor{smd})
 	assert.NoError(t, err)
 }
 
@@ -417,105 +402,91 @@ func TestFiltering(t *testing.T) {
 	l := make(map[string]string)
 	l["namespace_id"] = "123"
 	l["container_name"] = "/system.slice/-.mount"
-	l[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	l[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
 	l2 := make(map[string]string)
 	l2["namespace_id"] = "123"
 	l2["container_name"] = "/system.slice/dbus.service"
-	l2[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	l2[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
 	l3 := make(map[string]string)
 	l3["namespace_id"] = "123"
-	l3[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	l3[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
 	l4 := make(map[string]string)
 	l4["namespace_id"] = ""
-	l4[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	l4[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
 	l5 := make(map[string]string)
 	l5["namespace_id"] = "123"
-	l5[sink_api.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	l5[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
-	p := sink_api.Point{
-		Name:   "/system.slice/-.mount//cpu/limit",
+	metricSet1 := core.MetricSet{
 		Labels: l,
-		Start:  time.Now(),
-		End:    time.Now(),
-		Value:  int64(123456),
-	}
-	smd := sink_api.MetricDescriptor{
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricCumulative,
-	}
-	ts := sink_api.Timeseries{
-		MetricDescriptor: &smd,
-		Point:            &p,
+		MetricValues: map[string]core.MetricValue{
+			"/system.slice/-.mount//cpu/limit": core.MetricValue{
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricCumulative,
+				IntValue:   123456,
+			},
+		},
 	}
 
-	p2 := sink_api.Point{
-		Name:   "/system.slice/dbus.service//cpu/usage",
+	metricSet2 := core.MetricSet{
 		Labels: l2,
-		Start:  time.Now(),
-		End:    time.Now(),
-		Value:  int64(123456),
-	}
-	smd2 := sink_api.MetricDescriptor{
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricCumulative,
-	}
-	ts2 := sink_api.Timeseries{
-		MetricDescriptor: &smd2,
-		Point:            &p2,
+		MetricValues: map[string]core.MetricValue{
+			"/system.slice/dbus.service//cpu/usage": core.MetricValue{
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricCumulative,
+				IntValue:   123456,
+			},
+		},
 	}
 
-	p3 := sink_api.Point{
-		Name:   "test/metric/1",
+	metricSet3 := core.MetricSet{
 		Labels: l3,
-		Start:  time.Now(),
-		End:    time.Now(),
-		Value:  int64(123456),
-	}
-	smd3 := sink_api.MetricDescriptor{
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricCumulative,
-	}
-	ts3 := sink_api.Timeseries{
-		MetricDescriptor: &smd3,
-		Point:            &p3,
-	}
-	p4 := sink_api.Point{
-		Name:   "test/metric/1",
-		Labels: l4,
-		Start:  time.Now(),
-		End:    time.Now(),
-		Value:  int64(123456),
-	}
-	smd4 := sink_api.MetricDescriptor{
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricCumulative,
-	}
-	ts4 := sink_api.Timeseries{
-		MetricDescriptor: &smd4,
-		Point:            &p4,
-	}
-	p5 := sink_api.Point{
-		Name:   "removeme",
-		Labels: l5,
-		Start:  time.Now(),
-		End:    time.Now(),
-		Value:  int64(123456),
-	}
-	smd5 := sink_api.MetricDescriptor{
-		ValueType: sink_api.ValueInt64,
-		Type:      sink_api.MetricCumulative,
-	}
-	ts5 := sink_api.Timeseries{
-		MetricDescriptor: &smd5,
-		Point:            &p5,
+		MetricValues: map[string]core.MetricValue{
+			"test/metric/1": core.MetricValue{
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricCumulative,
+				IntValue:   123456,
+			},
+		},
 	}
 
-	err = hSink.StoreTimeseries([]sink_api.Timeseries{ts, ts2, ts3, ts4, ts5})
-	assert.NoError(t, err)
+	metricSet4 := core.MetricSet{
+		Labels: l4,
+		MetricValues: map[string]core.MetricValue{
+			"test/metric/1": core.MetricValue{
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricCumulative,
+				IntValue:   123456,
+			},
+		},
+	}
+
+	metricSet5 := core.MetricSet{
+		Labels: l5,
+		MetricValues: map[string]core.MetricValue{
+			"removeme": core.MetricValue{
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricCumulative,
+				IntValue:   123456,
+			},
+		},
+	}
+
+	data := core.DataBatch{
+		Timestamp: time.Now(),
+		MetricSets: map[string]*core.MetricSet{
+			"pod1": &metricSet1,
+			"pod2": &metricSet2,
+			"pod3": &metricSet3,
+			"pod4": &metricSet4,
+			"pod5": &metricSet5,
+		},
+	}
+	hSink.ExportData(&data)
 
 	assert.Equal(t, 1, len(mH))
 }
