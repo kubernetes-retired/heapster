@@ -2,7 +2,7 @@
 # Stock Grafana + a few custom dashboards
 #
 
-FROM grafana/grafana:2.1.0
+FROM grafana/grafana:2.5.0
 
 RUN apt-get update && \
     apt-get install -y curl

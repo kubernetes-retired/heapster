@@ -1,5 +1,5 @@
 
-TAG = v2.1.0
+TAG = v2.5.0
 PREFIX = kubernetes
 
 all: container
