@@ -553,5 +553,10 @@ func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 	if err := sink.init(); err != nil {
 		return nil, err
 	}
+	metrics := make([]core.MetricDescriptor, 0, len(core.StandardMetrics))
+	for _, metric := range core.StandardMetrics {
+		metrics = append(metrics, metric.MetricDescriptor)
+	}
+	sink.Register(metrics)
 	return sink, nil
 }

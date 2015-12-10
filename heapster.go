@@ -30,8 +30,6 @@ import (
 	"k8s.io/heapster/core"
 	"k8s.io/heapster/manager"
 	"k8s.io/heapster/sinks"
-	"k8s.io/heapster/sinks/log"
-	"k8s.io/heapster/sinks/metric"
 	"k8s.io/heapster/sources"
 	"k8s.io/heapster/version"
 )
@@ -46,11 +44,13 @@ var (
 	argTLSClientCAFile  = flag.String("tls_client_ca", "", "file containing TLS client CA for client cert validation")
 	argAllowedUsers     = flag.String("allowed_users", "", "comma-separated list of allowed users")
 	argSources          manager.Uris
+	argSinks            manager.Uris
 )
 
 func main() {
 	defer glog.Flush()
 	flag.Var(&argSources, "source", "source(s) to watch")
+	flag.Var(&argSinks, "sink", "external sink(s) that receive data")
 	flag.Parse()
 	setMaxProcs()
 	glog.Infof(strings.Join(os.Args, " "))
@@ -70,13 +70,15 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	metricSink := metricsink.NewMetricSink(125*time.Second, 15*time.Minute,
-		// TODO: switch to instant cpu usage once available
-		[]string{
-			core.MetricCpuUsage.MetricDescriptor.Name,
-			core.MetricMemoruUsage.MetricDescriptor.Name})
-
-	sinkManager, err := sinks.NewDataSinkManager([]core.DataSink{logsink.NewLogSink(), metricSink}, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
+	sinksFactory := sinks.NewSinkFactory()
+	metricSink, sinkList := sinksFactory.BuildAll(argSinks)
+	if metricSink == nil {
+		glog.Fatalf("Failed to create metric sink")
+	}
+	for _, sink := range sinkList {
+		glog.Infof("Starting with %s sink", sink.Name())
+	}
+	sinkManager, err := sinks.NewDataSinkManager(sinkList, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
 	if err != nil {
 		glog.Fatal(err)
 	}

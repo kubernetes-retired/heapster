@@ -18,7 +18,6 @@ sanitize:
 	hooks/check_boilerplate.sh
 	hooks/check_gofmt.sh
 	hooks/run_vet.sh
-	hooks/check_generate.sh
 
 test-unit: clean deps sanitize build
 	GOOS=linux GOARCH=amd64 godep go test --test.short -race ./... $(FLAGS)
