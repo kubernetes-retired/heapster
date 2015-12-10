@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.19.0 (9-12-2015)
+- Switched to InfluxDB 0.9. The data layout was changed.
+- Added Kafka and Riemann sinks.
+- Removed poll_duration flag.
+- Authentication and security improvements.
+- Fixed issue with unavailable sink.
+
 ## 0.18.1 (9-18-2015)
 - Avoid using UIDs for Kubernetes events.
 - Export container labels.
