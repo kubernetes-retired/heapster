@@ -63,7 +63,7 @@ func (this *SinkFactory) BuildAll(uris manager.Uris) (*metricsink.MetricSink, []
 	}
 	if metric == nil {
 		uri := manager.Uri{}
-		uri.Set("metrics")
+		uri.Set("metric")
 		sink, err := this.Build(uri)
 		if err != nil {
 			result = append(result, metric)
