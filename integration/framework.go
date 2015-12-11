@@ -164,14 +164,21 @@ func destroyCluster(kubeBaseDir string) error {
 
 func downloadRelease(workDir, version string) error {
 	// Temporary download path.
-	downloadPath := filepath.Join(workDir, "kube")
+	filename := "kubernetes.tar.gz"
+	tmpDirPath := filepath.Join(workDir, "kube")
+	downloadPath := filepath.Join(tmpDirPath, filename)
+
 	// Format url.
 	downloadUrl := fmt.Sprintf(imageUrlTemplate, version)
 	glog.V(1).Infof("About to download kube release using url: %q", downloadUrl)
 
+	if err := exec.Command("mkdir", "-p", tmpDirPath).Run(); err != nil {
+		return fmt.Errorf("failed to mkdir -p %s - %v", tmpDirPath, err)
+	}
+
 	// Download kube code and store it in a temp dir.
-	if err := exec.Command("wget", downloadUrl, "-O", downloadPath).Run(); err != nil {
-		return fmt.Errorf("failed to wget kubernetes release @ %q - %v", downloadUrl, err)
+	if err := exec.Command("curl", "-L", downloadUrl, "-o", downloadPath).Run(); err != nil {
+		return fmt.Errorf("failed to curl kubernetes release @ %q to %s  - %v", downloadUrl, downloadPath, err)
 	}
 
 	// Un-tar kube release.
