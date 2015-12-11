@@ -146,7 +146,16 @@ func (esm *externalSinkManager) store() error {
 	var errors []string
 	for i := 0; i < errorsLen; i++ {
 		if err := <-errorsChan; err != nil {
-			errors = append(errors, fmt.Sprintf("%v ", err))
+			strError := fmt.Sprintf("%v ", err)
+			found := false
+			for _, otherError := range errors {
+				if otherError == strError {
+					found = true
+				}
+			}
+			if !found {
+				errors = append(errors, strError)
+			}
 		}
 	}
 	if len(errors) > 0 {
