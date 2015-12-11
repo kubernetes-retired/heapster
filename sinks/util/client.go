@@ -55,7 +55,7 @@ func (cii *clientInitializerImpl) setup() {
 	}
 	err := cii.initializer()
 	if err != nil {
-		glog.V(2).Infof("Failed to initialize client %q- %v", cii.name, err)
+		glog.Errorf("Failed to initialize client %q- %v", cii.name, err)
 		return
 	}
 	cii.setClientConfigured(true)

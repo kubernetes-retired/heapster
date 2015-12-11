@@ -239,13 +239,13 @@ func (self gcmAutocalingSink) StoreTimeseries(input []sink_api.Timeseries) error
 			continue
 		}
 		if err != nil || ts == nil {
-			glog.Infof("Failed to create Timeseries for metric %v, host %v. Error %v.", autoscalingMetrics[metric.Name].name, metric.Labels[sink_api.LabelHostname.Key], err)
+			glog.Errorf("Failed to create Timeseries for metric %v, host %v. Error %v.", autoscalingMetrics[metric.Name].name, metric.Labels[sink_api.LabelHostname.Key], err)
 			continue
 		}
 
 		val := self.getNewValue(metric, ts)
 		if val == nil {
-			glog.Infof("Failed to compute new value for metric %v, host %v.", autoscalingMetrics[metric.Name].name, metric.Labels[sink_api.LabelHostname.Key])
+			glog.Errorf("Failed to compute new value for metric %v, host %v.", autoscalingMetrics[metric.Name].name, metric.Labels[sink_api.LabelHostname.Key])
 			continue
 		}
 		ts.Point.Int64Value = nil

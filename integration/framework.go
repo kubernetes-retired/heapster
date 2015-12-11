@@ -224,7 +224,7 @@ func requireNewCluster(baseDir, version string) bool {
 	glog.V(1).Infof("checking if existing cluster can be used")
 	versionInfo, err := kubeClient.ServerVersion()
 	if err != nil {
-		glog.V(1).Infof("failed to get kube version info - %q", err)
+		glog.Errorf("failed to get kube version info - %q", err)
 		return true
 	}
 	return !strings.Contains(versionInfo.GitVersion, version)
