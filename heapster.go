@@ -14,6 +14,7 @@
 
 //go:generate ./hooks/run_extpoints.sh
 
+// TODO(pwittrock): delete this comment 2
 package main
 
 import (
