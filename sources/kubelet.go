@@ -90,8 +90,8 @@ func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *Metr
 	}
 
 	for _, metric := range StandardMetrics {
-		if metric.HasValue(&c.Spec) {
-			cMetrics.MetricValues[metric.Name] = metric.GetValue(&c.Spec, c.Stats[0])
+		if metric.HasValue(c.Spec) {
+			cMetrics.MetricValues[metric.Name] = metric.GetValue(c.Spec, c.Stats[0])
 		}
 	}
 

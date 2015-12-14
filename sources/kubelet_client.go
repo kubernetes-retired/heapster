@@ -41,13 +41,11 @@ type KubeletClient struct {
 	client *http.Client
 }
 
-func sampleContainerStats(stats []*cadvisor.ContainerStats) []*api.ContainerStats {
+func sampleContainerStats(stats []*cadvisor.ContainerStats) []*cadvisor.ContainerStats {
 	if len(stats) == 0 {
-		return []*api.ContainerStats{}
+		return []*cadvisor.ContainerStats{}
 	}
-	return []*api.ContainerStats{{
-		ContainerStats: *stats[0],
-	}}
+	return []*cadvisor.ContainerStats{stats[0]}
 }
 
 func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
@@ -76,7 +74,7 @@ func (self *KubeletClient) parseStat(containerInfo *cadvisor.ContainerInfo) *api
 	}
 	container := &api.Container{
 		Name:  containerInfo.Name,
-		Spec:  api.ContainerSpec{ContainerSpec: containerInfo.Spec},
+		Spec:  &containerInfo.Spec,
 		Stats: sampleContainerStats(containerInfo.Stats),
 	}
 	if len(containerInfo.Aliases) > 0 {
