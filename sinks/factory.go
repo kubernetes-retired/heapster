@@ -66,7 +66,7 @@ func (this *SinkFactory) BuildAll(uris manager.Uris) (*metricsink.MetricSink, []
 		uri.Set("metric")
 		sink, err := this.Build(uri)
 		if err == nil {
-			result = append(result, metric)
+			result = append(result, sink)
 			metric = sink.(*metricsink.MetricSink)
 		} else {
 			glog.Errorf("Error while creating metric sink: %v", err)
