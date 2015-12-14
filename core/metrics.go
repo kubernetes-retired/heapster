@@ -17,7 +17,7 @@ package core
 import (
 	"time"
 
-	source_api "k8s.io/heapster/sources/api"
+	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
 var StandardMetrics = []Metric{
@@ -44,10 +44,10 @@ var MetricUptime = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsMilliseconds,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return !spec.CreationTime.IsZero()
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
@@ -63,10 +63,10 @@ var MetricCpuUsage = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsNanoseconds,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasCpu
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
@@ -92,10 +92,10 @@ var MetricCpuLimit = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasCpu && (spec.Cpu.Limit > 0)
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		// Normalize to a conversion factor of 1000.
 		return MetricValue{
 			ValueType:  ValueInt64,
@@ -112,15 +112,6 @@ var MetricCpuRequest = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
-		return spec.CpuRequest > 0
-	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{
-			ValueType:  ValueInt64,
-			MetricType: MetricGauge,
-			IntValue:   spec.CpuRequest}
-	},
 }
 
 var MetricMemoruUsage = Metric{
@@ -131,10 +122,10 @@ var MetricMemoruUsage = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsBytes,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasMemory
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricGauge,
@@ -150,10 +141,10 @@ var MetricMemoryWorkingSet = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsBytes,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasMemory
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricGauge,
@@ -169,10 +160,10 @@ var MetricMemoryLimit = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsBytes,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasMemory && (spec.Memory.Limit > 0)
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricGauge,
@@ -188,15 +179,6 @@ var MetricMemoryRequest = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsBytes,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
-		return spec.MemoryRequest > 0
-	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
-		return MetricValue{
-			ValueType:  ValueInt64,
-			MetricType: MetricGauge,
-			IntValue:   spec.MemoryRequest}
-	},
 }
 
 var MetricMemoryPageFaults = Metric{
@@ -207,10 +189,10 @@ var MetricMemoryPageFaults = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasMemory
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
@@ -226,10 +208,10 @@ var MetricMemoryMajorPageFaults = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasMemory
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
@@ -245,10 +227,10 @@ var MetricNetworkRx = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsBytes,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasNetwork
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
@@ -264,10 +246,10 @@ var MetricNetworkRxErrors = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasNetwork
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
@@ -283,10 +265,10 @@ var MetricNetworkTx = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsBytes,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasNetwork
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
@@ -302,10 +284,10 @@ var MetricNetworkTxErrors = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
-	HasValue: func(spec *source_api.ContainerSpec) bool {
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 		return spec.HasNetwork
 	},
-	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) MetricValue {
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
@@ -324,10 +306,10 @@ var MetricNetworkTxErrors = Metric{
 // 		Units:       UnitsBytes,
 // 		Labels:      metricLabels,
 // 	},
-// 	HasValue: func(spec *source_api.ContainerSpec) bool {
+// 	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 // 		return spec.HasFilesystem
 // 	},
-// 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
+// 	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
 // 		result := make([]InternalPoint, 0, len(stat.Filesystem))
 // 		for _, fs := range stat.Filesystem {
 // 			result = append(result, InternalPoint{
@@ -349,10 +331,10 @@ var MetricNetworkTxErrors = Metric{
 // 		Units:       UnitsBytes,
 // 		Labels:      metricLabels,
 // 	},
-// 	HasValue: func(spec *source_api.ContainerSpec) bool {
+// 	HasValue: func(spec *cadvisor.ContainerSpec) bool {
 // 		return spec.HasFilesystem
 // 	},
-// 	GetValue: func(spec *source_api.ContainerSpec, stat *source_api.ContainerStats) []InternalPoint {
+// 	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
 // 		result := make([]InternalPoint, 0, len(stat.Filesystem))
 // 		for _, fs := range stat.Filesystem {
 // 			result = append(result, InternalPoint{
@@ -388,8 +370,8 @@ type Metric struct {
 	MetricDescriptor
 
 	// Returns whether this metric is present.
-	HasValue func(*source_api.ContainerSpec) bool
+	HasValue func(*cadvisor.ContainerSpec) bool
 
 	// Returns a slice of internal point objects that contain metric values and associated labels.
-	GetValue func(*source_api.ContainerSpec, *source_api.ContainerStats) MetricValue
+	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) MetricValue
 }
