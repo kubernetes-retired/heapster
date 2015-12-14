@@ -60,7 +60,16 @@ const (
 	maxSendBatchSize = 10000
 )
 
+func (sink *influxdbSink) resetConnection() {
+	glog.Infof("Influxdb connection reset")
+	sink.dbExists = false
+	sink.client = nil
+}
+
 func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
+	sink.Lock()
+	defer sink.Unlock()
+
 	dataPoints := make([]influxdb.Point, 0, 0)
 	for _, metricSet := range dataBatch.MetricSets {
 		for metricName, metricValue := range metricSet.MetricValues {
@@ -107,10 +116,11 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	start := time.Now()
 	if _, err := sink.client.Write(bp); err != nil {
 		if strings.Contains(err.Error(), dbNotFoundError) {
-			sink.dbExists = false
+			sink.resetConnection()
+		} else if _, _, err := sink.client.Ping(); err != nil {
+			glog.Errorf("InfluxDB ping failed: %v", err)
+			sink.resetConnection()
 		}
-		glog.Errorf("Failed to write stats to influxDB - %v", err)
-		return
 	}
 	end := time.Now()
 	glog.V(4).Info("Exported %d data to influxDB in %s", len(dataPoints), end.Sub(start))
@@ -125,8 +135,14 @@ func (sink *influxdbSink) Stop() {
 }
 
 func (sink *influxdbSink) createDatabase() error {
-	sink.Lock()
-	defer sink.Unlock()
+	if sink.client == nil {
+		client, err := newClient(sink.c)
+		if err != nil {
+			return err
+		}
+		sink.client = client
+	}
+
 	if sink.dbExists {
 		return nil
 	}
@@ -143,8 +159,7 @@ func (sink *influxdbSink) createDatabase() error {
 	return nil
 }
 
-// Returns a thread-compatible implementation of influxdb interactions.
-func new(c config) (core.DataSink, error) {
+func newClient(c config) (influxdbClient, error) {
 	url := &url.URL{
 		Scheme: "http",
 		Host:   c.host,
@@ -167,10 +182,19 @@ func new(c config) (core.DataSink, error) {
 	if _, _, err := client.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping InfluxDB server at %q - %v", c.host, err)
 	}
+	return client, nil
+}
+
+// Returns a thread-compatible implementation of influxdb interactions.
+func new(c config) core.DataSink {
+	client, err := newClient(c)
+	if err != nil {
+		fmt.Errorf("issues while creating an InfluxDB sink: %v, will retry on use", err)
+	}
 	return &influxdbSink{
-		client: client,
+		client: client, // can be nil
 		c:      c,
-	}, nil
+	}
 }
 
 func CreateInfluxdbSink(uri *url.URL) (core.DataSink, error) {
@@ -203,10 +227,7 @@ func CreateInfluxdbSink(uri *url.URL) (core.DataSink, error) {
 		}
 		defaultConfig.secure = val
 	}
-	sink, err := new(defaultConfig)
-	if err != nil {
-		return nil, err
-	}
+	sink := new(defaultConfig)
 	glog.Infof("created influxdb sink with options: %v", defaultConfig)
 
 	return sink, nil
