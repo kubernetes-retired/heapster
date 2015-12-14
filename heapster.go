@@ -59,10 +59,12 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	// sources
 	if len(argSources) != 1 {
 		glog.Fatal("wrong number of sources specified")
 	}
-	sourceProvider, err := sources.NewKubeletProvider(&argSources[0].Val)
+	sourceFactory := sources.NewSourceFactory()
+	sourceProvider, err := sourceFactory.BuildAll(argSources)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -70,6 +72,8 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
+
+	// sinks
 	sinksFactory := sinks.NewSinkFactory()
 	metricSink, sinkList := sinksFactory.BuildAll(argSinks)
 	if metricSink == nil {
@@ -83,6 +87,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	// main manager
 	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, *argMetricResolution,
 		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
 	if err != nil {

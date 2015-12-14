@@ -84,6 +84,11 @@ type MetricsSource interface {
 	ScrapeMetrics(start, end time.Time) *DataBatch
 }
 
+// Provider of list of sources to be scaped.
+type MetricsSourceProvider interface {
+	GetMetricsSources() []MetricsSource
+}
+
 type DataSink interface {
 	Name() string
 

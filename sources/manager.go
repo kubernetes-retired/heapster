@@ -25,11 +25,6 @@ const (
 	DefaultMetricsScrapeTimeout = 20 * time.Second
 )
 
-// Provider of list of sources to be scaped.
-type MetricsSourceProvider interface {
-	GetMetricsSources() []MetricsSource
-}
-
 func NewSourceManager(metricsSourceProvider MetricsSourceProvider, metricsScrapeTimeout time.Duration) (MetricsSource, error) {
 	return &sourceManager{
 		metricsSourceProvider: metricsSourceProvider,
