@@ -15,7 +15,7 @@
 package sources
 
 import (
-	"k8s.io/heapster/sources/api"
+	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
 const nodeContainerName = "machine"
@@ -27,15 +27,15 @@ var sysContainerNames = map[string]string{
 	"/system":        "system",
 }
 
-func isNode(c *api.Container) bool {
+func isNode(c *cadvisor.ContainerInfo) bool {
 	return c.Name == "/"
 }
 
-func isSysContainer(c *api.Container) bool {
+func isSysContainer(c *cadvisor.ContainerInfo) bool {
 	_, exist := sysContainerNames[c.Name]
 	return exist
 }
 
-func getSysContainerName(c *api.Container) string {
+func getSysContainerName(c *cadvisor.ContainerInfo) string {
 	return sysContainerNames[c.Name]
 }

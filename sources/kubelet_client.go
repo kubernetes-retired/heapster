@@ -26,7 +26,6 @@ import (
 	"time"
 
 	cadvisor "github.com/google/cadvisor/info/v1"
-	"k8s.io/heapster/sources/api"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
@@ -68,20 +67,12 @@ func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http
 	return nil
 }
 
-func (self *KubeletClient) parseStat(containerInfo *cadvisor.ContainerInfo) *api.Container {
-	if len(containerInfo.Stats) == 0 {
-		return nil
-	}
-	container := &api.Container{
-		Name:  containerInfo.Name,
-		Spec:  &containerInfo.Spec,
-		Stats: sampleContainerStats(containerInfo.Stats),
-	}
+func (self *KubeletClient) parseStat(containerInfo *cadvisor.ContainerInfo) *cadvisor.ContainerInfo {
+	containerInfo.Stats = sampleContainerStats(containerInfo.Stats)
 	if len(containerInfo.Aliases) > 0 {
-		container.Name = containerInfo.Aliases[0]
+		containerInfo.Name = containerInfo.Aliases[0]
 	}
-
-	return container
+	return containerInfo
 }
 
 // TODO(vmarmol): Use Kubernetes' if we export it as an API.
@@ -109,7 +100,7 @@ type statsRequest struct {
 }
 
 // Get stats for all non-Kubernetes containers.
-func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) ([]api.Container, error) {
+func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) ([]cadvisor.ContainerInfo, error) {
 	scheme := "http"
 	if self.config != nil && self.config.EnableHttps {
 		scheme = "https"
@@ -123,7 +114,7 @@ func (self *KubeletClient) GetPort() int {
 	return int(self.config.Port)
 }
 
-func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([]api.Container, error) {
+func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([]cadvisor.ContainerInfo, error) {
 	// Request data from all subcontainers.
 	request := statsRequest{
 		ContainerName: "/",
@@ -151,7 +142,7 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 		return nil, fmt.Errorf("failed to get all container stats from Kubelet URL %q: %v", url, err)
 	}
 
-	result := make([]api.Container, 0, len(containers))
+	result := make([]cadvisor.ContainerInfo, 0, len(containers))
 	for _, containerInfo := range containers {
 		cont := self.parseStat(&containerInfo)
 		if cont != nil {
