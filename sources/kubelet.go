@@ -229,7 +229,7 @@ func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	// watch nodes
 	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
 	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, 0)
+	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
 	reflector.Run()
 
 	return &kubeletProvider{
