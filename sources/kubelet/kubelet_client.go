@@ -15,7 +15,7 @@
 // This file implements a cadvisor datasource, that collects metrics from an instance
 // of cadvisor runing on a specific host.
 
-package sources
+package kubelet
 
 import (
 	"bytes"
