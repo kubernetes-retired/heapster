@@ -29,6 +29,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/heapster/core"
 	"k8s.io/heapster/manager"
+	"k8s.io/heapster/processors"
 	"k8s.io/heapster/sinks"
 	"k8s.io/heapster/sources"
 	"k8s.io/heapster/version"
@@ -88,7 +89,7 @@ func main() {
 	}
 
 	// main manager
-	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{}, sinkManager, *argMetricResolution,
+	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{&processors.PodAggregator{}}, sinkManager, *argMetricResolution,
 		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
 	if err != nil {
 		glog.Fatal(err)
