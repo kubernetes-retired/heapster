@@ -303,7 +303,7 @@ func newClient(c config) (influxdbClient, error) {
 func new(c config) (sink_api.ExternalSink, error) {
 	client, err := newClient(c)
 	if err != nil {
-		fmt.Errorf("issues while creating an InfluxDB sink: %v, will retry on use", err)
+		return nil, fmt.Errorf("issues while creating an InfluxDB sink: %v, will retry on use", err)
 	}
 	return &influxdbSink{
 		client: client, // can be nil
