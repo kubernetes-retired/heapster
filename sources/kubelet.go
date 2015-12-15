@@ -20,9 +20,9 @@ import (
 	"time"
 
 	. "k8s.io/heapster/core"
-	"k8s.io/heapster/sources/api"
 
 	"github.com/golang/glog"
+	cadvisor "github.com/google/cadvisor/info/v1"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
@@ -56,7 +56,7 @@ func (this *kubeletMetricsSource) String() string {
 	return fmt.Sprintf("kubelet:%s:%d", this.host.IP, this.host.Port)
 }
 
-func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *MetricSet) {
+func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (string, *MetricSet) {
 	var metricSetKey string
 	cMetrics := &MetricSet{
 		MetricValues: map[string]MetricValue{},
@@ -90,8 +90,8 @@ func (this *kubeletMetricsSource) decodeMetrics(c *api.Container) (string, *Metr
 	}
 
 	for _, metric := range StandardMetrics {
-		if metric.HasValue(c.Spec) {
-			cMetrics.MetricValues[metric.Name] = metric.GetValue(c.Spec, c.Stats[0])
+		if metric.HasValue(&c.Spec) {
+			cMetrics.MetricValues[metric.Name] = metric.GetValue(&c.Spec, c.Stats[0])
 		}
 	}
 

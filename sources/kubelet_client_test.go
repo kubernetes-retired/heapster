@@ -23,21 +23,22 @@ import (
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/heapster/sources/api"
 	"k8s.io/kubernetes/pkg/util"
 )
 
-func checkContainer(t *testing.T, expected api.Container, actual api.Container) {
-	assert.True(t, actual.Spec.Eq(expected.Spec))
+func checkContainer(t *testing.T, expected cadvisor_api.ContainerInfo, actual cadvisor_api.ContainerInfo) {
+	assert.True(t, actual.Spec.Eq(&expected.Spec))
 	for i, stat := range actual.Stats {
 		assert.True(t, stat.Eq(expected.Stats[i]))
 	}
 }
 
 func TestAllContainers(t *testing.T) {
-	rootContainer := api.Container{
-		Name: "/",
-		Spec: &cadvisor_api.ContainerSpec{
+	rootContainer := cadvisor_api.ContainerInfo{
+		ContainerReference: cadvisor_api.ContainerReference{
+			Name: "/",
+		},
+		Spec: cadvisor_api.ContainerSpec{
 			CreationTime: time.Now(),
 			HasCpu:       true,
 			HasMemory:    true,
@@ -49,9 +50,11 @@ func TestAllContainers(t *testing.T) {
 		},
 	}
 
-	subcontainer := api.Container{
-		Name: "/sub",
-		Spec: &cadvisor_api.ContainerSpec{
+	subcontainer := cadvisor_api.ContainerInfo{
+		ContainerReference: cadvisor_api.ContainerReference{
+			Name: "/sub",
+		},
+		Spec: cadvisor_api.ContainerSpec{
 			CreationTime: time.Now(),
 			HasCpu:       true,
 			HasMemory:    true,
@@ -67,7 +70,7 @@ func TestAllContainers(t *testing.T) {
 			ContainerReference: cadvisor_api.ContainerReference{
 				Name: rootContainer.Name,
 			},
-			Spec: *rootContainer.Spec,
+			Spec: rootContainer.Spec,
 			Stats: []*cadvisor_api.ContainerStats{
 				rootContainer.Stats[0],
 			},
@@ -76,7 +79,7 @@ func TestAllContainers(t *testing.T) {
 			ContainerReference: cadvisor_api.ContainerReference{
 				Name: subcontainer.Name,
 			},
-			Spec: *subcontainer.Spec,
+			Spec: subcontainer.Spec,
 			Stats: []*cadvisor_api.ContainerStats{
 				subcontainer.Stats[0],
 			},
