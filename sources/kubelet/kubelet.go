@@ -78,6 +78,10 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		}
 		ns := c.Spec.Labels[kubernetesPodNamespaceLabel]
 		podName := c.Spec.Labels[kubernetesPodNameLabel]
+		if cName == "" || ns == "" || podName == "" {
+			glog.Errorf("Missing metadata for container %v. Got: %+v", c.Name, c.Spec.Labels)
+			return "", nil
+		}
 		metricSetKey = PodContainerKey(ns, podName, cName)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePodContainer
 		cMetrics.Labels[LabelContainerName.Key] = cName
