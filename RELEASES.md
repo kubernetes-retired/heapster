@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.19.1 (15-12-2015)
+- Better connection handling for InfluxDB.
+- Refresh node and pod lists every 1 hour.
+
 ## 0.19.0 (9-12-2015)
 - Switched to InfluxDB 0.9. The data layout was changed.
 - Added Kafka and Riemann sinks.
