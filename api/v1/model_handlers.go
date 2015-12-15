@@ -32,6 +32,14 @@ import (
 // when manager.model has not been initialized.
 var errModelNotActivated = errors.New("the model is not activated")
 
+var metricNamesConversion = map[string]string{
+	"cpu-usage":      "cpu/usage_rate",
+	"cpu-limit":      "cpu/limit",
+	"memory-limit":   "memory/limit",
+	"memory-usage":   "memory/usage",
+	"memory-working": "memory/working_set",
+}
+
 // RegisterModel registers the Model API endpoints.
 // All endpoints that end with a {metric-name} also receive a start time query parameter.
 // The start and end times should be specified as a string, formatted according to RFC 3339.
@@ -253,9 +261,17 @@ func (a *Api) podListMetrics(request *restful.Request, response *restful.Respons
 		response.WriteError(http.StatusBadRequest, err)
 		return
 	}
-	keys := strings.Split(request.PathParameter("pod-list"), ",")
-	metrics := a.metricSink.GetMetric(request.PathParameter("metric-name"),
-		keys, start, end)
+	ns := request.PathParameter("namespace-name")
+	keys := []string{}
+	for _, podName := range strings.Split(request.PathParameter("pod-list"), ",") {
+		keys = append(keys, core.PodKey(ns, podName))
+	}
+	metricName := getMetricName(request)
+	if metricName == "" {
+		response.WriteError(http.StatusBadRequest, fmt.Errorf("Metric not supported: %v", request.PathParameter("metric-name")))
+		return
+	}
+	metrics := a.metricSink.GetMetric(metricName, keys, start, end)
 	result := types.MetricResultList{
 		Items: make([]types.MetricResult, 0, len(keys)),
 	}
@@ -304,7 +320,12 @@ func (a *Api) processMetricRequest(key string, request *restful.Request, respons
 		response.WriteError(http.StatusBadRequest, err)
 		return
 	}
-	metrics := a.metricSink.GetMetric(request.PathParameter("metric-name"), []string{key}, start, end)
+	metricName := getMetricName(request)
+	if metricName == "" {
+		response.WriteError(http.StatusBadRequest, fmt.Errorf("Metric not supported: %v", request.PathParameter("metric-name")))
+		return
+	}
+	metrics := a.metricSink.GetMetric(metricName, []string{key}, start, end)
 	converted := exportTimestampedMetricValue(metrics[key])
 	response.WriteEntity(converted)
 }
@@ -312,6 +333,11 @@ func (a *Api) processMetricRequest(key string, request *restful.Request, respons
 func (a *Api) processMetricNamesRequest(key string, response *restful.Response) {
 	metricNames := a.metricSink.GetMetricNames(key)
 	response.WriteEntity(metricNames)
+}
+
+func getMetricName(request *restful.Request) string {
+	param := request.PathParameter("metric-name")
+	return metricNamesConversion[param]
 }
 
 func getStartEndTime(request *restful.Request) (time.Time, time.Time, error) {
