@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sources
+package kubelet
 
 import (
 	cadvisor "github.com/google/cadvisor/info/v1"
