@@ -45,7 +45,7 @@ func sampleContainerStats(stats []*cadvisor.ContainerStats) []*cadvisor.Containe
 	if len(stats) == 0 {
 		return []*cadvisor.ContainerStats{}
 	}
-	return []*cadvisor.ContainerStats{stats[0]}
+	return []*cadvisor.ContainerStats{stats[len(stats)-1]}
 }
 
 func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
@@ -127,6 +127,7 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 	// Request data from all subcontainers.
 	request := statsRequest{
 		ContainerName: "/",
+		NumStats:      1,
 		Start:         start,
 		End:           end,
 		Subcontainers: true,
