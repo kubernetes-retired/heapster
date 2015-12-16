@@ -2,21 +2,21 @@ apiVersion: v1
 kind: ReplicationController
 metadata:
   labels:
-    name: kafkaSink
-  name: kafkaSink
+    name: kafka
+  name: kafka
   namespace: kube-system
 spec:
   replicas: 1
   selector:
-    name: kafka
+    name: kafkazookeeper
   template:
     metadata:
       labels:
-        name: kafka
+        name: kafkazookeeper
     spec:
       containers:
-      - name: kafka
+      - name: kafkazookeeper
         image: kubernetes/heapster_kafka:canary
         env:
           - name: ADVERTISED_PORT
-            value: 9092
+            value: '9092'

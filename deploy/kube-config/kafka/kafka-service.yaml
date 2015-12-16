@@ -10,5 +10,5 @@ spec:
     port: 9092
     targetPort: 9092
   selector:
-    name: kafkaSink
+    name: kafka
 
