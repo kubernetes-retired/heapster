@@ -552,7 +552,7 @@
                 ],
                 "groupByTags": [],
                 "measurement": "cpu/usage_ns_cumulative",
-                "query": "SELECT derivative(mean(value), $interval)/10000000 FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
+                "query": "SELECT non_negative_derivative(mean(value), $interval)/10000000 FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
                 "rawQuery": true,
                 "tags": [
                   {
@@ -679,7 +679,7 @@
                 ],
                 "groupByTags": [],
                 "measurement": "cpu/usage_ns_cumulative",
-                "query": "SELECT derivative(mean(value), $interval)/10000000 FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
+                "query": "SELECT non_negative_derivative(mean(value), $interval)/10000000 FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
                 "rawQuery": true,
                 "tags": [
                   {

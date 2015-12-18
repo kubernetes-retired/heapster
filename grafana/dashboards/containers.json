@@ -238,15 +238,15 @@
                 "alias": "Usage",
                 "fields": [
                   {
-                    "func": "mean",
+                    "func": "derivative",
                     "name": "value"
                   }
                 ],
                 "fill": "null",
                 "groupByTags": [],
                 "hide": false,
-                "measurement": "cpu/limit_gauge",
-                "query": "SELECT derivative(mean(value), $interval)/10000000 FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" =~ /$container/ AND $timeFilter GROUP BY time($interval)",
+                "measurement": "cpu/usage_ns_cumulative",
+                "query": "SELECT non_negative_derivative(mean(value), $interval)/10000000 FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" =~ /$container/ AND $timeFilter GROUP BY time($interval)",
                 "rawQuery": true,
                 "tags": [
                   {
