@@ -27,8 +27,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
-	api_v1 "k8s.io/heapster/api/v1/types"
-	"k8s.io/heapster/core"
+	api_v1 "k8s.io/heapster/metrics/api/v1/types"
+	"k8s.io/heapster/metrics/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	apiErrors "k8s.io/kubernetes/pkg/api/errors"
 	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
