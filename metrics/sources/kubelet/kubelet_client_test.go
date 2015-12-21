@@ -44,7 +44,7 @@ func TestAllContainers(t *testing.T) {
 			HasMemory:    true,
 		},
 		Stats: []*cadvisor_api.ContainerStats{
-			&cadvisor_api.ContainerStats{
+			{
 				Timestamp: time.Now(),
 			},
 		},
@@ -60,7 +60,7 @@ func TestAllContainers(t *testing.T) {
 			HasMemory:    true,
 		},
 		Stats: []*cadvisor_api.ContainerStats{
-			&cadvisor_api.ContainerStats{
+			{
 				Timestamp: time.Now(),
 			},
 		},

@@ -262,7 +262,7 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 
 		for _, ms := range db.MetricSets {
 		Store:
-			for metricName, _ := range ms.MetricValues {
+			for metricName := range ms.MetricValues {
 
 				for _, filter := range self.filters {
 					if !filter(ms, metricName) {

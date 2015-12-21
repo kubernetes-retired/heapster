@@ -34,7 +34,7 @@ func TestSimpleWrite(t *testing.T) {
 	batch.MetricSets["pod1"] = &core.MetricSet{
 		Labels: map[string]string{"bzium": "hocuspocus"},
 		MetricValues: map[string]core.MetricValue{
-			"m1": core.MetricValue{
+			"m1": {
 				ValueType:  core.ValueInt64,
 				MetricType: core.MetricGauge,
 				IntValue:   31415,

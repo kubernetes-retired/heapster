@@ -39,7 +39,7 @@ influxdb:
 	docker build -t $(PREFIX)/heapster_influxdb:$(TAG) influxdb/
 
 clean:
-	rm -f heapster 
+	rm -f heapster
 	rm -f deploy/docker/heapster
 
 .PHONY: all deps build sanitize test-unit test-unit-cov test-integration container grafana influxdb clean

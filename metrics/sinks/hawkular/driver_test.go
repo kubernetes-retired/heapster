@@ -84,7 +84,7 @@ func TestMetricTransform(t *testing.T) {
 	metricSet := core.MetricSet{
 		Labels: l,
 		MetricValues: map[string]core.MetricValue{
-			metricName: core.MetricValue{
+			metricName: {
 				ValueType:  core.ValueInt64,
 				MetricType: core.MetricGauge,
 				IntValue:   123456,
@@ -314,7 +314,7 @@ func TestStoreTimeseries(t *testing.T) {
 	metricSet1 := core.MetricSet{
 		Labels: l,
 		MetricValues: map[string]core.MetricValue{
-			"test/metric/1": core.MetricValue{
+			"test/metric/1": {
 				ValueType:  core.ValueInt64,
 				MetricType: core.MetricCumulative,
 				IntValue:   123456,
@@ -325,7 +325,7 @@ func TestStoreTimeseries(t *testing.T) {
 	metricSet2 := core.MetricSet{
 		Labels: lg,
 		MetricValues: map[string]core.MetricValue{
-			"test/metric/2": core.MetricValue{
+			"test/metric/2": {
 				ValueType:  core.ValueFloat,
 				MetricType: core.MetricGauge,
 				FloatValue: 123.456,
@@ -424,7 +424,7 @@ func TestFiltering(t *testing.T) {
 	metricSet1 := core.MetricSet{
 		Labels: l,
 		MetricValues: map[string]core.MetricValue{
-			"/system.slice/-.mount//cpu/limit": core.MetricValue{
+			"/system.slice/-.mount//cpu/limit": {
 				ValueType:  core.ValueInt64,
 				MetricType: core.MetricCumulative,
 				IntValue:   123456,
@@ -435,7 +435,7 @@ func TestFiltering(t *testing.T) {
 	metricSet2 := core.MetricSet{
 		Labels: l2,
 		MetricValues: map[string]core.MetricValue{
-			"/system.slice/dbus.service//cpu/usage": core.MetricValue{
+			"/system.slice/dbus.service//cpu/usage": {
 				ValueType:  core.ValueInt64,
 				MetricType: core.MetricCumulative,
 				IntValue:   123456,
@@ -446,7 +446,7 @@ func TestFiltering(t *testing.T) {
 	metricSet3 := core.MetricSet{
 		Labels: l3,
 		MetricValues: map[string]core.MetricValue{
-			"test/metric/1": core.MetricValue{
+			"test/metric/1": {
 				ValueType:  core.ValueInt64,
 				MetricType: core.MetricCumulative,
 				IntValue:   123456,
@@ -457,7 +457,7 @@ func TestFiltering(t *testing.T) {
 	metricSet4 := core.MetricSet{
 		Labels: l4,
 		MetricValues: map[string]core.MetricValue{
-			"test/metric/1": core.MetricValue{
+			"test/metric/1": {
 				ValueType:  core.ValueInt64,
 				MetricType: core.MetricCumulative,
 				IntValue:   123456,
@@ -468,7 +468,7 @@ func TestFiltering(t *testing.T) {
 	metricSet5 := core.MetricSet{
 		Labels: l5,
 		MetricValues: map[string]core.MetricValue{
-			"removeme": core.MetricValue{
+			"removeme": {
 				ValueType:  core.ValueInt64,
 				MetricType: core.MetricCumulative,
 				IntValue:   123456,

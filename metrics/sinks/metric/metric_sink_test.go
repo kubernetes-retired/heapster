@@ -31,18 +31,18 @@ func TestGetMetrics(t *testing.T) {
 	batch1 := core.DataBatch{
 		Timestamp: now.Add(-180 * time.Second),
 		MetricSets: map[string]*core.MetricSet{
-			key: &core.MetricSet{
+			key: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelPodNamespace.Key:  "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
-					"m1": core.MetricValue{
+					"m1": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   60,
 					},
-					"m2": core.MetricValue{
+					"m2": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   666,
@@ -55,18 +55,18 @@ func TestGetMetrics(t *testing.T) {
 	batch2 := core.DataBatch{
 		Timestamp: now.Add(-60 * time.Second),
 		MetricSets: map[string]*core.MetricSet{
-			key: &core.MetricSet{
+			key: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelPodNamespace.Key:  "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
-					"m1": core.MetricValue{
+					"m1": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   40,
 					},
-					"m2": core.MetricValue{
+					"m2": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   444,
@@ -79,31 +79,31 @@ func TestGetMetrics(t *testing.T) {
 	batch3 := core.DataBatch{
 		Timestamp: now.Add(-20 * time.Second),
 		MetricSets: map[string]*core.MetricSet{
-			key: &core.MetricSet{
+			key: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelPodNamespace.Key:  "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
-					"m1": core.MetricValue{
+					"m1": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   20,
 					},
-					"m2": core.MetricValue{
+					"m2": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   222,
 					},
 				},
 			},
-			otherKey: &core.MetricSet{
+			otherKey: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelPodNamespace.Key:  "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
-					"m1": core.MetricValue{
+					"m1": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   123,

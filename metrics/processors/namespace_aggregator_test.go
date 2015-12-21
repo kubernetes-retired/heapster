@@ -27,18 +27,18 @@ func TestNamespaceAggregate(t *testing.T) {
 	batch := core.DataBatch{
 		Timestamp: time.Now(),
 		MetricSets: map[string]*core.MetricSet{
-			core.PodKey("ns1", "pod1"): &core.MetricSet{
+			core.PodKey("ns1", "pod1"): {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelNamespaceName.Key: "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
-					"m1": core.MetricValue{
+					"m1": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   10,
 					},
-					"m2": core.MetricValue{
+					"m2": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   222,
@@ -46,18 +46,18 @@ func TestNamespaceAggregate(t *testing.T) {
 				},
 			},
 
-			core.PodKey("ns1", "pod2"): &core.MetricSet{
+			core.PodKey("ns1", "pod2"): {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelNamespaceName.Key: "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
-					"m1": core.MetricValue{
+					"m1": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   100,
 					},
-					"m3": core.MetricValue{
+					"m3": {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricGauge,
 						IntValue:   30,

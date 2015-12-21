@@ -6,7 +6,7 @@ set -e
 
 pushd $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
-godep go build -a k8s.io/heapster
+godep go build -o heapster -a k8s.io/heapster/metrics
 
 docker build -t $IMAGE .
 popd
