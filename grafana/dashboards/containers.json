@@ -180,7 +180,7 @@
             },
             "hideTimeOverride": false,
             "id": 14,
-            "interval": "10s",
+            "interval": ">30s",
             "legend": {
               "avg": false,
               "current": true,
