@@ -82,12 +82,22 @@
                 "groupByTags": [],
                 "hide": false,
                 "measurement": "memory/limit_bytes_gauge",
-                "query": "SELECT last(value) FROM \"memory/limit_bytes_gauge\" WHERE \"container_name\" =~ /$container/ AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT last(value) FROM \"memory/limit_bytes_gauge\" WHERE \"container_name\" =~ /$container/ AND \"pod_name\" =~ /$pod/ AND \"pod_namespace\" =~ /$namespace/ AND $timeFilter GROUP BY time($interval) fill(null)",
                 "rawQuery": false,
                 "tags": [
                   {
                     "key": "container_name",
                     "value": "/$container/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_name",
+                    "value": "/$pod/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_namespace",
+                    "value": "/$namespace/"
                   }
                 ]
               },
@@ -103,12 +113,22 @@
                 "groupByTags": [],
                 "hide": false,
                 "measurement": "memory/usage_bytes_gauge",
-                "query": "SELECT last(value) FROM \"memory/usage_bytes_gauge\" WHERE \"container_name\" =~ /$container/ AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT last(value) FROM \"memory/usage_bytes_gauge\" WHERE \"container_name\" =~ /$container/ AND \"pod_name\" =~ /$pod/ AND \"pod_namespace\" =~ /$namespace/ AND $timeFilter GROUP BY time($interval) fill(null)",
                 "rawQuery": false,
                 "tags": [
                   {
                     "key": "container_name",
                     "value": "/$container/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_name",
+                    "value": "/$pod/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_namespace",
+                    "value": "/$namespace/"
                   }
                 ]
               },
@@ -124,12 +144,22 @@
                 "groupByTags": [],
                 "hide": false,
                 "measurement": "memory/working_set_bytes_gauge",
-                "query": "SELECT last(value) FROM \"memory/working_set_bytes_gauge\" WHERE \"container_name\" =~ /$container/ AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT last(value) FROM \"memory/working_set_bytes_gauge\" WHERE \"container_name\" =~ /$container/ AND \"pod_name\" =~ /$pod/ AND \"pod_namespace\" =~ /$namespace/ AND $timeFilter GROUP BY time($interval) fill(null)",
                 "rawQuery": false,
                 "tags": [
                   {
                     "key": "container_name",
                     "value": "/$container/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_name",
+                    "value": "/$pod/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_namespace",
+                    "value": "/$namespace/"
                   }
                 ]
               }
@@ -225,12 +255,22 @@
                 "groupByTags": [],
                 "hide": false,
                 "measurement": "cpu/limit_gauge",
-                "query": "SELECT mean(value) FROM \"cpu/limit_gauge\" WHERE \"container_name\" =~ /$container/ AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT mean(value) FROM \"cpu/limit_gauge\" WHERE \"container_name\" =~ /$container/ AND \"pod_name\" =~ /$pod/ AND \"pod_namespace\" =~ /$namespace/ AND $timeFilter GROUP BY time($interval) fill(null)",
                 "rawQuery": true,
                 "tags": [
                   {
                     "key": "container_name",
                     "value": "/$container/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_name",
+                    "value": "/$pod/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_namespace",
+                    "value": "/$namespace/"
                   }
                 ]
               },
@@ -246,12 +286,22 @@
                 "groupByTags": [],
                 "hide": false,
                 "measurement": "cpu/usage_ns_cumulative",
-                "query": "SELECT non_negative_derivative(mean(value), $interval)/10000000 FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" =~ /$container/ AND $timeFilter GROUP BY time($interval)",
+                "query": "SELECT non_negative_derivative(mean(value), $interval)/10000000 FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" =~ /$container/ AND \"pod_name\" =~ /$pod/ AND \"pod_namespace\" =~ /$namespace/ AND $timeFilter GROUP BY time($interval)",
                 "rawQuery": true,
                 "tags": [
                   {
                     "key": "container_name",
                     "value": "/$container/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_name",
+                    "value": "/$pod/"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "pod_namespace",
+                    "value": "/$namespace/"
                   }
                 ]
               }
