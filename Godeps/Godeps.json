@@ -16,6 +16,10 @@
 			"Rev": "6c5fa0d8f48f4661c9ba8709799c88d425ad20f0"
 		},
 		{
+			"ImportPath": "github.com/bigdatadev/goryman",
+			"Rev": "55c3cbc3df542201b3c140e72a758d0adae4bc05"
+		},
+		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
 			"Rev": "b965b613227fddccbfffe13eae360ed3fa822f8d"
 		},
