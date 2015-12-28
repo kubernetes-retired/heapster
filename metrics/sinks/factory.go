@@ -25,6 +25,7 @@ import (
 	"k8s.io/heapster/metrics/sinks/influxdb"
 	"k8s.io/heapster/metrics/sinks/log"
 	"k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/heapster/metrics/sinks/riemann"
 )
 
 type SinkFactory struct {
@@ -42,6 +43,8 @@ func (this *SinkFactory) Build(uri manager.Uri) (core.DataSink, error) {
 		return metricsink.NewMetricSink(140*time.Second, 15*time.Minute, []string{
 			core.MetricCpuUsageRate.MetricDescriptor.Name,
 			core.MetricMemoruUsage.MetricDescriptor.Name}), nil
+	case "riemann":
+		return riemann.CreateRiemannSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
