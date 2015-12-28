@@ -45,7 +45,7 @@ func (this *SinkFactory) Build(uri manager.Uri) (core.DataSink, error) {
 			core.MetricCpuUsageRate.MetricDescriptor.Name,
 			core.MetricMemoruUsage.MetricDescriptor.Name}), nil
 	case "riemann":
-	    return riemann.CreateRiemannSink(&uri.Val)
+		return riemann.CreateRiemannSink(&uri.Val)
 	case "kafka":
 		return kafka.NewKafkaSink(&uri.Val)
 	default:
