@@ -307,12 +307,7 @@ func (rc *realModel) GetNodePods(hostname string) []EntityListEntry {
 	}
 
 	for podname, val := range noderef.Pods {
-		// Set the Pod name as <namespace> / <podname>
-		namespace, err := rc.findPodNamespace(val)
-		if err != nil {
-			break
-		}
-		newEntity := makeEntityListEntry(namespace+"/"+podname, val.Metrics)
+		newEntity := makeEntityListEntry(podname, val.Metrics)
 		if newEntity.Name == "" {
 			continue
 		}
