@@ -18,14 +18,14 @@ import (
 	"fmt"
 
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/sources/kubelet"
+	"k8s.io/heapster/util/flags"
 )
 
 type SourceFactory struct {
 }
 
-func (this *SourceFactory) Build(uri manager.Uri) (core.MetricsSourceProvider, error) {
+func (this *SourceFactory) Build(uri flags.Uri) (core.MetricsSourceProvider, error) {
 	switch uri.Key {
 	case "kubernetes":
 		provider, err := kubelet.NewKubeletProvider(&uri.Val)
@@ -35,7 +35,7 @@ func (this *SourceFactory) Build(uri manager.Uri) (core.MetricsSourceProvider, e
 	}
 }
 
-func (this *SourceFactory) BuildAll(uris manager.Uris) (core.MetricsSourceProvider, error) {
+func (this *SourceFactory) BuildAll(uris flags.Uris) (core.MetricsSourceProvider, error) {
 	if len(uris) != 1 {
 		return nil, fmt.Errorf("Only one source is supported")
 	}

@@ -32,6 +32,7 @@ import (
 	"k8s.io/heapster/metrics/processors"
 	"k8s.io/heapster/metrics/sinks"
 	"k8s.io/heapster/metrics/sources"
+	"k8s.io/heapster/util/flags"
 	"k8s.io/heapster/version"
 )
 
@@ -44,8 +45,8 @@ var (
 	argTLSKeyFile       = flag.String("tls_key", "", "file containing TLS key")
 	argTLSClientCAFile  = flag.String("tls_client_ca", "", "file containing TLS client CA for client cert validation")
 	argAllowedUsers     = flag.String("allowed_users", "", "comma-separated list of allowed users")
-	argSources          manager.Uris
-	argSinks            manager.Uris
+	argSources          flags.Uris
+	argSinks            flags.Uris
 )
 
 func main() {

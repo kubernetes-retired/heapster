@@ -20,19 +20,19 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/sinks/hawkular"
 	"k8s.io/heapster/metrics/sinks/influxdb"
 	"k8s.io/heapster/metrics/sinks/kafka"
 	"k8s.io/heapster/metrics/sinks/log"
 	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sinks/riemann"
+	"k8s.io/heapster/util/flags"
 )
 
 type SinkFactory struct {
 }
 
-func (this *SinkFactory) Build(uri manager.Uri) (core.DataSink, error) {
+func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 	switch uri.Key {
 	case "influxdb":
 		return influxdb.CreateInfluxdbSink(&uri.Val)
@@ -53,7 +53,7 @@ func (this *SinkFactory) Build(uri manager.Uri) (core.DataSink, error) {
 	}
 }
 
-func (this *SinkFactory) BuildAll(uris manager.Uris) (*metricsink.MetricSink, []core.DataSink) {
+func (this *SinkFactory) BuildAll(uris flags.Uris) (*metricsink.MetricSink, []core.DataSink) {
 	result := make([]core.DataSink, 0, len(uris))
 	var metric *metricsink.MetricSink
 	for _, uri := range uris {
@@ -68,7 +68,7 @@ func (this *SinkFactory) BuildAll(uris manager.Uris) (*metricsink.MetricSink, []
 		result = append(result, sink)
 	}
 	if metric == nil {
-		uri := manager.Uri{}
+		uri := flags.Uri{}
 		uri.Set("metric")
 		sink, err := this.Build(uri)
 		if err == nil {
