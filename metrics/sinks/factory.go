@@ -23,6 +23,7 @@ import (
 	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/sinks/hawkular"
 	"k8s.io/heapster/metrics/sinks/influxdb"
+	"k8s.io/heapster/metrics/sinks/kafka"
 	"k8s.io/heapster/metrics/sinks/log"
 	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sinks/riemann"
@@ -44,7 +45,9 @@ func (this *SinkFactory) Build(uri manager.Uri) (core.DataSink, error) {
 			core.MetricCpuUsageRate.MetricDescriptor.Name,
 			core.MetricMemoruUsage.MetricDescriptor.Name}), nil
 	case "riemann":
-		return riemann.CreateRiemannSink(&uri.Val)
+	    return riemann.CreateRiemannSink(&uri.Val)
+	case "kafka":
+		return kafka.NewKafkaSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
