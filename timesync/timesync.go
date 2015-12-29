@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package timesync implements to check time skew between all kubernetes nodes and heapster
+// If detect time skew, heapster will send a warning to users.
 package timesync
 
 import (
