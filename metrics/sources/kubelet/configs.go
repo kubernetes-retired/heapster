@@ -15,16 +15,12 @@
 package kubelet
 
 import (
-	"fmt"
-	"io/ioutil"
 	"net/url"
 	"strconv"
 
 	"github.com/golang/glog"
-	"k8s.io/kubernetes/pkg/api/unversioned"
+	kube_config "k8s.io/heapster/util/kubernetes"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	kubeClientCmdApi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 )
 
 const (
@@ -37,108 +33,13 @@ const (
 	defaultInClusterConfig    = true
 )
 
-func getConfigOverrides(uri *url.URL) (*kubeClientCmd.ConfigOverrides, error) {
-	kubeConfigOverride := kubeClientCmd.ConfigOverrides{
-		ClusterInfo: kubeClientCmdApi.Cluster{
-			APIVersion: APIVersion,
-		},
-	}
-	if len(uri.Scheme) != 0 && len(uri.Host) != 0 {
-		kubeConfigOverride.ClusterInfo.Server = fmt.Sprintf("%s://%s", uri.Scheme, uri.Host)
-	}
-
-	opts := uri.Query()
-
-	if len(opts["apiVersion"]) >= 1 {
-		kubeConfigOverride.ClusterInfo.APIVersion = opts["apiVersion"][0]
-	}
-
-	if len(opts["insecure"]) > 0 {
-		insecure, err := strconv.ParseBool(opts["insecure"][0])
-		if err != nil {
-			return nil, err
-		}
-		kubeConfigOverride.ClusterInfo.InsecureSkipTLSVerify = insecure
-	}
-
-	return &kubeConfigOverride, nil
-}
-
 func getKubeConfigs(uri *url.URL) (*kube_client.Config, *kube_client.KubeletConfig, error) {
-	var (
-		kubeConfig *kube_client.Config
-		err        error
-	)
 
-	opts := uri.Query()
-	configOverrides, err := getConfigOverrides(uri)
+	kubeConfig, err := kube_config.GetKubeClientConfig(uri)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	inClusterConfig := defaultInClusterConfig
-	if len(opts["inClusterConfig"]) > 0 {
-		inClusterConfig, err = strconv.ParseBool(opts["inClusterConfig"][0])
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	if inClusterConfig {
-		kubeConfig, err = kube_client.InClusterConfig()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if configOverrides.ClusterInfo.Server != "" {
-			kubeConfig.Host = configOverrides.ClusterInfo.Server
-		}
-		kubeConfig.GroupVersion = &unversioned.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion}
-		kubeConfig.Insecure = configOverrides.ClusterInfo.InsecureSkipTLSVerify
-		if configOverrides.ClusterInfo.InsecureSkipTLSVerify {
-			kubeConfig.TLSClientConfig.CAFile = ""
-		}
-	} else {
-		authFile := ""
-		if len(opts["auth"]) > 0 {
-			authFile = opts["auth"][0]
-		}
-
-		if authFile != "" {
-			if kubeConfig, err = kubeClientCmd.NewNonInteractiveDeferredLoadingClientConfig(
-				&kubeClientCmd.ClientConfigLoadingRules{ExplicitPath: authFile},
-				configOverrides).ClientConfig(); err != nil {
-				return nil, nil, err
-			}
-		} else {
-			kubeConfig = &kube_client.Config{
-				Host:         configOverrides.ClusterInfo.Server,
-				GroupVersion: &unversioned.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion},
-				Insecure:     configOverrides.ClusterInfo.InsecureSkipTLSVerify,
-			}
-		}
-	}
-	if len(kubeConfig.Host) == 0 {
-		return nil, nil, fmt.Errorf("invalid kubernetes master url specified")
-	}
-	if len(kubeConfig.GroupVersion.Version) == 0 {
-		return nil, nil, fmt.Errorf("invalid kubernetes API version specified")
-	}
-
-	useServiceAccount := defaultUseServiceAccount
-	if len(opts["useServiceAccount"]) >= 1 {
-		useServiceAccount, err = strconv.ParseBool(opts["useServiceAccount"][0])
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	if useServiceAccount {
-		// If a readable service account token exists, then use it
-		if contents, err := ioutil.ReadFile(defaultServiceAccountFile); err == nil {
-			kubeConfig.BearerToken = string(contents)
-		}
-	}
+	opts := uri.Query()
 
 	kubeletPort := defaultKubeletPort
 	if len(opts["kubeletPort"]) >= 1 {
