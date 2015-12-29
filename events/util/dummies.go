@@ -68,3 +68,17 @@ func NewDummySink(name string, latency time.Duration) *DummySink {
 		stopped:     false,
 	}
 }
+
+type DummyEventSource struct {
+	eventBatch *core.EventBatch
+}
+
+func (this *DummyEventSource) GetNewEvents() *core.EventBatch {
+	return this.eventBatch
+}
+
+func NewDummySource(eventBatch *core.EventBatch) *DummyEventSource {
+	return &DummyEventSource{
+		eventBatch: eventBatch,
+	}
+}
