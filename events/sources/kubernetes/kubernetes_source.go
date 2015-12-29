@@ -16,11 +16,13 @@ package kubernetes
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/golang/glog"
 
 	"k8s.io/heapster/events/core"
+	kubeconfig "k8s.io/heapster/util/kubernetes"
 	kubeapi "k8s.io/kubernetes/pkg/api"
 	kubeapiunv "k8s.io/kubernetes/pkg/api/unversioned"
 	kubeclient "k8s.io/kubernetes/pkg/client/unversioned"
@@ -138,8 +140,16 @@ func (this *KubernetesEventSource) watch() {
 	}
 }
 
-func NewKubernetesSource(client kubeclient.Client) *KubernetesEventSource {
-	eventClient := client.Events(kubeapi.NamespaceAll)
+func NewKubernetesSource(uri *url.URL) (*KubernetesEventSource, error) {
+	kubeConfig, err := kubeconfig.GetKubeClientConfig(uri)
+	if err != nil {
+		return nil, err
+	}
+	kubeClient, err := kubeclient.New(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+	eventClient := kubeClient.Events(kubeapi.NamespaceAll)
 	result := KubernetesEventSource{
 		localEventsBuffer: make(chan *kubeapi.Event, LocalEventsBufferSize),
 		stopChannel:       make(chan struct{}),
@@ -147,5 +157,5 @@ func NewKubernetesSource(client kubeclient.Client) *KubernetesEventSource {
 		eventClient:       eventClient,
 	}
 	go result.watch()
-	return &result
+	return &result, nil
 }
