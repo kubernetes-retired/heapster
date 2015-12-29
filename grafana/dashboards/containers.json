@@ -315,7 +315,7 @@
       }
     ],
     "time": {
-      "from": "now-6h",
+      "from": "now-30m",
       "to": "now"
     },
     "timepicker": {
@@ -337,15 +337,14 @@
       ],
       "status": "Stable",
       "time_options": [
-        "5m",
         "15m",
         "1h",
+        "3h",
         "6h",
         "12h",
         "24h",
         "2d",
-        "7d",
-        "30d"
+        "7d"
       ],
       "type": "timepicker"
     },

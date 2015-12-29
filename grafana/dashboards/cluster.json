@@ -16,7 +16,7 @@
         "height": "100px",
         "panels": [
           {
-            "content": "#### This dashboard displays Memory, CPU and Disk metrics at both cluster and node levels. Select a node from the above dropdown to see metrics specific to that node. Select \"All\" to see metrics for all nodes side by side.\n\n##### * Cluster metrics are sum across all nodes.\n##### * Node metrics are displayed on one panel for easy comparison.\n##### * There's also a panel for each node so one could \"double-click\" into the node for further analysis.\n",
+            "content": "#### This dashboard displays Memory, CPU, Disk and Network metrics at both cluster and node levels. Select a node from the above dropdown to see metrics specific to that node. Select \"All\" to see metrics for all nodes side by side.\n\n##### * Cluster metrics are sum across all nodes.\n##### * Node metrics are displayed on one panel for easy comparison.\n##### * There's also a panel for each node so one could \"double-click\" into the node for further analysis.\n",
             "editable": true,
             "error": false,
             "id": 1,
@@ -185,7 +185,7 @@
             "decimals": 2,
             "editable": true,
             "error": false,
-            "fill": 3,
+            "fill": 1,
             "grid": {
               "leftLogBase": 1,
               "leftMax": null,
@@ -223,7 +223,7 @@
             "steppedLine": false,
             "targets": [
               {
-                "alias": "",
+                "alias": "Limit {$tag_hostname}",
                 "fields": [
                   {
                     "func": "max",
@@ -251,7 +251,7 @@
                 ]
               },
               {
-                "alias": "",
+                "alias": "Usage {$tag_hostname}",
                 "fields": [
                   {
                     "func": "max",
@@ -509,7 +509,7 @@
             "steppedLine": false,
             "targets": [
               {
-                "alias": "",
+                "alias": "Limit {$tag_hostname}",
                 "fields": [
                   {
                     "func": "last",
@@ -537,7 +537,7 @@
                 ]
               },
               {
-                "alias": "",
+                "alias": "Usage {$tag_hostname}",
                 "query": "SELECT non_negative_derivative(max(value),1u) FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
                 "rawQuery": true,
                 "refId": "B",
@@ -575,7 +575,7 @@
             "decimals": 2,
             "editable": true,
             "error": false,
-            "fill": 1,
+            "fill": 3,
             "grid": {
               "leftLogBase": 1,
               "leftMax": null,
@@ -683,7 +683,7 @@
             "decimals": 2,
             "editable": true,
             "error": false,
-            "fill": 1,
+            "fill": 3,
             "grid": {
               "leftLogBase": 1,
               "leftMax": null,
@@ -838,7 +838,7 @@
             "steppedLine": false,
             "targets": [
               {
-                "alias": "",
+                "alias": "Limit {$tag_hostname}",
                 "fields": [
                   {
                     "func": "last",
@@ -866,7 +866,7 @@
                 ]
               },
               {
-                "alias": "",
+                "alias": "Usage {$tag_hostname}",
                 "fields": [
                   {
                     "func": "last",
@@ -925,7 +925,7 @@
             "decimals": 2,
             "editable": true,
             "error": false,
-            "fill": 1,
+            "fill": 3,
             "grid": {
               "leftLogBase": 1,
               "leftMax": null,
@@ -1042,10 +1042,184 @@
         ],
         "showTitle": true,
         "title": "Individual Node Disk Usage"
+      },
+      {
+        "collapse": false,
+        "editable": true,
+        "height": "250px",
+        "panels": [
+          {
+            "aliasColors": {},
+            "bars": false,
+            "datasource": null,
+            "decimals": 2,
+            "editable": true,
+            "error": false,
+            "fill": 1,
+            "grid": {
+              "leftLogBase": 1,
+              "leftMax": null,
+              "leftMin": null,
+              "rightLogBase": 1,
+              "rightMax": null,
+              "rightMin": null,
+              "threshold1": null,
+              "threshold1Color": "rgba(216, 200, 27, 0.27)",
+              "threshold2": null,
+              "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            },
+            "id": 10,
+            "interval": ">30s",
+            "legend": {
+              "avg": false,
+              "current": true,
+              "max": false,
+              "min": false,
+              "show": true,
+              "total": false,
+              "values": true
+            },
+            "lines": true,
+            "linewidth": 3,
+            "links": [],
+            "nullPointMode": "connected",
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [
+              {
+                "alias": "/Rx /",
+                "transform": "negative-Y"
+              }
+            ],
+            "span": 12,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+              {
+                "alias": "Tx {$tag_hostname}",
+                "query": "SELECT non_negative_derivative(max(value),1s) FROM \"network/tx_bytes_cumulative\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
+                "rawQuery": true,
+                "refId": "A",
+                "target": ""
+              },
+              {
+                "alias": "Rx {$tag_hostname}",
+                "query": "SELECT non_negative_derivative(max(value),1s) FROM \"network/rx_bytes_cumulative\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
+                "rawQuery": true,
+                "refId": "B",
+                "target": ""
+              }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "",
+            "tooltip": {
+              "shared": true,
+              "value_type": "cumulative"
+            },
+            "type": "graph",
+            "x-axis": true,
+            "y-axis": true,
+            "y_formats": [
+              "Bps",
+              "Bps"
+            ]
+          }
+        ],
+        "showTitle": true,
+        "title": "Network Usage Group By Node"
+      },
+      {
+        "collapse": false,
+        "editable": true,
+        "height": "250px",
+        "panels": [
+          {
+            "aliasColors": {},
+            "bars": false,
+            "datasource": null,
+            "decimals": 2,
+            "editable": true,
+            "error": false,
+            "fill": 3,
+            "grid": {
+              "leftLogBase": 1,
+              "leftMax": null,
+              "leftMin": null,
+              "rightLogBase": 1,
+              "rightMax": null,
+              "rightMin": null,
+              "threshold1": null,
+              "threshold1Color": "rgba(216, 200, 27, 0.27)",
+              "threshold2": null,
+              "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            },
+            "id": 11,
+            "interval": ">30s",
+            "legend": {
+              "avg": false,
+              "current": true,
+              "max": false,
+              "min": false,
+              "show": true,
+              "total": false,
+              "values": true
+            },
+            "lines": true,
+            "linewidth": 3,
+            "links": [],
+            "minSpan": 6,
+            "nullPointMode": "connected",
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "repeat": "node",
+            "scopedVars": {},
+            "seriesOverrides": [],
+            "span": 6,
+            "stack": true,
+            "steppedLine": false,
+            "targets": [
+              {
+                "alias": "Tx",
+                "query": "SELECT non_negative_derivative(max(value),1s) FROM \"network/tx_bytes_cumulative\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
+                "rawQuery": true,
+                "refId": "A",
+                "target": ""
+              },
+              {
+                "alias": "Rx",
+                "query": "SELECT non_negative_derivative(max(value),1s) FROM \"network/rx_bytes_cumulative\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
+                "rawQuery": true,
+                "refId": "B",
+                "target": ""
+              }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "$node Network Usage",
+            "tooltip": {
+              "shared": true,
+              "value_type": "cumulative"
+            },
+            "type": "graph",
+            "x-axis": true,
+            "y-axis": true,
+            "y_formats": [
+              "Bps",
+              "Bps"
+            ]
+          }
+        ],
+        "showTitle": true,
+        "title": "Individual Node Network Usage"
       }
     ],
     "time": {
-      "from": "now-6h",
+      "from": "now-30m",
       "to": "now"
     },
     "timepicker": {
@@ -1067,15 +1241,14 @@
       ],
       "status": "Stable",
       "time_options": [
-        "5m",
         "15m",
         "1h",
+        "3h",
         "6h",
         "12h",
         "24h",
         "2d",
-        "7d",
-        "30d"
+        "7d"
       ],
       "type": "timepicker"
     },
