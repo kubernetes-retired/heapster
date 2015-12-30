@@ -47,7 +47,7 @@ var (
 	heapsterImage          = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
 	avoidBuild             = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
 	namespace              = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
-	maxRetries             = flag.Int("retries", 100, "Number of attempts before failing this test.")
+	maxRetries             = flag.Int("retries", 20, "Number of attempts before failing this test.")
 	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
 )
 
@@ -236,10 +236,13 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 	if err != nil {
 		return err
 	}
+	glog.V(0).Infof("Expected pods: %v", expectedPods)
+
 	expectedNodes, err := fm.GetNodes()
 	if err != nil {
 		return err
 	}
+	glog.V(0).Infof("Expected nodes: %v", expectedNodes)
 
 	timeseries, err := getTimeseries(fm, svc)
 	if err != nil {
@@ -480,17 +483,25 @@ func getStringResult(fm kubeFramework, svc *kube_api.Service, url string) ([]str
 }
 
 func checkMetricResultSanity(metrics *api_v1.MetricResult) error {
+	bytes, err := json.Marshal(*metrics)
+	if err != nil {
+		return err
+	}
+	stringVersion := string(bytes)
+
 	if len(metrics.Metrics) == 0 {
-		return fmt.Errorf("empty metrics")
+		return fmt.Errorf("empty metrics: %s", stringVersion)
 	}
+	// There should be recent metrics in the response.
 	if time.Now().Sub(metrics.LatestTimestamp).Seconds() > 120 {
-		return fmt.Errorf("corrupted last timestamp")
+		return fmt.Errorf("corrupted last timestamp: %s", stringVersion)
 	}
-	if time.Now().Sub(metrics.Metrics[0].Timestamp).Seconds() > 120 {
-		return fmt.Errorf("corrupted timestamp")
+	// Metrics don't have to be sorted, so the oldest one can be first.
+	if time.Now().Sub(metrics.Metrics[0].Timestamp).Hours() > 1 {
+		return fmt.Errorf("corrupted timestamp: %s", stringVersion)
 	}
 	if metrics.Metrics[0].Value > 10000 {
-		return fmt.Errorf("value too big")
+		return fmt.Errorf("value too big: %s", stringVersion)
 	}
 	return nil
 }
@@ -527,26 +538,18 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 	metricUrlsToCheck := []string{}
 	batchMetricsUrlsToCheck := []string{}
 	stringUrlsToCheck := []string{}
-	entityListEntryUrlsToCheck := []string{}
-	statsUrlsToCheck := []string{}
 
-	metricUrlsToCheck = append(metricUrlsToCheck,
-		fmt.Sprintf("/api/v1/model/metrics/%s", "cpu-usage"),
+	/* TODO: enable once cluster aggregator is added.
+	   metricUrlsToCheck = append(metricUrlsToCheck,
+	   fmt.Sprintf("/api/v1/model/metrics/%s", "cpu-usage"),
 	)
+	*/
 
-	entityListEntryUrlsToCheck = append(entityListEntryUrlsToCheck,
-		"/api/v1/model/nodes",
-		"/api/v1/model/namespaces",
-	)
-
-	stringUrlsToCheck = append(stringUrlsToCheck,
-		"/api/v1/model/",
-		"/api/v1/model/metrics",
-	)
-
-	statsUrlsToCheck = append(statsUrlsToCheck,
-		"/api/v1/model/stats/",
-	)
+	/* TODO: add once Cluster metrics aggregator is added.
+	   "/api/v1/model/metrics",
+	   "/api/v1/model/"
+	*/
+	stringUrlsToCheck = append(stringUrlsToCheck)
 
 	for _, node := range nodeList {
 		metricUrlsToCheck = append(metricUrlsToCheck,
@@ -627,26 +630,31 @@ func apiTest(kubeVersion string, zone string) error {
 		return err
 	}
 	testFuncs := []func() error{
-		func() error {
-			glog.V(2).Infof("Heapster metrics test...")
-			err := runHeapsterMetricsTest(fm, svc)
-			if err == nil {
-				glog.V(2).Infof("Heapster metrics test: OK")
-			} else {
-				glog.V(2).Infof("Heapster metrics test error: %v", err)
-			}
-			return err
-		},
-		func() error {
-			glog.V(2).Infof("Sinks test...")
-			err := runSinksTest(fm, svc)
-			if err == nil {
-				glog.V(2).Infof("Sinks test: OK")
-			} else {
-				glog.V(2).Infof("Sinks test error: %v", err)
-			}
-			return err
-		},
+		/*
+			TODO(piosz): Uncomment once gke export endpoint is enabled.
+
+			func() error {
+				glog.V(2).Infof("Heapster metrics test...")
+				err := runHeapsterMetricsTest(fm, svc)
+				if err == nil {
+					glog.V(2).Infof("Heapster metrics test: OK")
+				} else {
+					glog.V(2).Infof("Heapster metrics test error: %v", err)
+				}
+				return err
+			},*/
+		/*
+				TODO(mwielgus): Enable once dynamic sink setting is enabled.
+			func() error {
+				glog.V(2).Infof("Sinks test...")
+				err := runSinksTest(fm, svc)
+				if err == nil {
+					glog.V(2).Infof("Sinks test: OK")
+				} else {
+					glog.V(2).Infof("Sinks test error: %v", err)
+				}
+				return err
+			}, */
 		func() error {
 			glog.V(2).Infof("Model test")
 			err := runModelTest(fm, svc)
