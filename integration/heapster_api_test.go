@@ -49,7 +49,7 @@ var (
 	heapsterImage          = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
 	avoidBuild             = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
 	namespace              = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
-	maxRetries             = flag.Int("retries", 100, "Number of attempts before failing this test.")
+	maxRetries             = flag.Int("retries", 50, "Number of attempts before failing this test.")
 	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
 )
 
