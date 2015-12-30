@@ -362,10 +362,23 @@ func (self *realKubeFramework) CreateService(ns string, service *kapi.Service) (
 
 func (self *realKubeFramework) DeleteNs(ns string) error {
 	if _, err := self.kubeClient.Namespaces().Get(ns); err != nil {
-		glog.V(2).Infof("Cannot delete namespace %q. Skipping deletion.", ns)
+		glog.V(0).Infof("Cannot get namespace %q. Skipping deletion.", ns)
 		return nil
 	}
-	return self.kubeClient.Namespaces().Delete(ns)
+
+	glog.V(0).Infof("Deleting namespace %s", ns)
+	self.kubeClient.Namespaces().Delete(ns)
+
+	for i := 0; i < 5; i++ {
+		glog.Infof("Checking for namespace %s", ns)
+		_, err := self.kubeClient.Namespaces().Get(ns)
+		if err != nil {
+			glog.V(0).Infof("%s doesn't exist", ns)
+			return nil
+		}
+		time.Sleep(10 * time.Second)
+	}
+	return fmt.Errorf("Namespace %s still exists", ns)
 }
 
 func (self *realKubeFramework) CreateNs(ns *kapi.Namespace) (*kapi.Namespace, error) {
