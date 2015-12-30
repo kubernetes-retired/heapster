@@ -17,29 +17,40 @@ package sources
 import (
 	"fmt"
 
-	"k8s.io/heapster/metrics/core"
-	"k8s.io/heapster/metrics/sources/kubelet"
+	"github.com/golang/glog"
+
+	"k8s.io/heapster/events/core"
+	kube "k8s.io/heapster/events/sources/kubernetes"
 	"k8s.io/heapster/util/flags"
 )
 
 type SourceFactory struct {
 }
 
-func (this *SourceFactory) Build(uri flags.Uri) (core.MetricsSourceProvider, error) {
+func (this *SourceFactory) Build(uri flags.Uri) (core.EventSource, error) {
 	switch uri.Key {
 	case "kubernetes":
-		provider, err := kubelet.NewKubeletProvider(&uri.Val)
-		return provider, err
+		src, err := kube.NewKubernetesSource(&uri.Val)
+		return src, err
 	default:
 		return nil, fmt.Errorf("Source not recognized: %s", uri.Key)
 	}
 }
 
-func (this *SourceFactory) BuildAll(uris flags.Uris) (core.MetricsSourceProvider, error) {
+func (this *SourceFactory) BuildAll(uris flags.Uris) ([]core.EventSource, error) {
 	if len(uris) != 1 {
 		return nil, fmt.Errorf("Only one source is supported")
 	}
-	return this.Build(uris[0])
+	result := []core.EventSource{}
+	for _, uri := range uris {
+		source, err := this.Build(uri)
+		if err != nil {
+			glog.Errorf("Failed to create %s: %v", uri.Key, err)
+		} else {
+			result = append(result, source)
+		}
+	}
+	return result, nil
 }
 
 func NewSourceFactory() *SourceFactory {
