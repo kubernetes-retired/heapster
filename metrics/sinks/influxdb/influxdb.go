@@ -17,37 +17,22 @@ package influxdb
 import (
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/heapster/version"
+	influxdb_common "k8s.io/heapster/util/influxdb"
 
 	"github.com/golang/glog"
 	influxdb "github.com/influxdb/influxdb/client"
 )
 
-type influxdbClient interface {
-	Write(influxdb.BatchPoints) (*influxdb.Response, error)
-	Query(influxdb.Query) (*influxdb.Response, error)
-	Ping() (time.Duration, string, error)
-}
-
 type influxdbSink struct {
-	client influxdbClient
+	client influxdb_common.InfluxdbClient
 	sync.RWMutex
-	c        config
+	c        influxdb_common.InfluxdbConfig
 	dbExists bool
-}
-
-type config struct {
-	user     string
-	password string
-	host     string
-	dbName   string
-	secure   bool
 }
 
 const (
@@ -109,7 +94,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	}
 	bp := influxdb.BatchPoints{
 		Points:          dataPoints,
-		Database:        sink.c.dbName,
+		Database:        sink.c.DbName,
 		RetentionPolicy: "default",
 	}
 
@@ -136,7 +121,7 @@ func (sink *influxdbSink) Stop() {
 
 func (sink *influxdbSink) createDatabase() error {
 	if sink.client == nil {
-		client, err := newClient(sink.c)
+		client, err := influxdb_common.NewClient(sink.c)
 		if err != nil {
 			return err
 		}
@@ -147,7 +132,7 @@ func (sink *influxdbSink) createDatabase() error {
 		return nil
 	}
 	q := influxdb.Query{
-		Command: fmt.Sprintf("CREATE DATABASE %s", sink.c.dbName),
+		Command: fmt.Sprintf("CREATE DATABASE %s", sink.c.DbName),
 	}
 	if resp, err := sink.client.Query(q); err != nil {
 		if !(resp != nil && resp.Err != nil && strings.Contains(resp.Err.Error(), "already exists")) {
@@ -155,39 +140,13 @@ func (sink *influxdbSink) createDatabase() error {
 		}
 	}
 	sink.dbExists = true
-	glog.Infof("Created database %q on influxDB server at %q", sink.c.dbName, sink.c.host)
+	glog.Infof("Created database %q on influxDB server at %q", sink.c.DbName, sink.c.Host)
 	return nil
 }
 
-func newClient(c config) (influxdbClient, error) {
-	url := &url.URL{
-		Scheme: "http",
-		Host:   c.host,
-	}
-	if c.secure {
-		url.Scheme = "https"
-	}
-
-	iConfig := &influxdb.Config{
-		URL:       *url,
-		Username:  c.user,
-		Password:  c.password,
-		UserAgent: fmt.Sprintf("%v/%v", "heapster", version.HeapsterVersion),
-	}
-	client, err := influxdb.NewClient(*iConfig)
-
-	if err != nil {
-		return nil, err
-	}
-	if _, _, err := client.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping InfluxDB server at %q - %v", c.host, err)
-	}
-	return client, nil
-}
-
 // Returns a thread-compatible implementation of influxdb interactions.
-func new(c config) core.DataSink {
-	client, err := newClient(c)
+func new(c influxdb_common.InfluxdbConfig) core.DataSink {
+	client, err := influxdb_common.NewClient(c)
 	if err != nil {
 		glog.Errorf("issues while creating an InfluxDB sink: %v, will retry on use", err)
 	}
@@ -198,37 +157,11 @@ func new(c config) core.DataSink {
 }
 
 func CreateInfluxdbSink(uri *url.URL) (core.DataSink, error) {
-	defaultConfig := config{
-		user:     "root",
-		password: "root",
-		host:     "localhost:8086",
-		dbName:   "k8s",
-		secure:   false,
+	config, err := influxdb_common.BuildConfig(uri)
+	if err != nil {
+		return nil, err
 	}
-
-	if len(uri.Host) > 0 {
-		defaultConfig.host = uri.Host
-	}
-	opts := uri.Query()
-	if len(opts["user"]) >= 1 {
-		defaultConfig.user = opts["user"][0]
-	}
-	// TODO: use more secure way to pass the password.
-	if len(opts["pw"]) >= 1 {
-		defaultConfig.password = opts["pw"][0]
-	}
-	if len(opts["db"]) >= 1 {
-		defaultConfig.dbName = opts["db"][0]
-	}
-	if len(opts["secure"]) >= 1 {
-		val, err := strconv.ParseBool(opts["secure"][0])
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse `secure` flag - %v", err)
-		}
-		defaultConfig.secure = val
-	}
-	sink := new(defaultConfig)
-	glog.Infof("created influxdb sink with options: %v", defaultConfig)
-
+	sink := new(*config)
+	glog.Infof("created influxdb sink with options: host:%s user:%s db:%s", config.Host, config.User, config.DbName)
 	return sink, nil
 }
