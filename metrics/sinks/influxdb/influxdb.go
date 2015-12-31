@@ -21,8 +21,8 @@ import (
 	"sync"
 	"time"
 
+	influxdb_common "k8s.io/heapster/common/influxdb"
 	"k8s.io/heapster/metrics/core"
-	influxdb_common "k8s.io/heapster/util/influxdb"
 
 	"github.com/golang/glog"
 	influxdb "github.com/influxdb/influxdb/client"
