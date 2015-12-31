@@ -17,10 +17,12 @@ package sinks
 import (
 	"fmt"
 
-	"github.com/golang/glog"
 	"k8s.io/heapster/events/core"
+	"k8s.io/heapster/events/sinks/influxdb"
 	"k8s.io/heapster/events/sinks/log"
 	"k8s.io/heapster/util/flags"
+
+	"github.com/golang/glog"
 )
 
 type SinkFactory struct {
@@ -30,6 +32,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.EventSink, error) {
 	switch uri.Key {
 	case "log":
 		return logsink.NewLogSink(), nil
+	case "influxdb":
+		return influxdb.CreateInfluxdbSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
