@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
+	influxdb_common "k8s.io/heapster/common/influxdb"
 	"k8s.io/heapster/events/core"
 	metrics_core "k8s.io/heapster/metrics/core"
-	influxdb_common "k8s.io/heapster/util/influxdb"
 	kube_api "k8s.io/kubernetes/pkg/api"
 
 	"github.com/golang/glog"
