@@ -21,8 +21,8 @@ import (
 
 	"github.com/golang/glog"
 
+	kubeconfig "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/events/core"
-	kubeconfig "k8s.io/heapster/util/kubernetes"
 	kubeapi "k8s.io/kubernetes/pkg/api"
 	kubeapiunv "k8s.io/kubernetes/pkg/api/unversioned"
 	kubeclient "k8s.io/kubernetes/pkg/client/unversioned"

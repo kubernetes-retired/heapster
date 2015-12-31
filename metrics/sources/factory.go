@@ -17,9 +17,9 @@ package sources
 import (
 	"fmt"
 
+	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sources/kubelet"
-	"k8s.io/heapster/util/flags"
 )
 
 type SourceFactory struct {
