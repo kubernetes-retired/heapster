@@ -17,7 +17,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
@@ -100,25 +99,31 @@ func main() {
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
 
-	server := &http.Server{
-		Addr:    addr,
-		Handler: handler,
-	}
-
+	mux := http.NewServeMux()
 	if len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) > 0 {
+		promeHandler := core.PrometheusHandler
 		if len(*argTLSClientCAFile) > 0 {
-			authHandler, err := newAuthHandler(handler)
+			authPprofHandler, err := newAuthHandler(handler)
 			if err != nil {
 				glog.Fatal(err)
 			}
-			server.Handler = authHandler
-			server.TLSConfig = &tls.Config{ClientAuth: tls.RequestClientCert}
-		}
+			handler = authPprofHandler
 
-		glog.Fatal(server.ListenAndServeTLS(*argTLSCertFile, *argTLSKeyFile))
+			authPromeHandler, err := newAuthHandler(core.PrometheusHandler)
+			if err != nil {
+				glog.Fatal(err)
+			}
+			promeHandler = authPromeHandler
+		}
+		mux.Handle("/", handler)
+		mux.Handle(core.PrometheusPath, promeHandler)
+		glog.Fatal(http.ListenAndServeTLS(addr, *argTLSCertFile, *argTLSKeyFile, mux))
 	} else {
-		glog.Fatal(server.ListenAndServe())
+		mux.Handle("/", handler)
+		mux.Handle(core.PrometheusPath, core.PrometheusHandler)
+		glog.Fatal(http.ListenAndServe(addr, mux))
 	}
+
 }
 
 func validateFlags() error {

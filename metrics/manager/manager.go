@@ -15,6 +15,7 @@
 package manager
 
 import (
+	"fmt"
 	"time"
 
 	"k8s.io/heapster/metrics/core"
@@ -107,7 +108,6 @@ func (rm *realManager) housekeep(start, end time.Time) {
 	go func(rm *realManager) {
 		// should always give back the semaphore
 		defer func() { rm.housekeepSemaphoreChan <- struct{}{} }()
-
 		data := rm.source.ScrapeMetrics(start, end)
 		for _, p := range rm.processors {
 			newData, err := p.Process(data)
@@ -119,6 +119,20 @@ func (rm *realManager) housekeep(start, end time.Time) {
 				// TODO: evaluate if this approach is better than stopping the whole flow.
 			}
 		}
+
+		//export time of the last metrics scrape to prometheus
+		timeStamp, err := time.Now().UTC().MarshalJSON()
+		if err != nil {
+			glog.Warningf("failed to get timestamp: %v", err)
+		}
+		core.LastMetricsTimeStamp.WithLabelValues(string(timeStamp))
+
+		//export time spent in exporting data to sinks (single run, not cumulative)
+		startTime := time.Now()
+		//export data to sinks
 		rm.sink.ExportData(data)
+		duration := fmt.Sprintf("%s", time.Now().Sub(startTime))
+		core.ExportingDurations.WithLabelValues(duration)
+
 	}(rm)
 }

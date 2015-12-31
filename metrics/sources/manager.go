@@ -17,7 +17,10 @@ package sources
 import (
 	"time"
 
+	"fmt"
+
 	"github.com/golang/glog"
+	"k8s.io/heapster/metrics/core"
 	. "k8s.io/heapster/metrics/core"
 )
 
@@ -100,6 +103,10 @@ responseloop:
 			break responseloop
 		}
 	}
+	//export time spent in scrape (single run, not cumulative) to prometheus
+	duration := fmt.Sprintf("%s", time.Now().Sub(startTime))
+	core.ScrapeDurations.WithLabelValues(duration)
+
 	glog.Infof("ScrapeMetrics:  time: %s  size: %d", time.Now().Sub(startTime), len(response.MetricSets))
 	for i, value := range latencies {
 		glog.Infof("   scrape  bucket %d: %d", i, value)
