@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/hawkular"
 	"k8s.io/heapster/metrics/sinks/influxdb"
@@ -26,7 +27,6 @@ import (
 	"k8s.io/heapster/metrics/sinks/log"
 	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sinks/riemann"
-	"k8s.io/heapster/util/flags"
 )
 
 type SinkFactory struct {

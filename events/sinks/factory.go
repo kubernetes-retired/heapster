@@ -17,10 +17,10 @@ package sinks
 import (
 	"fmt"
 
+	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/events/core"
 	"k8s.io/heapster/events/sinks/influxdb"
 	"k8s.io/heapster/events/sinks/log"
-	"k8s.io/heapster/util/flags"
 
 	"github.com/golang/glog"
 )

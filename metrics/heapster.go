@@ -27,12 +27,12 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/processors"
 	"k8s.io/heapster/metrics/sinks"
 	"k8s.io/heapster/metrics/sources"
-	"k8s.io/heapster/util/flags"
 	"k8s.io/heapster/version"
 )
 
