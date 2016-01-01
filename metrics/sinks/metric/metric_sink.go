@@ -134,6 +134,77 @@ func (this *MetricSink) GetMetricNames(key string) []string {
 	return result
 }
 
+func (this *MetricSink) getAllNames(predicate func(ms *core.MetricSet) bool,
+	name func(key string, ms *core.MetricSet) string) []string {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	if len(this.shortStore) == 0 {
+		return []string{}
+	}
+
+	result := make([]string, 0, 0)
+	for key, value := range this.shortStore[len(this.shortStore)-1].MetricSets {
+		if predicate(value) {
+			result = append(result, name(key, value))
+		}
+	}
+	return result
+}
+
+/*
+ * For debugging only.
+ */
+func (this *MetricSink) GetMetricSetKeys() []string {
+	return this.getAllNames(
+		func(ms *core.MetricSet) bool { return true },
+		func(key string, ms *core.MetricSet) string { return key })
+}
+
+func (this *MetricSink) GetNodeNames() []string {
+	return this.getAllNames(
+		func(ms *core.MetricSet) bool { return ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypeNode },
+		func(key string, ms *core.MetricSet) string { return ms.Labels[core.LabelHostname.Key] })
+}
+
+func (this *MetricSink) GetPodNames() []string {
+	return this.getAllNames(
+		func(ms *core.MetricSet) bool { return ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypePod },
+		func(key string, ms *core.MetricSet) string {
+			return ms.Labels[core.LabelNamespaceName.Key] + "/" + ms.Labels[core.LabelPodName.Key]
+		})
+}
+
+func (this *MetricSink) GetNamespaces() []string {
+	return this.getAllNames(
+		func(ms *core.MetricSet) bool {
+			return ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypeNamespace
+		},
+		func(key string, ms *core.MetricSet) string { return ms.Labels[core.LabelNamespaceName.Key] })
+}
+
+func (this *MetricSink) GetPodsFromNamespace(namespace string) []string {
+	return this.getAllNames(
+		func(ms *core.MetricSet) bool {
+			return ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypePod &&
+				ms.Labels[core.LabelNamespaceName.Key] == namespace
+		},
+		func(key string, ms *core.MetricSet) string {
+			return ms.Labels[core.LabelPodName.Key]
+		})
+}
+
+func (this *MetricSink) GetSystemContainersFromNode(node string) []string {
+	return this.getAllNames(
+		func(ms *core.MetricSet) bool {
+			return ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypeSystemContainer &&
+				ms.Labels[core.LabelHostname.Key] == node
+		},
+		func(key string, ms *core.MetricSet) string {
+			return ms.Labels[core.LabelContainerName.Key]
+		})
+}
+
 func (this *MetricSink) trimDataBatch(batch *core.DataBatch) *core.DataBatch {
 	result := core.DataBatch{
 		Timestamp:  batch.Timestamp,

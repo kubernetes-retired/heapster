@@ -139,3 +139,60 @@ func TestGetMetrics(t *testing.T) {
 	assert.Contains(t, metricNames, "m1")
 	assert.Contains(t, metricNames, "m2")
 }
+
+func TestGetNames(t *testing.T) {
+	now := time.Now()
+	key := core.PodKey("ns1", "pod1")
+	otherKey := core.PodKey("ns1", "other")
+
+	batch := core.DataBatch{
+		Timestamp: now.Add(-20 * time.Second),
+		MetricSets: map[string]*core.MetricSet{
+			key: {
+				Labels: map[string]string{
+					core.LabelMetricSetType.Key: core.MetricSetTypePod,
+					core.LabelPodNamespace.Key:  "ns1",
+					core.LabelNamespaceName.Key: "ns1",
+					core.LabelPodName.Key:       "pod1",
+				},
+				MetricValues: map[string]core.MetricValue{
+					"m1": {
+						ValueType:  core.ValueInt64,
+						MetricType: core.MetricGauge,
+						IntValue:   20,
+					},
+					"m2": {
+						ValueType:  core.ValueInt64,
+						MetricType: core.MetricGauge,
+						IntValue:   222,
+					},
+				},
+			},
+			otherKey: {
+				Labels: map[string]string{
+					core.LabelMetricSetType.Key: core.MetricSetTypePod,
+					core.LabelPodNamespace.Key:  "ns2",
+					core.LabelNamespaceName.Key: "ns2",
+					core.LabelPodName.Key:       "pod2",
+				},
+				MetricValues: map[string]core.MetricValue{
+					"m1": {
+						ValueType:  core.ValueInt64,
+						MetricType: core.MetricGauge,
+						IntValue:   123,
+					},
+				},
+			},
+		},
+	}
+
+	metrics := NewMetricSink(45*time.Second, 120*time.Second, []string{"m1"})
+	metrics.ExportData(&batch)
+
+	assert.Contains(t, metrics.GetPodNames(), "ns1/pod1")
+	assert.Contains(t, metrics.GetPodNames(), "ns2/pod2")
+	assert.Contains(t, metrics.GetPodsFromNamespace("ns1"), "pod1")
+	assert.NotContains(t, metrics.GetPodsFromNamespace("ns1"), "pod2")
+	assert.Contains(t, metrics.GetMetricSetKeys(), key)
+	assert.Contains(t, metrics.GetMetricSetKeys(), otherKey)
+}
