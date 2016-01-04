@@ -31,6 +31,7 @@ test-integration: clean deps build
 
 container: build
 	cp heapster deploy/docker/heapster
+	cp eventer deploy/docker/eventer
 	docker build -t $(PREFIX)/heapster:$(TAG) deploy/docker/
 
 grafana:
@@ -41,6 +42,8 @@ influxdb:
 
 clean:
 	rm -f heapster
+	rm -f eventer
 	rm -f deploy/docker/heapster
+	rm -f deploy/docker/eventer
 
 .PHONY: all deps build sanitize test-unit test-unit-cov test-integration container grafana influxdb clean
