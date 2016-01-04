@@ -189,8 +189,8 @@ func TestGetNames(t *testing.T) {
 	metrics := NewMetricSink(45*time.Second, 120*time.Second, []string{"m1"})
 	metrics.ExportData(&batch)
 
-	assert.Contains(t, metrics.GetPodNames(), "ns1/pod1")
-	assert.Contains(t, metrics.GetPodNames(), "ns2/pod2")
+	assert.Contains(t, metrics.GetPods(), "ns1/pod1")
+	assert.Contains(t, metrics.GetPods(), "ns2/pod2")
 	assert.Contains(t, metrics.GetPodsFromNamespace("ns1"), "pod1")
 	assert.NotContains(t, metrics.GetPodsFromNamespace("ns1"), "pod2")
 	assert.Contains(t, metrics.GetMetricSetKeys(), key)

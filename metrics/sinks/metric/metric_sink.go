@@ -161,13 +161,13 @@ func (this *MetricSink) GetMetricSetKeys() []string {
 		func(key string, ms *core.MetricSet) string { return key })
 }
 
-func (this *MetricSink) GetNodeNames() []string {
+func (this *MetricSink) GetNodes() []string {
 	return this.getAllNames(
 		func(ms *core.MetricSet) bool { return ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypeNode },
 		func(key string, ms *core.MetricSet) string { return ms.Labels[core.LabelHostname.Key] })
 }
 
-func (this *MetricSink) GetPodNames() []string {
+func (this *MetricSink) GetPods() []string {
 	return this.getAllNames(
 		func(ms *core.MetricSet) bool { return ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypePod },
 		func(key string, ms *core.MetricSet) string {
