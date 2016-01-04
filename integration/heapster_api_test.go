@@ -534,6 +534,18 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 	if len(nodeList) == 0 {
 		return fmt.Errorf(("empty node list"))
 	}
+	podNamesList := make([]string, 0, len(podList))
+	for _, pod := range podList {
+		podNamesList = append(podNamesList, fmt.Sprintf("%s/%s", pod.Namespace, pod.Name))
+	}
+
+	glog.V(0).Infof("Expected nodes:\n%s", strings.Join(nodeList, "\n"))
+	glog.V(0).Infof("Expected pods:\n%s", strings.Join(podNamesList, "\n"))
+	allkeys, err := getStringResult(fm, svc, "/api/v1/model/debug/allkeys")
+	if err != nil {
+		return fmt.Errorf("Failed to get debug information about keys: %v", err)
+	}
+	glog.V(0).Infof("Available Heapster metric sets:\n%s", strings.Join(allkeys, "\n"))
 
 	metricUrlsToCheck := []string{}
 	batchMetricsUrlsToCheck := []string{}
