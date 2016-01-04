@@ -72,7 +72,7 @@ type kubeFramework interface {
 	GetRunningPodNames() ([]string, error)
 
 	// Returns pods in the cluster.
-	GetRunningPods() ([]*api.Pod, error)
+	GetRunningPods() ([]api.Pod, error)
 
 	WaitUntilPodRunning(ns string, podLabels map[string]string, timeout time.Duration) error
 	WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error
@@ -406,15 +406,16 @@ func (self *realKubeFramework) GetNodes() ([]string, error) {
 	return nodes, nil
 }
 
-func (self *realKubeFramework) GetRunningPods() ([]*api.Pod, error) {
+func (self *realKubeFramework) GetRunningPods() ([]api.Pod, error) {
+	glog.V(0).Infof("Getting running pods")
 	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything(), fields.Everything())
 	if err != nil {
 		return nil, err
 	}
-	pods := []*api.Pod{}
+	pods := []api.Pod{}
 	for _, pod := range podList.Items {
 		if pod.Status.Phase == api.PodRunning && !strings.Contains(pod.Spec.NodeName, "kubernetes-master") {
-			pods = append(pods, &pod)
+			pods = append(pods, pod)
 		}
 	}
 	return pods, nil
