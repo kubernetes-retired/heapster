@@ -9,4 +9,6 @@ RUN for cert in `ls -1 /etc/ssl/certs/*.crt | grep -v /etc/ssl/certs/ca-certific
 # cAdvisor discovery via external files.
 VOLUME /var/run/heapster/hosts
 ADD heapster /heapster
+ADD eventer /eventer
+
 ENTRYPOINT ["/heapster"]
