@@ -193,21 +193,33 @@ func (a *Api) RegisterModel(container *restful.Container) {
 
 // availableMetrics returns a list of available cluster metric names.
 func (a *Api) availableClusterMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(core.ClusterKey(), response)
 }
 
 // availableMetrics returns a list of available node metric names.
 func (a *Api) availableNodeMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(core.NodeKey(request.PathParameter("node-name")), response)
 }
 
 // availableMetrics returns a list of available namespace metric names.
 func (a *Api) availableNamespaceMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(core.NamespaceKey(request.PathParameter("namespace-name")), response)
 }
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availablePodMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(
 		core.PodKey(request.PathParameter("namespace-name"),
 			request.PathParameter("pod-name")), response)
@@ -215,6 +227,9 @@ func (a *Api) availablePodMetrics(request *restful.Request, response *restful.Re
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availablePodContainerMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(
 		core.PodContainerKey(request.PathParameter("namespace-name"),
 			request.PathParameter("pod-name"),
@@ -224,6 +239,9 @@ func (a *Api) availablePodContainerMetrics(request *restful.Request, response *r
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availableFreeContainerMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(
 		core.NodeContainerKey(request.PathParameter("node-name"),
 			request.PathParameter("container-name"),
@@ -232,23 +250,35 @@ func (a *Api) availableFreeContainerMetrics(request *restful.Request, response *
 
 // clusterMetrics returns a metric timeseries for a metric of the Cluster entity.
 func (a *Api) clusterMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(core.ClusterKey(), request, response)
 }
 
 // nodeMetrics returns a metric timeseries for a metric of the Node entity.
 func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(core.NodeKey(request.PathParameter("node-name")),
 		request, response)
 }
 
 // namespaceMetrics returns a metric timeseries for a metric of the Namespace entity.
 func (a *Api) namespaceMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(core.NamespaceKey(request.PathParameter("namespace-name")),
 		request, response)
 }
 
 // podMetrics returns a metric timeseries for a metric of the Pod entity.
 func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(
 		core.PodKey(request.PathParameter("namespace-name"),
 			request.PathParameter("pod-name")),
@@ -256,6 +286,9 @@ func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 }
 
 func (a *Api) podListMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	start, end, err := getStartEndTime(request)
 	if err != nil {
 		response.WriteError(http.StatusBadRequest, err)
@@ -284,6 +317,9 @@ func (a *Api) podListMetrics(request *restful.Request, response *restful.Respons
 // podContainerMetrics returns a metric timeseries for a metric of a Pod Container entity.
 // podContainerMetrics uses the namespace-name/pod-name/container-name path.
 func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(
 		core.PodContainerKey(request.PathParameter("namespace-name"),
 			request.PathParameter("pod-name"),
@@ -295,6 +331,9 @@ func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Re
 // freeContainerMetrics returns a metric timeseries for a metric of the Container entity.
 // freeContainerMetrics addresses only free containers, by using the node-name/container-name path.
 func (a *Api) freeContainerMetrics(request *restful.Request, response *restful.Response) {
+
+	//number of http model api requests add 1
+	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(
 		core.NodeContainerKey(request.PathParameter("node-name"),
 			request.PathParameter("container-name"),

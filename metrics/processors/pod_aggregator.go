@@ -16,6 +16,7 @@ package processors
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/golang/glog"
 
@@ -41,7 +42,7 @@ func (this *PodAggregator) Process(batch *core.DataBatch) (*core.DataBatch, erro
 		Timestamp:  batch.Timestamp,
 		MetricSets: make(map[string]*core.MetricSet),
 	}
-
+	startTime := time.Now()
 	for key, metricSet := range batch.MetricSets {
 		result.MetricSets[key] = metricSet
 		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found && metricSetType == core.MetricSetTypePodContainer {
@@ -83,6 +84,10 @@ func (this *PodAggregator) Process(batch *core.DataBatch) (*core.DataBatch, erro
 			}
 		}
 	}
+	//export time spent in processors (single run, not cumulative) to prometheus
+	duration := fmt.Sprintf("%s", time.Now().Sub(startTime))
+	core.ProcessorDurations.WithLabelValues(duration, "pod_aggregator")
+
 	return &result, nil
 }
 

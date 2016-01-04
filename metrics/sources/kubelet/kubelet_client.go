@@ -25,6 +25,8 @@ import (
 	"net/http"
 	"time"
 
+	"k8s.io/heapster/metrics/core"
+
 	cadvisor "github.com/google/cadvisor/info/v1"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 )
@@ -40,6 +42,8 @@ type KubeletClient struct {
 	client *http.Client
 }
 
+var timesOfSourceRes = 0
+
 func sampleContainerStats(stats []*cadvisor.ContainerStats) []*cadvisor.ContainerStats {
 	if len(stats) == 0 {
 		return []*cadvisor.ContainerStats{}
@@ -48,6 +52,7 @@ func sampleContainerStats(stats []*cadvisor.ContainerStats) []*cadvisor.Containe
 }
 
 func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
+	timesOfSourceRes++
 	response, err := client.Do(req)
 	if err != nil {
 		return err
@@ -64,6 +69,7 @@ func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http
 	if err != nil {
 		return fmt.Errorf("failed to parse output. Response: %q. Error: %v", string(body), err)
 	}
+	core.SourceResponseTimesHistogram.Observe(float64(timesOfSourceRes))
 	return nil
 }
 
@@ -107,6 +113,7 @@ func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) 
 	}
 
 	url := fmt.Sprintf("%s://%s:%d/stats/container/", scheme, host.IP, host.Port)
+
 	return self.getAllContainers(url, start, end)
 }
 
@@ -143,6 +150,9 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 		return nil, fmt.Errorf("failed to get all container stats from Kubelet URL %q: %v", url, err)
 	}
 
+	//export number of scraped nodes to prometheus
+	core.ScrapedNodesCount.Inc()
+
 	result := make([]cadvisor.ContainerInfo, 0, len(containers))
 	for _, containerInfo := range containers {
 		cont := self.parseStat(&containerInfo)
@@ -150,7 +160,8 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 			result = append(result, *cont)
 		}
 	}
-
+	//export number of scraped containers
+	core.ScrapedContainersCount.Add(float64(len(containers)))
 	return result, nil
 }
 

@@ -16,6 +16,7 @@ package processors
 
 import (
 	"fmt"
+	"time"
 
 	"k8s.io/heapster/metrics/core"
 )
@@ -29,6 +30,8 @@ func (this *NamespaceAggregator) Process(batch *core.DataBatch) (*core.DataBatch
 		Timestamp:  batch.Timestamp,
 		MetricSets: make(map[string]*core.MetricSet),
 	}
+
+	startTime := time.Now()
 
 	for key, metricSet := range batch.MetricSets {
 		result.MetricSets[key] = metricSet
@@ -70,6 +73,10 @@ func (this *NamespaceAggregator) Process(batch *core.DataBatch) (*core.DataBatch
 			}
 		}
 	}
+	//export time spent in processors (single run, not cumulative) to prometheus
+	duration := fmt.Sprintf("%s", time.Now().Sub(startTime))
+	core.ProcessorDurations.WithLabelValues(duration, "namespace_aggregator")
+
 	return &result, nil
 }
 

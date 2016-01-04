@@ -21,6 +21,7 @@ import (
 
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/metrics/api/v1"
+	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/metric"
 )
 
@@ -37,6 +38,9 @@ func setupHandlers(metricSink *metricsink.MetricSink) http.Handler {
 	a.Register(wsContainer)
 
 	handlePprofEndpoint := func(req *restful.Request, resp *restful.Response) {
+
+		//number of other http requests add 1
+		core.OtherApiRequestCount.Inc()
 		name := strings.TrimPrefix(req.Request.URL.Path, pprofBasePath)
 		switch name {
 		case "profile":
