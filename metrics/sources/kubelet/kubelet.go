@@ -36,6 +36,8 @@ const (
 	kubernetesPodNamespaceLabel = "io.kubernetes.pod.namespace"
 	kubernetesPodUID            = "io.kubernetes.pod.uid"
 	kubernetesContainerLabel    = "io.kubernetes.container.name"
+
+	CustomMetricPrefix = "CM:"
 )
 
 type cpuVal struct {
@@ -96,6 +98,44 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 	for _, metric := range StandardMetrics {
 		if metric.HasValue(&c.Spec) {
 			cMetrics.MetricValues[metric.Name] = metric.GetValue(&c.Spec, c.Stats[0])
+		}
+	}
+
+	if c.Spec.HasCustomMetrics {
+	metricloop:
+		for _, spec := range c.Spec.CustomMetrics {
+			if cmValue, ok := c.Stats[0].CustomMetrics[spec.Name]; ok && cmValue != nil && len(cmValue) >= 1 {
+				newest := cmValue[0]
+				for _, metricVal := range cmValue {
+					if newest.Timestamp.Before(metricVal.Timestamp) {
+						newest = metricVal
+					}
+				}
+				mv := MetricValue{}
+				switch spec.Type {
+				case cadvisor.MetricGauge:
+					mv.MetricType = MetricGauge
+				case cadvisor.MetricCumulative:
+					mv.MetricType = MetricCumulative
+				default:
+					glog.V(4).Infof("Skipping %s: unknown custom metric type: %v", spec.Name, spec.Type)
+					continue metricloop
+				}
+
+				switch spec.Format {
+				case cadvisor.IntType:
+					mv.ValueType = ValueInt64
+					mv.IntValue = newest.IntValue
+				case cadvisor.FloatType:
+					mv.ValueType = ValueFloat
+					mv.FloatValue = float32(newest.FloatValue)
+				default:
+					glog.V(4).Infof("Skipping %s: unknown custom metric format", spec.Name, spec.Format)
+					continue metricloop
+				}
+
+				cMetrics.MetricValues[CustomMetricPrefix+spec.Name] = mv
+			}
 		}
 	}
 
