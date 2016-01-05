@@ -76,9 +76,6 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		cMetrics.Labels[LabelContainerName.Key] = cName
 	} else {
 		cName := c.Spec.Labels[kubernetesContainerLabel]
-		if cName == infraContainerName {
-			return "", nil
-		}
 		ns := c.Spec.Labels[kubernetesPodNamespaceLabel]
 		podName := c.Spec.Labels[kubernetesPodNameLabel]
 
@@ -91,17 +88,15 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 			}
 		}
 		if cName == "" {
-			if !strings.HasPrefix(c.Name, "k8s_POD.") {
-				// Better this than nothing. This is a temporary hack for new heapster to work
-				// with Kubernetes 1.0.*.
-				// TODO: fix this with POD list.
-				// Parsing name like:
-				// k8s_kube-ui.7f9b83f6_kube-ui-v1-bxj1w_kube-system_9abfb0bd-811f-11e5-b548-42010af00002_e6841e8d
-				pos := strings.Index(c.Name, ".")
-				if pos >= 0 {
-					// remove first 4 chars.
-					cName = c.Name[len("k8s_"):pos]
-				}
+			// Better this than nothing. This is a temporary hack for new heapster to work
+			// with Kubernetes 1.0.*.
+			// TODO: fix this with POD list.
+			// Parsing name like:
+			// k8s_kube-ui.7f9b83f6_kube-ui-v1-bxj1w_kube-system_9abfb0bd-811f-11e5-b548-42010af00002_e6841e8d
+			pos := strings.Index(c.Name, ".")
+			if pos >= 0 {
+				// remove first 4 chars.
+				cName = c.Name[len("k8s_"):pos]
 			}
 		}
 
@@ -109,15 +104,21 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 			glog.Errorf("Missing metadata for container %v. Got: %+v", c.Name, c.Spec.Labels)
 			return "", nil
 		}
-		metricSetKey = PodContainerKey(ns, podName, cName)
-		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePodContainer
-		cMetrics.Labels[LabelContainerName.Key] = cName
+
+		if cName == infraContainerName {
+			metricSetKey = PodKey(ns, podName)
+			cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePod
+		} else {
+			metricSetKey = PodContainerKey(ns, podName, cName)
+			cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePodContainer
+			cMetrics.Labels[LabelContainerName.Key] = cName
+			cMetrics.Labels[LabelContainerBaseImage.Key] = c.Spec.Image
+		}
 		cMetrics.Labels[LabelPodId.Key] = c.Spec.Labels[kubernetesPodUID]
 		cMetrics.Labels[LabelPodName.Key] = podName
 		cMetrics.Labels[LabelNamespaceName.Key] = ns
 		// Needed for backward compatibility
 		cMetrics.Labels[LabelPodNamespace.Key] = ns
-		cMetrics.Labels[LabelContainerBaseImage.Key] = c.Spec.Image
 	}
 
 	for _, metric := range StandardMetrics {
