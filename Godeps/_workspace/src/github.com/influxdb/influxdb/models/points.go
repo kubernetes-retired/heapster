@@ -112,6 +112,8 @@ const (
 	minFloat64Digits = 27
 )
 
+var ()
+
 func ParsePointsString(buf string) ([]Point, error) {
 	return ParsePoints([]byte(buf))
 }
@@ -155,9 +157,9 @@ func ParsePointsWithPrecision(buf []byte, defaultTime time.Time, precision strin
 			block = block[:len(block)-1]
 		}
 
-		pt, err := parsePoint(block[start:], defaultTime, precision)
+		pt, err := parsePoint(block[start:len(block)], defaultTime, precision)
 		if err != nil {
-			failed = append(failed, fmt.Sprintf("unable to parse '%s': %v", string(block[start:]), err))
+			failed = append(failed, fmt.Sprintf("unable to parse '%s': %v", string(block[start:len(block)]), err))
 		} else {
 			points = append(points, pt)
 		}
@@ -1294,7 +1296,7 @@ func (p Fields) MarshalBinary() []byte {
 	b := []byte{}
 	keys := make([]string, len(p))
 	i := 0
-	for k := range p {
+	for k, _ := range p {
 		keys[i] = k
 		i += 1
 	}

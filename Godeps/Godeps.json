@@ -1,6 +1,6 @@
 {
 	"ImportPath": "k8s.io/heapster",
-	"GoVersion": "go1.5.1",
+	"GoVersion": "go1.5",
 	"Packages": [
 		"./...",
 		"github.com/progrium/go-extpoints"
@@ -9,11 +9,15 @@
 		{
 			"ImportPath": "bitbucket.org/ww/goautoneg",
 			"Comment": "null-5",
-			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
+			"Rev": "'75cd24fc2f2c2a2088577d12123ddee5f54e0675'"
 		},
 		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
 			"Rev": "b965b613227fddccbfffe13eae360ed3fa822f8d"
+		},
+		{
+			"ImportPath": "github.com/bigdatadev/goryman",
+			"Rev": "55c3cbc3df542201b3c140e72a758d0adae4bc05"
 		},
 		{
 			"ImportPath": "github.com/bluebreezecf/opentsdb-goclient/client",
@@ -22,10 +26,6 @@
 		{
 			"ImportPath": "github.com/bluebreezecf/opentsdb-goclient/config",
 			"Rev": "2ddb54cc73419e58d20e917a60bb902349fae4cf"
-		},
-		{
-			"ImportPath": "github.com/bigdatadev/goryman",
-			"Rev": "55c3cbc3df542201b3c140e72a758d0adae4bc05"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
@@ -147,6 +147,10 @@
 			"Rev": "655cdfa588ea190e901bc5590e65d5621688847c"
 		},
 		{
+			"ImportPath": "github.com/golang/snappy",
+			"Rev": "723cc1e459b8eea2dea4583200fd60757d40097a"
+		},
+		{
 			"ImportPath": "github.com/google/cadvisor/client",
 			"Comment": "0.16.0-55-gb0684c2",
 			"Rev": "b0684c2457c8201fabeb536ceb2b1319eed475dc"
@@ -206,6 +210,10 @@
 			"ImportPath": "github.com/onsi/gomega",
 			"Comment": "v1.0-71-g2152b45",
 			"Rev": "2152b45fa28a361beba9aab0885972323a444e28"
+		},
+		{
+			"ImportPath": "github.com/optiopay/kafka",
+			"Rev": "bc8e0950689f19fafd454acd517abe7b251cf54f"
 		},
 		{
 			"ImportPath": "github.com/pborman/uuid",
@@ -373,14 +381,6 @@
 		{
 			"ImportPath": "speter.net/go/exp/math/dec/inf",
 			"Rev": "42ca6cd68aa922bc3f32f1e056e61b65945d9ad7"
-		},
-		{
-			"ImportPath": "github.com/golang/snappy",
-			"Rev": "723cc1e459b8eea2dea4583200fd60757d40097a"
-		},
-		{
-			"ImportPath": "github.com/optiopay/kafka",
-			"Rev": "bc8e0950689f19fafd454acd517abe7b251cf54f"
 		}
 	]
 }

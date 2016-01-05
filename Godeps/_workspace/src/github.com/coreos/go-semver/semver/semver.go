@@ -146,8 +146,7 @@ func recursivePreReleaseCompare(versionA []string, versionB []string) int {
 	a := versionA[0]
 	b := versionB[0]
 
-	aInt := false
-	bInt := false
+	aInt := false; bInt := false
 
 	aI, err := strconv.Atoi(versionA[0])
 	if err == nil {

@@ -173,3 +173,4 @@ func (ep *commandProviderExt) All() map[string]CommandProvider {
 	}
 	return all
 }
+

@@ -131,7 +131,7 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 	}
 
 	var sortable sort.StringSlice
-	for name := range uMap {
+	for name, _ := range uMap {
 		sortable = append(sortable, name)
 	}
 	sortable.Sort()

@@ -56,7 +56,7 @@ func (fum *FakeUnitManager) Units() ([]string, error) {
 	defer fum.RUnlock()
 
 	lst := make([]string, 0, len(fum.u))
-	for name := range fum.u {
+	for name, _ := range fum.u {
 		lst = append(lst, name)
 	}
 	return lst, nil
