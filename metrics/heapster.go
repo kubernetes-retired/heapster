@@ -88,8 +88,16 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	// data processors
+	dataProcessors := []core.DataProcessor{&processors.PodAggregator{},
+		&processors.NamespaceAggregator{
+			MetricsToAggregate: []string{
+				core.MetricCpuUsageRate.Name,
+				core.MetricMemoruUsage.Name}},
+	}
+
 	// main manager
-	manager, err := manager.NewManager(sourceManager, []core.DataProcessor{&processors.PodAggregator{}}, sinkManager, *argMetricResolution,
+	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, *argMetricResolution,
 		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
 	if err != nil {
 		glog.Fatal(err)
