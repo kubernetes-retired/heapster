@@ -89,11 +89,18 @@ func main() {
 	}
 
 	// data processors
-	dataProcessors := []core.DataProcessor{&processors.PodAggregator{},
+	metricsToAggregate := []string{
+		core.MetricCpuUsageRate.Name,
+		core.MetricMemoruUsage.Name}
+
+	dataProcessors := []core.DataProcessor{
+		&processors.PodAggregator{},
 		&processors.NamespaceAggregator{
-			MetricsToAggregate: []string{
-				core.MetricCpuUsageRate.Name,
-				core.MetricMemoruUsage.Name}},
+			MetricsToAggregate: metricsToAggregate,
+		},
+		&processors.ClusterAggregator{
+			MetricsToAggregate: metricsToAggregate,
+		},
 	}
 
 	// main manager

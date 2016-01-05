@@ -21,11 +21,11 @@ import (
 	"k8s.io/heapster/metrics/core"
 )
 
-type NamespaceAggregator struct {
+type ClusterAggregator struct {
 	MetricsToAggregate []string
 }
 
-func (this *NamespaceAggregator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
+func (this *ClusterAggregator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
 	result := core.DataBatch{
 		Timestamp:  batch.Timestamp,
 		MetricSets: make(map[string]*core.MetricSet),
@@ -35,36 +35,31 @@ func (this *NamespaceAggregator) Process(batch *core.DataBatch) (*core.DataBatch
 
 	for key, metricSet := range batch.MetricSets {
 		result.MetricSets[key] = metricSet
-		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found && metricSetType == core.MetricSetTypePod {
-			// Aggregating pods
-			if namespaceName, found := metricSet.Labels[core.LabelNamespaceName.Key]; found {
-				namespaceKey := core.NamespaceKey(namespaceName)
-				namespace, found := result.MetricSets[namespaceKey]
-				if !found {
-					namespace = namespaceMetricSet(namespaceName)
-					result.MetricSets[namespaceKey] = namespace
-				}
-				if err := aggregate(metricSet, namespace, this.MetricsToAggregate); err != nil {
-					return nil, err
-				}
-			} else {
-				return nil, fmt.Errorf("No namespace info in pod %s: %v", key, metricSet.Labels)
+		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found &&
+			(metricSetType == core.MetricSetTypeNamespace || metricSetType == core.MetricSetTypeSystemContainer) {
+			clusterKey := core.ClusterKey()
+			cluster, found := result.MetricSets[clusterKey]
+			if !found {
+				cluster = clusterMetricSet()
+				result.MetricSets[clusterKey] = cluster
+			}
+			if err := aggregate(metricSet, cluster, this.MetricsToAggregate); err != nil {
+				return nil, err
 			}
 		}
 	}
 	//export time spent in processors (single run, not cumulative) to prometheus
 	duration := fmt.Sprintf("%s", time.Now().Sub(startTime))
-	core.ProcessorDurations.WithLabelValues(duration, "namespace_aggregator")
+	core.ProcessorDurations.WithLabelValues(duration, "cluster_aggregator")
 
 	return &result, nil
 }
 
-func namespaceMetricSet(namespaceName string) *core.MetricSet {
+func clusterMetricSet() *core.MetricSet {
 	return &core.MetricSet{
 		MetricValues: make(map[string]core.MetricValue),
 		Labels: map[string]string{
-			core.LabelMetricSetType.Key: core.MetricSetTypeNamespace,
-			core.LabelNamespaceName.Key: namespaceName,
+			core.LabelMetricSetType.Key: core.MetricSetTypeCluster,
 		},
 	}
 }
