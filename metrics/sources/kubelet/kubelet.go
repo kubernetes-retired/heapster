@@ -17,6 +17,7 @@ package kubelet
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	. "k8s.io/heapster/metrics/core"
@@ -80,6 +81,21 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		}
 		ns := c.Spec.Labels[kubernetesPodNamespaceLabel]
 		podName := c.Spec.Labels[kubernetesPodNameLabel]
+
+		// Support for kubernetes 1.0.*
+		if ns == "" && strings.Contains(podName, "/") {
+			tokens := strings.SplitN(podName, "/", 2)
+			if len(tokens) == 2 {
+				ns = tokens[0]
+				podName = tokens[1]
+			}
+		}
+		if cName == "" {
+			if !strings.HasPrefix(c.Name, "k8s_POD") {
+				cName = c.Name
+			}
+		}
+
 		if cName == "" || ns == "" || podName == "" {
 			glog.Errorf("Missing metadata for container %v. Got: %+v", c.Name, c.Spec.Labels)
 			return "", nil
