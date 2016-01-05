@@ -1,5 +1,7 @@
 package goryman
 
+import ()
+
 // Event is a wrapper for Riemann events
 type Event struct {
 	Ttl         float32
