@@ -1,7 +1,7 @@
 heapster_kafka
 ================
 
-Monitoring and alerting for Kubernetes container metrics
+Monitoring for Kubernetes container metrics
 
 this docker image runs both Zookeeper and Kafka in the same container. 
 This means:
