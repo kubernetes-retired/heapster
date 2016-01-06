@@ -74,6 +74,10 @@ type DummyMetricsSource struct {
 	metricSet core.MetricSet
 }
 
+func (this *DummyMetricsSource) Name() string {
+	return "dummy"
+}
+
 func (this *DummyMetricsSource) ScrapeMetrics(start, end time.Time) *core.DataBatch {
 	time.Sleep(this.latency)
 	return &core.DataBatch{
@@ -116,6 +120,10 @@ func NewDummyMetricsSourceProvider(sources ...core.MetricsSource) *DummyMetricsS
 
 type DummyDataProcessor struct {
 	latency time.Duration
+}
+
+func (this *DummyDataProcessor) Name() string {
+	return "dummy"
 }
 
 func (this *DummyDataProcessor) Process(data *core.DataBatch) (*core.DataBatch, error) {

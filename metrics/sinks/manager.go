@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/heapster/metrics/core"
 )
 
@@ -26,6 +27,35 @@ const (
 	DefaultSinkExportDataTimeout = 20 * time.Second
 	DefaultSinkStopTimeout       = 60 * time.Second
 )
+
+var (
+	// Last time Heapster exported data since unix epoch in seconds.
+	lastExportTimestamp = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "heapster",
+			Subsystem: "exporter",
+			Name:      "last_time_seconds",
+			Help:      "Last time Heapster exported data since unix epoch in seconds.",
+		},
+		[]string{"exporter"},
+	)
+
+	// Time spent exporting data to sink in microseconds.
+	exporterDuration = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "heapster",
+			Subsystem: "exporter",
+			Name:      "duration_microseconds",
+			Help:      "Time spent exporting data to sink in microseconds.",
+		},
+		[]string{"exporter"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(lastExportTimestamp)
+	prometheus.MustRegister(exporterDuration)
+}
 
 type sinkHolder struct {
 	sink             core.DataSink
@@ -55,7 +85,7 @@ func NewDataSinkManager(sinks []core.DataSink, exportDataTimeout, stopTimeout ti
 			for {
 				select {
 				case data := <-sh.dataBatchChannel:
-					sh.sink.ExportData(data)
+					export(sh.sink, data)
 				case isStop := <-sh.stopChannel:
 					glog.V(2).Infof("Stop received: %s", sh.sink.Name())
 					if isStop {
@@ -114,4 +144,16 @@ func (this *sinkManager) Stop() {
 			return
 		}(sh)
 	}
+}
+
+func export(s core.DataSink, data *core.DataBatch) {
+	startTime := time.Now()
+	defer lastExportTimestamp.
+		WithLabelValues(s.Name()).
+		Set(float64(time.Now().Unix()))
+	defer exporterDuration.
+		WithLabelValues(s.Name()).
+		Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+
+	s.ExportData(data)
 }

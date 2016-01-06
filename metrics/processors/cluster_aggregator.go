@@ -14,15 +14,14 @@
 
 package processors
 
-import (
-	"fmt"
-	"time"
-
-	"k8s.io/heapster/metrics/core"
-)
+import "k8s.io/heapster/metrics/core"
 
 type ClusterAggregator struct {
 	MetricsToAggregate []string
+}
+
+func (this *ClusterAggregator) Name() string {
+	return "cluster_aggregator"
 }
 
 func (this *ClusterAggregator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
@@ -30,8 +29,6 @@ func (this *ClusterAggregator) Process(batch *core.DataBatch) (*core.DataBatch, 
 		Timestamp:  batch.Timestamp,
 		MetricSets: make(map[string]*core.MetricSet),
 	}
-
-	startTime := time.Now()
 
 	for key, metricSet := range batch.MetricSets {
 		result.MetricSets[key] = metricSet
@@ -48,9 +45,6 @@ func (this *ClusterAggregator) Process(batch *core.DataBatch) (*core.DataBatch, 
 			}
 		}
 	}
-	//export time spent in processors (single run, not cumulative) to prometheus
-	duration := fmt.Sprintf("%s", time.Now().Sub(startTime))
-	core.ProcessorDurations.WithLabelValues(duration, "cluster_aggregator")
 
 	return &result, nil
 }

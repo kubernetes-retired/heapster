@@ -26,6 +26,7 @@ import (
 	"k8s.io/heapster/metrics/api/v1/types"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/heapster/metrics/util/metrics"
 )
 
 // errModelNotActivated is the error that is returned by the API handlers
@@ -52,13 +53,13 @@ func (a *Api) RegisterModel(container *restful.Container) {
 
 	// The /metrics/ endpoint returns a list of all available metrics for the Cluster entity of the model.
 	ws.Route(ws.GET("/metrics/").
-		To(a.availableClusterMetrics).
+		To(metrics.InstrumentRouteFunc("availableClusterMetrics", a.availableClusterMetrics)).
 		Doc("Get a list of all available metrics for the Cluster entity").
-		Operation("availableMetrics"))
+		Operation("availableClusterMetrics"))
 
 	// The /metrics/{metric-name} endpoint exposes an aggregated metric for the Cluster entity of the model.
 	ws.Route(ws.GET("/metrics/{metric-name}").
-		To(a.clusterMetrics).
+		To(metrics.InstrumentRouteFunc("clusterMetrics", a.clusterMetrics)).
 		Doc("Export an aggregated cluster-level metric").
 		Operation("clusterMetrics").
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
@@ -68,21 +69,21 @@ func (a *Api) RegisterModel(container *restful.Container) {
 
 	// The /nodes/{node-name}/metrics endpoint returns a list of all nodes with some metrics.
 	ws.Route(ws.GET("/nodes/").
-		To(a.nodeList).
+		To(metrics.InstrumentRouteFunc("nodeList", a.nodeList)).
 		Doc("Get a list of all nodes that have some current metrics").
 		Operation("nodeList"))
 
 	// The /nodes/{node-name}/metrics endpoint returns a list of all available metrics for a Node entity.
 	ws.Route(ws.GET("/nodes/{node-name}/metrics/").
-		To(a.availableNodeMetrics).
+		To(metrics.InstrumentRouteFunc("availableNodeMetrics", a.availableNodeMetrics)).
 		Doc("Get a list of all available metrics for a Node entity").
-		Operation("availableMetrics").
+		Operation("availableNodeMetrics").
 		Param(ws.PathParameter("node-name", "The name of the node to lookup").DataType("string")))
 
 	// The /nodes/{node-name}/metrics/{metric-name} endpoint exposes a metric for a Node entity of the model.
 	// The {node-name} parameter is the hostname of a specific node.
 	ws.Route(ws.GET("/nodes/{node-name}/metrics/{metric-name}").
-		To(a.nodeMetrics).
+		To(metrics.InstrumentRouteFunc("nodeMetrics", a.nodeMetrics)).
 		Doc("Export a node-level metric").
 		Operation("nodeMetrics").
 		Param(ws.PathParameter("node-name", "The name of the node to lookup").DataType("string")).
@@ -94,21 +95,21 @@ func (a *Api) RegisterModel(container *restful.Container) {
 	if a.runningInKubernetes {
 
 		ws.Route(ws.GET("/namespaces/").
-			To(a.namespaceList).
+			To(metrics.InstrumentRouteFunc("namespaceList", a.namespaceList)).
 			Doc("Get a list of all namespaces that have some current metrics").
 			Operation("namespaceList"))
 
 		// The /namespaces/{namespace-name}/metrics endpoint returns a list of all available metrics for a Namespace entity.
 		ws.Route(ws.GET("/namespaces/{namespace-name}/metrics").
-			To(a.availableNamespaceMetrics).
+			To(metrics.InstrumentRouteFunc("availableNamespaceMetrics", a.availableNamespaceMetrics)).
 			Doc("Get a list of all available metrics for a Namespace entity").
-			Operation("availableMetrics").
+			Operation("availableNamespaceMetrics").
 			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
 
 		// The /namespaces/{namespace-name}/metrics/{metric-name} endpoint exposes an aggregated metrics
 		// for a Namespace entity of the model.
 		ws.Route(ws.GET("/namespaces/{namespace-name}/metrics/{metric-name}").
-			To(a.namespaceMetrics).
+			To(metrics.InstrumentRouteFunc("namespaceMetrics", a.namespaceMetrics)).
 			Doc("Export an aggregated namespace-level metric").
 			Operation("namespaceMetrics").
 			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
@@ -118,23 +119,23 @@ func (a *Api) RegisterModel(container *restful.Container) {
 			Writes(types.MetricResult{}))
 
 		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/").
-			To(a.namespacePodList).
+			To(metrics.InstrumentRouteFunc("namespacePodList", a.namespacePodList)).
 			Doc("Get a list of pods from the given namespace that have some metrics").
 			Operation("namespacePodList").
 			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
 
 		// The /namespaces/{namespace-name}/pods/{pod-name}/metrics endpoint returns a list of all available metrics for a Pod entity.
 		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/metrics").
-			To(a.availablePodMetrics).
+			To(metrics.InstrumentRouteFunc("availablePodMetrics", a.availablePodMetrics)).
 			Doc("Get a list of all available metrics for a Pod entity").
-			Operation("availableMetrics").
+			Operation("availablePodMetrics").
 			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
 			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
 
 		// The /namespaces/{namespace-name}/pods/{pod-name}/metrics/{metric-name} endpoint exposes
 		// an aggregated metric for a Pod entity of the model.
 		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/metrics/{metric-name}").
-			To(a.podMetrics).
+			To(metrics.InstrumentRouteFunc("podMetrics", a.podMetrics)).
 			Doc("Export an aggregated pod-level metric").
 			Operation("podMetrics").
 			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
@@ -147,9 +148,9 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		// The /namespaces/{namespace-name}/pods/{pod-name}/containers/metrics/{container-name}/metrics endpoint
 		// returns a list of all available metrics for a Pod Container entity.
 		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics").
-			To(a.availablePodContainerMetrics).
+			To(metrics.InstrumentRouteFunc("availableContainerMetrics", a.availablePodContainerMetrics)).
 			Doc("Get a list of all available metrics for a Pod entity").
-			Operation("availableMetrics").
+			Operation("availableContainerMetrics").
 			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
 			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")).
 			Param(ws.PathParameter("container-name", "The name of the namespace to use").DataType("string")))
@@ -157,7 +158,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		// The /namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics/{metric-name} endpoint exposes
 		// a metric for a Container entity of the model.
 		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics/{metric-name}").
-			To(a.podContainerMetrics).
+			To(metrics.InstrumentRouteFunc("podContainerMetrics", a.podContainerMetrics)).
 			Doc("Export an aggregated metric for a Pod Container").
 			Operation("podContainerMetrics").
 			Param(ws.PathParameter("namespace-name", "The name of the namespace to use").DataType("string")).
@@ -170,7 +171,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 	}
 
 	ws.Route(ws.GET("/nodes/{node-name}/freecontainers/").
-		To(a.nodeSystemContainerList).
+		To(metrics.InstrumentRouteFunc("systemContainerList", a.nodeSystemContainerList)).
 		Doc("Get a list of all non-pod containers with some metrics").
 		Operation("systemContainerList").
 		Param(ws.PathParameter("node-name", "The name of the namespace to lookup").DataType("string")))
@@ -178,7 +179,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 	// The /nodes/{node-name}/freecontainers/{container-name}/metrics endpoint
 	// returns a list of all available metrics for a Free Container entity.
 	ws.Route(ws.GET("/nodes/{node-name}/freecontainers/{container-name}/metrics").
-		To(a.availableFreeContainerMetrics).
+		To(metrics.InstrumentRouteFunc("availableMetrics", a.availableFreeContainerMetrics)).
 		Doc("Get a list of all available metrics for a free Container entity").
 		Operation("availableMetrics").
 		Param(ws.PathParameter("node-name", "The name of the namespace to lookup").DataType("string")).
@@ -187,7 +188,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 	// The /nodes/{node-name}/freecontainers/{container-name}/metrics/{metric-name} endpoint exposes
 	// a metric for a free Container entity of the model.
 	ws.Route(ws.GET("/nodes/{node-name}/freecontainers/{container-name}/metrics/{metric-name}").
-		To(a.freeContainerMetrics).
+		To(metrics.InstrumentRouteFunc("freeContainerMetrics", a.freeContainerMetrics)).
 		Doc("Export a container-level metric for a free container").
 		Operation("freeContainerMetrics").
 		Param(ws.PathParameter("node-name", "The name of the node to use").DataType("string")).
@@ -201,7 +202,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		// The /namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name} endpoint exposes
 		// metrics for a list od pods of the model.
 		ws.Route(ws.GET("/namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name}").
-			To(a.podListMetrics).
+			To(metrics.InstrumentRouteFunc("podListMetric", a.podListMetrics)).
 			Doc("Export a metric for all pods from the given list").
 			Operation("podListMetric").
 			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
@@ -213,7 +214,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 	}
 
 	ws.Route(ws.GET("/debug/allkeys").
-		To(a.allKeys).
+		To(metrics.InstrumentRouteFunc("debugAllKeys", a.allKeys)).
 		Doc("Get keys of all metric sets available").
 		Operation("debugAllKeys"))
 
@@ -222,33 +223,21 @@ func (a *Api) RegisterModel(container *restful.Container) {
 
 // availableMetrics returns a list of available cluster metric names.
 func (a *Api) availableClusterMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(core.ClusterKey(), response)
 }
 
 // availableMetrics returns a list of available node metric names.
 func (a *Api) availableNodeMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(core.NodeKey(request.PathParameter("node-name")), response)
 }
 
 // availableMetrics returns a list of available namespace metric names.
 func (a *Api) availableNamespaceMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(core.NamespaceKey(request.PathParameter("namespace-name")), response)
 }
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availablePodMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(
 		core.PodKey(request.PathParameter("namespace-name"),
 			request.PathParameter("pod-name")), response)
@@ -256,9 +245,6 @@ func (a *Api) availablePodMetrics(request *restful.Request, response *restful.Re
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availablePodContainerMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(
 		core.PodContainerKey(request.PathParameter("namespace-name"),
 			request.PathParameter("pod-name"),
@@ -268,9 +254,6 @@ func (a *Api) availablePodContainerMetrics(request *restful.Request, response *r
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availableFreeContainerMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricNamesRequest(
 		core.NodeContainerKey(request.PathParameter("node-name"),
 			request.PathParameter("container-name"),
@@ -278,66 +261,44 @@ func (a *Api) availableFreeContainerMetrics(request *restful.Request, response *
 }
 
 func (a *Api) nodeList(request *restful.Request, response *restful.Response) {
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	response.WriteEntity(a.metricSink.GetNodes())
 }
 
 func (a *Api) namespaceList(request *restful.Request, response *restful.Response) {
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	response.WriteEntity(a.metricSink.GetNamespaces())
 }
 
 func (a *Api) namespacePodList(request *restful.Request, response *restful.Response) {
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	response.WriteEntity(a.metricSink.GetPodsFromNamespace(request.PathParameter("namespace-name")))
 }
 
 func (a *Api) nodeSystemContainerList(request *restful.Request, response *restful.Response) {
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	response.WriteEntity(a.metricSink.GetSystemContainersFromNode(request.PathParameter("node-name")))
 }
 
 func (a *Api) allKeys(request *restful.Request, response *restful.Response) {
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	response.WriteEntity(a.metricSink.GetMetricSetKeys())
 }
 
 // clusterMetrics returns a metric timeseries for a metric of the Cluster entity.
 func (a *Api) clusterMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(core.ClusterKey(), request, response)
 }
 
 // nodeMetrics returns a metric timeseries for a metric of the Node entity.
 func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(core.NodeKey(request.PathParameter("node-name")),
 		request, response)
 }
 
 // namespaceMetrics returns a metric timeseries for a metric of the Namespace entity.
 func (a *Api) namespaceMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(core.NamespaceKey(request.PathParameter("namespace-name")),
 		request, response)
 }
 
 // podMetrics returns a metric timeseries for a metric of the Pod entity.
 func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(
 		core.PodKey(request.PathParameter("namespace-name"),
 			request.PathParameter("pod-name")),
@@ -345,9 +306,6 @@ func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 }
 
 func (a *Api) podListMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	start, end, err := getStartEndTime(request)
 	if err != nil {
 		response.WriteError(http.StatusBadRequest, err)
@@ -376,9 +334,6 @@ func (a *Api) podListMetrics(request *restful.Request, response *restful.Respons
 // podContainerMetrics returns a metric timeseries for a metric of a Pod Container entity.
 // podContainerMetrics uses the namespace-name/pod-name/container-name path.
 func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(
 		core.PodContainerKey(request.PathParameter("namespace-name"),
 			request.PathParameter("pod-name"),
@@ -390,9 +345,6 @@ func (a *Api) podContainerMetrics(request *restful.Request, response *restful.Re
 // freeContainerMetrics returns a metric timeseries for a metric of the Container entity.
 // freeContainerMetrics addresses only free containers, by using the node-name/container-name path.
 func (a *Api) freeContainerMetrics(request *restful.Request, response *restful.Response) {
-
-	//number of http model api requests add 1
-	core.ModelApiRequestCount.Inc()
 	a.processMetricRequest(
 		core.NodeContainerKey(request.PathParameter("node-name"),
 			request.PathParameter("container-name"),
