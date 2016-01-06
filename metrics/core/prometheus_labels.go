@@ -19,7 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const PrometheusPath = "/debug/prometheus"
+const PrometheusPath = "/metrics"
 const normDomain float64 = 200
 const normMean float64 = 10
 
@@ -84,22 +84,6 @@ var (
 		},
 	)
 
-	//number of http model api requests
-	ModelApiRequestCount = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "model_api_request_count",
-			Help: "number of http model api requests",
-		},
-	)
-
-	//number of other http requests
-	OtherApiRequestCount = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "other_api_request_count",
-			Help: "number of other model api requests",
-		},
-	)
-
 	PrometheusHandler = prometheus.Handler()
 )
 
@@ -110,6 +94,4 @@ func init() {
 	prometheus.MustRegister(ExportingDurations)
 	prometheus.MustRegister(ScrapedNodesCount)
 	prometheus.MustRegister(ScrapedContainersCount)
-	prometheus.MustRegister(ModelApiRequestCount)
-	prometheus.MustRegister(OtherApiRequestCount)
 }

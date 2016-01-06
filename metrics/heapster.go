@@ -116,8 +116,8 @@ func main() {
 	glog.Infof("Starting heapster on port %d", *argPort)
 
 	mux := http.NewServeMux()
+	promHandler := core.PrometheusHandler
 	if len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) > 0 {
-		promeHandler := core.PrometheusHandler
 		if len(*argTLSClientCAFile) > 0 {
 			authPprofHandler, err := newAuthHandler(handler)
 			if err != nil {
@@ -125,18 +125,18 @@ func main() {
 			}
 			handler = authPprofHandler
 
-			authPromeHandler, err := newAuthHandler(core.PrometheusHandler)
+			authPromHandler, err := newAuthHandler(promHandler)
 			if err != nil {
 				glog.Fatal(err)
 			}
-			promeHandler = authPromeHandler
+			promHandler = authPromHandler
 		}
 		mux.Handle("/", handler)
-		mux.Handle(core.PrometheusPath, promeHandler)
+		mux.Handle(core.PrometheusPath, promHandler)
 		glog.Fatal(http.ListenAndServeTLS(addr, *argTLSCertFile, *argTLSKeyFile, mux))
 	} else {
 		mux.Handle("/", handler)
-		mux.Handle(core.PrometheusPath, core.PrometheusHandler)
+		mux.Handle(core.PrometheusPath, promHandler)
 		glog.Fatal(http.ListenAndServe(addr, mux))
 	}
 

@@ -21,8 +21,8 @@ import (
 
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/metrics/api/v1"
-	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/heapster/metrics/util/metrics"
 )
 
 const pprofBasePath = "/debug/pprof/"
@@ -38,9 +38,6 @@ func setupHandlers(metricSink *metricsink.MetricSink) http.Handler {
 	a.Register(wsContainer)
 
 	handlePprofEndpoint := func(req *restful.Request, resp *restful.Response) {
-
-		//number of other http requests add 1
-		core.OtherApiRequestCount.Inc()
 		name := strings.TrimPrefix(req.Request.URL.Path, pprofBasePath)
 		switch name {
 		case "profile":
@@ -56,9 +53,7 @@ func setupHandlers(metricSink *metricsink.MetricSink) http.Handler {
 
 	// Setup pporf handlers.
 	ws := new(restful.WebService).Path(pprofBasePath)
-	ws.Route(ws.GET("/{subpath:*}").To(func(req *restful.Request, resp *restful.Response) {
-		handlePprofEndpoint(req, resp)
-	})).Doc("pprof endpoint")
+	ws.Route(ws.GET("/{subpath:*}").To(metrics.InstrumentRouteFunc("pprof", handlePprofEndpoint))).Doc("pprof endpoint")
 	wsContainer.Add(ws)
 
 	return wsContainer
