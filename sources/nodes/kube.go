@@ -97,6 +97,15 @@ func (self *kubeNodes) getNodeInfoAndHostname(node api.Node) (Info, string, erro
 	mem := node.Status.Capacity[api.ResourceMemory]
 	nodeInfo.CpuCapacity = uint64(cpu.MilliValue())
 	nodeInfo.MemCapacity = uint64(mem.Value())
+
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == api.NodeReady {
+			if condition.Status != api.ConditionTrue {
+				nodeErr = fmt.Errorf("The state of node is not Ready!")
+			}
+		}
+	}
+
 	return nodeInfo, hostname, nodeErr
 }
 
@@ -112,9 +121,8 @@ func (self *kubeNodes) List() (*NodeList, error) {
 	goodNodes := []string{}
 	for _, node := range allNodes.Items {
 		nodeInfo, hostname, err := self.getNodeInfoAndHostname(node)
-
-		nodeList.Items[Host(hostname)] = nodeInfo
 		if err == nil {
+			nodeList.Items[Host(hostname)] = nodeInfo
 			goodNodes = append(goodNodes, node.Name)
 		}
 	}
