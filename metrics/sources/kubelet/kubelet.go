@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
+	"github.com/prometheus/client_golang/prometheus"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
@@ -41,6 +42,23 @@ const (
 	CustomMetricPrefix = "CM:"
 )
 
+var (
+	// The Kubelet request latencies in microseconds.
+	kubeletRequestLatency = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "heapster",
+			Subsystem: "kubelet",
+			Name:      "request_duration_microseconds",
+			Help:      "The Kubelet request latencies in microseconds.",
+		},
+		[]string{"node"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(kubeletRequestLatency)
+}
+
 type cpuVal struct {
 	Val       int64
 	Timestamp time.Time
@@ -53,6 +71,10 @@ type kubeletMetricsSource struct {
 	hostname      string
 	hostId        string
 	cpuLastVal    map[string]cpuVal
+}
+
+func (this *kubeletMetricsSource) Name() string {
+	return this.String()
 }
 
 func (this *kubeletMetricsSource) String() string {
@@ -192,7 +214,7 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 }
 
 func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
-	containers, err := this.kubeletClient.GetAllRawContainers(this.host, start, end)
+	containers, err := this.scrapeKubelet(this.kubeletClient, this.host, start, end)
 	if err != nil {
 		glog.Errorf("error while getting containers from Kubelet: %v", err)
 	}
@@ -218,6 +240,12 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 		}
 	}
 	return result
+}
+
+func (this *kubeletMetricsSource) scrapeKubelet(client *KubeletClient, host Host, start, end time.Time) ([]cadvisor.ContainerInfo, error) {
+	startTime := time.Now()
+	defer kubeletRequestLatency.WithLabelValues(this.hostname).Observe(float64(time.Since(startTime)))
+	return client.GetAllRawContainers(host, start, end)
 }
 
 type kubeletProvider struct {

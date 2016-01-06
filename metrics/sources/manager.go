@@ -17,16 +17,44 @@ package sources
 import (
 	"time"
 
-	"fmt"
+	. "k8s.io/heapster/metrics/core"
 
 	"github.com/golang/glog"
-	"k8s.io/heapster/metrics/core"
-	. "k8s.io/heapster/metrics/core"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
 	DefaultMetricsScrapeTimeout = 20 * time.Second
 )
+
+var (
+	// Last time Heapster performed a scrape since unix epoch in seconds.
+	lastScrapeTimestamp = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "heapster",
+			Subsystem: "scraper",
+			Name:      "last_time_seconds",
+			Help:      "Last time Heapster performed a scrape since unix epoch in seconds.",
+		},
+		[]string{"source"},
+	)
+
+	// Time spent exporting scraping sources in microseconds..
+	scraperDuration = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "heapster",
+			Subsystem: "scraper",
+			Name:      "duration_microseconds",
+			Help:      "Time spent scraping sources in microseconds.",
+		},
+		[]string{"source"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(lastScrapeTimestamp)
+	prometheus.MustRegister(scraperDuration)
+}
 
 func NewSourceManager(metricsSourceProvider MetricsSourceProvider, metricsScrapeTimeout time.Duration) (MetricsSource, error) {
 	return &sourceManager{
@@ -40,6 +68,10 @@ type sourceManager struct {
 	metricsScrapeTimeout  time.Duration
 }
 
+func (this *sourceManager) Name() string {
+	return "source_manager"
+}
+
 func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 	glog.Infof("Scraping metrics start: %s, end: %s", start, end)
 	sources := this.metricsSourceProvider.GetMetricsSources()
@@ -51,7 +83,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 	for _, source := range sources {
 		go func(source MetricsSource, channel chan *DataBatch, start, end, timeoutTime time.Time) {
 			glog.Infof("Querying source: %s", source)
-			metrics := source.ScrapeMetrics(start, end)
+			metrics := scrape(source, start, end)
 			now := time.Now()
 			if !now.Before(timeoutTime) {
 				glog.Warningf("Failed to get %s response in time", source)
@@ -103,13 +135,23 @@ responseloop:
 			break responseloop
 		}
 	}
-	//export time spent in scrape (single run, not cumulative) to prometheus
-	duration := fmt.Sprintf("%s", time.Now().Sub(startTime))
-	core.ScrapeDurations.WithLabelValues(duration)
 
-	glog.Infof("ScrapeMetrics:  time: %s  size: %d", time.Now().Sub(startTime), len(response.MetricSets))
+	glog.Infof("ScrapeMetrics: time: %s size: %d", time.Since(startTime), len(response.MetricSets))
 	for i, value := range latencies {
 		glog.Infof("   scrape  bucket %d: %d", i, value)
 	}
 	return &response
+}
+
+func scrape(s MetricsSource, start, end time.Time) *DataBatch {
+	sourceName := s.Name()
+	startTime := time.Now()
+	defer lastScrapeTimestamp.
+		WithLabelValues(sourceName).
+		Set(float64(time.Now().Unix()))
+	defer scraperDuration.
+		WithLabelValues(sourceName).
+		Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+
+	return s.ScrapeMetrics(start, end)
 }

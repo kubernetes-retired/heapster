@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/manager"
@@ -116,7 +117,7 @@ func main() {
 	glog.Infof("Starting heapster on port %d", *argPort)
 
 	mux := http.NewServeMux()
-	promHandler := core.PrometheusHandler
+	promHandler := prometheus.Handler()
 	if len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) > 0 {
 		if len(*argTLSClientCAFile) > 0 {
 			authPprofHandler, err := newAuthHandler(handler)
@@ -132,11 +133,11 @@ func main() {
 			promHandler = authPromHandler
 		}
 		mux.Handle("/", handler)
-		mux.Handle(core.PrometheusPath, promHandler)
+		mux.Handle("/metrics", promHandler)
 		glog.Fatal(http.ListenAndServeTLS(addr, *argTLSCertFile, *argTLSKeyFile, mux))
 	} else {
 		mux.Handle("/", handler)
-		mux.Handle(core.PrometheusPath, promHandler)
+		mux.Handle("/metrics", promHandler)
 		glog.Fatal(http.ListenAndServe(addr, mux))
 	}
 

@@ -81,6 +81,7 @@ type DataBatch struct {
 
 // A place from where the metrics should be scraped.
 type MetricsSource interface {
+	Name() string
 	ScrapeMetrics(start, end time.Time) *DataBatch
 }
 
@@ -100,5 +101,6 @@ type DataSink interface {
 }
 
 type DataProcessor interface {
+	Name() string
 	Process(*DataBatch) (*DataBatch, error)
 }

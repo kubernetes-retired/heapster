@@ -15,18 +15,35 @@
 package manager
 
 import (
-	"fmt"
 	"time"
 
 	"k8s.io/heapster/metrics/core"
 
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
 	DefaultScrapeOffset   = 5 * time.Second
 	DefaultMaxParallelism = 3
 )
+
+var (
+	// The Time spent in a processor in microseconds.
+	processorDuration = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "heapster",
+			Subsystem: "processor",
+			Name:      "duration_microseconds",
+			Help:      "The Time spent in a processor in microseconds.",
+		},
+		[]string{"processor"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(processorDuration)
+}
 
 type Manager interface {
 	Start()
@@ -110,7 +127,7 @@ func (rm *realManager) housekeep(start, end time.Time) {
 		defer func() { rm.housekeepSemaphoreChan <- struct{}{} }()
 		data := rm.source.ScrapeMetrics(start, end)
 		for _, p := range rm.processors {
-			newData, err := p.Process(data)
+			newData, err := process(p, data)
 			if err == nil {
 				data = newData
 			} else {
@@ -120,19 +137,17 @@ func (rm *realManager) housekeep(start, end time.Time) {
 			}
 		}
 
-		//export time of the last metrics scrape to prometheus
-		timeStamp, err := time.Now().UTC().MarshalJSON()
-		if err != nil {
-			glog.Warningf("failed to get timestamp: %v", err)
-		}
-		core.LastMetricsTimeStamp.WithLabelValues(string(timeStamp))
-
-		//export time spent in exporting data to sinks (single run, not cumulative)
-		startTime := time.Now()
-		//export data to sinks
+		// Export data to sinks
 		rm.sink.ExportData(data)
-		duration := fmt.Sprintf("%s", time.Now().Sub(startTime))
-		core.ExportingDurations.WithLabelValues(duration)
 
 	}(rm)
+}
+
+func process(p core.DataProcessor, data *core.DataBatch) (*core.DataBatch, error) {
+	startTime := time.Now()
+	defer processorDuration.
+		WithLabelValues(p.Name()).
+		Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+
+	return p.Process(data)
 }
