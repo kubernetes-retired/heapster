@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -353,41 +352,6 @@ func expectedItemsExist(expectedItems []string, actualItems map[string]bool) err
 	return nil
 }
 
-func getSinks(fm kubeFramework, svc *kube_api.Service) ([]string, error) {
-	body, err := fm.Client().Get().
-		Namespace(svc.Namespace).
-		Prefix("proxy").
-		Resource("services").
-		Name(svc.Name).
-		Suffix(sinksEndpoint).
-		Do().Raw()
-	if err != nil {
-		return nil, err
-	}
-	var sinks []string
-	if err := json.Unmarshal(body, &sinks); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
-		return nil, err
-	}
-	return sinks, nil
-}
-
-func setSinks(fm kubeFramework, svc *kube_api.Service, sinks []string) error {
-	data, err := json.Marshal(sinks)
-	if err != nil {
-		return err
-	}
-	return fm.Client().Post().
-		Namespace(svc.Namespace).
-		Prefix("proxy").
-		Resource("services").
-		Name(svc.Name).
-		Suffix(sinksEndpoint).
-		SetHeader("Content-Type", "application/json").
-		Body(data).
-		Do().Error()
-}
-
 func getErrorCauses(err error) string {
 	serr, ok := err.(*apiErrors.StatusError)
 	if !ok {
@@ -398,29 +362,6 @@ func getErrorCauses(err error) string {
 		causes = append(causes, c.Message)
 	}
 	return strings.Join(causes, ", ")
-}
-
-func runSinksTest(fm kubeFramework, svc *kube_api.Service) error {
-	for _, newSinks := range [...][]string{
-		{},
-		{
-			"gcm",
-		},
-		{},
-	} {
-		if err := setSinks(fm, svc, newSinks); err != nil {
-			glog.Errorf("Could not set sinks. Causes: %s", getErrorCauses(err))
-			return err
-		}
-		sinks, err := getSinks(fm, svc)
-		if err != nil {
-			return err
-		}
-		if !reflect.DeepEqual(sinks, newSinks) {
-			return fmt.Errorf("expected %v sinks, found %v", newSinks, sinks)
-		}
-	}
-	return nil
 }
 
 func getDataFromProxy(fm kubeFramework, svc *kube_api.Service, url string) ([]byte, error) {
@@ -655,18 +596,6 @@ func apiTest(kubeVersion string, zone string) error {
 				}
 				return err
 			},*/
-		/*
-				TODO(mwielgus): Enable once dynamic sink setting is enabled.
-			func() error {
-				glog.V(2).Infof("Sinks test...")
-				err := runSinksTest(fm, svc)
-				if err == nil {
-					glog.V(2).Infof("Sinks test: OK")
-				} else {
-					glog.V(2).Infof("Sinks test error: %v", err)
-				}
-				return err
-			}, */
 		func() error {
 			glog.V(2).Infof("Model test")
 			err := runModelTest(fm, svc)
