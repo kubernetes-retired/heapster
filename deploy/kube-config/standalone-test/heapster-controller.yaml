@@ -22,10 +22,22 @@ spec:
         command:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
+        - --sink=log
         volumeMounts:
         - name: ssl-certs
           mountPath: /etc/ssl/certs
           readOnly: true
+      - name: eventer-test
+        image: kubernetes/heapster:canary
+        imagePullPolicy: Always
+        command:
+        - /eventer
+        - --source=kubernetes:https://kubernetes.default
+        - --sink=log
+        volumeMounts:
+        - name: ssl-certs
+          mountPath: /etc/ssl/certs
+          readOnly: true    
       volumes:
       - name: ssl-certs
         hostPath:

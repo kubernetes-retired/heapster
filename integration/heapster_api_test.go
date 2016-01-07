@@ -146,10 +146,13 @@ func getHeapsterRcAndSvc(fm kubeFramework) (*kube_api.Service, *kube_api.Replica
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse heapster controller - %v", err)
 	}
-	rc.Spec.Template.Spec.Containers[0].Image = *heapsterImage
-	rc.Spec.Template.Spec.Containers[0].ImagePullPolicy = kube_api.PullNever
-	// increase logging level
-	rc.Spec.Template.Spec.Containers[0].Env = append(rc.Spec.Template.Spec.Containers[0].Env, kube_api.EnvVar{Name: "FLAGS", Value: "--vmodule=*=3"})
+	for i := range rc.Spec.Template.Spec.Containers {
+		rc.Spec.Template.Spec.Containers[i].Image = *heapsterImage
+		rc.Spec.Template.Spec.Containers[i].ImagePullPolicy = kube_api.PullNever
+		// increase logging level
+		rc.Spec.Template.Spec.Containers[i].Env = append(rc.Spec.Template.Spec.Containers[0].Env, kube_api.EnvVar{Name: "FLAGS", Value: "--vmodule=*=3"})
+	}
+
 	svc, err := fm.ParseService(*heapsterServiceFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse heapster service - %v", err)
