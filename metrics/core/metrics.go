@@ -359,18 +359,18 @@ var MetricNetworkTxErrors = Metric{
 
 type MetricDescriptor struct {
 	// The unique name of the metric.
-	Name string
+	Name string `json:"name,omitempty"`
 
 	// Description of the metric.
-	Description string
+	Description string `json:"description,omitempty"`
 
 	// Descriptor of the labels specific to this metric.
-	Labels []LabelDescriptor
+	Labels []LabelDescriptor `json:"labels,omitempty"`
 
 	// Type and value of metric data.
-	Type      MetricType
-	ValueType ValueType
-	Units     UnitsType
+	Type      MetricType `json:"type,omitempty"`
+	ValueType ValueType  `json:"value_type,omitempty"`
+	Units     UnitsType  `json:"units,omitempty"`
 }
 
 // Metric represents a resource usage stat metric.

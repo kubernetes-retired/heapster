@@ -195,7 +195,7 @@ func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*api_v1.Timeserie
 	}
 	var timeseries []*api_v1.Timeseries
 	if err := json.Unmarshal(body, &timeseries); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
+		glog.V(2).Infof("Timeseries error: %v %v", err, string(body))
 		return nil, err
 	}
 	return timeseries, nil
@@ -214,7 +214,7 @@ func getSchema(fm kubeFramework, svc *kube_api.Service) (*api_v1.TimeseriesSchem
 	}
 	var timeseriesSchema api_v1.TimeseriesSchema
 	if err := json.Unmarshal(body, &timeseriesSchema); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
+		glog.V(2).Infof("Metrics schema error: %v  %v", err, string(body))
 		return nil, err
 	}
 	return &timeseriesSchema, nil
@@ -268,24 +268,28 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 	for _, ts := range timeseries {
 		// Verify the relevant labels are present.
 		// All common labels must be present.
-		for _, label := range core.CommonLabels() {
-			if label == core.LabelContainerBaseImage && !isContainerBaseImageExpected(ts) {
-				continue
-			}
-			_, exists := ts.Labels[label.Key]
-			if !exists {
-				return fmt.Errorf("timeseries: %v does not contain common label: %v", ts, label)
-			}
-		}
 		podName, podMetric := ts.Labels[core.LabelPodName.Key]
-		if podMetric {
-			for _, label := range core.PodLabels() {
+
+		/*
+			TODO(mwielgus): Uncoment once all labels are populated from POD watch
+
+			for _, label := range core.CommonLabels() {
+				if label == core.LabelContainerBaseImage && !isContainerBaseImageExpected(ts) {
+					continue
+				}
 				_, exists := ts.Labels[label.Key]
 				if !exists {
-					return fmt.Errorf("timeseries: %v does not contain pod label: %v", ts, label)
+					return fmt.Errorf("timeseries: %v does not contain common label: %v", ts, label)
 				}
 			}
-		}
+			if podMetric {
+				for _, label := range core.PodLabels() {
+					_, exists := ts.Labels[label.Key]
+					if !exists {
+						return fmt.Errorf("timeseries: %v does not contain pod label: %v", ts, label)
+					}
+				}
+			}*/
 		if podMetric {
 			actualPods[podName] = true
 		} else {
@@ -586,19 +590,28 @@ func apiTest(kubeVersion string, zone string) error {
 		return err
 	}
 	testFuncs := []func() error{
+		func() error {
+			glog.V(2).Infof("Heapster metrics test...")
+			err := runHeapsterMetricsTest(fm, svc)
+			if err == nil {
+				glog.V(2).Infof("Heapster metrics test: OK")
+			} else {
+				glog.V(2).Infof("Heapster metrics test error: %v", err)
+			}
+			return err
+		},
 		/*
-			TODO(piosz): Uncomment once gke export endpoint is enabled.
-
+				TODO(mwielgus): Enable once dynamic sink setting is enabled.
 			func() error {
-				glog.V(2).Infof("Heapster metrics test...")
-				err := runHeapsterMetricsTest(fm, svc)
+				glog.V(2).Infof("Sinks test...")
+				err := runSinksTest(fm, svc)
 				if err == nil {
-					glog.V(2).Infof("Heapster metrics test: OK")
+					glog.V(2).Infof("Sinks test: OK")
 				} else {
-					glog.V(2).Infof("Heapster metrics test error: %v", err)
+					glog.V(2).Infof("Sinks test error: %v", err)
 				}
 				return err
-			},*/
+			}, */
 		func() error {
 			glog.V(2).Infof("Model test")
 			err := runModelTest(fm, svc)
