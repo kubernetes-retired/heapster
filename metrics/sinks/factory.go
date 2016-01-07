@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
+	"k8s.io/heapster/metrics/sinks/gcm"
 	"k8s.io/heapster/metrics/sinks/hawkular"
 	"k8s.io/heapster/metrics/sinks/influxdb"
 	"k8s.io/heapster/metrics/sinks/kafka"
@@ -34,10 +35,14 @@ type SinkFactory struct {
 
 func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 	switch uri.Key {
-	case "influxdb":
-		return influxdb.CreateInfluxdbSink(&uri.Val)
+	case "gcm":
+		return gcm.CreateGCMSink(&uri.Val)
 	case "hawkular":
 		return hawkular.NewHawkularSink(&uri.Val)
+	case "influxdb":
+		return influxdb.CreateInfluxdbSink(&uri.Val)
+	case "kafka":
+		return kafka.NewKafkaSink(&uri.Val)
 	case "log":
 		return logsink.NewLogSink(), nil
 	case "metric":
@@ -46,8 +51,6 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 			core.MetricMemoruUsage.MetricDescriptor.Name}), nil
 	case "riemann":
 		return riemann.CreateRiemannSink(&uri.Val)
-	case "kafka":
-		return kafka.NewKafkaSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}

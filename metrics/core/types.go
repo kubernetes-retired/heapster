@@ -25,12 +25,32 @@ const (
 	MetricGauge
 )
 
+func (self *MetricType) String() string {
+	switch *self {
+	case MetricCumulative:
+		return "cumulative"
+	case MetricGauge:
+		return "gauge"
+	}
+	return ""
+}
+
 type ValueType int8
 
 const (
 	ValueInt64 ValueType = iota
 	ValueFloat
 )
+
+func (self *ValueType) String() string {
+	switch *self {
+	case ValueInt64:
+		return "int64"
+	case ValueFloat:
+		return "double"
+	}
+	return ""
+}
 
 type UnitsType int8
 
@@ -66,6 +86,7 @@ type MetricValue struct {
 	FloatValue float32
 	MetricType MetricType
 	ValueType  ValueType
+	Start      time.Time
 }
 
 type MetricSet struct {
