@@ -55,21 +55,6 @@ func (a *Api) Register(container *restful.Container) {
 		Operation("exportmetricsSchema").
 		Writes(types.TimeseriesSchema{}))
 	container.Add(ws)
-	ws = new(restful.WebService)
-	ws.Path("/api/v1/sinks").
-		Doc("Configuration for Heapster sinks for exporting data").
-		Produces(restful.MIME_JSON)
-	ws.Route(ws.POST("").
-		To(a.setSinks).
-		Doc("set the current sinks").
-		Operation("setSinks").
-		Reads([]string{}))
-	ws.Route(ws.GET("").
-		To(a.getSinks).
-		Doc("get the current sinks").
-		Operation("getSinks").
-		Writes([]string{}))
-	container.Add(ws)
 
 	if a.metricSink != nil {
 		a.RegisterModel(container)
@@ -84,12 +69,4 @@ func (a *Api) exportMetricsSchema(request *restful.Request, response *restful.Re
 func (a *Api) exportMetrics(request *restful.Request, response *restful.Response) {
 	timeseries := make([]*types.Timeseries, 0)
 	response.WriteEntity(timeseries)
-}
-
-func (a *Api) setSinks(req *restful.Request, resp *restful.Response) {
-}
-
-func (a *Api) getSinks(req *restful.Request, resp *restful.Response) {
-	var strs []string
-	resp.WriteEntity(strs)
 }
