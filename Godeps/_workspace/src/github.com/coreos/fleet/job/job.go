@@ -189,7 +189,7 @@ func (j *Job) requirements() map[string][]string {
 // the job's associated unit file are known keys. If not, an error is
 // returned.
 func (j *Job) ValidateRequirements() error {
-	for key := range j.requirements() {
+	for key, _ := range j.requirements() {
 		if !validRequirements.Contains(key) {
 			return fmt.Errorf("unrecognized requirement in [X-Fleet] section: %q", key)
 		}

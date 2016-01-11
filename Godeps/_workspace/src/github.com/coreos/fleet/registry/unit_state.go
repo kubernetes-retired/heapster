@@ -62,7 +62,7 @@ func (r *EtcdRegistry) UnitStates() (states []*unit.UnitState, err error) {
 	}
 
 	var sorted MUSKeys
-	for key := range mus {
+	for key, _ := range mus {
 		sorted = append(sorted, key)
 	}
 	sort.Sort(sorted)

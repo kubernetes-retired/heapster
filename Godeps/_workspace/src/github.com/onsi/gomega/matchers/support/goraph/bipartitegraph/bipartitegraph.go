@@ -14,12 +14,12 @@ type BipartiteGraph struct {
 
 func NewBipartiteGraph(leftValues, rightValues []interface{}, neighbours func(interface{}, interface{}) (bool, error)) (*BipartiteGraph, error) {
 	left := NodeOrderedSet{}
-	for i := range leftValues {
+	for i, _ := range leftValues {
 		left = append(left, Node{i})
 	}
 
 	right := NodeOrderedSet{}
-	for j := range rightValues {
+	for j, _ := range rightValues {
 		right = append(right, Node{j + len(left)})
 	}
 
