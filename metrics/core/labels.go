@@ -19,7 +19,7 @@ package core
 var (
 	LabelMetricSetType = LabelDescriptor{
 		Key:         "type",
-		Description: "Type of the metrcis set (container, pod, namespace, node, cluster)",
+		Description: "Type of the metrics set (container, pod, namespace, node, cluster)",
 	}
 	MetricSetTypeSystemContainer = "sys_container"
 	MetricSetTypePodContainer    = "pod_container"
@@ -107,6 +107,18 @@ var metricLabels = []LabelDescriptor{
 	LabelResourceID,
 }
 
+// Labels exported to GCM. The number of labels that can be exported to GCM is limited by 10.
+var gcmLabels = []LabelDescriptor{
+	LabelMetricSetType,
+	LabelPodName,
+	LabelNamespaceName,
+	LabelHostname,
+	LabelHostID,
+	LabelContainerName,
+	LabelContainerBaseImage,
+	LabelCustomMetricName,
+}
+
 func CommonLabels() []LabelDescriptor {
 	result := make([]LabelDescriptor, len(commonLabels))
 	copy(result, commonLabels)
@@ -129,4 +141,12 @@ func SupportedLabels() []LabelDescriptor {
 	result := CommonLabels()
 	result = append(result, PodLabels()...)
 	return append(result, MetricLabels()...)
+}
+
+func GcmLabels() map[string]LabelDescriptor {
+	result := make(map[string]LabelDescriptor, len(gcmLabels))
+	for _, l := range gcmLabels {
+		result[l.Key] = l
+	}
+	return result
 }
