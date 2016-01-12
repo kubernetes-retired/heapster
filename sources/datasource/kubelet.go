@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/golang/glog"
@@ -32,7 +33,12 @@ import (
 )
 
 // TODO(vmarmol): Use Kubernetes' if we export it as an API.
-const kubernetesPodNameLabel = "io.kubernetes.pod.name"
+// Copied from k8s.io/kubernetes/pkg/kubelet/dockertools/labels.go - not exported there :(
+const (
+	KubernetesPodNameLabel          = "io.kubernetes.pod.name"
+	KubernetesPodNamespaceLabel     = "io.kubernetes.pod.namespace"
+	KubernetesPodInfraContainerName = "POD"
+)
 
 type kubeletSource struct {
 	config *kube_client.KubeletConfig
@@ -147,6 +153,9 @@ func (self *kubeletSource) GetAllRawContainers(host Host, start, end time.Time) 
 	return self.getAllContainers(url, start, end)
 }
 
+// Match the pod infra container - this name is hard coded so shouldn't change, but still feels very fragile.
+var podInfraContainerNameRE = regexp.MustCompile(`^k8s_` + KubernetesPodInfraContainerName + `\.[[:alnum:]]+_([[:alnum:]-]+)_([[:alnum:]-]+)`)
+
 func (self *kubeletSource) getAllContainers(url string, start, end time.Time) ([]api.Container, error) {
 	// Request data from all subcontainers.
 	request := statsRequest{
@@ -176,11 +185,24 @@ func (self *kubeletSource) getAllContainers(url string, start, end time.Time) ([
 	}
 
 	// TODO(vmarmol): Use this for all stats gathering.
-	// Don't include the Kubernetes containers, those are included elsewhere.
 	result := make([]api.Container, 0, len(containers))
 	for _, containerInfo := range containers {
-		if _, ok := containerInfo.Spec.Labels[kubernetesPodNameLabel]; ok {
-			continue
+		// If this is a Kubernetes managed container, then we should only include the Kubernetes infra containers -
+		// the others are collected via the kubelet pod stats API.
+		if _, ok := containerInfo.Spec.Labels[KubernetesPodNameLabel]; ok {
+			// As this is a raw container it is the aliases that contains the actual Docker name.
+			var matches []string
+			for _, alias := range containerInfo.Aliases {
+				matches = podInfraContainerNameRE.FindStringSubmatch(alias)
+				break
+			}
+			if len(matches) == 0 {
+				continue
+			}
+
+			// Set the namespace label.
+			containerInfo.Spec.Labels[KubernetesPodNameLabel] = matches[1]
+			containerInfo.Spec.Labels[KubernetesPodNamespaceLabel] = matches[2]
 		}
 
 		cont := self.parseStat(&containerInfo)

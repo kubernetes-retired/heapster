@@ -26,6 +26,7 @@ import (
 	sink_api "k8s.io/heapster/sinks/api"
 	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
+	"k8s.io/heapster/sources/datasource"
 )
 
 // Manager provides an interface to control the core of heapster.
@@ -172,6 +173,9 @@ func (rm *realManager) housekeep(start, end time.Time) {
 			errors = append(errors, err.Error())
 		}
 	}
+
+	rm.mapInfraContainersToPods(&sd)
+
 	glog.V(2).Infof("completed scraping data from sources. Errors: %v", errors)
 	if err := rm.cache.StorePods(sd.data.Pods); err != nil {
 		errors = append(errors, err.Error())
@@ -184,6 +188,44 @@ func (rm *realManager) housekeep(start, end time.Time) {
 	}
 	if len(errors) > 0 {
 		glog.V(1).Infof("housekeeping resulted in following errors: %v", errors)
+	}
+}
+
+// Map infra containers to pods - only if we have any pods of course.
+// Clunky but required without significant API changes (coming soon!).
+func (rm *realManager) mapInfraContainersToPods(sd *syncData) {
+	if len(sd.data.Pods) > 0 {
+		sd.mutex.Lock()
+		defer sd.mutex.Unlock()
+
+		// Iterate slice in reverse as we are going to be deleting containers if we manage to match infra containers.
+		for containerIndex := len(sd.data.Containers) - 1; containerIndex >= 0; containerIndex-- {
+			cont := sd.data.Containers[containerIndex]
+			podName, podNameFound := cont.Spec.Labels[datasource.KubernetesPodNameLabel]
+			podNamespace, podNamespaceFound := cont.Spec.Labels[datasource.KubernetesPodNamespaceLabel]
+
+			// Not a pod container then continue.
+			if !podNameFound || !podNamespaceFound {
+				continue
+			}
+
+			// Find a pod with these details.
+			for podIndex := range sd.data.Pods {
+				pod := &sd.data.Pods[podIndex]
+				// If we find a matching pod then add the container to the pod's containers slice.
+				if pod.Name == podName && pod.Namespace == podNamespace {
+					cont.Hostname = pod.Hostname
+					cont.ExternalID = pod.ExternalID
+					cont.Name = datasource.KubernetesPodInfraContainerName
+					pod.Containers = append(pod.Containers, cont)
+
+					// Delete the matched container so we don't duplicate containers.
+					sd.data.Containers = append(sd.data.Containers[:containerIndex], sd.data.Containers[containerIndex+1:]...)
+
+					break
+				}
+			}
+		}
 	}
 }
 
