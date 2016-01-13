@@ -27,13 +27,13 @@ type TypeMeta struct {
 	// Servers may infer this from the endpoint the client submits requests to.
 	// Cannot be updated.
 	// In CamelCase.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds
 	Kind string `json:"kind,omitempty"`
 
 	// APIVersion defines the versioned schema of this representation of an object.
 	// Servers should convert recognized schemas to the latest internal value, and
 	// may reject unrecognized values.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#resources
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
@@ -50,20 +50,41 @@ type ListMeta struct {
 	// Value must be treated as opaque by clients and passed unmodified back to the server.
 	// Populated by the system.
 	// Read-only.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#concurrency-control-and-consistency
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#concurrency-control-and-consistency
 	ResourceVersion string `json:"resourceVersion,omitempty"`
+}
+
+// ListOptions is the query options to a standard REST list/watch calls.
+type ListOptions struct {
+	TypeMeta `json:",inline"`
+
+	// A selector to restrict the list of returned objects by their labels.
+	// Defaults to everything.
+	LabelSelector LabelSelector `json:"labelSelector,omitempty"`
+	// A selector to restrict the list of returned objects by their fields.
+	// Defaults to everything.
+	FieldSelector FieldSelector `json:"fieldSelector,omitempty"`
+
+	// Watch for changes to the described resources and return them as a stream of
+	// add, update, and remove notifications. Specify resourceVersion.
+	Watch bool `json:"watch,omitempty"`
+	// When specified with a watch call, shows changes that occur after that particular version of a resource.
+	// Defaults to changes from the beginning of history.
+	ResourceVersion string `json:"resourceVersion,omitempty"`
+	// Timeout for the list/watch call.
+	TimeoutSeconds *int64 `json:"timeoutSeconds,omitempty"`
 }
 
 // Status is a return value for calls that don't return other objects.
 type Status struct {
 	TypeMeta `json:",inline"`
 	// Standard list metadata.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds
 	ListMeta `json:"metadata,omitempty"`
 
 	// Status of the operation.
 	// One of: "Success" or "Failure".
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
 	Status string `json:"status,omitempty"`
 	// A human-readable description of the status of this operation.
 	Message string `json:"message,omitempty"`
@@ -93,7 +114,7 @@ type StatusDetails struct {
 	Name string `json:"name,omitempty"`
 	// The kind attribute of the resource associated with the status StatusReason.
 	// On some operations may differ from the requested resource Kind.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds
 	Kind string `json:"kind,omitempty"`
 	// The Causes array includes more details associated with the StatusReason
 	// failure. Not all StatusReasons may provide detailed causes.
@@ -215,6 +236,12 @@ const (
 	// Status code 500
 	StatusReasonInternalError = "InternalError"
 
+	// StatusReasonExpired indicates that the request is invalid because the content you are requesting
+	// has expired and is no longer available. It is typically associated with watches that can't be
+	// serviced.
+	// Status code 410 (gone)
+	StatusReasonExpired = "Expired"
+
 	// StatusReasonServiceUnavailable means that the request itself was valid,
 	// but the requested service is unavailable at this time.
 	// Retrying the request after some time might succeed.
@@ -270,6 +297,7 @@ const (
 	CauseTypeUnexpectedServerResponse CauseType = "UnexpectedServerResponse"
 )
 
+func (*ListOptions) IsAnAPIObject()     {}
 func (*Status) IsAnAPIObject()          {}
 func (*APIVersions) IsAnAPIObject()     {}
 func (*APIGroupList) IsAnAPIObject()    {}
@@ -299,15 +327,15 @@ type APIGroup struct {
 	// name is the name of the group.
 	Name string `json:"name"`
 	// versions are the versions supported in this group.
-	Versions []GroupVersion `json:"versions"`
+	Versions []GroupVersionForDiscovery `json:"versions"`
 	// preferredVersion is the version preferred by the API server, which
 	// probably is the storage version.
-	PreferredVersion GroupVersion `json:"preferredVersion,omitempty"`
+	PreferredVersion GroupVersionForDiscovery `json:"preferredVersion,omitempty"`
 }
 
 // GroupVersion contains the "group/version" and "version" string of a version.
 // It is made a struct to keep extensiblity.
-type GroupVersion struct {
+type GroupVersionForDiscovery struct {
 	// groupVersion specifies the API group and version in the form "group/version"
 	GroupVersion string `json:"groupVersion"`
 	// version specifies the version in the form of "version". This is to save

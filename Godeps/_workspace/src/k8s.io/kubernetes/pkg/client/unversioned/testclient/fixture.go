@@ -43,6 +43,13 @@ type ObjectRetriever interface {
 	Add(runtime.Object) error
 }
 
+// ObjectScheme abstracts the implementation of common operations on objects.
+type ObjectScheme interface {
+	runtime.ObjectCreater
+	runtime.ObjectCopier
+	runtime.ObjectTyper
+}
+
 // ObjectReaction returns a ReactionFunc that takes a generic action string of the form
 // <verb>-<resource> or <verb>-<subresource>-<resource> and attempts to return a runtime
 // Object or error that matches the requested action. For instance, list-replicationControllers
@@ -119,7 +126,7 @@ func AddObjectsFromPath(path string, o ObjectRetriever, decoder runtime.Decoder)
 type objects struct {
 	types   map[string][]runtime.Object
 	last    map[string]int
-	scheme  runtime.ObjectScheme
+	scheme  ObjectScheme
 	decoder runtime.ObjectDecoder
 }
 
@@ -135,7 +142,7 @@ var _ ObjectRetriever = &objects{}
 // as a runtime.Object if Status == Success).  If multiple PodLists are provided, they
 // will be returned in order by the Kind call, and the last PodList will be reused for
 // subsequent calls.
-func NewObjects(scheme runtime.ObjectScheme, decoder runtime.ObjectDecoder) ObjectRetriever {
+func NewObjects(scheme ObjectScheme, decoder runtime.ObjectDecoder) ObjectRetriever {
 	return objects{
 		types:   make(map[string][]runtime.Object),
 		last:    make(map[string]int),
@@ -160,7 +167,7 @@ func (o objects) Kind(kind, name string) (runtime.Object, error) {
 			if err != nil {
 				return nilValue, err
 			}
-			if err := runtime.SetList(out, arr); err != nil {
+			if err := meta.SetList(out, arr); err != nil {
 				return nilValue, err
 			}
 			if out, err = o.scheme.Copy(out); err != nil {
@@ -203,12 +210,12 @@ func (o objects) Add(obj runtime.Object) error {
 	}
 
 	switch {
-	case runtime.IsListType(obj):
+	case meta.IsListType(obj):
 		if kind != "List" {
 			o.types[kind] = append(o.types[kind], obj)
 		}
 
-		list, err := runtime.ExtractList(obj)
+		list, err := meta.ExtractList(obj)
 		if err != nil {
 			return err
 		}

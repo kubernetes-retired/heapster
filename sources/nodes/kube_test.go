@@ -37,7 +37,7 @@ func TestCreate(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
+	client := client.NewOrDie(&client.Config{Host: server.URL, GroupVersion: testapi.Default.GroupVersion()})
 	kubeNodes, err := NewKubeNodes(client)
 	require.NoError(t, err)
 	_, err = kubeNodes.List()
@@ -96,7 +96,7 @@ func TestNodes(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	kubeClient := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
+	kubeClient := client.NewOrDie(&client.Config{Host: server.URL, GroupVersion: testapi.Default.GroupVersion()})
 	kubeNodes, err := NewKubeNodes(kubeClient)
 	require.NoError(t, err)
 	nodeList, err := kubeNodes.List()

@@ -48,7 +48,7 @@ func TestPodsApiCreation(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
+	client := client.NewOrDie(&client.Config{Host: server.URL, GroupVersion: testapi.Default.GroupVersion()})
 	podsApi := newPodsApi(client)
 	_, err := podsApi.List(&nodes.NodeList{})
 	require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestPodsParsing(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
+	client := client.NewOrDie(&client.Config{Host: server.URL, GroupVersion: testapi.Default.GroupVersion()})
 	podsApi := newPodsApi(client)
 	nodeList := &nodes.NodeList{
 		Items: map[nodes.Host]nodes.Info{

@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/emicklei/go-restful/swagger"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/registered"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -40,6 +42,8 @@ func NewSimpleFake(objects ...runtime.Object) *Fake {
 
 	fakeClient := &Fake{}
 	fakeClient.AddReactor("*", "*", ObjectReaction(o, api.RESTMapper))
+
+	fakeClient.AddWatchReactor("*", DefaultWatchReactor(watch.NewFake(), nil))
 
 	return fakeClient
 }
@@ -103,9 +107,7 @@ func (c *Fake) AddReactor(verb, resource string, reaction ReactionFunc) {
 
 // PrependReactor adds a reactor to the beginning of the chain
 func (c *Fake) PrependReactor(verb, resource string, reaction ReactionFunc) {
-	newChain := make([]Reactor, 0, len(c.ReactionChain)+1)
-	newChain[0] = &SimpleReactor{verb, resource, reaction}
-	newChain = append(newChain, c.ReactionChain...)
+	c.ReactionChain = append([]Reactor{&SimpleReactor{verb, resource, reaction}}, c.ReactionChain...)
 }
 
 // AddWatchReactor appends a reactor to the end of the chain
@@ -113,9 +115,19 @@ func (c *Fake) AddWatchReactor(resource string, reaction WatchReactionFunc) {
 	c.WatchReactionChain = append(c.WatchReactionChain, &SimpleWatchReactor{resource, reaction})
 }
 
+// PrependWatchReactor adds a reactor to the beginning of the chain
+func (c *Fake) PrependWatchReactor(resource string, reaction WatchReactionFunc) {
+	c.WatchReactionChain = append([]WatchReactor{&SimpleWatchReactor{resource, reaction}}, c.WatchReactionChain...)
+}
+
 // AddProxyReactor appends a reactor to the end of the chain
 func (c *Fake) AddProxyReactor(resource string, reaction ProxyReactionFunc) {
 	c.ProxyReactionChain = append(c.ProxyReactionChain, &SimpleProxyReactor{resource, reaction})
+}
+
+// PrependProxyReactor adds a reactor to the beginning of the chain
+func (c *Fake) PrependProxyReactor(resource string, reaction ProxyReactionFunc) {
+	c.ProxyReactionChain = append([]ProxyReactor{&SimpleProxyReactor{resource, reaction}}, c.ProxyReactionChain...)
 }
 
 // Invokes records the provided Action and then invokes the ReactFn (if provided).
@@ -282,11 +294,25 @@ func (c *Fake) ServerAPIVersions() (*unversioned.APIVersions, error) {
 	action.Resource = "apiversions"
 
 	c.Invokes(action, nil)
-	return &unversioned.APIVersions{Versions: registered.RegisteredVersions}, nil
+	gvStrings := []string{}
+	for _, gv := range registered.RegisteredGroupVersions {
+		gvStrings = append(gvStrings, gv.String())
+	}
+	return &unversioned.APIVersions{Versions: gvStrings}, nil
 }
 
 func (c *Fake) ComponentStatuses() client.ComponentStatusInterface {
 	return &FakeComponentStatuses{Fake: c}
+}
+
+// SwaggerSchema returns an empty swagger.ApiDeclaration for testing
+func (c *Fake) SwaggerSchema(version string) (*swagger.ApiDeclaration, error) {
+	action := ActionImpl{}
+	action.Verb = "get"
+	action.Resource = "/swaggerapi/api/" + version
+
+	c.Invokes(action, nil)
+	return &swagger.ApiDeclaration{}, nil
 }
 
 type FakeExperimental struct {

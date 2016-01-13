@@ -26,7 +26,7 @@ import (
 	unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 	v1 "k8s.io/kubernetes/pkg/api/v1"
 	conversion "k8s.io/kubernetes/pkg/conversion"
-	util "k8s.io/kubernetes/pkg/util"
+	intstr "k8s.io/kubernetes/pkg/util/intstr"
 	inf "speter.net/go/exp/math/dec/inf"
 )
 
@@ -34,8 +34,6 @@ func deepCopy_resource_Quantity(in resource.Quantity, out *resource.Quantity, c 
 	if in.Amount != nil {
 		if newVal, err := c.DeepCopy(in.Amount); err != nil {
 			return err
-		} else if newVal == nil {
-			out.Amount = nil
 		} else {
 			out.Amount = newVal.(*inf.Dec)
 		}
@@ -340,7 +338,7 @@ func deepCopy_v1_GlusterfsVolumeSource(in v1.GlusterfsVolumeSource, out *v1.Glus
 
 func deepCopy_v1_HTTPGetAction(in v1.HTTPGetAction, out *v1.HTTPGetAction, c *conversion.Cloner) error {
 	out.Path = in.Path
-	if err := deepCopy_util_IntOrString(in.Port, &out.Port, c); err != nil {
+	if err := deepCopy_intstr_IntOrString(in.Port, &out.Port, c); err != nil {
 		return err
 	}
 	out.Host = in.Host
@@ -498,6 +496,44 @@ func deepCopy_v1_PersistentVolumeClaimVolumeSource(in v1.PersistentVolumeClaimVo
 	return nil
 }
 
+func deepCopy_v1_PodSecurityContext(in v1.PodSecurityContext, out *v1.PodSecurityContext, c *conversion.Cloner) error {
+	if in.SELinuxOptions != nil {
+		out.SELinuxOptions = new(v1.SELinuxOptions)
+		if err := deepCopy_v1_SELinuxOptions(*in.SELinuxOptions, out.SELinuxOptions, c); err != nil {
+			return err
+		}
+	} else {
+		out.SELinuxOptions = nil
+	}
+	if in.RunAsUser != nil {
+		out.RunAsUser = new(int64)
+		*out.RunAsUser = *in.RunAsUser
+	} else {
+		out.RunAsUser = nil
+	}
+	if in.RunAsNonRoot != nil {
+		out.RunAsNonRoot = new(bool)
+		*out.RunAsNonRoot = *in.RunAsNonRoot
+	} else {
+		out.RunAsNonRoot = nil
+	}
+	if in.SupplementalGroups != nil {
+		out.SupplementalGroups = make([]int64, len(in.SupplementalGroups))
+		for i := range in.SupplementalGroups {
+			out.SupplementalGroups[i] = in.SupplementalGroups[i]
+		}
+	} else {
+		out.SupplementalGroups = nil
+	}
+	if in.FSGroup != nil {
+		out.FSGroup = new(int64)
+		*out.FSGroup = *in.FSGroup
+	} else {
+		out.FSGroup = nil
+	}
+	return nil
+}
+
 func deepCopy_v1_PodSpec(in v1.PodSpec, out *v1.PodSpec, c *conversion.Cloner) error {
 	if in.Volumes != nil {
 		out.Volumes = make([]v1.Volume, len(in.Volumes))
@@ -547,6 +583,14 @@ func deepCopy_v1_PodSpec(in v1.PodSpec, out *v1.PodSpec, c *conversion.Cloner) e
 	out.HostNetwork = in.HostNetwork
 	out.HostPID = in.HostPID
 	out.HostIPC = in.HostIPC
+	if in.SecurityContext != nil {
+		out.SecurityContext = new(v1.PodSecurityContext)
+		if err := deepCopy_v1_PodSecurityContext(*in.SecurityContext, out.SecurityContext, c); err != nil {
+			return err
+		}
+	} else {
+		out.SecurityContext = nil
+	}
 	if in.ImagePullSecrets != nil {
 		out.ImagePullSecrets = make([]v1.LocalObjectReference, len(in.ImagePullSecrets))
 		for i := range in.ImagePullSecrets {
@@ -576,6 +620,9 @@ func deepCopy_v1_Probe(in v1.Probe, out *v1.Probe, c *conversion.Cloner) error {
 	}
 	out.InitialDelaySeconds = in.InitialDelaySeconds
 	out.TimeoutSeconds = in.TimeoutSeconds
+	out.PeriodSeconds = in.PeriodSeconds
+	out.SuccessThreshold = in.SuccessThreshold
+	out.FailureThreshold = in.FailureThreshold
 	return nil
 }
 
@@ -675,12 +722,17 @@ func deepCopy_v1_SecurityContext(in v1.SecurityContext, out *v1.SecurityContext,
 	} else {
 		out.RunAsUser = nil
 	}
-	out.RunAsNonRoot = in.RunAsNonRoot
+	if in.RunAsNonRoot != nil {
+		out.RunAsNonRoot = new(bool)
+		*out.RunAsNonRoot = *in.RunAsNonRoot
+	} else {
+		out.RunAsNonRoot = nil
+	}
 	return nil
 }
 
 func deepCopy_v1_TCPSocketAction(in v1.TCPSocketAction, out *v1.TCPSocketAction, c *conversion.Cloner) error {
-	if err := deepCopy_util_IntOrString(in.Port, &out.Port, c); err != nil {
+	if err := deepCopy_intstr_IntOrString(in.Port, &out.Port, c); err != nil {
 		return err
 	}
 	return nil
@@ -844,6 +896,55 @@ func deepCopy_v1beta1_CPUTargetUtilization(in CPUTargetUtilization, out *CPUTarg
 	return nil
 }
 
+func deepCopy_v1beta1_ClusterAutoscaler(in ClusterAutoscaler, out *ClusterAutoscaler, c *conversion.Cloner) error {
+	if err := deepCopy_unversioned_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
+		return err
+	}
+	if err := deepCopy_v1_ObjectMeta(in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		return err
+	}
+	if err := deepCopy_v1beta1_ClusterAutoscalerSpec(in.Spec, &out.Spec, c); err != nil {
+		return err
+	}
+	return nil
+}
+
+func deepCopy_v1beta1_ClusterAutoscalerList(in ClusterAutoscalerList, out *ClusterAutoscalerList, c *conversion.Cloner) error {
+	if err := deepCopy_unversioned_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
+		return err
+	}
+	if err := deepCopy_unversioned_ListMeta(in.ListMeta, &out.ListMeta, c); err != nil {
+		return err
+	}
+	if in.Items != nil {
+		out.Items = make([]ClusterAutoscaler, len(in.Items))
+		for i := range in.Items {
+			if err := deepCopy_v1beta1_ClusterAutoscaler(in.Items[i], &out.Items[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
+	return nil
+}
+
+func deepCopy_v1beta1_ClusterAutoscalerSpec(in ClusterAutoscalerSpec, out *ClusterAutoscalerSpec, c *conversion.Cloner) error {
+	out.MinNodes = in.MinNodes
+	out.MaxNodes = in.MaxNodes
+	if in.TargetUtilization != nil {
+		out.TargetUtilization = make([]NodeUtilization, len(in.TargetUtilization))
+		for i := range in.TargetUtilization {
+			if err := deepCopy_v1beta1_NodeUtilization(in.TargetUtilization[i], &out.TargetUtilization[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.TargetUtilization = nil
+	}
+	return nil
+}
+
 func deepCopy_v1beta1_DaemonSet(in DaemonSet, out *DaemonSet, c *conversion.Cloner) error {
 	if err := deepCopy_unversioned_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
 		return err
@@ -882,9 +983,9 @@ func deepCopy_v1beta1_DaemonSetList(in DaemonSetList, out *DaemonSetList, c *con
 
 func deepCopy_v1beta1_DaemonSetSpec(in DaemonSetSpec, out *DaemonSetSpec, c *conversion.Cloner) error {
 	if in.Selector != nil {
-		out.Selector = make(map[string]string)
-		for key, val := range in.Selector {
-			out.Selector[key] = val
+		out.Selector = new(PodSelector)
+		if err := deepCopy_v1beta1_PodSelector(*in.Selector, out.Selector, c); err != nil {
+			return err
 		}
 	} else {
 		out.Selector = nil
@@ -958,13 +1059,8 @@ func deepCopy_v1beta1_DeploymentSpec(in DeploymentSpec, out *DeploymentSpec, c *
 	} else {
 		out.Selector = nil
 	}
-	if in.Template != nil {
-		out.Template = new(v1.PodTemplateSpec)
-		if err := deepCopy_v1_PodTemplateSpec(*in.Template, out.Template, c); err != nil {
-			return err
-		}
-	} else {
-		out.Template = nil
+	if err := deepCopy_v1_PodTemplateSpec(in.Template, &out.Template, c); err != nil {
+		return err
 	}
 	if err := deepCopy_v1beta1_DeploymentStrategy(in.Strategy, &out.Strategy, c); err != nil {
 		return err
@@ -1121,7 +1217,7 @@ func deepCopy_v1beta1_Ingress(in Ingress, out *Ingress, c *conversion.Cloner) er
 
 func deepCopy_v1beta1_IngressBackend(in IngressBackend, out *IngressBackend, c *conversion.Cloner) error {
 	out.ServiceName = in.ServiceName
-	if err := deepCopy_util_IntOrString(in.ServicePort, &out.ServicePort, c); err != nil {
+	if err := deepCopy_intstr_IntOrString(in.ServicePort, &out.ServicePort, c); err != nil {
 		return err
 	}
 	return nil
@@ -1306,6 +1402,12 @@ func deepCopy_v1beta1_JobStatus(in JobStatus, out *JobStatus, c *conversion.Clon
 	return nil
 }
 
+func deepCopy_v1beta1_NodeUtilization(in NodeUtilization, out *NodeUtilization, c *conversion.Cloner) error {
+	out.Resource = in.Resource
+	out.Value = in.Value
+	return nil
+}
+
 func deepCopy_v1beta1_PodSelector(in PodSelector, out *PodSelector, c *conversion.Cloner) error {
 	if in.MatchLabels != nil {
 		out.MatchLabels = make(map[string]string)
@@ -1351,16 +1453,16 @@ func deepCopy_v1beta1_ReplicationControllerDummy(in ReplicationControllerDummy, 
 
 func deepCopy_v1beta1_RollingUpdateDeployment(in RollingUpdateDeployment, out *RollingUpdateDeployment, c *conversion.Cloner) error {
 	if in.MaxUnavailable != nil {
-		out.MaxUnavailable = new(util.IntOrString)
-		if err := deepCopy_util_IntOrString(*in.MaxUnavailable, out.MaxUnavailable, c); err != nil {
+		out.MaxUnavailable = new(intstr.IntOrString)
+		if err := deepCopy_intstr_IntOrString(*in.MaxUnavailable, out.MaxUnavailable, c); err != nil {
 			return err
 		}
 	} else {
 		out.MaxUnavailable = nil
 	}
 	if in.MaxSurge != nil {
-		out.MaxSurge = new(util.IntOrString)
-		if err := deepCopy_util_IntOrString(*in.MaxSurge, out.MaxSurge, c); err != nil {
+		out.MaxSurge = new(intstr.IntOrString)
+		if err := deepCopy_intstr_IntOrString(*in.MaxSurge, out.MaxSurge, c); err != nil {
 			return err
 		}
 	} else {
@@ -1491,8 +1593,8 @@ func deepCopy_v1beta1_ThirdPartyResourceList(in ThirdPartyResourceList, out *Thi
 	return nil
 }
 
-func deepCopy_util_IntOrString(in util.IntOrString, out *util.IntOrString, c *conversion.Cloner) error {
-	out.Kind = in.Kind
+func deepCopy_intstr_IntOrString(in intstr.IntOrString, out *intstr.IntOrString, c *conversion.Cloner) error {
+	out.Type = in.Type
 	out.IntVal = in.IntVal
 	out.StrVal = in.StrVal
 	return nil
@@ -1533,6 +1635,7 @@ func init() {
 		deepCopy_v1_ObjectFieldSelector,
 		deepCopy_v1_ObjectMeta,
 		deepCopy_v1_PersistentVolumeClaimVolumeSource,
+		deepCopy_v1_PodSecurityContext,
 		deepCopy_v1_PodSpec,
 		deepCopy_v1_PodTemplateSpec,
 		deepCopy_v1_Probe,
@@ -1547,6 +1650,9 @@ func init() {
 		deepCopy_v1_VolumeSource,
 		deepCopy_v1beta1_APIVersion,
 		deepCopy_v1beta1_CPUTargetUtilization,
+		deepCopy_v1beta1_ClusterAutoscaler,
+		deepCopy_v1beta1_ClusterAutoscalerList,
+		deepCopy_v1beta1_ClusterAutoscalerSpec,
 		deepCopy_v1beta1_DaemonSet,
 		deepCopy_v1beta1_DaemonSetList,
 		deepCopy_v1beta1_DaemonSetSpec,
@@ -1574,6 +1680,7 @@ func init() {
 		deepCopy_v1beta1_JobList,
 		deepCopy_v1beta1_JobSpec,
 		deepCopy_v1beta1_JobStatus,
+		deepCopy_v1beta1_NodeUtilization,
 		deepCopy_v1beta1_PodSelector,
 		deepCopy_v1beta1_PodSelectorRequirement,
 		deepCopy_v1beta1_ReplicationControllerDummy,
@@ -1586,7 +1693,7 @@ func init() {
 		deepCopy_v1beta1_ThirdPartyResourceData,
 		deepCopy_v1beta1_ThirdPartyResourceDataList,
 		deepCopy_v1beta1_ThirdPartyResourceList,
-		deepCopy_util_IntOrString,
+		deepCopy_intstr_IntOrString,
 	)
 	if err != nil {
 		// if one of the deep copy functions is malformed, detect it immediately.
