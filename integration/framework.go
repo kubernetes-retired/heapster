@@ -188,6 +188,9 @@ func getKubeClient() (string, *kclient.Client, error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("error loading kubeConfig: %v", err.Error())
 	}
+	if c.CurrentContext == "" || len(c.Clusters) == 0 {
+		return "", nil, fmt.Errorf("invalid kubeConfig: %+v", *c)
+	}
 	config, err := kclientcmd.NewDefaultClientConfig(
 		*c,
 		&kclientcmd.ConfigOverrides{
