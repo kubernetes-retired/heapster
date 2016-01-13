@@ -19,6 +19,7 @@ import (
 
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/events/core"
+	"k8s.io/heapster/events/sinks/gcl"
 	"k8s.io/heapster/events/sinks/influxdb"
 	"k8s.io/heapster/events/sinks/log"
 
@@ -30,8 +31,10 @@ type SinkFactory struct {
 
 func (this *SinkFactory) Build(uri flags.Uri) (core.EventSink, error) {
 	switch uri.Key {
+	case "gcl":
+		return gcl.CreateGCLSink(&uri.Val)
 	case "log":
-		return logsink.NewLogSink(), nil
+		return logsink.CreateLogSink()
 	case "influxdb":
 		return influxdb.CreateInfluxdbSink(&uri.Val)
 	default:

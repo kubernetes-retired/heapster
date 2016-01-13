@@ -46,6 +46,6 @@ func (this *LogSink) ExportEvents(batch *core.EventBatch) {
 	glog.Info(batchToString(batch))
 }
 
-func NewLogSink() *LogSink {
-	return &LogSink{}
+func CreateLogSink() (*LogSink, error) {
+	return &LogSink{}, nil
 }
