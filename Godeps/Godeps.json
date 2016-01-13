@@ -159,10 +159,6 @@
 			"Rev": "cccd189d45f7ac3368a0d127efb7f4d08ae0b655"
 		},
 		{
-			"ImportPath": "github.com/pborman/uuid",
-			"Rev": "cccd189d45f7ac3368a0d127efb7f4d08ae0b655"
-		},
-		{
 			"ImportPath": "github.com/prometheus/client_golang/model",
 			"Comment": "0.4.0-1-g692492e",
 			"Rev": "692492e54b553a81013254cc1fba4b6dd76fad30"
@@ -232,6 +228,10 @@
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
+			"Rev": "40e8982bc18ef49b340c9da2c2bd9d49f94befcd"
+		},
+		{
+			"ImportPath": "google.golang.org/api/logging/v2beta1",
 			"Rev": "40e8982bc18ef49b340c9da2c2bd9d49f94befcd"
 		},
 		{
