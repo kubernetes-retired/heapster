@@ -21,69 +21,31 @@ import (
 	"net/http/httptest"
 	"net/url"
 
-	influxdb "github.com/influxdb/influxdb/client"
 	"github.com/stretchr/testify/assert"
 	influxdb_common "k8s.io/heapster/common/influxdb"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/kubernetes/pkg/util"
 )
 
-type pointSavedToInfluxdb struct {
-	ponit influxdb.Point
-}
-
-type fakeInfluxDBClient struct {
-	pnts []pointSavedToInfluxdb
-}
-
-type fakeInfluxDBSink struct {
+type fakeInfluxDBDataSink struct {
 	core.DataSink
-	fakeInfluxDbClient *fakeInfluxDBClient
+	fakeDbClient *influxdb_common.FakeInfluxDBClient
 }
 
-func NewFakeInfluxDBClient() *fakeInfluxDBClient {
-	return &fakeInfluxDBClient{[]pointSavedToInfluxdb{}}
-}
-
-func (client *fakeInfluxDBClient) Write(bps influxdb.BatchPoints) (*influxdb.Response, error) {
-	for _, pnt := range bps.Points {
-		client.pnts = append(client.pnts, pointSavedToInfluxdb{pnt})
-	}
-	return nil, nil
-}
-
-func (client *fakeInfluxDBClient) Query(influxdb.Query) (*influxdb.Response, error) {
-	return nil, nil
-}
-
-func (client *fakeInfluxDBClient) Ping() (time.Duration, string, error) {
-	return 0, "", nil
-}
-
-// Returns a fake influxdb sink.
-func NewFakeSink() fakeInfluxDBSink {
-	client := NewFakeInfluxDBClient()
-	config := influxdb_common.InfluxdbConfig{
-		User:     "root",
-		Password: "root",
-		Host:     "localhost:8086",
-		DbName:   "k8s",
-		Secure:   false,
-	}
-	return fakeInfluxDBSink{
+func NewFakeSink() fakeInfluxDBDataSink {
+	return fakeInfluxDBDataSink{
 		&influxdbSink{
-			client: client,
-			c:      config,
+			client: influxdb_common.Client,
+			c:      influxdb_common.Config,
 		},
-		client,
+		influxdb_common.Client,
 	}
 }
-
 func TestStoreDataEmptyInput(t *testing.T) {
 	fakeSink := NewFakeSink()
 	dataBatch := core.DataBatch{}
 	fakeSink.ExportData(&dataBatch)
-	assert.Equal(t, 0, len(fakeSink.fakeInfluxDbClient.pnts))
+	assert.Equal(t, 0, len(fakeSink.fakeDbClient.Pnts))
 }
 
 func TestStoreMultipleDataInput(t *testing.T) {
@@ -179,7 +141,7 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	}
 
 	fakeSink.ExportData(&data)
-	assert.Equal(t, 5, len(fakeSink.fakeInfluxDbClient.pnts))
+	assert.Equal(t, 5, len(fakeSink.fakeDbClient.Pnts))
 }
 
 func TestCreateInfluxdbSink(t *testing.T) {
