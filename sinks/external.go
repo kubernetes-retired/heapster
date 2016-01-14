@@ -116,7 +116,7 @@ func (esm *externalSinkManager) store() error {
 		glog.V(3).Infof("no timeseries data between %v and %v", esm.lastSync.nodeSync, zeroTime)
 		// Continue here to push events data.
 	}
-	events := esm.cache.GetEvents(esm.lastSync.eventsSync, zeroTime)
+	events := esm.cache.GetEvents(esm.lastSync.eventsSync.Add(time.Nanosecond), zeroTime)
 	var kEvents []kube_api.Event
 	for _, event := range events {
 		kEvents = append(kEvents, event.Raw)

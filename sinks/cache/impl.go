@@ -327,7 +327,7 @@ func (rc *realCache) StoreEvents(e []*Event) error {
 		}
 		rc.eventUIDs[e[idx].UID] = struct{}{}
 		if err := rc.events.Put(store.TimePoint{
-			Timestamp: time.Now(),
+			Timestamp: e[idx].LastUpdate,
 			Value:     e[idx],
 		}); err != nil {
 			return err
