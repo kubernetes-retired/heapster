@@ -1,5 +1,12 @@
 # Release Notes for Grafana container.
 
+## 2.6.0 (29-12-2015)
+- Support Grafana 2.6.0.
+- Improve default dashboards
+  - Accurate CPU metrics
+  - Cluster network graphs
+  - Fix data aggregation
+
 ## 2.5.0 (12-11-2015)
 - Support Grafana 2.5.0.
 
