@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
@@ -153,7 +154,7 @@ func NewKubeNodes(client *client.Client) (NodesApi, error) {
 
 	lw := cache.NewListWatchFromClient(client, "nodes", api.NamespaceAll, fields.Everything())
 	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &api.Node{}, nodeLister.Store, 0)
+	reflector := cache.NewReflector(lw, &api.Node{}, nodeLister.Store, time.Hour)
 	stopChan := make(chan struct{})
 	reflector.RunUntil(stopChan)
 

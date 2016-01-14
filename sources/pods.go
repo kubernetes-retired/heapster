@@ -170,7 +170,7 @@ func newPodsApi(client *kclient.Client) podsApi {
 	lw := kcache.NewListWatchFromClient(client, "pods", kapi.NamespaceAll, selector)
 	podLister := &kcache.StoreToPodLister{Store: kcache.NewStore(kcache.MetaNamespaceKeyFunc)}
 	// Watch and cache all running pods.
-	reflector := kcache.NewReflector(lw, &kapi.Pod{}, podLister.Store, 0)
+	reflector := kcache.NewReflector(lw, &kapi.Pod{}, podLister.Store, time.Hour)
 	stopChan := make(chan struct{})
 	reflector.RunUntil(stopChan)
 	nStore, nController := kframework.NewInformer(
