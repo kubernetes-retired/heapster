@@ -101,6 +101,7 @@ var podLabels = []LabelDescriptor{
 	LabelPodNamespace,
 	LabelPodNamespaceUID,
 	LabelLabels,
+	LabelCustomMetricName,
 }
 
 var metricLabels = []LabelDescriptor{

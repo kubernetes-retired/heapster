@@ -65,6 +65,17 @@ func (this *MetricSink) ExportData(batch *core.DataBatch) {
 	this.shortStore = append(popOld(this.shortStore, now.Add(-this.shortStoreDuration)), batch)
 }
 
+func (this *MetricSink) GetShortStore() []*core.DataBatch {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	result := make([]*core.DataBatch, 0, len(this.shortStore))
+	for _, batch := range this.shortStore {
+		result = append(result, batch)
+	}
+	return result
+}
+
 func (this *MetricSink) GetMetric(metricName string, keys []string, start, end time.Time) map[string][]TimestampedMetricValue {
 	this.lock.Lock()
 	defer this.lock.Unlock()

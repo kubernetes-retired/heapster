@@ -126,6 +126,7 @@ func (rm *realManager) housekeep(start, end time.Time) {
 		// should always give back the semaphore
 		defer func() { rm.housekeepSemaphoreChan <- struct{}{} }()
 		data := rm.source.ScrapeMetrics(start, end)
+
 		for _, p := range rm.processors {
 			newData, err := process(p, data)
 			if err == nil {
