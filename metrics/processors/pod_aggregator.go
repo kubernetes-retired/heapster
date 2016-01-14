@@ -30,7 +30,6 @@ var LabelsToPopulate = []core.LabelDescriptor{
 	core.LabelPodNamespaceUID,
 	core.LabelHostname,
 	core.LabelHostID,
-	core.LabelCustomMetricName,
 }
 
 type PodAggregator struct {
@@ -55,8 +54,12 @@ func (this *PodAggregator) Process(batch *core.DataBatch) (*core.DataBatch, erro
 				podKey := core.PodKey(ns, podName)
 				pod, found := result.MetricSets[podKey]
 				if !found {
-					pod = this.podMetricSet(metricSet.Labels)
-					result.MetricSets[podKey] = pod
+					pod, found = batch.MetricSets[podKey]
+					if !found {
+						glog.V(2).Infof("Pod not found adding %s", podKey)
+						pod = this.podMetricSet(metricSet.Labels)
+						result.MetricSets[podKey] = pod
+					}
 				}
 
 				for metricName, metricValue := range metricSet.MetricValues {
