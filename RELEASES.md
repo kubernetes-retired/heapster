@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.18.4 (1-14-2016)
+- Refresh broken Kubernetes pods/nodes watch. 
+
 ## 0.18.3 (10-23-2015)
 - Various fixes to Hawkular sink.
 
