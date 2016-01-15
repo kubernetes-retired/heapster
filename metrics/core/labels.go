@@ -57,6 +57,10 @@ var (
 		Key:         "labels",
 		Description: "Comma-separated list of user-provided labels",
 	}
+	LabelNodename = LabelDescriptor{
+		Key:         "nodename",
+		Description: "nodename where the container ran",
+	}
 	LabelHostname = LabelDescriptor{
 		Key:         "hostname",
 		Description: "Hostname where the container ran",
@@ -89,8 +93,12 @@ type LabelDescriptor struct {
 }
 
 var commonLabels = []LabelDescriptor{
+	LabelNodename,
 	LabelHostname,
 	LabelHostID,
+}
+
+var containerLabels = []LabelDescriptor{
 	LabelContainerName,
 	LabelContainerBaseImage,
 }
@@ -99,13 +107,14 @@ var podLabels = []LabelDescriptor{
 	LabelPodName,
 	LabelPodId,
 	LabelPodNamespace,
-	LabelPodNamespaceUID,
+	// TODO: Enable label once it is supported by NamespaceEnricher
+	//	LabelPodNamespaceUID,
 	LabelLabels,
-	LabelCustomMetricName,
 }
 
 var metricLabels = []LabelDescriptor{
 	LabelResourceID,
+	LabelCustomMetricName,
 }
 
 // Labels exported to GCM. The number of labels that can be exported to GCM is limited by 10.
@@ -123,6 +132,12 @@ var gcmLabels = []LabelDescriptor{
 func CommonLabels() []LabelDescriptor {
 	result := make([]LabelDescriptor, len(commonLabels))
 	copy(result, commonLabels)
+	return result
+}
+
+func ContainerLabels() []LabelDescriptor {
+	result := make([]LabelDescriptor, len(containerLabels))
+	copy(result, containerLabels)
 	return result
 }
 

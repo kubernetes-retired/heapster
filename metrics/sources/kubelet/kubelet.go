@@ -68,6 +68,7 @@ type cpuVal struct {
 type kubeletMetricsSource struct {
 	host          Host
 	kubeletClient *KubeletClient
+	nodename      string
 	hostname      string
 	hostId        string
 	cpuLastVal    map[string]cpuVal
@@ -85,15 +86,19 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 	var metricSetKey string
 	cMetrics := &MetricSet{
 		MetricValues: map[string]MetricValue{},
-		Labels:       map[string]string{},
+		Labels: map[string]string{
+			LabelNodename.Key: this.nodename,
+			LabelHostname.Key: this.hostname,
+			LabelHostID.Key:   this.hostId,
+		},
 	}
 
 	if isNode(c) {
-		metricSetKey = NodeKey(this.hostname)
+		metricSetKey = NodeKey(this.nodename)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
 	} else if isSysContainer(c) {
 		cName := getSysContainerName(c)
-		metricSetKey = NodeContainerKey(this.hostname, cName)
+		metricSetKey = NodeContainerKey(this.nodename, cName)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeSystemContainer
 		cMetrics.Labels[LabelContainerName.Key] = cName
 	} else {
@@ -203,11 +208,6 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 			Timestamp: c.Stats[0].Timestamp,
 		}
 	}
-
-	// common labels
-	cMetrics.Labels[LabelHostname.Key] = this.hostname
-	cMetrics.Labels[LabelHostID.Key] = this.hostId
-
 	// TODO: add labels: LabelPodNamespaceUID, LabelLabels, LabelResourceID
 
 	return metricSetKey, cMetrics
@@ -277,6 +277,7 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 		sources = append(sources, &kubeletMetricsSource{
 			host:          Host{IP: ip, Port: this.kubeletClient.GetPort()},
 			kubeletClient: this.kubeletClient,
+			nodename:      node.Name,
 			hostname:      hostname,
 			hostId:        node.Spec.ExternalID,
 			cpuLastVal:    this.cpuLastVals[node.Name],

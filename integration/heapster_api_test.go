@@ -270,26 +270,21 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 		// All common labels must be present.
 		podName, podMetric := ts.Labels[core.LabelPodName.Key]
 
-		/*
-			TODO(mwielgus): Uncoment once all labels are populated from POD watch
-
-			for _, label := range core.CommonLabels() {
-				if label == core.LabelContainerBaseImage && !isContainerBaseImageExpected(ts) {
-					continue
-				}
+		for _, label := range core.CommonLabels() {
+			_, exists := ts.Labels[label.Key]
+			if !exists {
+				return fmt.Errorf("timeseries: %v does not contain common label: %v", ts, label)
+			}
+		}
+		if podMetric {
+			for _, label := range core.PodLabels() {
 				_, exists := ts.Labels[label.Key]
 				if !exists {
-					return fmt.Errorf("timeseries: %v does not contain common label: %v", ts, label)
+					return fmt.Errorf("timeseries: %v does not contain pod label: %v", ts, label)
 				}
 			}
-			if podMetric {
-				for _, label := range core.PodLabels() {
-					_, exists := ts.Labels[label.Key]
-					if !exists {
-						return fmt.Errorf("timeseries: %v does not contain pod label: %v", ts, label)
-					}
-				}
-			}*/
+		}
+
 		if podMetric {
 			actualPods[podName] = true
 		} else {
@@ -301,7 +296,18 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 
 				if cName == "machine" {
 					actualNodes[hostname] = true
+				} else {
+					for _, label := range core.ContainerLabels() {
+						if label == core.LabelContainerBaseImage && !isContainerBaseImageExpected(ts) {
+							continue
+						}
+						_, exists := ts.Labels[label.Key]
+						if !exists {
+							return fmt.Errorf("timeseries: %v does not contain container label: %v", ts, label)
+						}
+					}
 				}
+
 				if _, exists := expectedSystemContainers[cName]; exists {
 					if actualSystemContainers[cName] == nil {
 						actualSystemContainers[cName] = map[string]struct{}{}

@@ -21,6 +21,8 @@ import (
 	"github.com/golang/glog"
 
 	kube_config "k8s.io/heapster/common/kubernetes"
+	"k8s.io/heapster/metrics/util"
+
 	"k8s.io/heapster/metrics/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
@@ -67,6 +69,7 @@ func addPodInfo(pod *kube_api.Pod, batch *core.DataBatch) {
 	}
 	// Add UID to pod
 	podMs.Labels[core.LabelPodId.Key] = string(pod.UID)
+	podMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels, ",")
 
 	// Add cpu/mem requests and limits to containers
 	for _, container := range pod.Spec.Containers {
@@ -114,6 +117,9 @@ func addPodInfo(pod *kube_api.Pod, batch *core.DataBatch) {
 		containerMs.MetricValues[core.MetricMemoryRequest.Name] = intValue(memRequest)
 		containerMs.MetricValues[core.MetricCpuLimit.Name] = intValue(cpuLimitMilli)
 		containerMs.MetricValues[core.MetricMemoryLimit.Name] = intValue(memLimit)
+
+		containerMs.Labels[core.LabelPodId.Key] = string(pod.UID)
+		containerMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels, ",")
 	}
 }
 
