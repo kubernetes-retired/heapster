@@ -68,7 +68,7 @@ func addPodInfo(pod *kube_api.Pod, batch *core.DataBatch) {
 	// Add UID to pod
 	podMs.Labels[core.LabelPodId.Key] = string(pod.UID)
 
-	// Add cpu requests and limits to pods
+	// Add cpu/mem requests and limits to containers
 	for _, container := range pod.Spec.Containers {
 		requests := container.Resources.Requests
 		limits := container.Resources.Limits
@@ -133,7 +133,7 @@ func NewPodBasedEnricher(url *url.URL) (*PodBasedEnricher, error) {
 	kubeClient := kube_client.NewOrDie(kubeConfig)
 
 	// watch nodes
-	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
+	lw := cache.NewListWatchFromClient(kubeClient, "pods", kube_api.NamespaceAll, fields.Everything())
 	podLister := &cache.StoreToPodLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
 	reflector := cache.NewReflector(lw, &kube_api.Pod{}, podLister.Store, time.Hour)
 	reflector.Run()
