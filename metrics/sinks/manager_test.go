@@ -46,6 +46,7 @@ func TestAllExportsInTime(t *testing.T) {
 		t.Fatalf("3xExportData took too long: %s", elapsed)
 	}
 
+	time.Sleep(time.Second)
 	assert.Equal(t, 3, sink1.GetExportCount())
 	assert.Equal(t, 3, sink2.GetExportCount())
 }
@@ -75,6 +76,7 @@ func TestOneExportInTime(t *testing.T) {
 		t.Fatalf("3xExportData took too short: %s", elapsed)
 	}
 
+	time.Sleep(time.Second)
 	assert.Equal(t, 3, sink1.GetExportCount())
 	assert.Equal(t, 1, sink2.GetExportCount())
 }
@@ -104,6 +106,7 @@ func TestNoExportInTime(t *testing.T) {
 		t.Fatalf("3xExportData took too short: %s", elapsed)
 	}
 
+	time.Sleep(time.Second)
 	assert.Equal(t, 1, sink1.GetExportCount())
 	assert.Equal(t, 1, sink2.GetExportCount())
 }
