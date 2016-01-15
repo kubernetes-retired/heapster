@@ -20,13 +20,12 @@ import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
+// Provided by Kubelet/cadvisor.
 var StandardMetrics = []Metric{
 	MetricUptime,
 	MetricCpuUsage,
-	MetricCpuLimit,
 	MetricMemoruUsage,
 	MetricMemoryWorkingSet,
-	MetricMemoryLimit,
 	MetricMemoryPageFaults,
 	MetricMemoryMajorPageFaults,
 	MetricNetworkRx,
@@ -34,8 +33,35 @@ var StandardMetrics = []Metric{
 	MetricNetworkTx,
 	MetricNetworkTxErrors}
 
-var AllMetrics = append(StandardMetrics, MetricCpuUsageRate, MetricCpuRequest, MetricMemoryRequest)
+// Metrics computed based on cluster state using Kubernetes API.
+var AdditionalMetrics = []Metric{
+	MetricCpuRequest,
+	MetricCpuLimit,
+	MetricMemoryRequest,
+	MetricMemoryLimit}
 
+// Computed based on corresponding StandardMetrics.
+var RateMetrics = []Metric{
+	MetricCpuUsageRate,
+	MetricMemoryPageFaultsRate,
+	MetricMemoryMajorPageFaultsRate,
+	MetricNetworkRxRate,
+	MetricNetworkRxErrorsRate,
+	MetricNetworkTxRate,
+	MetricNetworkTxErrorsRate}
+
+var RateMetricsMapping = map[string]Metric{
+	MetricCpuUsage.MetricDescriptor.Name:              MetricCpuUsageRate,
+	MetricMemoryPageFaults.MetricDescriptor.Name:      MetricMemoryPageFaultsRate,
+	MetricMemoryMajorPageFaults.MetricDescriptor.Name: MetricMemoryMajorPageFaultsRate,
+	MetricNetworkRx.MetricDescriptor.Name:             MetricNetworkRxRate,
+	MetricNetworkRxErrors.MetricDescriptor.Name:       MetricNetworkRxErrorsRate,
+	MetricNetworkTx.MetricDescriptor.Name:             MetricNetworkTxRate,
+	MetricNetworkTxErrors.MetricDescriptor.Name:       MetricNetworkTxErrorsRate}
+
+var AllMetrics = append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...)
+
+// Definition of Standard Metrics.
 var MetricUptime = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "uptime",
@@ -76,46 +102,6 @@ var MetricCpuUsage = Metric{
 	},
 }
 
-var MetricCpuUsageRate = Metric{
-	MetricDescriptor: MetricDescriptor{
-		Name:        "cpu/usage_rate",
-		Description: "CPU usage on all cores in millicores",
-		Type:        MetricGauge,
-		ValueType:   ValueInt64,
-		Units:       UnitsCount,
-	},
-}
-
-var MetricCpuLimit = Metric{
-	MetricDescriptor: MetricDescriptor{
-		Name:        "cpu/limit",
-		Description: "CPU hard limit in millicores.",
-		Type:        MetricGauge,
-		ValueType:   ValueInt64,
-		Units:       UnitsCount,
-	},
-	HasValue: func(spec *cadvisor.ContainerSpec) bool {
-		return spec.HasCpu && (spec.Cpu.Limit > 0)
-	},
-	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
-		// Normalize to a conversion factor of 1000.
-		return MetricValue{
-			ValueType:  ValueInt64,
-			MetricType: MetricGauge,
-			IntValue:   int64(spec.Cpu.Limit*1000) / 1024}
-	},
-}
-
-var MetricCpuRequest = Metric{
-	MetricDescriptor: MetricDescriptor{
-		Name:        "cpu/request",
-		Description: "CPU request (the guaranteed amount of resources) in millicores. This metric is Kubernetes specific.",
-		Type:        MetricGauge,
-		ValueType:   ValueInt64,
-		Units:       UnitsCount,
-	},
-}
-
 var MetricMemoruUsage = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "memory/usage",
@@ -151,35 +137,6 @@ var MetricMemoryWorkingSet = Metric{
 			ValueType:  ValueInt64,
 			MetricType: MetricGauge,
 			IntValue:   int64(stat.Memory.WorkingSet)}
-	},
-}
-
-var MetricMemoryLimit = Metric{
-	MetricDescriptor: MetricDescriptor{
-		Name:        "memory/limit",
-		Description: "Memory hard limit in bytes.",
-		Type:        MetricGauge,
-		ValueType:   ValueInt64,
-		Units:       UnitsBytes,
-	},
-	HasValue: func(spec *cadvisor.ContainerSpec) bool {
-		return spec.HasMemory && (spec.Memory.Limit > 0)
-	},
-	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
-		return MetricValue{
-			ValueType:  ValueInt64,
-			MetricType: MetricGauge,
-			IntValue:   int64(spec.Memory.Limit)}
-	},
-}
-
-var MetricMemoryRequest = Metric{
-	MetricDescriptor: MetricDescriptor{
-		Name:        "memory/request",
-		Description: "Memory request (the guaranteed amount of resources) in bytes. This metric is Kubernetes specific.",
-		Type:        MetricGauge,
-		ValueType:   ValueInt64,
-		Units:       UnitsBytes,
 	},
 }
 
@@ -300,6 +257,118 @@ var MetricNetworkTxErrors = Metric{
 			MetricType: MetricCumulative,
 			IntValue:   int64(stat.Network.TxErrors),
 			Start:      spec.CreationTime}
+	},
+}
+
+// Definition of Additional Metrics.
+var MetricCpuRequest = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/request",
+		Description: "CPU request (the guaranteed amount of resources) in millicores. This metric is Kubernetes specific.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricCpuLimit = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/limit",
+		Description: "CPU hard limit in millicores.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricMemoryRequest = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/request",
+		Description: "Memory request (the guaranteed amount of resources) in bytes. This metric is Kubernetes specific.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+}
+
+var MetricMemoryLimit = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/limit",
+		Description: "Memory hard limit in bytes.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+}
+
+// Definition of Rate Metrics.
+var MetricCpuUsageRate = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/usage_rate",
+		Description: "CPU usage on all cores in millicores",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricMemoryPageFaultsRate = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/page_faults_rate",
+		Description: "Rate of page faults in counts per second",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricMemoryMajorPageFaultsRate = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/major_page_faults_rate",
+		Description: "Rate of major page faults in counts per second",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNetworkRxRate = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "network/rx_rate",
+		Description: "Rate of bytes received over the network in bytes per second",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNetworkRxErrorsRate = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "network/rx_errors_rate",
+		Description: "Rate of errors sending over the network in errors per second",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNetworkTxRate = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "network/tx_rate",
+		Description: "Rate of bytes transmitted over the network in bytes per second",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNetworkTxErrorsRate = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "network/tx_errors_rate",
+		Description: "Rate of errors transmitting over the network in errors per second",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
 	},
 }
 
