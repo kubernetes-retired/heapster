@@ -217,3 +217,43 @@ func TestEvents(t *testing.T) {
 	assert.Equal(events[0], eventB)
 	assert.Equal(events[1], eventA)
 }
+
+func TestEventsByTime(t *testing.T) {
+	cache := NewCache(time.Hour, time.Hour)
+	assert := assert.New(t)
+	timeA, _ := time.Parse("2006-01-02 15:04:05", "2016-01-15 10:00:00")
+	eventA := &Event{
+		Message: "test message 1",
+		Source:  "test",
+		Metadata: Metadata{
+			UID:        "123",
+			LastUpdate: timeA,
+		},
+	}
+
+	assert.NoError(cache.StoreEvents([]*Event{eventA}))
+
+	timeB, _ := time.Parse("2006-01-02 15:04:05", "2016-01-15 10:00:01")
+	eventB := &Event{
+		Message: "test message 2",
+		Source:  "test",
+		Metadata: Metadata{
+			UID:        "124",
+			LastUpdate: timeB,
+		},
+	}
+
+	zeroTime := time.Time{}
+	assert.NoError(cache.StoreEvents([]*Event{eventB}))
+	events := cache.GetEvents(zeroTime, zeroTime)
+	assert.Len(events, 2)
+
+	events = cache.GetEvents(timeA, zeroTime)
+	assert.Len(events, 2)
+
+	events = cache.GetEvents(timeB, zeroTime)
+	assert.Len(events, 1)
+
+	events = cache.GetEvents(timeB.Add(time.Nanosecond), zeroTime)
+	assert.Len(events, 0)
+}
