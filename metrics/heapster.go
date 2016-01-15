@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
@@ -92,17 +93,37 @@ func main() {
 	// data processors
 	metricsToAggregate := []string{
 		core.MetricCpuUsageRate.Name,
-		core.MetricMemoruUsage.Name}
+		core.MetricMemoruUsage.Name,
+		core.MetricCpuRequest.Name,
+		core.MetricCpuLimit.Name,
+		core.MetricMemoryRequest.Name,
+		core.MetricMemoryLimit.Name,
+	}
 
-	dataProcessors := []core.DataProcessor{
+	dataProcessors := []core.DataProcessor{}
+
+	// pod enricher goes first
+	if url, err := getKubernetesAddress(argSources); err == nil {
+		podBasedEnricher, err := processors.NewPodBasedEnricher(url)
+		if err != nil {
+			glog.Fatalf("Failed to create PodBasedEnricher: %v", err)
+		} else {
+			dataProcessors = append(dataProcessors, podBasedEnricher)
+		}
+	}
+
+	// then aggregators
+	dataProcessors = append(dataProcessors,
 		&processors.PodAggregator{},
 		&processors.NamespaceAggregator{
 			MetricsToAggregate: metricsToAggregate,
 		},
-		&processors.ClusterAggregator{
+		&processors.NodeAggregator{
 			MetricsToAggregate: metricsToAggregate,
 		},
-	}
+		&processors.ClusterAggregator{
+			MetricsToAggregate: metricsToAggregate,
+		})
 
 	// main manager
 	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, *argMetricResolution,
@@ -140,7 +161,15 @@ func main() {
 		mux.Handle("/metrics", promHandler)
 		glog.Fatal(http.ListenAndServe(addr, mux))
 	}
+}
 
+func getKubernetesAddress(args flags.Uris) (*url.URL, error) {
+	for _, uri := range args {
+		if uri.Key == "kubernetes" {
+			return &uri.Val, nil
+		}
+	}
+	return nil, fmt.Errorf("No kubernetes source found.")
 }
 
 func validateFlags() error {
