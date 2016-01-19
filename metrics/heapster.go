@@ -110,6 +110,13 @@ func main() {
 		} else {
 			dataProcessors = append(dataProcessors, podBasedEnricher)
 		}
+
+		namespaceBasedEnricher, err := processors.NewNamespaceBasedEnricher(url)
+		if err != nil {
+			glog.Fatalf("Failed to create NamespaceBasedEnricher: %v", err)
+		} else {
+			dataProcessors = append(dataProcessors, namespaceBasedEnricher)
+		}
 	}
 
 	// then aggregators
