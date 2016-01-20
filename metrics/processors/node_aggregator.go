@@ -17,6 +17,7 @@ package processors
 import (
 	"fmt"
 
+	"github.com/golang/glog"
 	"k8s.io/heapster/metrics/core"
 )
 
@@ -38,13 +39,13 @@ func (this *NodeAggregator) Process(batch *core.DataBatch) (*core.DataBatch, err
 		result.MetricSets[key] = metricSet
 		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found && metricSetType == core.MetricSetTypePod {
 			// Aggregating pods
-			if nodeName, found := metricSet.Labels[core.LabelNamespaceName.Key]; found {
+			if nodeName, found := metricSet.Labels[core.LabelNodename.Key]; found {
 				nodeKey := core.NodeKey(nodeName)
 				node, found := result.MetricSets[nodeKey]
 				if !found {
 					if node, found = batch.MetricSets[nodeKey]; !found {
-						node = nodeMetricSet(nodeName)
-						result.MetricSets[nodeKey] = node
+						glog.Warningf("Failed to find node: %s", nodeKey)
+						continue
 					}
 				}
 				if err := aggregate(metricSet, node, this.MetricsToAggregate); err != nil {
@@ -57,14 +58,4 @@ func (this *NodeAggregator) Process(batch *core.DataBatch) (*core.DataBatch, err
 	}
 
 	return &result, nil
-}
-
-func nodeMetricSet(nodeName string) *core.MetricSet {
-	return &core.MetricSet{
-		MetricValues: make(map[string]core.MetricValue),
-		Labels: map[string]string{
-			core.LabelMetricSetType.Key: core.MetricSetTypeNode,
-			core.LabelHostname.Key:      nodeName,
-		},
-	}
 }

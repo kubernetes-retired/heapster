@@ -39,6 +39,9 @@ func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink) *Api {
 	for _, val := range core.CommonLabels() {
 		gkeLabels[val.Key] = val
 	}
+	for _, val := range core.ContainerLabels() {
+		gkeLabels[val.Key] = val
+	}
 	for _, val := range core.PodLabels() {
 		gkeLabels[val.Key] = val
 	}
@@ -174,7 +177,7 @@ func (a *Api) exportMetrics(request *restful.Request, response *restful.Response
 						ts.Labels[labelName] = labelValue
 					}
 				}
-				if ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypeNode {
+				if msType == core.MetricSetTypeNode {
 					ts.Labels[core.LabelContainerName.Key] = "machine"
 				}
 				tsmap[key] = ts

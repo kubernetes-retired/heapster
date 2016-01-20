@@ -31,7 +31,7 @@ func TestNodeAggregate(t *testing.T) {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelNamespaceName.Key: "ns1",
-					core.LabelHostname.Key:      "h1",
+					core.LabelNodename.Key:      "h1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -51,7 +51,7 @@ func TestNodeAggregate(t *testing.T) {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelNamespaceName.Key: "ns1",
-					core.LabelHostname.Key:      "h1",
+					core.LabelNodename.Key:      "h1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -66,6 +66,14 @@ func TestNodeAggregate(t *testing.T) {
 					},
 				},
 			},
+
+			core.NodeKey("h1"): {
+				Labels: map[string]string{
+					core.LabelMetricSetType.Key: core.MetricSetTypeNode,
+					core.LabelNodename.Key:      "h1",
+				},
+				MetricValues: map[string]core.MetricValue{},
+			},
 		},
 	}
 	processor := NodeAggregator{
@@ -73,7 +81,7 @@ func TestNodeAggregate(t *testing.T) {
 	}
 	result, err := processor.Process(&batch)
 	assert.NoError(t, err)
-	node, found := result.MetricSets[core.NodeKey("ns1")]
+	node, found := result.MetricSets[core.NodeKey("h1")]
 	assert.True(t, found)
 
 	m1, found := node.MetricValues["m1"]

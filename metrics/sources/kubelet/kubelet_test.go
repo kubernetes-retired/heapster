@@ -14,13 +14,12 @@
 package kubelet
 
 import (
-	"testing"
-	"time"
-
 	"encoding/json"
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"testing"
+	"time"
 
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +31,8 @@ import (
 
 func TestDecodeMetrics1(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		hostname:   "test",
+		nodename:   "test",
+		hostname:   "test-hostname",
 		cpuLastVal: make(map[string]cpuVal),
 	}
 	c1 := cadvisor_api.ContainerInfo{
@@ -65,7 +65,8 @@ func TestDecodeMetrics1(t *testing.T) {
 
 func TestDecodeMetrics2(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		hostname:   "test",
+		nodename:   "test",
+		hostname:   "test-hostname",
 		cpuLastVal: make(map[string]cpuVal),
 	}
 	kMS.cpuLastVal["node:test"] = cpuVal{
@@ -102,7 +103,8 @@ func TestDecodeMetrics2(t *testing.T) {
 
 func TestDecodeMetrics3(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		hostname:   "test",
+		nodename:   "test",
+		hostname:   "test-hostname",
 		cpuLastVal: make(map[string]cpuVal),
 	}
 	c1 := cadvisor_api.ContainerInfo{
@@ -134,7 +136,8 @@ func TestDecodeMetrics3(t *testing.T) {
 
 func TestDecodeMetrics4(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		hostname:   "test",
+		nodename:   "test",
+		hostname:   "test-hostname",
 		cpuLastVal: make(map[string]cpuVal),
 	}
 	c1 := cadvisor_api.ContainerInfo{
@@ -172,7 +175,8 @@ func TestDecodeMetrics4(t *testing.T) {
 
 func TestDecodeMetrics5(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		hostname:   "test",
+		nodename:   "test",
+		hostname:   "test-hostname",
 		cpuLastVal: make(map[string]cpuVal),
 	}
 	c1 := cadvisor_api.ContainerInfo{
@@ -214,7 +218,8 @@ func TestDecodeMetrics5(t *testing.T) {
 
 func TestDecodeMetrics6(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		hostname:   "test",
+		nodename:   "test",
+		hostname:   "test-hostname",
 		cpuLastVal: make(map[string]cpuVal),
 	}
 	c1 := cadvisor_api.ContainerInfo{
