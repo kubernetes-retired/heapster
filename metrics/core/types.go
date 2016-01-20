@@ -89,9 +89,19 @@ type MetricValue struct {
 	Start      time.Time
 }
 
+type LabeledMetric struct {
+	Name       string
+	Labels     map[string]string
+	IntValue   int64
+	FloatValue float32
+	MetricType MetricType
+	ValueType  ValueType
+}
+
 type MetricSet struct {
-	MetricValues map[string]MetricValue
-	Labels       map[string]string
+	MetricValues   map[string]MetricValue
+	Labels         map[string]string
+	LabeledMetrics []LabeledMetric
 }
 
 type DataBatch struct {
