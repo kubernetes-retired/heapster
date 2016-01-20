@@ -42,7 +42,7 @@ func (this *NamespaceAggregator) Process(batch *core.DataBatch) (*core.DataBatch
 				namespaceKey := core.NamespaceKey(namespaceName)
 				namespace, found := result.MetricSets[namespaceKey]
 				if !found {
-					namespace = namespaceMetricSet(namespaceName)
+					namespace = namespaceMetricSet(namespaceName, metricSet.Labels[core.LabelPodNamespaceUID.Key])
 					result.MetricSets[namespaceKey] = namespace
 				}
 				if err := aggregate(metricSet, namespace, this.MetricsToAggregate); err != nil {
@@ -57,12 +57,13 @@ func (this *NamespaceAggregator) Process(batch *core.DataBatch) (*core.DataBatch
 	return &result, nil
 }
 
-func namespaceMetricSet(namespaceName string) *core.MetricSet {
+func namespaceMetricSet(namespaceName, uid string) *core.MetricSet {
 	return &core.MetricSet{
 		MetricValues: make(map[string]core.MetricValue),
 		Labels: map[string]string{
-			core.LabelMetricSetType.Key: core.MetricSetTypeNamespace,
-			core.LabelNamespaceName.Key: namespaceName,
+			core.LabelMetricSetType.Key:   core.MetricSetTypeNamespace,
+			core.LabelNamespaceName.Key:   namespaceName,
+			core.LabelPodNamespaceUID.Key: uid,
 		},
 	}
 }
