@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.18.5 (1-25-2016)
+- Fixed nil pointer refrence panic in Kubernetes source.
+
 ## 0.18.4 (1-14-2016)
 - Refresh broken Kubernetes pods/nodes watch. 
 
