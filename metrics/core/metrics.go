@@ -59,7 +59,12 @@ var RateMetricsMapping = map[string]Metric{
 	MetricNetworkTx.MetricDescriptor.Name:             MetricNetworkTxRate,
 	MetricNetworkTxErrors.MetricDescriptor.Name:       MetricNetworkTxErrorsRate}
 
-var AllMetrics = append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...)
+var LabeledMetrics = []Metric{
+	MetricFilesystemUsage,
+	MetricFilesystemLimit,
+}
+
+var AllMetrics = append(append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...), LabeledMetrics...)
 
 // Definition of Standard Metrics.
 var MetricUptime = Metric{
@@ -372,59 +377,65 @@ var MetricNetworkTxErrorsRate = Metric{
 	},
 }
 
-// TODO: figure out whether we need those metrics and align our abstraction to handle it
+// Labeled metrics
 
-// {
-// 	MetricDescriptor: MetricDescriptor{
-// 		Name:        "filesystem/usage",
-// 		Description: "Total number of bytes consumed on a filesystem",
-// 		Type:        MetricGauge,
-// 		ValueType:   ValueInt64,
-// 		Units:       UnitsBytes,
-// 		Labels:      metricLabels,
-// 	},
-// 	HasValue: func(spec *cadvisor.ContainerSpec) bool {
-// 		return spec.HasFilesystem
-// 	},
-// 	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
-// 		result := make([]InternalPoint, 0, len(stat.Filesystem))
-// 		for _, fs := range stat.Filesystem {
-// 			result = append(result, InternalPoint{
-// 				Value: int64(fs.Usage),
-// 				Labels: map[string]string{
-// 					LabelResourceID.Key: fs.Device,
-// 				},
-// 			})
-// 		}
-// 		return result
-// 	},
-// },
-// {
-// 	MetricDescriptor: MetricDescriptor{
-// 		Name:        "filesystem/limit",
-// 		Description: "The total size of filesystem in bytes",
-// 		Type:        MetricGauge,
-// 		ValueType:   ValueInt64,
-// 		Units:       UnitsBytes,
-// 		Labels:      metricLabels,
-// 	},
-// 	HasValue: func(spec *cadvisor.ContainerSpec) bool {
-// 		return spec.HasFilesystem
-// 	},
-// 	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []InternalPoint {
-// 		result := make([]InternalPoint, 0, len(stat.Filesystem))
-// 		for _, fs := range stat.Filesystem {
-// 			result = append(result, InternalPoint{
-// 				Value: int64(fs.Limit),
-// 				Labels: map[string]string{
-// 					LabelResourceID.Key: fs.Device,
-// 				},
-// 			})
-// 		}
-// 		return result
-// 	},
-// 	OnlyExportIfChanged: true,
-// },
+var MetricFilesystemUsage = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/usage",
+		Description: "Total number of bytes consumed on a filesystem",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/usage",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				ValueType:  ValueInt64,
+				MetricType: MetricCumulative,
+				IntValue:   int64(fs.Usage),
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemLimit = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/limit",
+		Description: "The total size of filesystem in bytes",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/limit",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				ValueType:  ValueInt64,
+				MetricType: MetricCumulative,
+				IntValue:   int64(fs.Limit),
+			})
+		}
+		return result
+	},
+}
 
 type MetricDescriptor struct {
 	// The unique name of the metric.
@@ -451,4 +462,10 @@ type Metric struct {
 
 	// Returns a slice of internal point objects that contain metric values and associated labels.
 	GetValue func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) MetricValue
+
+	// Returns whether this metric is present.
+	HasLabeledMetric func(*cadvisor.ContainerSpec) bool
+
+	// Returns a slice of internal point objects that contain metric values and associated labels.
+	GetLabeledMetric func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) []LabeledMetric
 }

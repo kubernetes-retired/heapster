@@ -91,6 +91,7 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 			LabelHostname.Key: this.hostname,
 			LabelHostID.Key:   this.hostId,
 		},
+		LabeledMetrics: []LabeledMetric{},
 	}
 
 	if isNode(c) {
@@ -149,8 +150,15 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 	}
 
 	for _, metric := range StandardMetrics {
-		if metric.HasValue(&c.Spec) {
+		if metric.HasValue != nil && metric.HasValue(&c.Spec) {
 			cMetrics.MetricValues[metric.Name] = metric.GetValue(&c.Spec, c.Stats[0])
+		}
+	}
+
+	for _, metric := range LabeledMetrics {
+		if metric.HasLabeledMetric != nil && metric.HasLabeledMetric(&c.Spec) {
+			labeledMetrics := metric.GetLabeledMetric(&c.Spec, c.Stats[0])
+			cMetrics.LabeledMetrics = append(cMetrics.LabeledMetrics, labeledMetrics...)
 		}
 	}
 
