@@ -96,21 +96,22 @@ func (this *KubernetesEventSource) watch() {
 
 		watchChannel := watcher.ResultChan()
 		// Inner loop, for update processing.
+	inner_loop:
 		for {
 			select {
 			case watchUpdate, ok := <-watchChannel:
 				if !ok {
 					glog.Errorf("Event watch channel closed")
-					break
+					break inner_loop
 				}
 
 				if watchUpdate.Type == kubewatch.Error {
 					if status, ok := watchUpdate.Object.(*kubeapiunv.Status); ok {
 						glog.Errorf("Error during watch: %#v", status)
-						break
+						break inner_loop
 					}
 					glog.Errorf("Received unexpected error: %#v", watchUpdate.Object)
-					break
+					break inner_loop
 				}
 
 				if event, ok := watchUpdate.Object.(*kubeapi.Event); ok {
