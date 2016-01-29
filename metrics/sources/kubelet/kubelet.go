@@ -83,6 +83,10 @@ func (this *kubeletMetricsSource) String() string {
 }
 
 func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (string, *MetricSet) {
+	if len(c.Stats) == 0 {
+		return "", nil
+	}
+
 	var metricSetKey string
 	cMetrics := &MetricSet{
 		MetricValues: map[string]MetricValue{},
@@ -235,7 +239,7 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 	keys := make(map[string]bool)
 	for _, c := range containers {
 		name, metrics := this.decodeMetrics(&c)
-		if name == "" {
+		if name == "" || metrics == nil {
 			continue
 		}
 		result.MetricSets[name] = metrics
