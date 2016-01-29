@@ -46,7 +46,9 @@ func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, e
 		return nil, err
 	}
 	for _, pod := range pods {
-		addPodInfo(pod, batch)
+		if pod.Status.Phase == kube_api.PodRunning {
+			addPodInfo(pod, batch)
+		}
 	}
 	return batch, nil
 }
