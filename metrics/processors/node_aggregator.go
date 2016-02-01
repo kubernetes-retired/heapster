@@ -39,7 +39,12 @@ func (this *NodeAggregator) Process(batch *core.DataBatch) (*core.DataBatch, err
 		result.MetricSets[key] = metricSet
 		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found && metricSetType == core.MetricSetTypePod {
 			// Aggregating pods
-			if nodeName, found := metricSet.Labels[core.LabelNodename.Key]; found {
+			nodeName, found := metricSet.Labels[core.LabelNodename.Key]
+			if nodeName == "" {
+				glog.V(8).Infof("Skipping pod %s: no node info", key)
+				continue
+			}
+			if found {
 				nodeKey := core.NodeKey(nodeName)
 				node, found := result.MetricSets[nodeKey]
 				if !found {
