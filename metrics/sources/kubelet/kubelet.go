@@ -82,6 +82,36 @@ func (this *kubeletMetricsSource) String() string {
 	return fmt.Sprintf("kubelet:%s:%d", this.host.IP, this.host.Port)
 }
 
+func (this *kubeletMetricsSource) handleSystemContainer(c *cadvisor.ContainerInfo, cMetrics *MetricSet) string {
+	glog.V(8).Infof("Found system container %v with labels: %+v", c.Name, c.Spec.Labels)
+	cName := c.Name
+	if strings.HasPrefix(cName, "/") {
+		cName = cName[1:]
+	}
+	cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeSystemContainer
+	cMetrics.Labels[LabelContainerName.Key] = cName
+	return NodeContainerKey(this.nodename, cName)
+}
+
+func (this *kubeletMetricsSource) handleKubernetesContainer(cName, ns, podName string, c *cadvisor.ContainerInfo, cMetrics *MetricSet) string {
+	var metricSetKey string
+	if cName == infraContainerName {
+		metricSetKey = PodKey(ns, podName)
+		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePod
+	} else {
+		metricSetKey = PodContainerKey(ns, podName, cName)
+		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePodContainer
+		cMetrics.Labels[LabelContainerName.Key] = cName
+		cMetrics.Labels[LabelContainerBaseImage.Key] = c.Spec.Image
+	}
+	cMetrics.Labels[LabelPodId.Key] = c.Spec.Labels[kubernetesPodUID]
+	cMetrics.Labels[LabelPodName.Key] = podName
+	cMetrics.Labels[LabelNamespaceName.Key] = ns
+	// Needed for backward compatibility
+	cMetrics.Labels[LabelPodNamespace.Key] = ns
+	return metricSetKey
+}
+
 func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (string, *MetricSet) {
 	if len(c.Stats) == 0 {
 		return "", nil
@@ -101,11 +131,6 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 	if isNode(c) {
 		metricSetKey = NodeKey(this.nodename)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
-	} else if isSysContainer(c) {
-		cName := getSysContainerName(c)
-		metricSetKey = NodeContainerKey(this.nodename, cName)
-		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeSystemContainer
-		cMetrics.Labels[LabelContainerName.Key] = cName
 	} else {
 		cName := c.Spec.Labels[kubernetesContainerLabel]
 		ns := c.Spec.Labels[kubernetesPodNamespaceLabel]
@@ -132,25 +157,12 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 			}
 		}
 
+		// No Kubernetes metadata so treat this as a system container.
 		if cName == "" || ns == "" || podName == "" {
-			glog.Errorf("Missing metadata for container %v. Got: %+v", c.Name, c.Spec.Labels)
-			return "", nil
-		}
-
-		if cName == infraContainerName {
-			metricSetKey = PodKey(ns, podName)
-			cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePod
+			metricSetKey = this.handleSystemContainer(c, cMetrics)
 		} else {
-			metricSetKey = PodContainerKey(ns, podName, cName)
-			cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePodContainer
-			cMetrics.Labels[LabelContainerName.Key] = cName
-			cMetrics.Labels[LabelContainerBaseImage.Key] = c.Spec.Image
+			metricSetKey = this.handleKubernetesContainer(cName, ns, podName, c, cMetrics)
 		}
-		cMetrics.Labels[LabelPodId.Key] = c.Spec.Labels[kubernetesPodUID]
-		cMetrics.Labels[LabelPodName.Key] = podName
-		cMetrics.Labels[LabelNamespaceName.Key] = ns
-		// Needed for backward compatibility
-		cMetrics.Labels[LabelPodNamespace.Key] = ns
 	}
 
 	for _, metric := range StandardMetrics {

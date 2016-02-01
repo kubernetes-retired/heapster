@@ -18,24 +18,6 @@ import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
-const nodeContainerName = "machine"
-
-var sysContainerNames = map[string]string{
-	"/docker-daemon": "docker-daemon",
-	"/kubelet":       "kubelet",
-	"/kube-proxy":    "kube-proxy",
-	"/system":        "system",
-}
-
 func isNode(c *cadvisor.ContainerInfo) bool {
 	return c.Name == "/"
-}
-
-func isSysContainer(c *cadvisor.ContainerInfo) bool {
-	_, exist := sysContainerNames[c.Name]
-	return exist
-}
-
-func getSysContainerName(c *cadvisor.ContainerInfo) string {
-	return sysContainerNames[c.Name]
 }
