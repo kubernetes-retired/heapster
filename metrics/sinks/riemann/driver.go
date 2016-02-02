@@ -114,49 +114,52 @@ func (sink *riemannSink) ExportData(dataBatch *core.DataBatch) {
 	dataEvents := make([]riemann_api.Event, 0, 0)
 	for _, metricSet := range dataBatch.MetricSets {
 		for metricName, metricValue := range metricSet.MetricValues {
-			var value interface{}
-			if core.ValueInt64 == metricValue.ValueType {
-				value = metricValue.IntValue
-			} else if core.ValueFloat == metricValue.ValueType {
-				value = metricValue.FloatValue
-			} else {
-				continue
-			}
+			if value := metricValue.GetValue(); value != nil {
+				event := riemann_api.Event{
+					Time:        dataBatch.Timestamp.Unix(),
+					Service:     metricName,
+					Host:        metricSet.Labels[core.LabelHostname.Key],
+					Description: "", //no description - waste of bandwidth.
+					Attributes:  metricSet.Labels,
+					Metric:      value,
+					Ttl:         sink.config.ttl,
+					State:       sink.config.state,
+					Tags:        sink.config.tags,
+				}
 
-			//get the value of "hostname" key
-			host := ""
-			for key, value := range metricSet.Labels {
-				if key == "hostname" {
-					host = value
+				dataEvents = append(dataEvents, event)
+				if len(dataEvents) >= maxSendBatchSize {
+					sink.sendData(dataEvents)
+					dataEvents = make([]riemann_api.Event, 0, 0)
 				}
 			}
-
-			//get the metrics description
-			description := ""
-			for _, standardMetrics := range core.StandardMetrics {
-				if standardMetrics.MetricDescriptor.Name == metricName {
-					description = standardMetrics.MetricDescriptor.Description
+		}
+		for _, metric := range metricSet.LabeledMetrics {
+			if value := metric.GetValue(); value != nil {
+				labels := make(map[string]string)
+				for k, v := range metricSet.Labels {
+					labels[k] = v
+				}
+				for k, v := range metric.Labels {
+					labels[k] = v
+				}
+				event := riemann_api.Event{
+					Time:        dataBatch.Timestamp.Unix(),
+					Service:     metric.Name,
+					Host:        metricSet.Labels[core.LabelHostname.Key],
+					Description: "", //no description - waste of bandwidth.
+					Attributes:  labels,
+					Metric:      value,
+					Ttl:         sink.config.ttl,
+					State:       sink.config.state,
+					Tags:        sink.config.tags,
+				}
+				dataEvents = append(dataEvents, event)
+				if len(dataEvents) >= maxSendBatchSize {
+					sink.sendData(dataEvents)
+					dataEvents = make([]riemann_api.Event, 0, 0)
 				}
 			}
-
-			event := riemann_api.Event{
-				Time:        dataBatch.Timestamp.Unix(),
-				Service:     metricName,
-				Host:        host,
-				Description: description,
-				Attributes:  metricSet.Labels,
-				Metric:      value,
-				Ttl:         sink.config.ttl,
-				State:       sink.config.state,
-				Tags:        sink.config.tags,
-			}
-
-			dataEvents = append(dataEvents, event)
-			if len(dataEvents) >= maxSendBatchSize {
-				sink.sendData(dataEvents)
-				dataEvents = make([]riemann_api.Event, 0, 0)
-			}
-
 		}
 	}
 

@@ -89,6 +89,16 @@ type MetricValue struct {
 	Start      time.Time
 }
 
+func (this *MetricValue) GetValue() interface{} {
+	if ValueInt64 == this.ValueType {
+		return this.IntValue
+	} else if ValueFloat == this.ValueType {
+		return this.FloatValue
+	} else {
+		return nil
+	}
+}
+
 type LabeledMetric struct {
 	Name       string
 	Labels     map[string]string
@@ -96,6 +106,16 @@ type LabeledMetric struct {
 	FloatValue float32
 	MetricType MetricType
 	ValueType  ValueType
+}
+
+func (this *LabeledMetric) GetValue() interface{} {
+	if ValueInt64 == this.ValueType {
+		return this.IntValue
+	} else if ValueFloat == this.ValueType {
+		return this.FloatValue
+	} else {
+		return nil
+	}
 }
 
 type MetricSet struct {
