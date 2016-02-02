@@ -66,6 +66,7 @@ var RateMetricsMapping = map[string]Metric{
 var LabeledMetrics = []Metric{
 	MetricFilesystemUsage,
 	MetricFilesystemLimit,
+	MetricFilesystemAvailable,
 }
 
 var NodeAutoscalingMetrics = []Metric{
@@ -478,6 +479,17 @@ var MetricFilesystemLimit = Metric{
 			})
 		}
 		return result
+	},
+}
+
+var MetricFilesystemAvailable = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/available",
+		Description: "The number of available bytes remaining in a the filesystem",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+		Labels:      metricLabels,
 	},
 }
 

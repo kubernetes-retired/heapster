@@ -23,6 +23,7 @@ type MetricType int8
 const (
 	MetricCumulative MetricType = iota
 	MetricGauge
+	MetricDelta
 )
 
 func (self *MetricType) String() string {
@@ -31,6 +32,8 @@ func (self *MetricType) String() string {
 		return "cumulative"
 	case MetricGauge:
 		return "gauge"
+	case MetricDelta:
+		return "delta"
 	}
 	return ""
 }

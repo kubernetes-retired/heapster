@@ -20,6 +20,7 @@ import (
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sources/kubelet"
+	"k8s.io/heapster/metrics/sources/summary"
 )
 
 type SourceFactory struct {
@@ -29,6 +30,9 @@ func (this *SourceFactory) Build(uri flags.Uri) (core.MetricsSourceProvider, err
 	switch uri.Key {
 	case "kubernetes":
 		provider, err := kubelet.NewKubeletProvider(&uri.Val)
+		return provider, err
+	case "kubernetes.summary_api":
+		provider, err := summary.NewSummaryProvider(&uri.Val)
 		return provider, err
 	default:
 		return nil, fmt.Errorf("Source not recognized: %s", uri.Key)

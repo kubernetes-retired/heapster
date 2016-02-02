@@ -34,7 +34,7 @@ const (
 	defaultInClusterConfig    = true
 )
 
-func getKubeConfigs(uri *url.URL) (*kube_client.Config, *kubelet_client.KubeletClientConfig, error) {
+func GetKubeConfigs(uri *url.URL) (*kube_client.Config, *kubelet_client.KubeletClientConfig, error) {
 
 	kubeConfig, err := kube_config.GetKubeClientConfig(uri)
 	if err != nil {
