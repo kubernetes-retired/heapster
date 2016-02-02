@@ -53,6 +53,19 @@ func batchToString(batch *core.DataBatch) string {
 				buffer.WriteString(fmt.Sprintf("%s%s%s = ?\n", padding, padding, metricName))
 			}
 		}
+		buffer.WriteString(fmt.Sprintf("%sLabeled Metrics:\n", padding))
+		for _, metric := range ms.LabeledMetrics {
+			if core.ValueInt64 == metric.ValueType {
+				buffer.WriteString(fmt.Sprintf("%s%s%s = %d\n", padding, padding, metric.Name, metric.IntValue))
+			} else if core.ValueFloat == metric.ValueType {
+				buffer.WriteString(fmt.Sprintf("%s%s%s = %f\n", padding, padding, metric.Name, metric.FloatValue))
+			} else {
+				buffer.WriteString(fmt.Sprintf("%s%s%s = ?\n", padding, padding, metric.Name))
+			}
+			for labelName, labelValue := range metric.Labels {
+				buffer.WriteString(fmt.Sprintf("%s%s%s%s = %s", padding, padding, padding, labelName, labelValue))
+			}
+		}
 		buffer.WriteString("\n")
 	}
 	return buffer.String()

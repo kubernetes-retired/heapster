@@ -40,6 +40,17 @@ func TestSimpleWrite(t *testing.T) {
 				IntValue:   31415,
 			},
 		},
+		LabeledMetrics: []core.LabeledMetric{
+			{
+				Name:       "lm",
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricGauge,
+				IntValue:   279,
+				Labels: map[string]string{
+					"disk": "hard",
+				},
+			},
+		},
 	}
 	log := batchToString(&batch)
 
@@ -48,5 +59,8 @@ func TestSimpleWrite(t *testing.T) {
 	assert.True(t, strings.Contains(log, "bzium"))
 	assert.True(t, strings.Contains(log, "hocuspocus"))
 	assert.True(t, strings.Contains(log, "pod1"))
+	assert.True(t, strings.Contains(log, "279"))
+	assert.True(t, strings.Contains(log, "disk"))
+	assert.True(t, strings.Contains(log, "hard"))
 	assert.True(t, strings.Contains(log, fmt.Sprintf("%s", now)))
 }
