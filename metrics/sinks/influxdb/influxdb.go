@@ -82,6 +82,39 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 				dataPoints = make([]influxdb.Point, 0, 0)
 			}
 		}
+
+		for _, labeledMetric := range metricSet.LabeledMetrics {
+
+			var value interface{}
+			if core.ValueInt64 == labeledMetric.ValueType {
+				value = labeledMetric.IntValue
+			} else if core.ValueFloat == labeledMetric.ValueType {
+				value = labeledMetric.FloatValue
+			} else {
+				continue
+			}
+
+			point := influxdb.Point{
+				Measurement: labeledMetric.Name,
+				Tags:        make(map[string]string),
+				Fields: map[string]interface{}{
+					"value": value,
+				},
+				Time: dataBatch.Timestamp.UTC(),
+			}
+			for key, value := range metricSet.Labels {
+				point.Tags[key] = value
+			}
+			for key, value := range labeledMetric.Labels {
+				point.Tags[key] = value
+			}
+
+			dataPoints = append(dataPoints, point)
+			if len(dataPoints) >= maxSendBatchSize {
+				sink.sendData(dataPoints)
+				dataPoints = make([]influxdb.Point, 0, 0)
+			}
+		}
 	}
 	if len(dataPoints) >= 0 {
 		sink.sendData(dataPoints)
