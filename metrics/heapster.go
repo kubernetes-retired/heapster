@@ -93,7 +93,7 @@ func main() {
 	// data processors
 	metricsToAggregate := []string{
 		core.MetricCpuUsageRate.Name,
-		core.MetricMemoruUsage.Name,
+		core.MetricMemoryUsage.Name,
 		core.MetricCpuRequest.Name,
 		core.MetricCpuLimit.Name,
 		core.MetricMemoryRequest.Name,
