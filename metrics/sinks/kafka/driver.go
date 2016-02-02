@@ -58,21 +58,29 @@ func (sink *kafkaSink) ExportData(dataBatch *core.DataBatch) {
 
 	for _, metricSet := range dataBatch.MetricSets {
 		for metricName, metricValue := range metricSet.MetricValues {
-
-			var value interface{}
-			if core.ValueInt64 == metricValue.ValueType {
-				value = metricValue.IntValue
-			} else if core.ValueFloat == metricValue.ValueType {
-				value = metricValue.FloatValue
-			} else {
-				continue
-			}
-
 			point := KafkaSinkPoint{
 				MetricsName: metricName,
 				MetricsTags: metricSet.Labels,
 				MetricsValue: map[string]interface{}{
-					"value": value,
+					"value": metricValue.GetValue(),
+				},
+				MetricsTimestamp: dataBatch.Timestamp.UTC(),
+			}
+			sink.produceKafkaMessage(point, sink.dataTopic)
+		}
+		for _, metric := range metricSet.LabeledMetrics {
+			labels := make(map[string]string)
+			for k, v := range metricSet.Labels {
+				labels[k] = v
+			}
+			for k, v := range metric.Labels {
+				labels[k] = v
+			}
+			point := KafkaSinkPoint{
+				MetricsName: metric.Name,
+				MetricsTags: labels,
+				MetricsValue: map[string]interface{}{
+					"value": metric.GetValue(),
 				},
 				MetricsTimestamp: dataBatch.Timestamp.UTC(),
 			}
