@@ -24,9 +24,9 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/docker/libcontainer/cgroups/fs"
-	"github.com/docker/libcontainer/configs"
 	"github.com/golang/glog"
+	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
+	"github.com/opencontainers/runc/libcontainer/configs"
 )
 
 func NewOOMAdjuster() *OOMAdjuster {
@@ -41,7 +41,8 @@ func NewOOMAdjuster() *OOMAdjuster {
 func getPids(cgroupName string) ([]int, error) {
 	fsManager := fs.Manager{
 		Cgroups: &configs.Cgroup{
-			Name: cgroupName,
+			Parent: "/",
+			Name:   cgroupName,
 		},
 	}
 	return fsManager.GetPids()

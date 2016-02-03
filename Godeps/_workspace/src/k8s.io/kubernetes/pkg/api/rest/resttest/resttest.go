@@ -148,7 +148,7 @@ func (t *Tester) TestCreate(valid runtime.Object, setFn SetFunc, getFn GetFunc, 
 // Test updating an object.
 func (t *Tester) TestUpdate(valid runtime.Object, setFn SetFunc, getFn GetFunc, updateFn UpdateFunc, invalidUpdateFn ...UpdateFunc) {
 	t.testUpdateEquals(copyOrDie(valid), setFn, getFn, updateFn)
-	t.testUpdateFailsOnVersionTooOld(copyOrDie(valid), setFn)
+	t.testUpdateFailsOnVersionTooOld(copyOrDie(valid), setFn, getFn)
 	t.testUpdateOnNotFound(copyOrDie(valid))
 	if !t.clusterScope {
 		t.testUpdateRejectsMismatchedNamespace(copyOrDie(valid), setFn)
@@ -426,7 +426,7 @@ func (t *Tester) testUpdateEquals(obj runtime.Object, setFn SetFunc, getFn GetFu
 	}
 }
 
-func (t *Tester) testUpdateFailsOnVersionTooOld(obj runtime.Object, setFn SetFunc) {
+func (t *Tester) testUpdateFailsOnVersionTooOld(obj runtime.Object, setFn SetFunc, getFn GetFunc) {
 	ctx := t.TestContext()
 
 	foo := copyOrDie(obj)
@@ -436,11 +436,16 @@ func (t *Tester) testUpdateFailsOnVersionTooOld(obj runtime.Object, setFn SetFun
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	older := copyOrDie(foo)
+	storedFoo, err := getFn(ctx, foo)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	older := copyOrDie(storedFoo)
 	olderMeta := t.getObjectMetaOrFail(older)
 	olderMeta.ResourceVersion = "1"
 
-	_, _, err := t.storage.(rest.Updater).Update(t.TestContext(), older)
+	_, _, err = t.storage.(rest.Updater).Update(t.TestContext(), older)
 	if err == nil {
 		t.Errorf("Expected an error, but we didn't get one")
 	} else if !errors.IsConflict(err) {
@@ -864,7 +869,7 @@ func (t *Tester) testListMatchLabels(obj runtime.Object, assignFn AssignFunc) {
 	filtered := []runtime.Object{objs[1]}
 
 	selector := labels.SelectorFromSet(labels.Set(testLabels))
-	options := &unversioned.ListOptions{LabelSelector: unversioned.LabelSelector{selector}}
+	options := &api.ListOptions{LabelSelector: selector}
 	listObj, err := t.storage.(rest.Lister).List(ctx, options)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -906,7 +911,7 @@ func (t *Tester) testWatchFields(obj runtime.Object, emitFn EmitFunc, fieldsPass
 
 	for _, field := range fieldsPass {
 		for _, action := range actions {
-			options := &unversioned.ListOptions{FieldSelector: unversioned.FieldSelector{field.AsSelector()}, ResourceVersion: "1"}
+			options := &api.ListOptions{FieldSelector: field.AsSelector(), ResourceVersion: "1"}
 			watcher, err := t.storage.(rest.Watcher).Watch(ctx, options)
 			if err != nil {
 				t.Errorf("unexpected error: %v, %v", err, action)
@@ -930,7 +935,7 @@ func (t *Tester) testWatchFields(obj runtime.Object, emitFn EmitFunc, fieldsPass
 
 	for _, field := range fieldsFail {
 		for _, action := range actions {
-			options := &unversioned.ListOptions{FieldSelector: unversioned.FieldSelector{field.AsSelector()}, ResourceVersion: "1"}
+			options := &api.ListOptions{FieldSelector: field.AsSelector(), ResourceVersion: "1"}
 			watcher, err := t.storage.(rest.Watcher).Watch(ctx, options)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
@@ -955,7 +960,7 @@ func (t *Tester) testWatchLabels(obj runtime.Object, emitFn EmitFunc, labelsPass
 
 	for _, label := range labelsPass {
 		for _, action := range actions {
-			options := &unversioned.ListOptions{LabelSelector: unversioned.LabelSelector{label.AsSelector()}, ResourceVersion: "1"}
+			options := &api.ListOptions{LabelSelector: label.AsSelector(), ResourceVersion: "1"}
 			watcher, err := t.storage.(rest.Watcher).Watch(ctx, options)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
@@ -978,7 +983,7 @@ func (t *Tester) testWatchLabels(obj runtime.Object, emitFn EmitFunc, labelsPass
 
 	for _, label := range labelsFail {
 		for _, action := range actions {
-			options := &unversioned.ListOptions{LabelSelector: unversioned.LabelSelector{label.AsSelector()}, ResourceVersion: "1"}
+			options := &api.ListOptions{LabelSelector: label.AsSelector(), ResourceVersion: "1"}
 			watcher, err := t.storage.(rest.Watcher).Watch(ctx, options)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)

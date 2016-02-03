@@ -19,7 +19,6 @@ package testclient
 import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/watch"
 )
@@ -40,10 +39,14 @@ func (c *FakeDeployments) Get(name string) (*extensions.Deployment, error) {
 	return obj.(*extensions.Deployment), err
 }
 
-func (c *FakeDeployments) List(label labels.Selector, field fields.Selector) (*extensions.DeploymentList, error) {
-	obj, err := c.Fake.Invokes(NewListAction("deployments", c.Namespace, label, field), &extensions.DeploymentList{})
+func (c *FakeDeployments) List(opts api.ListOptions) (*extensions.DeploymentList, error) {
+	obj, err := c.Fake.Invokes(NewListAction("deployments", c.Namespace, opts), &extensions.DeploymentList{})
 	if obj == nil {
 		return nil, err
+	}
+	label := opts.LabelSelector
+	if label == nil {
+		label = labels.Everything()
 	}
 	list := &extensions.DeploymentList{}
 	for _, deployment := range obj.(*extensions.DeploymentList).Items {
@@ -86,6 +89,17 @@ func (c *FakeDeployments) Delete(name string, options *api.DeleteOptions) error 
 	return err
 }
 
-func (c *FakeDeployments) Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error) {
-	return c.Fake.InvokesWatch(NewWatchAction("deployments", c.Namespace, label, field, opts))
+func (c *FakeDeployments) Watch(opts api.ListOptions) (watch.Interface, error) {
+	return c.Fake.InvokesWatch(NewWatchAction("deployments", c.Namespace, opts))
+}
+
+func (c *FakeDeployments) Rollback(deploymentRollback *extensions.DeploymentRollback) error {
+	action := CreateActionImpl{}
+	action.Verb = "create"
+	action.Resource = "deployments"
+	action.Subresource = "rollback"
+	action.Object = deploymentRollback
+
+	_, err := c.Fake.Invokes(action, deploymentRollback)
+	return err
 }

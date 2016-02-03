@@ -27,7 +27,7 @@ import (
 )
 
 // ListFunc knows how to list resources
-type ListFunc func() (runtime.Object, error)
+type ListFunc func(options api.ListOptions) (runtime.Object, error)
 
 // WatchFunc knows how to watch resources
 type WatchFunc func(options api.ListOptions) (watch.Interface, error)
@@ -47,10 +47,11 @@ type Getter interface {
 
 // NewListWatchFromClient creates a new ListWatch from the specified client, resource, namespace and field selector.
 func NewListWatchFromClient(c Getter, resource string, namespace string, fieldSelector fields.Selector) *ListWatch {
-	listFunc := func() (runtime.Object, error) {
+	listFunc := func(options api.ListOptions) (runtime.Object, error) {
 		return c.Get().
 			Namespace(namespace).
 			Resource(resource).
+			VersionedParams(&options, api.ParameterCodec).
 			FieldsSelectorParam(fieldSelector).
 			Do().
 			Get()
@@ -60,9 +61,7 @@ func NewListWatchFromClient(c Getter, resource string, namespace string, fieldSe
 			Prefix("watch").
 			Namespace(namespace).
 			Resource(resource).
-			// TODO: Use VersionedParams once this is supported for non v1 API.
-			Param("resourceVersion", options.ResourceVersion).
-			TimeoutSeconds(timeoutFromListOptions(options)).
+			VersionedParams(&options, api.ParameterCodec).
 			FieldsSelectorParam(fieldSelector).
 			Watch()
 	}
@@ -77,8 +76,8 @@ func timeoutFromListOptions(options api.ListOptions) time.Duration {
 }
 
 // List a set of apiserver resources
-func (lw *ListWatch) List() (runtime.Object, error) {
-	return lw.ListFunc()
+func (lw *ListWatch) List(options api.ListOptions) (runtime.Object, error) {
+	return lw.ListFunc(options)
 }
 
 // Watch a set of apiserver resources

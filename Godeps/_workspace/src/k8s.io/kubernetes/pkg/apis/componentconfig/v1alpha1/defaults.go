@@ -17,12 +17,15 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"k8s.io/kubernetes/pkg/api"
+	"time"
+
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
+	"k8s.io/kubernetes/pkg/runtime"
 )
 
-func addDefaultingFuncs() {
-	api.Scheme.AddDefaultingFuncs(
+func addDefaultingFuncs(scheme *runtime.Scheme) {
+	scheme.AddDefaultingFuncs(
 		func(obj *KubeProxyConfiguration) {
 			if obj.BindAddress == "" {
 				obj.BindAddress = "0.0.0.0"
@@ -34,11 +37,11 @@ func addDefaultingFuncs() {
 				obj.HealthzBindAddress = "127.0.0.1"
 			}
 			if obj.OOMScoreAdj == nil {
-				temp := qos.KubeProxyOOMScoreAdj
+				temp := int32(qos.KubeProxyOOMScoreAdj)
 				obj.OOMScoreAdj = &temp
 			}
-			if obj.IPTablesSyncePeriodSeconds == 0 {
-				obj.IPTablesSyncePeriodSeconds = 5
+			if obj.IPTablesSyncPeriod.Duration == 0 {
+				obj.IPTablesSyncPeriod = unversioned.Duration{5 * time.Second}
 			}
 		},
 	)
