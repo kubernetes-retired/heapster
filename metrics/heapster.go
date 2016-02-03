@@ -132,6 +132,16 @@ func main() {
 			MetricsToAggregate: metricsToAggregate,
 		})
 
+	// pod enricher goes first
+	if url, err := getKubernetesAddress(argSources); err == nil {
+		nodeAutoscalingEnricher, err := processors.NewNodeAutoscalingEnricher(url)
+		if err != nil {
+			glog.Fatalf("Failed to create NodeAutoscalingEnricher: %v", err)
+		} else {
+			dataProcessors = append(dataProcessors, nodeAutoscalingEnricher)
+		}
+	}
+
 	// main manager
 	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, *argMetricResolution,
 		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
