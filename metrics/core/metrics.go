@@ -24,7 +24,7 @@ import (
 var StandardMetrics = []Metric{
 	MetricUptime,
 	MetricCpuUsage,
-	MetricMemoruUsage,
+	MetricMemoryUsage,
 	MetricMemoryWorkingSet,
 	MetricMemoryPageFaults,
 	MetricMemoryMajorPageFaults,
@@ -107,7 +107,7 @@ var MetricCpuUsage = Metric{
 	},
 }
 
-var MetricMemoruUsage = Metric{
+var MetricMemoryUsage = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "memory/usage",
 		Description: "Total memory usage",
@@ -373,6 +373,46 @@ var MetricNetworkTxErrorsRate = Metric{
 		Description: "Rate of errors transmitting over the network in errors per second",
 		Type:        MetricGauge,
 		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricPercentageCpuUsed = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/used_percentage",
+		Description: "Percentage of available cpu used",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricPercentageMemoryUsed = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "mem/used_percentage",
+		Description: "Percentage of available mem used",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricPercentageCpuRequested = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/requested_percentage",
+		Description: "Percentage of available cpu requested",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricPercentageMemoryRequested = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "mem/requested_percentage",
+		Description: "Percentage of available mem requested",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
 }
