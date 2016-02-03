@@ -26,7 +26,6 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/v1"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	kclientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	kclientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
@@ -323,7 +322,8 @@ func (self *realKubeFramework) loadObject(filePath string) (runtime.Object, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to read object: %v", err)
 	}
-	return runtime.YAMLDecoder(v1.Codec).Decode(data)
+	obj, _, err := api.Codecs.UniversalDecoder().Decode(data, nil, nil)
+	return obj, err
 }
 
 func (self *realKubeFramework) ParseRC(filePath string) (*api.ReplicationController, error) {
@@ -398,7 +398,10 @@ func (self *realKubeFramework) GetProxyUrlForService(service *api.Service) strin
 
 func (self *realKubeFramework) GetNodes() ([]string, error) {
 	var nodes []string
-	nodeList, err := self.kubeClient.Nodes().List(labels.Everything(), fields.Everything())
+	nodeList, err := self.kubeClient.Nodes().List(api.ListOptions{
+		LabelSelector: labels.Everything(),
+		FieldSelector: fields.Everything(),
+	})
 	if err != nil {
 		return nodes, err
 	}
@@ -411,7 +414,10 @@ func (self *realKubeFramework) GetNodes() ([]string, error) {
 
 func (self *realKubeFramework) GetRunningPods() ([]api.Pod, error) {
 	glog.V(0).Infof("Getting running pods")
-	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(labels.Everything(), fields.Everything())
+	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(api.ListOptions{
+		LabelSelector: labels.Everything(),
+		FieldSelector: fields.Everything(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -440,8 +446,10 @@ func (rkf *realKubeFramework) WaitUntilPodRunning(ns string, podLabels map[strin
 	glog.V(2).Infof("Waiting for pod %v in %s...", podLabels, ns)
 	podsInterface := rkf.Client().Pods(ns)
 	for i := 0; i < int(timeout/time.Second); i++ {
-		selector := labels.Set(podLabels).AsSelector()
-		podList, err := podsInterface.List(selector, fields.Everything())
+		podList, err := podsInterface.List(api.ListOptions{
+			LabelSelector: labels.Set(podLabels).AsSelector(),
+			FieldSelector: fields.Everything(),
+		})
 		if err != nil {
 			glog.V(1).Info(err)
 			return err

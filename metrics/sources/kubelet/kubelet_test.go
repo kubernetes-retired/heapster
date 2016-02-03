@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/heapster/metrics/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/util"
+	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 func TestDecodeMetrics1(t *testing.T) {
