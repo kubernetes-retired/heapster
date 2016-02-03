@@ -82,6 +82,14 @@ var (
 		Key:         "custom_metric_name",
 		Description: "User-defined name of the exported custom metric",
 	}
+	LabelGCEResourceID = LabelDescriptor{
+		Key:         "compute.googleapis.com/resource_id",
+		Description: "Resource id for nodes specific for GCE.",
+	}
+	LabelGCEResourceType = LabelDescriptor{
+		Key:         "compute.googleapis.com/resource_type",
+		Description: "Resource types for nodes specific for GCE.",
+	}
 )
 
 type LabelDescriptor struct {
@@ -129,6 +137,12 @@ var gcmLabels = []LabelDescriptor{
 	LabelCustomMetricName,
 }
 
+var gcmNodeAutoscalingLabels = []LabelDescriptor{
+	LabelGCEResourceID,
+	LabelGCEResourceType,
+	LabelHostname,
+}
+
 func CommonLabels() []LabelDescriptor {
 	result := make([]LabelDescriptor, len(commonLabels))
 	copy(result, commonLabels)
@@ -162,6 +176,13 @@ func SupportedLabels() []LabelDescriptor {
 func GcmLabels() map[string]LabelDescriptor {
 	result := make(map[string]LabelDescriptor, len(gcmLabels))
 	for _, l := range gcmLabels {
+		result[l.Key] = l
+	}
+	return result
+}
+func GcmNodeAutoscalingLabels() map[string]LabelDescriptor {
+	result := make(map[string]LabelDescriptor, len(gcmNodeAutoscalingLabels))
+	for _, l := range gcmNodeAutoscalingLabels {
 		result[l.Key] = l
 	}
 	return result

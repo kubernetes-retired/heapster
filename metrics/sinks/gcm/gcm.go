@@ -77,16 +77,22 @@ func (sink *gcmSink) getTimeseriesPoint(timestamp time.Time, labels map[string]s
 		point.Start = val.Start.Format(time.RFC3339)
 	}
 
-	supportedLables := core.GcmLabels()
-	gcmLabels := make(map[string]string, len(labels))
-	for key, value := range labels {
-		if _, ok := supportedLables[key]; ok {
-			gcmLabels[fullLabelName(key)] = value
+	finalLabels := make(map[string]string)
+	if core.IsNodeAutoscalingMetric(metric) {
+		finalLabels[fullLabelName(core.LabelHostname.Key)] = labels[core.LabelHostname.Key]
+		finalLabels[fullLabelName(core.LabelGCEResourceID.Key)] = labels[core.LabelHostID.Key]
+		finalLabels[fullLabelName(core.LabelGCEResourceType.Key)] = "instance"
+	} else {
+		supportedLables := core.GcmLabels()
+		for key, value := range labels {
+			if _, ok := supportedLables[key]; ok {
+				finalLabels[fullLabelName(key)] = value
+			}
 		}
 	}
 	desc := &gcm.TimeseriesDescriptor{
 		Project: sink.project,
-		Labels:  gcmLabels,
+		Labels:  finalLabels,
 		Metric:  fullMetricName(metric),
 	}
 
@@ -133,12 +139,24 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 			glog.Infof("[GCM] Deleting metric %v failed: %v", metricName, err)
 		}
 		labels := make([]*gcm.MetricDescriptorLabelDescriptor, 0)
-		for _, l := range core.GcmLabels() {
-			labels = append(labels, &gcm.MetricDescriptorLabelDescriptor{
-				Key:         fullLabelName(l.Key),
-				Description: l.Description,
-			})
+
+		// Node autoscaling metrics have special labels.
+		if core.IsNodeAutoscalingMetric(metric.MetricDescriptor.Name) {
+			for _, l := range core.GcmNodeAutoscalingLabels() {
+				labels = append(labels, &gcm.MetricDescriptorLabelDescriptor{
+					Key:         fullLabelName(l.Key),
+					Description: l.Description,
+				})
+			}
+		} else {
+			for _, l := range core.GcmLabels() {
+				labels = append(labels, &gcm.MetricDescriptorLabelDescriptor{
+					Key:         fullLabelName(l.Key),
+					Description: l.Description,
+				})
+			}
 		}
+
 		t := &gcm.MetricDescriptorTypeDescriptor{
 			MetricType: metric.MetricDescriptor.Type.String(),
 			ValueType:  metric.MetricDescriptor.ValueType.String(),

@@ -64,7 +64,15 @@ var LabeledMetrics = []Metric{
 	MetricFilesystemLimit,
 }
 
-var AllMetrics = append(append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...), LabeledMetrics...)
+var NodeAutoscalingMetrics = []Metric{
+	MetricPercentageCpuUsed,
+	MetricPercentageMemoryUsed,
+	MetricPercentageCpuRequested,
+	MetricPercentageMemoryRequested,
+}
+
+var AllMetrics = append(append(append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...), LabeledMetrics...),
+	NodeAutoscalingMetrics...)
 
 // Definition of Standard Metrics.
 var MetricUptime = Metric{
@@ -379,7 +387,7 @@ var MetricNetworkTxErrorsRate = Metric{
 
 var MetricPercentageCpuUsed = Metric{
 	MetricDescriptor: MetricDescriptor{
-		Name:        "cpu/used_percentage",
+		Name:        "cpu/node_utilization",
 		Description: "Percentage of available cpu used",
 		Type:        MetricGauge,
 		ValueType:   ValueInt64,
@@ -389,7 +397,7 @@ var MetricPercentageCpuUsed = Metric{
 
 var MetricPercentageMemoryUsed = Metric{
 	MetricDescriptor: MetricDescriptor{
-		Name:        "mem/used_percentage",
+		Name:        "memory/node_utilization",
 		Description: "Percentage of available mem used",
 		Type:        MetricGauge,
 		ValueType:   ValueInt64,
@@ -399,7 +407,7 @@ var MetricPercentageMemoryUsed = Metric{
 
 var MetricPercentageCpuRequested = Metric{
 	MetricDescriptor: MetricDescriptor{
-		Name:        "cpu/requested_percentage",
+		Name:        "cpu/node_reservation",
 		Description: "Percentage of available cpu requested",
 		Type:        MetricGauge,
 		ValueType:   ValueInt64,
@@ -409,7 +417,7 @@ var MetricPercentageCpuRequested = Metric{
 
 var MetricPercentageMemoryRequested = Metric{
 	MetricDescriptor: MetricDescriptor{
-		Name:        "mem/requested_percentage",
+		Name:        "memory/node_reservation",
 		Description: "Percentage of available mem requested",
 		Type:        MetricGauge,
 		ValueType:   ValueInt64,
@@ -475,6 +483,15 @@ var MetricFilesystemLimit = Metric{
 		}
 		return result
 	},
+}
+
+func IsNodeAutoscalingMetric(name string) bool {
+	for _, autoscalingMetric := range NodeAutoscalingMetrics {
+		if autoscalingMetric.MetricDescriptor.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 type MetricDescriptor struct {
