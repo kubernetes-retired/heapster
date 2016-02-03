@@ -15,22 +15,16 @@
 package hawkular
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
-	"io/ioutil"
-	"net/http"
+	"math"
 	"regexp"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/hawkular/hawkular-client-go/metrics"
-
 	"k8s.io/heapster/metrics/core"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 )
 
 // Fetches definitions from the server and checks that they're matching the descriptors
@@ -169,6 +163,51 @@ func (self *hawkularSink) registerIfNecessary(ms *core.MetricSet, metricName str
 	return nil
 }
 
+func toBatches(m []metrics.MetricHeader, batchSize int) chan []metrics.MetricHeader {
+	if batchSize == 0 {
+		c := make(chan []metrics.MetricHeader, 1)
+		c <- m
+		return c
+	}
+
+	size := int(math.Ceil(float64(len(m)) / float64(batchSize)))
+	c := make(chan []metrics.MetricHeader, size)
+
+	for i := 0; i < len(m); i += batchSize {
+		n := i + batchSize
+		if len(m) < n {
+			n = len(m)
+		}
+		part := m[i:n]
+		c <- part
+	}
+
+	return c
+}
+
+func (self *hawkularSink) sendData(tmhs map[string][]metrics.MetricHeader, wg *sync.WaitGroup) {
+	for k, v := range tmhs {
+		parts := toBatches(v, self.batchSize)
+		close(parts)
+
+		for i := 0; i < self.concurrencyLimit; i++ {
+			wg.Add(1)
+			go func(v []metrics.MetricHeader, k string) {
+				defer wg.Done()
+
+				for p := range parts {
+					m := make([]metrics.Modifier, len(self.modifiers), len(self.modifiers)+1)
+					copy(m, self.modifiers)
+					m = append(m, metrics.Tenant(k))
+					if err := self.client.Write(p, m...); err != nil {
+						glog.Errorf(err.Error())
+					}
+				}
+			}(v, k)
+		}
+	}
+}
+
 // Converts Timeseries to metric structure used by the Hawkular
 func (self *hawkularSink) pointToMetricHeader(ms *core.MetricSet, metricName string, timestamp time.Time) (*metrics.MetricHeader, error) {
 
@@ -257,115 +296,4 @@ func nameFilter(r *regexp.Regexp) Filter {
 	return func(ms *core.MetricSet, metricName string) bool {
 		return !r.MatchString(metricName)
 	}
-}
-
-func (self *hawkularSink) init() error {
-	self.reg = make(map[string]*metrics.MetricDefinition)
-	self.models = make(map[string]*metrics.MetricDefinition)
-	self.modifiers = make([]metrics.Modifier, 0)
-	self.filters = make([]Filter, 0)
-
-	p := metrics.Parameters{
-		Tenant: "heapster",
-		Url:    self.uri.String(),
-	}
-
-	opts := self.uri.Query()
-
-	if v, found := opts["tenant"]; found {
-		p.Tenant = v[0]
-	}
-
-	if v, found := opts["labelToTenant"]; found {
-		self.labelTenant = v[0]
-	}
-
-	if v, found := opts["useServiceAccount"]; found {
-		if b, _ := strconv.ParseBool(v[0]); b {
-			// If a readable service account token exists, then use it
-			if contents, err := ioutil.ReadFile(defaultServiceAccountFile); err == nil {
-				p.Token = string(contents)
-			}
-		}
-	}
-
-	// Authentication / Authorization parameters
-	tC := &tls.Config{}
-
-	if v, found := opts["auth"]; found {
-		if _, f := opts["caCert"]; f {
-			return fmt.Errorf("Both auth and caCert files provided, combination is not supported")
-		}
-		if len(v[0]) > 0 {
-			// Authfile
-			kubeConfig, err := kubeClientCmd.NewNonInteractiveDeferredLoadingClientConfig(&kubeClientCmd.ClientConfigLoadingRules{
-				ExplicitPath: v[0]},
-				&kubeClientCmd.ConfigOverrides{}).ClientConfig()
-			if err != nil {
-				return err
-			}
-			tC, err = kube_client.TLSConfigFor(kubeConfig)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	if u, found := opts["user"]; found {
-		if _, wrong := opts["useServiceAccount"]; wrong {
-			return fmt.Errorf("If user and password are used, serviceAccount cannot be used")
-		}
-		if p, f := opts["pass"]; f {
-			self.modifiers = append(self.modifiers, func(req *http.Request) error {
-				req.SetBasicAuth(u[0], p[0])
-				return nil
-			})
-		}
-	}
-
-	if v, found := opts["caCert"]; found {
-		caCert, err := ioutil.ReadFile(v[0])
-		if err != nil {
-			return err
-		}
-
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-
-		tC.RootCAs = caCertPool
-	}
-
-	if v, found := opts["insecure"]; found {
-		_, f := opts["caCert"]
-		_, f2 := opts["auth"]
-		if f || f2 {
-			return fmt.Errorf("Insecure can't be defined with auth or caCert")
-		}
-		insecure, err := strconv.ParseBool(v[0])
-		if err != nil {
-			return err
-		}
-		tC.InsecureSkipVerify = insecure
-	}
-
-	p.TLSConfig = tC
-
-	// Filters
-	if v, found := opts["filter"]; found {
-		filters, err := parseFilters(v)
-		if err != nil {
-			return err
-		}
-		self.filters = filters
-	}
-
-	c, err := metrics.NewHawkularClient(p)
-	if err != nil {
-		return err
-	}
-
-	self.client = c
-
-	glog.Infof("Initialised Hawkular Sink with parameters %v", p)
-	return nil
 }

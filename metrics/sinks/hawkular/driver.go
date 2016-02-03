@@ -15,22 +15,31 @@
 package hawkular
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 
 	"github.com/golang/glog"
 	"github.com/hawkular/hawkular-client-go/metrics"
 
 	"k8s.io/heapster/metrics/core"
+	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 )
 
 const (
-	unitsTag       = "units"
-	descriptionTag = "_description"
-	descriptorTag  = "descriptor_name"
-	groupTag       = "group_id"
-	separator      = "/"
+	unitsTag           = "units"
+	descriptionTag     = "_description"
+	descriptorTag      = "descriptor_name"
+	groupTag           = "group_id"
+	separator          = "/"
+	batchSizeDefault   = 1000
+	concurrencyDefault = 5
 
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
@@ -68,7 +77,6 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 		totalCount += len(ms.MetricValues)
 	}
 
-	// TODO: !!!! Limit number of metrics per batch !!!!
 	if len(db.MetricSets) > 0 {
 		tmhs := make(map[string][]metrics.MetricHeader)
 
@@ -97,6 +105,7 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 				}
 
 				// Registering should not block the processing
+				// This isn't concurrency limited (and is mostly network limited on HWKMETRICS end)
 				wg.Add(1)
 				go func(ms *core.MetricSet, metricName string, tenant string) {
 					defer wg.Done()
@@ -117,19 +126,7 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 				tmhs[tenant] = append(tmhs[tenant], *mH)
 			}
 		}
-
-		for k, v := range tmhs {
-			wg.Add(1)
-			go func(v []metrics.MetricHeader, k string) {
-				defer wg.Done()
-				m := make([]metrics.Modifier, len(self.modifiers), len(self.modifiers)+1)
-				copy(m, self.modifiers)
-				m = append(m, metrics.Tenant(k))
-				if err := self.client.Write(v, m...); err != nil {
-					glog.Errorf(err.Error())
-				}
-			}(v, k)
-		}
+		self.sendData(tmhs, wg) // Send to a limited channel? Only batches.. egg.
 		wg.Wait()
 	}
 }
@@ -154,7 +151,8 @@ func (self *hawkularSink) Name() string {
 
 func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 	sink := &hawkularSink{
-		uri: u,
+		uri:       u,
+		batchSize: 1000,
 	}
 	if err := sink.init(); err != nil {
 		return nil, err
@@ -165,4 +163,134 @@ func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 	}
 	sink.Register(metrics)
 	return sink, nil
+}
+
+func (self *hawkularSink) init() error {
+	self.reg = make(map[string]*metrics.MetricDefinition)
+	self.models = make(map[string]*metrics.MetricDefinition)
+	self.modifiers = make([]metrics.Modifier, 0)
+	self.filters = make([]Filter, 0)
+	self.batchSize = batchSizeDefault
+	self.concurrencyLimit = concurrencyDefault
+
+	p := metrics.Parameters{
+		Tenant: "heapster",
+		Url:    self.uri.String(),
+	}
+
+	opts := self.uri.Query()
+
+	if v, found := opts["tenant"]; found {
+		p.Tenant = v[0]
+	}
+
+	if v, found := opts["labelToTenant"]; found {
+		self.labelTenant = v[0]
+	}
+
+	if v, found := opts["useServiceAccount"]; found {
+		if b, _ := strconv.ParseBool(v[0]); b {
+			// If a readable service account token exists, then use it
+			if contents, err := ioutil.ReadFile(defaultServiceAccountFile); err == nil {
+				p.Token = string(contents)
+			}
+		}
+	}
+
+	// Authentication / Authorization parameters
+	tC := &tls.Config{}
+
+	if v, found := opts["auth"]; found {
+		if _, f := opts["caCert"]; f {
+			return fmt.Errorf("Both auth and caCert files provided, combination is not supported")
+		}
+		if len(v[0]) > 0 {
+			// Authfile
+			kubeConfig, err := kubeClientCmd.NewNonInteractiveDeferredLoadingClientConfig(&kubeClientCmd.ClientConfigLoadingRules{
+				ExplicitPath: v[0]},
+				&kubeClientCmd.ConfigOverrides{}).ClientConfig()
+			if err != nil {
+				return err
+			}
+			tC, err = kube_client.TLSConfigFor(kubeConfig)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if u, found := opts["user"]; found {
+		if _, wrong := opts["useServiceAccount"]; wrong {
+			return fmt.Errorf("If user and password are used, serviceAccount cannot be used")
+		}
+		if p, f := opts["pass"]; f {
+			self.modifiers = append(self.modifiers, func(req *http.Request) error {
+				req.SetBasicAuth(u[0], p[0])
+				return nil
+			})
+		}
+	}
+
+	if v, found := opts["caCert"]; found {
+		caCert, err := ioutil.ReadFile(v[0])
+		if err != nil {
+			return err
+		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		tC.RootCAs = caCertPool
+	}
+
+	if v, found := opts["insecure"]; found {
+		_, f := opts["caCert"]
+		_, f2 := opts["auth"]
+		if f || f2 {
+			return fmt.Errorf("Insecure can't be defined with auth or caCert")
+		}
+		insecure, err := strconv.ParseBool(v[0])
+		if err != nil {
+			return err
+		}
+		tC.InsecureSkipVerify = insecure
+	}
+
+	p.TLSConfig = tC
+
+	// Filters
+	if v, found := opts["filter"]; found {
+		filters, err := parseFilters(v)
+		if err != nil {
+			return err
+		}
+		self.filters = filters
+	}
+
+	// Concurrency limitations
+	if v, found := opts["concurrencyLimit"]; found {
+		cs, err := strconv.Atoi(v[0])
+		if err != nil || cs < 0 {
+			return fmt.Errorf("Supplied concurrency value of %d is invalid", v[0])
+		}
+		self.concurrencyLimit = cs
+	}
+
+	if v, found := opts["batchSize"]; found {
+		bs, err := strconv.Atoi(v[0])
+		if err != nil || bs < 0 {
+			return fmt.Errorf("Supplied batchSize value of %d is invalid", v[0])
+		}
+		self.batchSize = bs
+	}
+
+	c, err := metrics.NewHawkularClient(p)
+	if err != nil {
+		return err
+	}
+
+	self.client = c
+
+	glog.Infof("Initialised Hawkular Sink with parameters %v", p)
+	return nil
 }

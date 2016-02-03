@@ -56,6 +56,9 @@ type hawkularSink struct {
 	labelTenant string
 	modifiers   []metrics.Modifier
 	filters     []Filter
+
+	batchSize        int
+	concurrencyLimit int
 }
 
 func heapsterTypeToHawkularType(t core.MetricType) metrics.MetricType {
