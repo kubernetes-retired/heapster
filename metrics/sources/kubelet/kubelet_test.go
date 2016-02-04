@@ -306,20 +306,11 @@ func TestDecodeMetrics6(t *testing.T) {
 	assert.Equal(t, metricSet.Labels[core.LabelMetricSetType.Key], core.MetricSetTypeNode)
 }
 
-func TestGetNodeHostnameAndIP(t *testing.T) {
-	var node = kube_api.Node{
-		Status: kube_api.NodeStatus{
-			Conditions: []kube_api.NodeCondition{
-				{
-					Type:   kube_api.NodeReady,
-					Status: kube_api.ConditionFalse,
-				},
-			},
+var nodes = []kube_api.Node{
+	kube_api.Node{
+		ObjectMeta: kube_api.ObjectMeta{
+			Name: "testNode",
 		},
-	}
-	_, _, err := getNodeHostnameAndIP(&node)
-
-	node = kube_api.Node{
 		Status: kube_api.NodeStatus{
 			Conditions: []kube_api.NodeCondition{
 				{
@@ -338,13 +329,66 @@ func TestGetNodeHostnameAndIP(t *testing.T) {
 				},
 			},
 		},
-	}
-	node.Name = "testNode"
-	hostname, ip, err := getNodeHostnameAndIP(&node)
-	assert.NoError(t, err)
-	assert.Equal(t, hostname, "testNode")
-	assert.Equal(t, ip, "127.0.0.1")
+	},
+	kube_api.Node{
+		ObjectMeta: kube_api.ObjectMeta{
+			Name: "testNode",
+		},
+		Status: kube_api.NodeStatus{
+			Conditions: []kube_api.NodeCondition{
+				{
+					Type:   "NotReady",
+					Status: kube_api.ConditionTrue,
+				},
+			},
+			Addresses: []kube_api.NodeAddress{
+				{
+					Type:    kube_api.NodeHostName,
+					Address: "testNode",
+				},
+				{
+					Type:    kube_api.NodeLegacyHostIP,
+					Address: "127.0.0.1",
+				},
+			},
+		},
+	},
+	kube_api.Node{
+		ObjectMeta: kube_api.ObjectMeta{
+			Name: "testNode",
+		},
+		Status: kube_api.NodeStatus{
+			Conditions: []kube_api.NodeCondition{
+				{
+					Type:   "NotReady",
+					Status: kube_api.ConditionTrue,
+				},
+			},
+			Addresses: []kube_api.NodeAddress{
+				{
+					Type:    kube_api.NodeHostName,
+					Address: "testNode",
+				},
+				{
+					Type:    kube_api.NodeLegacyHostIP,
+					Address: "127.0.0.2",
+				},
+				{
+					Type:    kube_api.NodeInternalIP,
+					Address: "127.0.0.1",
+				},
+			},
+		},
+	},
+}
 
+func TestGetNodeHostnameAndIP(t *testing.T) {
+	for _, node := range nodes {
+		hostname, ip, err := getNodeHostnameAndIP(&node)
+		assert.NoError(t, err)
+		assert.Equal(t, hostname, "testNode")
+		assert.Equal(t, ip, "127.0.0.1")
+	}
 }
 
 func TestScrapeMetrics(t *testing.T) {
