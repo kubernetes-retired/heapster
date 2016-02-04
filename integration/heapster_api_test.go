@@ -519,6 +519,7 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 
 	for _, node := range nodeList {
 		metricUrlsToCheck = append(metricUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/nodes/%s/metrics/%s", node, "cpu/usage_rate"),
 			fmt.Sprintf("/api/v1/model/nodes/%s/metrics/%s", node, "cpu-usage"),
 		)
 
@@ -531,13 +532,18 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 		containerName := pod.Spec.Containers[0].Name
 
 		metricUrlsToCheck = append(metricUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/metrics/%s", pod.Namespace, pod.Name, "cpu/usage_rate"),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/metrics/%s", pod.Namespace, pod.Name, "cpu-usage"),
+			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/metrics/%s", pod.Namespace, pod.Name, containerName, "cpu/usage_rate"),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/metrics/%s", pod.Namespace, pod.Name, containerName, "cpu-usage"),
+			fmt.Sprintf("/api/v1/model/namespaces/%s/metrics/%s", pod.Namespace, "cpu/usage_rate"),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/metrics/%s", pod.Namespace, "cpu-usage"),
 		)
 
 		batchMetricsUrlsToCheck = append(batchMetricsUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pod-list/%s,%s/metrics/%s", pod.Namespace, pod.Name, pod.Name, "cpu-usage"))
+			fmt.Sprintf("/api/v1/model/namespaces/%s/pod-list/%s,%s/metrics/%s", pod.Namespace, pod.Name, pod.Name, "cpu/usage_rate"),
+			fmt.Sprintf("/api/v1/model/namespaces/%s/pod-list/%s,%s/metrics/%s", pod.Namespace, pod.Name, pod.Name, "cpu-usage"),
+		)
 
 		stringUrlsToCheck = append(stringUrlsToCheck,
 			fmt.Sprintf("/api/v1/model/namespaces/%s/metrics", pod.Namespace),

@@ -34,6 +34,7 @@ func setupHandlers(metricSink *metricsink.MetricSink) http.Handler {
 	// Make API handler.
 	wsContainer := restful.NewContainer()
 	wsContainer.EnableContentEncoding(true)
+	wsContainer.Router(restful.CurlyRouter{})
 	a := v1.NewApi(runningInKubernetes, metricSink)
 	a.Register(wsContainer)
 
