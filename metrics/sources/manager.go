@@ -82,7 +82,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 
 	for _, source := range sources {
 		go func(source MetricsSource, channel chan *DataBatch, start, end, timeoutTime time.Time) {
-			glog.Infof("Querying source: %s", source)
+			glog.V(2).Infof("Querying source: %s", source)
 			metrics := scrape(source, start, end)
 			now := time.Now()
 			if !now.Before(timeoutTime) {
@@ -138,7 +138,7 @@ responseloop:
 
 	glog.Infof("ScrapeMetrics: time: %s size: %d", time.Since(startTime), len(response.MetricSets))
 	for i, value := range latencies {
-		glog.Infof("   scrape  bucket %d: %d", i, value)
+		glog.V(1).Infof("   scrape  bucket %d: %d", i, value)
 	}
 	return &response
 }

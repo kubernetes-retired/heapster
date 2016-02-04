@@ -242,7 +242,7 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 	if err != nil {
 		glog.Errorf("error while getting containers from Kubelet: %v", err)
 	}
-	glog.Infof("successfully obtained stats for %v containers", len(containers))
+	glog.V(2).Infof("successfully obtained stats for %v containers", len(containers))
 
 	result := &DataBatch{
 		Timestamp:  end,
