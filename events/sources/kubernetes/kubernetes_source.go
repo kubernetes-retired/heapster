@@ -70,7 +70,10 @@ func (this *KubernetesEventSource) watch() {
 
 	// Outer loop, for reconnections.
 	for {
-		events, err := this.eventClient.List(kubelabels.Everything(), kubefields.Everything())
+		events, err := this.eventClient.List(kubeapi.ListOptions{
+			LabelSelector: kubelabels.Everything(),
+			FieldSelector: kubefields.Everything(),
+		})
 		if err != nil {
 			glog.Fatalf("Failed to load events: %v", err)
 			this.errorChannel <- fmt.Errorf("Failed to load events")
@@ -81,8 +84,6 @@ func (this *KubernetesEventSource) watch() {
 		resourceVersion := events.ResourceVersion
 
 		watcher, err := this.eventClient.Watch(
-			kubelabels.Everything(),
-			kubefields.Everything(),
 			kubeapi.ListOptions{
 				LabelSelector:   kubelabels.Everything(),
 				FieldSelector:   kubefields.Everything(),

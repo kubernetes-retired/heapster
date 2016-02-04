@@ -19,8 +19,6 @@ package testclient
 import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/watch"
 )
 
@@ -40,8 +38,8 @@ func (c *FakeIngress) Get(name string) (*extensions.Ingress, error) {
 	return obj.(*extensions.Ingress), err
 }
 
-func (c *FakeIngress) List(label labels.Selector, fields fields.Selector) (*extensions.IngressList, error) {
-	obj, err := c.Fake.Invokes(NewListAction("ingresses", c.Namespace, label, nil), &extensions.IngressList{})
+func (c *FakeIngress) List(opts api.ListOptions) (*extensions.IngressList, error) {
+	obj, err := c.Fake.Invokes(NewListAction("ingresses", c.Namespace, opts), &extensions.IngressList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -72,8 +70,8 @@ func (c *FakeIngress) Delete(name string, options *api.DeleteOptions) error {
 	return err
 }
 
-func (c *FakeIngress) Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error) {
-	return c.Fake.InvokesWatch(NewWatchAction("ingresses", c.Namespace, label, field, opts))
+func (c *FakeIngress) Watch(opts api.ListOptions) (watch.Interface, error) {
+	return c.Fake.InvokesWatch(NewWatchAction("ingresses", c.Namespace, opts))
 }
 
 func (c *FakeIngress) UpdateStatus(ingress *extensions.Ingress) (result *extensions.Ingress, err error) {

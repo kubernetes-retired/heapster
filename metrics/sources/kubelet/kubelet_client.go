@@ -26,7 +26,7 @@ import (
 	"time"
 
 	cadvisor "github.com/google/cadvisor/info/v1"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	kube_client "k8s.io/kubernetes/pkg/kubelet/client"
 )
 
 type Host struct {
@@ -36,7 +36,7 @@ type Host struct {
 }
 
 type KubeletClient struct {
-	config *kube_client.KubeletConfig
+	config *kube_client.KubeletClientConfig
 	client *http.Client
 }
 
@@ -154,7 +154,7 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 	return result, nil
 }
 
-func NewKubeletClient(kubeletConfig *kube_client.KubeletConfig) (*KubeletClient, error) {
+func NewKubeletClient(kubeletConfig *kube_client.KubeletClientConfig) (*KubeletClient, error) {
 	transport, err := kube_client.MakeTransport(kubeletConfig)
 	if err != nil {
 		return nil, err

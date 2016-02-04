@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	kube_config "k8s.io/heapster/common/kubernetes"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	kubelet_client "k8s.io/kubernetes/pkg/kubelet/client"
 )
 
 const (
@@ -33,7 +34,7 @@ const (
 	defaultInClusterConfig    = true
 )
 
-func getKubeConfigs(uri *url.URL) (*kube_client.Config, *kube_client.KubeletConfig, error) {
+func getKubeConfigs(uri *url.URL) (*kube_client.Config, *kubelet_client.KubeletClientConfig, error) {
 
 	kubeConfig, err := kube_config.GetKubeClientConfig(uri)
 	if err != nil {
@@ -59,7 +60,7 @@ func getKubeConfigs(uri *url.URL) (*kube_client.Config, *kube_client.KubeletConf
 	glog.Infof("Using Kubernetes client with master %q and version %q\n", kubeConfig.Host, kubeConfig.GroupVersion.Version)
 	glog.Infof("Using kubelet port %d", kubeletPort)
 
-	kubeletConfig := &kube_client.KubeletConfig{
+	kubeletConfig := &kubelet_client.KubeletClientConfig{
 		Port:            uint(kubeletPort),
 		EnableHttps:     kubeletHttps,
 		TLSClientConfig: kubeConfig.TLSClientConfig,

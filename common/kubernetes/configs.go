@@ -111,10 +111,10 @@ func GetKubeClientConfig(uri *url.URL) (*kube_client.Config, error) {
 			}
 		} else {
 			kubeConfig = &kube_client.Config{
-				Host:         configOverrides.ClusterInfo.Server,
-				GroupVersion: &unversioned.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion},
-				Insecure:     configOverrides.ClusterInfo.InsecureSkipTLSVerify,
+				Host:     configOverrides.ClusterInfo.Server,
+				Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
 			}
+			kubeConfig.GroupVersion = &unversioned.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion}
 		}
 	}
 	if len(kubeConfig.Host) == 0 {

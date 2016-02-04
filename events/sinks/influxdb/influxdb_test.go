@@ -26,7 +26,7 @@ import (
 	"k8s.io/heapster/events/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	kube_api_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/util"
+	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 type fakeInfluxDBEventSink struct {

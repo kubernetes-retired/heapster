@@ -24,8 +24,8 @@ import (
 	"sync"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/httpstream"
+	"k8s.io/kubernetes/pkg/util/runtime"
 )
 
 // streamProtocolV2 implements version 2 of the streaming protocol for attach
@@ -42,16 +42,52 @@ type streamProtocolV2 struct {
 var _ streamProtocolHandler = &streamProtocolV2{}
 
 func (e *streamProtocolV2) stream(conn httpstream.Connection) error {
+	var (
+		err                                                  error
+		errorStream, remoteStdin, remoteStdout, remoteStderr httpstream.Stream
+	)
+
 	headers := http.Header{}
 
+	// set up all the streams first
 	// set up error stream
 	errorChan := make(chan error)
 	headers.Set(api.StreamType, api.StreamTypeError)
-	errorStream, err := conn.CreateStream(headers)
+	errorStream, err = conn.CreateStream(headers)
 	if err != nil {
 		return err
 	}
 
+	// set up stdin stream
+	if e.stdin != nil {
+		headers.Set(api.StreamType, api.StreamTypeStdin)
+		remoteStdin, err = conn.CreateStream(headers)
+		if err != nil {
+			return err
+		}
+	}
+
+	// set up stdout stream
+	if e.stdout != nil {
+		headers.Set(api.StreamType, api.StreamTypeStdout)
+		remoteStdout, err = conn.CreateStream(headers)
+		if err != nil {
+			return err
+		}
+	}
+
+	// set up stderr stream
+	if e.stderr != nil && !e.tty {
+		headers.Set(api.StreamType, api.StreamTypeStderr)
+		remoteStderr, err = conn.CreateStream(headers)
+		if err != nil {
+			return err
+		}
+	}
+
+	// now that all the streams have been created, proceed with reading & copying
+
+	// always read from errorStream
 	go func() {
 		message, err := ioutil.ReadAll(errorStream)
 		switch {
@@ -68,14 +104,7 @@ func (e *streamProtocolV2) stream(conn httpstream.Connection) error {
 	var wg sync.WaitGroup
 	var once sync.Once
 
-	// set up stdin stream
 	if e.stdin != nil {
-		headers.Set(api.StreamType, api.StreamTypeStdin)
-		remoteStdin, err := conn.CreateStream(headers)
-		if err != nil {
-			return err
-		}
-
 		// copy from client's stdin to container's stdin
 		go func() {
 			// if e.stdin is noninteractive, e.g. `echo abc | kubectl exec -i <pod> -- cat`, make sure
@@ -84,7 +113,7 @@ func (e *streamProtocolV2) stream(conn httpstream.Connection) error {
 			defer once.Do(func() { remoteStdin.Close() })
 
 			if _, err := io.Copy(remoteStdin, e.stdin); err != nil {
-				util.HandleError(err)
+				runtime.HandleError(err)
 			}
 		}()
 
@@ -104,41 +133,27 @@ func (e *streamProtocolV2) stream(conn httpstream.Connection) error {
 			// this "copy" doesn't actually read anything - it's just here to wait for
 			// the server to close remoteStdin.
 			if _, err := io.Copy(ioutil.Discard, remoteStdin); err != nil {
-				util.HandleError(err)
+				runtime.HandleError(err)
 			}
 		}()
 	}
 
-	// set up stdout stream
 	if e.stdout != nil {
-		headers.Set(api.StreamType, api.StreamTypeStdout)
-		remoteStdout, err := conn.CreateStream(headers)
-		if err != nil {
-			return err
-		}
-
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			if _, err := io.Copy(e.stdout, remoteStdout); err != nil {
-				util.HandleError(err)
+				runtime.HandleError(err)
 			}
 		}()
 	}
 
-	// set up stderr stream
 	if e.stderr != nil && !e.tty {
-		headers.Set(api.StreamType, api.StreamTypeStderr)
-		remoteStderr, err := conn.CreateStream(headers)
-		if err != nil {
-			return err
-		}
-
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			if _, err := io.Copy(e.stderr, remoteStderr); err != nil {
-				util.HandleError(err)
+				runtime.HandleError(err)
 			}
 		}()
 	}

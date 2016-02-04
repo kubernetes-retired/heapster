@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	influxdb_common "k8s.io/heapster/common/influxdb"
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/kubernetes/pkg/util"
+	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 type fakeInfluxDBDataSink struct {
