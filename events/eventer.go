@@ -55,15 +55,15 @@ func main() {
 
 	// sources
 	if len(argSources) != 1 {
-		glog.Fatal("wrong number of sources specified")
+		glog.Fatal("Wrong number of sources specified")
 	}
 	sourceFactory := sources.NewSourceFactory()
 	sources, err := sourceFactory.BuildAll(argSources)
 	if err != nil {
-		glog.Fatal(err)
+		glog.Fatalf("Failed to create sources: %v", err)
 	}
 	if len(sources) != 1 {
-		glog.Fatalf("Requires exactly 1 source")
+		glog.Fatal("Requires exactly 1 source")
 	}
 
 	// sinks
@@ -74,13 +74,13 @@ func main() {
 	}
 	sinkManager, err := sinks.NewEventSinkManager(sinkList, sinks.DefaultSinkExportEventsTimeout, sinks.DefaultSinkStopTimeout)
 	if err != nil {
-		glog.Fatal(err)
+		glog.Fatalf("Failed to create sink manager: %v", err)
 	}
 
 	// main manager
 	manager, err := manager.NewManager(sources[0], sinkManager, *argFrequency)
 	if err != nil {
-		glog.Fatal(err)
+		glog.Fatalf("Failed to create main manager: %v", err)
 	}
 	manager.Start()
 

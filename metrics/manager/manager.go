@@ -132,9 +132,8 @@ func (rm *realManager) housekeep(start, end time.Time) {
 			if err == nil {
 				data = newData
 			} else {
-				glog.Fatalf("Error in processor: %v", err)
-				// Try to proceed without this processor to push SOMETHING.
-				// TODO: evaluate if this approach is better than stopping the whole flow.
+				glog.Errorf("Error in processor: %v", err)
+				return
 			}
 		}
 
