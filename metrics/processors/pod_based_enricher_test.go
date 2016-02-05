@@ -24,10 +24,11 @@ import (
 
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
+	"k8s.io/kubernetes/pkg/client/cache"
 )
 
-func TestPodEnricher(t *testing.T) {
-	batch := &core.DataBatch{
+var batches = []*core.DataBatch{
+	&core.DataBatch{
 		Timestamp: time.Now(),
 		MetricSets: map[string]*core.MetricSet{
 			core.PodContainerKey("ns1", "pod1", "c1"): {
@@ -49,8 +50,37 @@ func TestPodEnricher(t *testing.T) {
 				MetricValues: map[string]core.MetricValue{},
 			},
 		},
-	}
+	},
+	&core.DataBatch{
+		Timestamp: time.Now(),
+		MetricSets: map[string]*core.MetricSet{
+			core.PodContainerKey("ns1", "pod1", "c1"): {
+				Labels: map[string]string{
+					core.LabelMetricSetType.Key: core.MetricSetTypePodContainer,
+					core.LabelPodName.Key:       "pod1",
+					core.LabelNamespaceName.Key: "ns1",
+					core.LabelContainerName.Key: "c1",
+				},
+				MetricValues: map[string]core.MetricValue{},
+			},
+		},
+	},
+	&core.DataBatch{
+		Timestamp: time.Now(),
+		MetricSets: map[string]*core.MetricSet{
+			core.PodKey("ns1", "pod1"): {
+				Labels: map[string]string{
+					core.LabelMetricSetType.Key: core.MetricSetTypePod,
+					core.LabelPodName.Key:       "pod1",
+					core.LabelNamespaceName.Key: "ns1",
+				},
+				MetricValues: map[string]core.MetricValue{},
+			},
+		},
+	},
+}
 
+func TestPodEnricher(t *testing.T) {
 	pod := kube_api.Pod{
 		ObjectMeta: kube_api.ObjectMeta{
 			Name:      "pod1",
@@ -87,22 +117,29 @@ func TestPodEnricher(t *testing.T) {
 		},
 	}
 
-	addPodInfo(&pod, batch)
+	podLister := &cache.StoreToPodLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
+	podLister.Add(&pod)
+	podBasedEnricher := PodBasedEnricher{podLister: podLister}
 
-	podAggregator := PodAggregator{}
 	var err error
-	batch, err = podAggregator.Process(batch)
-	assert.NoError(t, err)
+	for _, batch := range batches {
+		batch, err = podBasedEnricher.Process(batch)
+		assert.NoError(t, err)
 
-	podMs, found := batch.MetricSets[core.PodKey("ns1", "pod1")]
-	assert.True(t, found)
-	checkRequests(t, podMs, 433, 1555)
-	checkLimits(t, podMs, 2222, 3333)
+		podAggregator := PodAggregator{}
+		batch, err = podAggregator.Process(batch)
+		assert.NoError(t, err)
 
-	containerMs, found := batch.MetricSets[core.PodContainerKey("ns1", "pod1", "c1")]
-	assert.True(t, found)
-	checkRequests(t, containerMs, 100, 555)
-	checkLimits(t, containerMs, 0, 0)
+		podMs, found := batch.MetricSets[core.PodKey("ns1", "pod1")]
+		assert.True(t, found)
+		checkRequests(t, podMs, 433, 1555)
+		checkLimits(t, podMs, 2222, 3333)
+
+		containerMs, found := batch.MetricSets[core.PodContainerKey("ns1", "pod1", "c1")]
+		assert.True(t, found)
+		checkRequests(t, containerMs, 100, 555)
+		checkLimits(t, containerMs, 0, 0)
+	}
 }
 
 func checkRequests(t *testing.T, ms *core.MetricSet, cpu, mem int64) {

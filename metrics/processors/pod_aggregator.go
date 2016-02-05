@@ -42,7 +42,7 @@ func (this *PodAggregator) Name() string {
 func (this *PodAggregator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
 	result := core.DataBatch{
 		Timestamp:  batch.Timestamp,
-		MetricSets: make(map[string]*core.MetricSet),
+		MetricSets: make(map[string]*core.MetricSet, len(batch.MetricSets)),
 	}
 	for key, metricSet := range batch.MetricSets {
 		result.MetricSets[key] = metricSet
