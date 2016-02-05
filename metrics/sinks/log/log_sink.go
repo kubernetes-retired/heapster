@@ -63,7 +63,7 @@ func batchToString(batch *core.DataBatch) string {
 				buffer.WriteString(fmt.Sprintf("%s%s%s = ?\n", padding, padding, metric.Name))
 			}
 			for labelName, labelValue := range metric.Labels {
-				buffer.WriteString(fmt.Sprintf("%s%s%s%s = %s", padding, padding, padding, labelName, labelValue))
+				buffer.WriteString(fmt.Sprintf("%s%s%s%s = %s\n", padding, padding, padding, labelName, labelValue))
 			}
 		}
 		buffer.WriteString("\n")
