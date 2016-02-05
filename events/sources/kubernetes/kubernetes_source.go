@@ -15,7 +15,6 @@
 package kubernetes
 
 import (
-	"fmt"
 	"net/url"
 	"time"
 
@@ -41,8 +40,7 @@ type KubernetesEventSource struct {
 	// Large local buffer, periodically read.
 	localEventsBuffer chan *kubeapi.Event
 
-	stopChannel  chan struct{}
-	errorChannel chan error
+	stopChannel chan struct{}
 
 	eventClient kubeclient.EventInterface
 }
@@ -66,15 +64,13 @@ event_loop:
 }
 
 func (this *KubernetesEventSource) watch() {
-	defer close(this.errorChannel)
-
 	// Outer loop, for reconnections.
 	for {
 		events, err := this.eventClient.List(kubelabels.Everything(), kubefields.Everything())
 		if err != nil {
-			glog.Fatalf("Failed to load events: %v", err)
-			this.errorChannel <- fmt.Errorf("Failed to load events")
-			return
+			glog.Errorf("Failed to load events: %v", err)
+			time.Sleep(time.Second)
+			continue
 		}
 		// Do not write old events.
 
@@ -89,9 +85,9 @@ func (this *KubernetesEventSource) watch() {
 				Watch:           true,
 				ResourceVersion: resourceVersion})
 		if err != nil {
-			glog.Fatalf("Failed to start watch for new events: %v", err)
-			this.errorChannel <- fmt.Errorf("Failed to start watch")
-			return
+			glog.Errorf("Failed to start watch for new events: %v", err)
+			time.Sleep(time.Second)
+			continue
 		}
 
 		watchChannel := watcher.ResultChan()
@@ -130,7 +126,7 @@ func (this *KubernetesEventSource) watch() {
 						glog.Warningf("Unknown watchUpdate.Type: %#v", watchUpdate.Type)
 					}
 				} else {
-					glog.Fatalf("Wrong object received: %v", watchUpdate)
+					glog.Errorf("Wrong object received: %v", watchUpdate)
 				}
 
 			case <-this.stopChannel:
@@ -154,7 +150,6 @@ func NewKubernetesSource(uri *url.URL) (*KubernetesEventSource, error) {
 	result := KubernetesEventSource{
 		localEventsBuffer: make(chan *kubeapi.Event, LocalEventsBufferSize),
 		stopChannel:       make(chan struct{}),
-		errorChannel:      make(chan error, 1),
 		eventClient:       eventClient,
 	}
 	go result.watch()

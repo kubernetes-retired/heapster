@@ -64,30 +64,30 @@ func main() {
 
 	// sources
 	if len(argSources) != 1 {
-		glog.Fatal("wrong number of sources specified")
+		glog.Fatal("Wrong number of sources specified")
 	}
 	sourceFactory := sources.NewSourceFactory()
 	sourceProvider, err := sourceFactory.BuildAll(argSources)
 	if err != nil {
-		glog.Fatal(err)
+		glog.Fatalf("Failed to create source provide: %v", err)
 	}
 	sourceManager, err := sources.NewSourceManager(sourceProvider, sources.DefaultMetricsScrapeTimeout)
 	if err != nil {
-		glog.Fatal(err)
+		glog.Fatalf("Failed to create source manager: %v", err)
 	}
 
 	// sinks
 	sinksFactory := sinks.NewSinkFactory()
 	metricSink, sinkList := sinksFactory.BuildAll(argSinks)
 	if metricSink == nil {
-		glog.Fatalf("Failed to create metric sink")
+		glog.Fatal("Failed to create metric sink")
 	}
 	for _, sink := range sinkList {
 		glog.Infof("Starting with %s sink", sink.Name())
 	}
 	sinkManager, err := sinks.NewDataSinkManager(sinkList, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
 	if err != nil {
-		glog.Fatal(err)
+		glog.Fatalf("Failed to created sink manager: %v", err)
 	}
 
 	// data processors
@@ -136,7 +136,7 @@ func main() {
 	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, *argMetricResolution,
 		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
 	if err != nil {
-		glog.Fatal(err)
+		glog.Fatalf("Failed to create main manager: %v", err)
 	}
 	manager.Start()
 
@@ -150,13 +150,13 @@ func main() {
 		if len(*argTLSClientCAFile) > 0 {
 			authPprofHandler, err := newAuthHandler(handler)
 			if err != nil {
-				glog.Fatal(err)
+				glog.Fatalf("Failed to create authorized pprof handler: %v", err)
 			}
 			handler = authPprofHandler
 
 			authPromHandler, err := newAuthHandler(promHandler)
 			if err != nil {
-				glog.Fatal(err)
+				glog.Fatalf("Failed to create authorized prometheus handler: %v", err)
 			}
 			promHandler = authPromHandler
 		}
