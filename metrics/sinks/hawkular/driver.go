@@ -271,7 +271,7 @@ func (self *hawkularSink) init() error {
 	if v, found := opts["concurrencyLimit"]; found {
 		cs, err := strconv.Atoi(v[0])
 		if err != nil || cs < 0 {
-			return fmt.Errorf("Supplied concurrency value of %d is invalid", v[0])
+			return fmt.Errorf("Supplied concurrency value of %s is invalid", v[0])
 		}
 		self.concurrencyLimit = cs
 	}
@@ -279,7 +279,7 @@ func (self *hawkularSink) init() error {
 	if v, found := opts["batchSize"]; found {
 		bs, err := strconv.Atoi(v[0])
 		if err != nil || bs < 0 {
-			return fmt.Errorf("Supplied batchSize value of %d is invalid", v[0])
+			return fmt.Errorf("Supplied batchSize value of %s is invalid", v[0])
 		}
 		self.batchSize = bs
 	}
