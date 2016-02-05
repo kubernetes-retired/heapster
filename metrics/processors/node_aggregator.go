@@ -15,8 +15,6 @@
 package processors
 
 import (
-	"fmt"
-
 	"github.com/golang/glog"
 	"k8s.io/heapster/metrics/core"
 )
@@ -57,7 +55,7 @@ func (this *NodeAggregator) Process(batch *core.DataBatch) (*core.DataBatch, err
 					return nil, err
 				}
 			} else {
-				return nil, fmt.Errorf("No node info in pod %s: %v", key, metricSet.Labels)
+				glog.Errorf("No node info in pod %s: %v", key, metricSet.Labels)
 			}
 		}
 	}

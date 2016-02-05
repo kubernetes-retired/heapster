@@ -15,8 +15,7 @@
 package processors
 
 import (
-	"fmt"
-
+	"github.com/golang/glog"
 	"k8s.io/heapster/metrics/core"
 )
 
@@ -49,7 +48,7 @@ func (this *NamespaceAggregator) Process(batch *core.DataBatch) (*core.DataBatch
 					return nil, err
 				}
 			} else {
-				return nil, fmt.Errorf("No namespace info in pod %s: %v", key, metricSet.Labels)
+				glog.Errorf("No namespace info in pod %s: %v", key, metricSet.Labels)
 			}
 		}
 	}
