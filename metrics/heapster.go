@@ -83,7 +83,7 @@ func main() {
 		glog.Fatal("Failed to create metric sink")
 	}
 	for _, sink := range sinkList {
-		glog.Infof("Starting with %s sink", sink.Name())
+		glog.Infof("Starting with %s", sink.Name())
 	}
 	sinkManager, err := sinks.NewDataSinkManager(sinkList, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
 	if err != nil {

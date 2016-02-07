@@ -46,7 +46,7 @@ type TimestampedMetricValue struct {
 }
 
 func (this *MetricSink) Name() string {
-	return "MetricSink"
+	return "Metric Sink"
 }
 
 func (this *MetricSink) Stop() {
