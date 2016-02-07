@@ -26,7 +26,7 @@ type LogSink struct {
 }
 
 func (this *LogSink) Name() string {
-	return "LogSink"
+	return "Log Sink"
 }
 
 func (this *LogSink) Stop() {
