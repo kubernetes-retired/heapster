@@ -36,9 +36,17 @@ const (
 	maxTimeseriesPerRequest = 200
 )
 
+type MetricFilter int8
+
+const (
+	metricsAll MetricFilter = iota
+	metricsOnlyAutoscaling
+)
+
 type gcmSink struct {
-	project    string
-	gcmService *gcm.Service
+	project      string
+	metricFilter MetricFilter
+	gcmService   *gcm.Service
 }
 
 func (sink *gcmSink) Name() string {
@@ -79,10 +87,20 @@ func (sink *gcmSink) getTimeseriesPoint(timestamp time.Time, labels map[string]s
 
 	finalLabels := make(map[string]string)
 	if core.IsNodeAutoscalingMetric(metric) {
+		// All and autoscaling. Do not populate for other filters.
+		if sink.metricFilter != metricsAll &&
+			sink.metricFilter != metricsOnlyAutoscaling {
+			return nil
+		}
+
 		finalLabels[fullLabelName(core.LabelHostname.Key)] = labels[core.LabelHostname.Key]
 		finalLabels[fullLabelName(core.LabelGCEResourceID.Key)] = labels[core.LabelHostID.Key]
 		finalLabels[fullLabelName(core.LabelGCEResourceType.Key)] = "instance"
 	} else {
+		// Only all.
+		if sink.metricFilter != metricsAll {
+			return nil
+		}
 		supportedLables := core.GcmLabels()
 		for key, value := range labels {
 			if _, ok := supportedLables[key]; ok {
@@ -133,6 +151,7 @@ func (sink *gcmSink) Stop() {
 
 // Adds the specified metrics or updates them if they already exist.
 func (sink *gcmSink) register(metrics []core.Metric) error {
+
 	for _, metric := range metrics {
 		metricName := fullMetricName(metric.MetricDescriptor.Name)
 		if _, err := sink.gcmService.MetricDescriptors.Delete(sink.project, metricName).Do(); err != nil {
@@ -142,6 +161,12 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 
 		// Node autoscaling metrics have special labels.
 		if core.IsNodeAutoscalingMetric(metric.MetricDescriptor.Name) {
+			// All and autoscaling. Do not populate for other filters.
+			if sink.metricFilter != metricsAll &&
+				sink.metricFilter != metricsOnlyAutoscaling {
+				continue
+			}
+
 			for _, l := range core.GcmNodeAutoscalingLabels() {
 				labels = append(labels, &gcm.MetricDescriptorLabelDescriptor{
 					Key:         fullLabelName(l.Key),
@@ -149,6 +174,11 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 				})
 			}
 		} else {
+			// Only all.
+			if sink.metricFilter != metricsAll {
+				continue
+			}
+
 			for _, l := range core.GcmLabels() {
 				labels = append(labels, &gcm.MetricDescriptorLabelDescriptor{
 					Key:         fullLabelName(l.Key),
@@ -176,9 +206,29 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 }
 
 func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
-	if *uri != (url.URL{}) {
-		return nil, fmt.Errorf("gcm sinks don't take arguments")
+	if len(uri.Scheme) > 0 {
+		return nil, fmt.Errorf("scheme should not be set for GCM sink")
 	}
+	if len(uri.Host) > 0 {
+		return nil, fmt.Errorf("host should not be set for GCM sink")
+	}
+
+	opts, err := url.ParseQuery(uri.RawQuery)
+
+	metrics := "all"
+	if len(opts["metrics"]) > 0 {
+		metrics = opts["metrics"][0]
+	}
+	var metricFilter MetricFilter = metricsAll
+	switch metrics {
+	case "all":
+		metricFilter = metricsAll
+	case "autoscaling":
+		metricFilter = metricsOnlyAutoscaling
+	default:
+		return nil, fmt.Errorf("invalid metrics parameter: %s", metrics)
+	}
+
 	// Detect project ID
 	projectId, err := gce.ProjectID()
 	if err != nil {
@@ -192,7 +242,11 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 
-	sink := &gcmSink{project: projectId, gcmService: gcmService}
+	sink := &gcmSink{
+		project:      projectId,
+		gcmService:   gcmService,
+		metricFilter: metricFilter,
+	}
 	if err := sink.register(core.AllMetrics); err != nil {
 		return nil, err
 	}

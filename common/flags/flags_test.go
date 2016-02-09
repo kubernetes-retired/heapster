@@ -81,6 +81,16 @@ func TestUriSet(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"gcm:?metrics=all",
+			Uri{
+				Key: "gcm",
+				Val: url.URL{
+					RawQuery: "metrics=all",
+				},
+			},
+			false,
+		},
 	}
 	for _, c := range tests {
 		var uri Uri
