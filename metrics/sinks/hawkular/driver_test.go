@@ -490,3 +490,74 @@ func TestFiltering(t *testing.T) {
 
 	assert.Equal(t, 1, len(mH))
 }
+
+func TestBatchingTimeseries(t *testing.T) {
+	total := 1000
+	m := &sync.Mutex{}
+	ids := make([]string, 0, total)
+	calls := 0
+
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m.Lock()
+		defer m.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+
+		defer r.Body.Close()
+		b, err := ioutil.ReadAll(r.Body)
+		assert.NoError(t, err)
+
+		mH := []metrics.MetricHeader{}
+		err = json.Unmarshal(b, &mH)
+		assert.NoError(t, err)
+
+		for _, v := range mH {
+			ids = append(ids, v.Id)
+		}
+		calls++
+	}))
+	defer s.Close()
+
+	hSink, err := integSink(s.URL + "?tenant=test-heapster&labelToTenant=projectId&batchSize=20&concurrencyLimit=5")
+	assert.NoError(t, err)
+
+	l := make(map[string]string)
+	l["projectId"] = "test-label"
+	l[core.LabelContainerName.Key] = "test-container"
+	l[core.LabelPodId.Key] = "test-podid"
+
+	metrics := make(map[string]core.MetricValue)
+	for i := 0; i < total; i++ {
+		id := fmt.Sprintf("test/metric/%d", i)
+		metrics[id] = core.MetricValue{
+			ValueType:  core.ValueInt64,
+			MetricType: core.MetricCumulative,
+			IntValue:   123 * int64(i),
+		}
+	}
+
+	metricSet := core.MetricSet{
+		Labels:       l,
+		MetricValues: metrics,
+	}
+
+	data := core.DataBatch{
+		Timestamp: time.Now(),
+		MetricSets: map[string]*core.MetricSet{
+			"pod1": &metricSet,
+		},
+	}
+
+	hSink.ExportData(&data)
+	assert.Equal(t, total, len(ids))
+	assert.Equal(t, calls, 50)
+
+	// Verify that all ids are unique
+	newIds := make(map[string]bool)
+	for _, v := range ids {
+		if newIds[v] {
+			t.Errorf("Key %s was duplicate", v)
+		}
+		newIds[v] = true
+	}
+}

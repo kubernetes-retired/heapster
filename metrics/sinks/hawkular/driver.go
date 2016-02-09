@@ -21,11 +21,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/golang/glog"
 	"github.com/hawkular/hawkular-client-go/metrics"
@@ -36,50 +33,16 @@ import (
 )
 
 const (
-	unitsTag       = "units"
-	descriptionTag = "_description"
-	descriptorTag  = "descriptor_name"
-	groupTag       = "group_id"
-	separator      = "/"
+	unitsTag           = "units"
+	descriptionTag     = "_description"
+	descriptorTag      = "descriptor_name"
+	groupTag           = "group_id"
+	separator          = "/"
+	batchSizeDefault   = 1000
+	concurrencyDefault = 5
 
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
-
-type Filter func(ms *core.MetricSet, metricName string) bool
-type FilterType int
-
-const (
-	// Filter by label's value
-	Label FilterType = iota
-	// Filter by metric name
-	Name
-	// Unknown filter type
-	Unknown
-)
-
-func (f FilterType) From(s string) FilterType {
-	switch s {
-	case "label":
-		return Label
-	case "name":
-		return Name
-	default:
-		return Unknown
-	}
-}
-
-type hawkularSink struct {
-	client  *metrics.Client
-	models  map[string]*metrics.MetricDefinition // Model definitions
-	regLock sync.Mutex
-	reg     map[string]*metrics.MetricDefinition // Real definitions
-
-	uri *url.URL
-
-	labelTenant string
-	modifiers   []metrics.Modifier
-	filters     []Filter
-}
 
 // START: ExternalSink interface implementations
 
@@ -102,146 +65,10 @@ func (self *hawkularSink) Register(mds []core.MetricDescriptor) error {
 	return nil
 }
 
-// Fetches definitions from the server and checks that they're matching the descriptors
-func (self *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
-	m := make([]metrics.Modifier, len(self.modifiers), len(self.modifiers)+1)
-	copy(m, self.modifiers)
-	m = append(m, metrics.Filters(metrics.TypeFilter(mt)))
-
-	mds, err := self.client.Definitions(m...)
-	if err != nil {
-		return err
-	}
-
-	self.regLock.Lock()
-	defer self.regLock.Unlock()
-
-	for _, p := range mds {
-		// If no descriptorTag is found, this metric does not belong to Heapster
-		if mk, found := p.Tags[descriptorTag]; found {
-			if model, f := self.models[mk]; f {
-				if !self.recent(p, model) {
-					if err := self.client.UpdateTags(mt, p.Id, p.Tags, self.modifiers...); err != nil {
-						return err
-					}
-				}
-			}
-			self.reg[p.Id] = p
-		}
-	}
-	return nil
-}
-
 func (self *hawkularSink) Stop() {
 	self.regLock.Lock()
 	defer self.regLock.Unlock()
 	self.init()
-}
-
-// Checks that stored definition is up to date with the model
-func (self *hawkularSink) recent(live *metrics.MetricDefinition, model *metrics.MetricDefinition) bool {
-	recent := true
-	for k := range model.Tags {
-		if v, found := live.Tags[k]; !found {
-			// There's a label that wasn't in our stored definition
-			live.Tags[k] = v
-			recent = false
-		}
-	}
-
-	return recent
-}
-
-// Transform the MetricDescriptor to a format used by Hawkular-Metrics
-func (self *hawkularSink) descriptorToDefinition(md *core.MetricDescriptor) metrics.MetricDefinition {
-	tags := make(map[string]string)
-	// Postfix description tags with _description
-	for _, l := range md.Labels {
-		if len(l.Description) > 0 {
-			tags[l.Key+descriptionTag] = l.Description
-		}
-	}
-
-	if len(md.Units.String()) > 0 {
-		tags[unitsTag] = md.Units.String()
-	}
-
-	tags[descriptorTag] = md.Name
-
-	hmd := metrics.MetricDefinition{
-		Id:   md.Name,
-		Tags: tags,
-		Type: heapsterTypeToHawkularType(md.Type),
-	}
-
-	return hmd
-}
-
-func (self *hawkularSink) groupName(ms *core.MetricSet, metricName string) string {
-	n := []string{ms.Labels[core.LabelContainerName.Key], metricName}
-	return strings.Join(n, separator)
-}
-
-func (self *hawkularSink) idName(ms *core.MetricSet, metricName string) string {
-	n := make([]string, 0, 3)
-	n = append(n, ms.Labels[core.LabelContainerName.Key])
-	if ms.Labels[core.LabelPodId.Key] != "" {
-		n = append(n, ms.Labels[core.LabelPodId.Key])
-	} else {
-		n = append(n, ms.Labels[core.LabelHostID.Key])
-	}
-	n = append(n, metricName)
-
-	return strings.Join(n, separator)
-}
-
-// Check that metrics tags are defined on the Hawkular server and if not,
-// register the metric definition.
-func (self *hawkularSink) registerIfNecessary(ms *core.MetricSet, metricName string, m ...metrics.Modifier) error {
-	key := self.idName(ms, metricName)
-
-	self.regLock.Lock()
-	defer self.regLock.Unlock()
-
-	// If found, check it matches the current stored definition (could be old info from
-	// the stored metrics cache for example)
-	if _, found := self.reg[key]; !found {
-		// Register the metric descriptor here..
-		if md, f := self.models[metricName]; f {
-			// Copy the original map
-			mdd := *md
-			tags := make(map[string]string)
-			for k, v := range mdd.Tags {
-				tags[k] = v
-			}
-			mdd.Tags = tags
-
-			// Set tag values
-			for k, v := range ms.Labels {
-				mdd.Tags[k] = v
-			}
-
-			mdd.Tags[groupTag] = self.groupName(ms, metricName)
-			mdd.Tags[descriptorTag] = metricName
-
-			m = append(m, self.modifiers...)
-
-			// Create metric, use updateTags instead of Create because we know it is unique
-			if err := self.client.UpdateTags(mdd.Type, key, mdd.Tags, m...); err != nil {
-				// Log error and don't add this key to the lookup table
-				glog.Errorf("Could not update tags: %s", err)
-				return err
-			}
-
-			// Add to the lookup table
-			self.reg[key] = &mdd
-		} else {
-			return fmt.Errorf("Could not find definition model with name %s", metricName)
-		}
-	}
-	// TODO Compare the definition tags and update if necessary? Quite expensive operation..
-
-	return nil
 }
 
 func (self *hawkularSink) ExportData(db *core.DataBatch) {
@@ -250,7 +77,6 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 		totalCount += len(ms.MetricValues)
 	}
 
-	// TODO: !!!! Limit number of metrics per batch !!!!
 	if len(db.MetricSets) > 0 {
 		tmhs := make(map[string][]metrics.MetricHeader)
 
@@ -279,6 +105,7 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 				}
 
 				// Registering should not block the processing
+				// This isn't concurrency limited (and is mostly network limited on HWKMETRICS end)
 				wg.Add(1)
 				go func(ms *core.MetricSet, metricName string, tenant string) {
 					defer wg.Done()
@@ -299,58 +126,8 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 				tmhs[tenant] = append(tmhs[tenant], *mH)
 			}
 		}
-
-		for k, v := range tmhs {
-			wg.Add(1)
-			go func(v []metrics.MetricHeader, k string) {
-				defer wg.Done()
-				m := make([]metrics.Modifier, len(self.modifiers), len(self.modifiers)+1)
-				copy(m, self.modifiers)
-				m = append(m, metrics.Tenant(k))
-				if err := self.client.Write(v, m...); err != nil {
-					glog.Errorf(err.Error())
-				}
-			}(v, k)
-		}
+		self.sendData(tmhs, wg) // Send to a limited channel? Only batches.. egg.
 		wg.Wait()
-	}
-}
-
-// Converts Timeseries to metric structure used by the Hawkular
-func (self *hawkularSink) pointToMetricHeader(ms *core.MetricSet, metricName string, timestamp time.Time) (*metrics.MetricHeader, error) {
-
-	metricValue := ms.MetricValues[metricName]
-	name := self.idName(ms, metricName)
-
-	var value float64
-	if metricValue.ValueType == core.ValueInt64 {
-		value = float64(metricValue.IntValue)
-	} else {
-		value = float64(metricValue.FloatValue)
-	}
-
-	m := metrics.Datapoint{
-		Value:     value,
-		Timestamp: metrics.UnixMilli(timestamp),
-	}
-
-	mh := &metrics.MetricHeader{
-		Id:   name,
-		Data: []metrics.Datapoint{m},
-		Type: heapsterTypeToHawkularType(metricValue.MetricType),
-	}
-
-	return mh, nil
-}
-
-func heapsterTypeToHawkularType(t core.MetricType) metrics.MetricType {
-	switch t {
-	case core.MetricCumulative:
-		return metrics.Counter
-	case core.MetricGauge:
-		return metrics.Gauge
-	default:
-		return metrics.Gauge
 	}
 }
 
@@ -372,11 +149,29 @@ func (self *hawkularSink) Name() string {
 	return "Hawkular-Metrics Sink"
 }
 
+func NewHawkularSink(u *url.URL) (core.DataSink, error) {
+	sink := &hawkularSink{
+		uri:       u,
+		batchSize: 1000,
+	}
+	if err := sink.init(); err != nil {
+		return nil, err
+	}
+	metrics := make([]core.MetricDescriptor, 0, len(core.StandardMetrics))
+	for _, metric := range core.StandardMetrics {
+		metrics = append(metrics, metric.MetricDescriptor)
+	}
+	sink.Register(metrics)
+	return sink, nil
+}
+
 func (self *hawkularSink) init() error {
 	self.reg = make(map[string]*metrics.MetricDefinition)
 	self.models = make(map[string]*metrics.MetricDefinition)
 	self.modifiers = make([]metrics.Modifier, 0)
 	self.filters = make([]Filter, 0)
+	self.batchSize = batchSizeDefault
+	self.concurrencyLimit = concurrencyDefault
 
 	p := metrics.Parameters{
 		Tenant: "heapster",
@@ -472,6 +267,23 @@ func (self *hawkularSink) init() error {
 		self.filters = filters
 	}
 
+	// Concurrency limitations
+	if v, found := opts["concurrencyLimit"]; found {
+		cs, err := strconv.Atoi(v[0])
+		if err != nil || cs < 0 {
+			return fmt.Errorf("Supplied concurrency value of %s is invalid", v[0])
+		}
+		self.concurrencyLimit = cs
+	}
+
+	if v, found := opts["batchSize"]; found {
+		bs, err := strconv.Atoi(v[0])
+		if err != nil || bs < 0 {
+			return fmt.Errorf("Supplied batchSize value of %s is invalid", v[0])
+		}
+		self.batchSize = bs
+	}
+
 	c, err := metrics.NewHawkularClient(p)
 	if err != nil {
 		return err
@@ -481,82 +293,4 @@ func (self *hawkularSink) init() error {
 
 	glog.Infof("Initialised Hawkular Sink with parameters %v", p)
 	return nil
-}
-
-// If Heapster gets filters, remove these..
-func parseFilters(v []string) ([]Filter, error) {
-	fs := make([]Filter, 0, len(v))
-	for _, s := range v {
-		p := strings.Index(s, "(")
-		if p < 0 {
-			return nil, fmt.Errorf("Incorrect syntax in filter parameters, missing (")
-		}
-
-		if strings.Index(s, ")") != len(s)-1 {
-			return nil, fmt.Errorf("Incorrect syntax in filter parameters, missing )")
-		}
-
-		t := Unknown.From(s[:p])
-		if t == Unknown {
-			return nil, fmt.Errorf("Unknown filter type")
-		}
-
-		command := s[p+1 : len(s)-1]
-
-		switch t {
-		case Label:
-			proto := strings.SplitN(command, ":", 2)
-			if len(proto) < 2 {
-				return nil, fmt.Errorf("Missing : from label filter")
-			}
-			r, err := regexp.Compile(proto[1])
-			if err != nil {
-				return nil, err
-			}
-			fs = append(fs, labelFilter(proto[0], r))
-			break
-		case Name:
-			r, err := regexp.Compile(command)
-			if err != nil {
-				return nil, err
-			}
-			fs = append(fs, nameFilter(r))
-			break
-		}
-	}
-	return fs, nil
-}
-
-func labelFilter(label string, r *regexp.Regexp) Filter {
-	return func(ms *core.MetricSet, metricName string) bool {
-		for k, v := range ms.Labels {
-			if k == label {
-				if r.MatchString(v) {
-					return false
-				}
-			}
-		}
-		return true
-	}
-}
-
-func nameFilter(r *regexp.Regexp) Filter {
-	return func(ms *core.MetricSet, metricName string) bool {
-		return !r.MatchString(metricName)
-	}
-}
-
-func NewHawkularSink(u *url.URL) (core.DataSink, error) {
-	sink := &hawkularSink{
-		uri: u,
-	}
-	if err := sink.init(); err != nil {
-		return nil, err
-	}
-	metrics := make([]core.MetricDescriptor, 0, len(core.StandardMetrics))
-	for _, metric := range core.StandardMetrics {
-		metrics = append(metrics, metric.MetricDescriptor)
-	}
-	sink.Register(metrics)
-	return sink, nil
 }

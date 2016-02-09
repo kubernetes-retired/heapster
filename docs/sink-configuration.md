@@ -77,8 +77,10 @@ The following options are available:
 * `filter` - Allows bypassing the store of matching metrics, any number of `filter` parameters can be given with a syntax of `filter=operation(param)`. Supported operations and their params:
   * `label` - The syntax is `label(labelName:regexp)` where `labelName` is 1:1 match and `regexp` to use for matching is given after `:` delimiter
   * `name` - The syntax is `name(regexp)` where MetricName is matched (such as `cpu/usage`) with a `regexp` filter
+* `batchSize`- How many metrics are sent in each request to Hawkular-Metrics (default is 1000)
+* `concurrencyLimit`- How many concurrent requests are used to send data to the Hawkular-Metrics (default is 5)
 
-A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported.
+A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. To increase the performance of Hawkular sink in case of multiple instances of Hawkular-Metrics (such as scaled scenario in OpenShift) modify the parameters of batchSize and concurrencyLimit to balance the load on Hawkular-Metrics instances.
 
 ## Modifying the sinks at runtime
 
