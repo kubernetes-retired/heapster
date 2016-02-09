@@ -15,6 +15,7 @@
 package riemann
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -190,7 +191,7 @@ func (rs *riemannSink) sendEvents(events []*riemann_api.Event) error {
 	for _, event := range events {
 		defer func() {
 			if res := recover(); res != nil {
-				result = res.(Error)
+				result = errors.New(res.(string))
 			}
 		}()
 		err := rs.client.SendEvent(event)
