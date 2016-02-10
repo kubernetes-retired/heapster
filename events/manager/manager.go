@@ -17,10 +17,25 @@ package manager
 import (
 	"time"
 
-	"k8s.io/heapster/events/core"
-
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/heapster/events/core"
 )
+
+var (
+	// Last time of eventer housekeep since unix epoch in seconds
+	lastHousekeepTimestamp = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "eventer",
+			Subsystem: "manager",
+			Name:      "last_time_seconds",
+			Help:      "Last time of eventer housekeep since unix epoch in seconds.",
+		})
+)
+
+func init() {
+	prometheus.MustRegister(lastHousekeepTimestamp)
+}
 
 type Manager interface {
 	Start()
@@ -72,6 +87,8 @@ func (rm *realManager) Housekeep() {
 }
 
 func (rm *realManager) housekeep() {
+	defer lastHousekeepTimestamp.Set(float64(time.Now().Unix()))
+
 	// No parallelism. Assumes that the events are pushed to Heapster. Add paralellism
 	// when this stops to be true.
 	events := rm.source.GetNewEvents()

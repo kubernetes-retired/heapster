@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/heapster/events/core"
 )
 
@@ -26,6 +27,23 @@ const (
 	DefaultSinkExportEventsTimeout = 20 * time.Second
 	DefaultSinkStopTimeout         = 60 * time.Second
 )
+
+var (
+	// Time spent exporting events to sink in microseconds.
+	exporterDuration = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "eventer",
+			Subsystem: "exporter",
+			Name:      "duration_microseconds",
+			Help:      "Time spent exporting events to sink in microseconds.",
+		},
+		[]string{"exporter"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(exporterDuration)
+}
 
 type sinkHolder struct {
 	sink              core.EventSink
@@ -56,7 +74,7 @@ func NewEventSinkManager(sinks []core.EventSink, exportEventsTimeout, stopTimeou
 			for {
 				select {
 				case data := <-sh.eventBatchChannel:
-					sh.sink.ExportEvents(data)
+					export(sh.sink, data)
 				case isStop := <-sh.stopChannel:
 					glog.V(2).Infof("Stop received: %s", sh.sink.Name())
 					if isStop {
@@ -115,4 +133,12 @@ func (this *sinkManager) Stop() {
 			return
 		}(sh)
 	}
+}
+
+func export(s core.EventSink, data *core.EventBatch) {
+	startTime := time.Now()
+	defer exporterDuration.
+		WithLabelValues(s.Name()).
+		Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	s.ExportEvents(data)
 }

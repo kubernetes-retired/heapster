@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 
 	kubeconfig "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/events/core"
@@ -35,6 +36,37 @@ const (
 	LocalEventsBufferSize = 100000
 )
 
+var (
+	// Last time of event since unix epoch in seconds
+	lastEventTimestamp = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "eventer",
+			Subsystem: "scraper",
+			Name:      "last_time_seconds",
+			Help:      "Last time of event since unix epoch in seconds.",
+		})
+	totalEventsNum = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "eventer",
+			Subsystem: "scraper",
+			Name:      "events_total_number",
+			Help:      "The total number of events.",
+		})
+	scrapEventsDuration = prometheus.NewSummary(
+		prometheus.SummaryOpts{
+			Namespace: "eventer",
+			Subsystem: "scraper",
+			Name:      "duration_microseconds",
+			Help:      "Time spent scraping events in microseconds.",
+		})
+)
+
+func init() {
+	prometheus.MustRegister(lastEventTimestamp)
+	prometheus.MustRegister(totalEventsNum)
+	prometheus.MustRegister(scrapEventsDuration)
+}
+
 // Implements core.EventSource interface.
 type KubernetesEventSource struct {
 	// Large local buffer, periodically read.
@@ -46,6 +78,9 @@ type KubernetesEventSource struct {
 }
 
 func (this *KubernetesEventSource) GetNewEvents() *core.EventBatch {
+	startTime := time.Now()
+	defer lastEventTimestamp.Set(float64(time.Now().Unix()))
+	defer scrapEventsDuration.Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
 	result := core.EventBatch{
 		Timestamp: time.Now(),
 		Events:    []*kubeapi.Event{},
@@ -60,6 +95,8 @@ event_loop:
 			break event_loop
 		}
 	}
+
+	totalEventsNum.Add(float64(len(result.Events)))
 	return &result
 }
 
