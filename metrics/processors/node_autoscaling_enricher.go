@@ -51,13 +51,13 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 			memUsed := getInt(metricSet, &core.MetricMemoryUsage)
 
 			if availableCpu.MilliValue() != 0 {
-				setInt(metricSet, &core.MetricPercentageCpuUsed, (cpuUsed*100)/availableCpu.MilliValue())
-				setInt(metricSet, &core.MetricPercentageCpuRequested, (cpuRequested*100)/availableCpu.MilliValue())
+				setFloat(metricSet, &core.MetricNodeCpuUtilization, float32(cpuUsed)/float32(availableCpu.MilliValue()))
+				setFloat(metricSet, &core.MetricNodeCpuReservation, float32(cpuRequested)/float32(availableCpu.MilliValue()))
 			}
 
 			if availableMem.Value() != 0 {
-				setInt(metricSet, &core.MetricPercentageMemoryUsed, (memUsed*100)/availableMem.Value())
-				setInt(metricSet, &core.MetricPercentageMemoryRequested, (memRequested*100)/availableMem.Value())
+				setFloat(metricSet, &core.MetricNodeMemoryUtilization, float32(memUsed)/float32(availableMem.Value()))
+				setFloat(metricSet, &core.MetricNodeMemoryReservation, float32(memRequested)/float32(availableMem.Value()))
 			}
 		}
 	}
@@ -71,11 +71,11 @@ func getInt(metricSet *core.MetricSet, metric *core.Metric) int64 {
 	return 0
 }
 
-func setInt(metricSet *core.MetricSet, metric *core.Metric, value int64) {
+func setFloat(metricSet *core.MetricSet, metric *core.Metric, value float32) {
 	metricSet.MetricValues[metric.MetricDescriptor.Name] = core.MetricValue{
 		MetricType: core.MetricGauge,
-		ValueType:  core.ValueInt64,
-		IntValue:   value,
+		ValueType:  core.ValueFloat,
+		FloatValue: value,
 	}
 }
 

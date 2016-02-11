@@ -65,10 +65,10 @@ var LabeledMetrics = []Metric{
 }
 
 var NodeAutoscalingMetrics = []Metric{
-	MetricPercentageCpuUsed,
-	MetricPercentageMemoryUsed,
-	MetricPercentageCpuRequested,
-	MetricPercentageMemoryRequested,
+	MetricNodeCpuUtilization,
+	MetricNodeMemoryUtilization,
+	MetricNodeCpuReservation,
+	MetricNodeMemoryReservation,
 }
 
 var AllMetrics = append(append(append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...), LabeledMetrics...),
@@ -385,40 +385,40 @@ var MetricNetworkTxErrorsRate = Metric{
 	},
 }
 
-var MetricPercentageCpuUsed = Metric{
+var MetricNodeCpuUtilization = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "cpu/node_utilization",
-		Description: "Percentage of available cpu used",
+		Description: "Cpu utilization as a share of node capacity",
 		Type:        MetricGauge,
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
 }
 
-var MetricPercentageMemoryUsed = Metric{
+var MetricNodeMemoryUtilization = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "memory/node_utilization",
-		Description: "Percentage of available mem used",
+		Description: "Memory utilization as a share of memory capacity",
 		Type:        MetricGauge,
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
 }
 
-var MetricPercentageCpuRequested = Metric{
+var MetricNodeCpuReservation = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "cpu/node_reservation",
-		Description: "Percentage of available cpu requested",
+		Description: "Share of cpu that is reserved on the node",
 		Type:        MetricGauge,
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
 	},
 }
 
-var MetricPercentageMemoryRequested = Metric{
+var MetricNodeMemoryReservation = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "memory/node_reservation",
-		Description: "Percentage of available mem requested",
+		Description: "Share of memory that is reserved on the node",
 		Type:        MetricGauge,
 		ValueType:   ValueInt64,
 		Units:       UnitsCount,
