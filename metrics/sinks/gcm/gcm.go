@@ -17,6 +17,7 @@ package gcm
 import (
 	"fmt"
 	"net/url"
+	"sync"
 	"time"
 
 	"k8s.io/heapster/metrics/core"
@@ -44,6 +45,8 @@ const (
 )
 
 type gcmSink struct {
+	sync.RWMutex
+	registered   bool
 	project      string
 	metricFilter MetricFilter
 	gcmService   *gcm.Service
@@ -127,6 +130,11 @@ func (sink *gcmSink) sendRequest(req *gcm.WriteTimeseriesRequest) {
 }
 
 func (sink *gcmSink) ExportData(dataBatch *core.DataBatch) {
+	if err := sink.registerAllMetrics(); err != nil {
+		glog.Warningf("Error during metrics registration: %v", err)
+		return
+	}
+
 	req := getReq()
 	for _, metricSet := range dataBatch.MetricSets {
 		for metric, val := range metricSet.MetricValues {
@@ -149,8 +157,17 @@ func (sink *gcmSink) Stop() {
 	// nothing needs to be done.
 }
 
+func (sink *gcmSink) registerAllMetrics() error {
+	return sink.register(core.AllMetrics)
+}
+
 // Adds the specified metrics or updates them if they already exist.
 func (sink *gcmSink) register(metrics []core.Metric) error {
+	sink.Lock()
+	defer sink.Unlock()
+	if sink.registered {
+		return nil
+	}
 
 	for _, metric := range metrics {
 		metricName := fullMetricName(metric.MetricDescriptor.Name)
@@ -202,6 +219,7 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 			return err
 		}
 	}
+	sink.registered = true
 	return nil
 }
 
@@ -243,14 +261,14 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 	}
 
 	sink := &gcmSink{
+		registered:   false,
 		project:      projectId,
 		gcmService:   gcmService,
 		metricFilter: metricFilter,
 	}
-	if err := sink.register(core.AllMetrics); err != nil {
-		return nil, err
-	}
-
 	glog.Infof("created GCM sink")
+	if err := sink.registerAllMetrics(); err != nil {
+		glog.Warningf("Error during metrics registration: %v", err)
+	}
 	return sink, nil
 }
