@@ -25,28 +25,18 @@ func (this *ClusterAggregator) Name() string {
 }
 
 func (this *ClusterAggregator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
-	result := core.DataBatch{
-		Timestamp:  batch.Timestamp,
-		MetricSets: make(map[string]*core.MetricSet),
-	}
-
-	for key, metricSet := range batch.MetricSets {
-		result.MetricSets[key] = metricSet
+	clusterKey := core.ClusterKey()
+	cluster := clusterMetricSet()
+	for _, metricSet := range batch.MetricSets {
 		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found &&
 			(metricSetType == core.MetricSetTypeNamespace || metricSetType == core.MetricSetTypeSystemContainer) {
-			clusterKey := core.ClusterKey()
-			cluster, found := result.MetricSets[clusterKey]
-			if !found {
-				cluster = clusterMetricSet()
-				result.MetricSets[clusterKey] = cluster
-			}
 			if err := aggregate(metricSet, cluster, this.MetricsToAggregate); err != nil {
 				return nil, err
 			}
 		}
 	}
-
-	return &result, nil
+	batch.MetricSets[clusterKey] = cluster
+	return batch, nil
 }
 
 func clusterMetricSet() *core.MetricSet {

@@ -19,6 +19,7 @@ import (
 	"k8s.io/heapster/metrics/core"
 )
 
+// Does not add any nodes.
 type NodeAggregator struct {
 	MetricsToAggregate []string
 }
@@ -28,13 +29,7 @@ func (this *NodeAggregator) Name() string {
 }
 
 func (this *NodeAggregator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
-	result := core.DataBatch{
-		Timestamp:  batch.Timestamp,
-		MetricSets: make(map[string]*core.MetricSet),
-	}
-
 	for key, metricSet := range batch.MetricSets {
-		result.MetricSets[key] = metricSet
 		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found && metricSetType == core.MetricSetTypePod {
 			// Aggregating pods
 			nodeName, found := metricSet.Labels[core.LabelNodename.Key]
@@ -44,12 +39,9 @@ func (this *NodeAggregator) Process(batch *core.DataBatch) (*core.DataBatch, err
 			}
 			if found {
 				nodeKey := core.NodeKey(nodeName)
-				node, found := result.MetricSets[nodeKey]
+				node, found := batch.MetricSets[nodeKey]
 				if !found {
-					if node, found = batch.MetricSets[nodeKey]; !found {
-						glog.Warningf("Failed to find node: %s", nodeKey)
-						continue
-					}
+					glog.Warningf("Failed to find node: %s", nodeKey)
 				}
 				if err := aggregate(metricSet, node, this.MetricsToAggregate); err != nil {
 					return nil, err
@@ -59,6 +51,5 @@ func (this *NodeAggregator) Process(batch *core.DataBatch) (*core.DataBatch, err
 			}
 		}
 	}
-
-	return &result, nil
+	return batch, nil
 }

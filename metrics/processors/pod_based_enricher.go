@@ -41,10 +41,7 @@ func (this *PodBasedEnricher) Name() string {
 }
 
 func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, error) {
-	newBatch := &core.DataBatch{
-		Timestamp:  batch.Timestamp,
-		MetricSets: make(map[string]*core.MetricSet, len(batch.MetricSets)),
-	}
+	newMs := make(map[string]*core.MetricSet, len(batch.MetricSets))
 	for k, v := range batch.MetricSets {
 		switch v.Labels[core.LabelMetricSetType.Key] {
 		case core.MetricSetTypePod:
@@ -55,7 +52,7 @@ func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, e
 				glog.Errorf("Error getting pod %s from cache: %v", core.PodKey(namespace, podName), err)
 				continue
 			}
-			addPodInfo(k, v, pod, batch, newBatch)
+			addPodInfo(k, v, pod, batch, newMs)
 		case core.MetricSetTypePodContainer:
 			namespace := v.Labels[core.LabelNamespaceName.Key]
 			podName := v.Labels[core.LabelPodName.Key]
@@ -64,12 +61,13 @@ func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, e
 				glog.Errorf("Error getting pod %s from cache: %v", core.PodKey(namespace, podName), err)
 				continue
 			}
-			addContainerInfo(k, v, pod, batch, newBatch)
-		default:
-			newBatch.MetricSets[k] = v
+			addContainerInfo(k, v, pod, batch, newMs)
 		}
 	}
-	return newBatch, nil
+	for k, v := range newMs {
+		batch.MetricSets[k] = v
+	}
+	return batch, nil
 }
 
 func (this *PodBasedEnricher) getPod(namespace, name string) (*kube_api.Pod, error) {
@@ -94,10 +92,7 @@ func (this *PodBasedEnricher) getPod(namespace, name string) (*kube_api.Pod, err
 	return pod, nil
 }
 
-func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod, batch *core.DataBatch, newBatch *core.DataBatch) {
-	// Add the pod metric set to the new data set.
-	newBatch.MetricSets[key] = containerMs
-
+func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod, batch *core.DataBatch, newMs map[string]*core.MetricSet) {
 	for _, container := range pod.Spec.Containers {
 		if key == core.PodContainerKey(pod.Namespace, pod.Name, container.Name) {
 			updateContainerResourcesAndLimits(containerMs, container)
@@ -112,10 +107,10 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 	podName := containerMs.Labels[core.LabelPodName.Key]
 
 	podKey := core.PodKey(namespace, podName)
-	_, newfound := newBatch.MetricSets[podKey]
-	if !newfound {
-		_, oldfound := batch.MetricSets[podKey]
-		if !oldfound {
+	_, oldfound := batch.MetricSets[podKey]
+	if !oldfound {
+		_, newfound := batch.MetricSets[podKey]
+		if !newfound {
 			glog.V(2).Infof("Pod %s not found, creating a stub", podKey)
 			podMs := &core.MetricSet{
 				MetricValues: make(map[string]core.MetricValue),
@@ -129,14 +124,13 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 					core.LabelHostID.Key:        containerMs.Labels[core.LabelHostID.Key],
 				},
 			}
-			addPodInfo(podKey, podMs, pod, batch, newBatch)
+			newMs[podKey] = podMs
+			addPodInfo(podKey, podMs, pod, batch, newMs)
 		}
 	}
 }
 
-func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *core.DataBatch, newBatch *core.DataBatch) {
-	// Add the pod metric set to the new data set.
-	newBatch.MetricSets[key] = podMs
+func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *core.DataBatch, newMs map[string]*core.MetricSet) {
 
 	// Add UID to pod
 	podMs.Labels[core.LabelPodId.Key] = string(pod.UID)
@@ -145,27 +139,28 @@ func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *cor
 	// Add cpu/mem requests and limits to containers
 	for _, container := range pod.Spec.Containers {
 		containerKey := core.PodContainerKey(pod.Namespace, pod.Name, container.Name)
-		containerMs, found := batch.MetricSets[containerKey]
-		if !found {
-			glog.V(2).Infof("Container %s not found, creating a stub", containerKey)
-			containerMs = &core.MetricSet{
-				MetricValues: make(map[string]core.MetricValue),
-				Labels: map[string]string{
-					core.LabelMetricSetType.Key:      core.MetricSetTypePodContainer,
-					core.LabelNamespaceName.Key:      pod.Namespace,
-					core.LabelPodNamespace.Key:       pod.Namespace,
-					core.LabelPodName.Key:            pod.Name,
-					core.LabelContainerName.Key:      container.Name,
-					core.LabelContainerBaseImage.Key: container.Image,
-					core.LabelPodId.Key:              string(pod.UID),
-					core.LabelLabels.Key:             util.LabelsToString(pod.Labels, ","),
-					core.LabelNodename.Key:           podMs.Labels[core.LabelNodename.Key],
-					core.LabelHostname.Key:           podMs.Labels[core.LabelHostname.Key],
-					core.LabelHostID.Key:             podMs.Labels[core.LabelHostID.Key],
-				},
+		if _, found := batch.MetricSets[containerKey]; !found {
+			if _, found := newMs[containerKey]; !found {
+				glog.V(2).Infof("Container %s not found, creating a stub", containerKey)
+				containerMs := &core.MetricSet{
+					MetricValues: make(map[string]core.MetricValue),
+					Labels: map[string]string{
+						core.LabelMetricSetType.Key:      core.MetricSetTypePodContainer,
+						core.LabelNamespaceName.Key:      pod.Namespace,
+						core.LabelPodNamespace.Key:       pod.Namespace,
+						core.LabelPodName.Key:            pod.Name,
+						core.LabelContainerName.Key:      container.Name,
+						core.LabelContainerBaseImage.Key: container.Image,
+						core.LabelPodId.Key:              string(pod.UID),
+						core.LabelLabels.Key:             util.LabelsToString(pod.Labels, ","),
+						core.LabelNodename.Key:           podMs.Labels[core.LabelNodename.Key],
+						core.LabelHostname.Key:           podMs.Labels[core.LabelHostname.Key],
+						core.LabelHostID.Key:             podMs.Labels[core.LabelHostID.Key],
+					},
+				}
+				updateContainerResourcesAndLimits(containerMs, container)
+				newMs[containerKey] = containerMs
 			}
-			updateContainerResourcesAndLimits(containerMs, container)
-			newBatch.MetricSets[containerKey] = containerMs
 		}
 	}
 }
