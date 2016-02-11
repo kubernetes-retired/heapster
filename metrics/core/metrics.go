@@ -390,7 +390,7 @@ var MetricNodeCpuUtilization = Metric{
 		Name:        "cpu/node_utilization",
 		Description: "Cpu utilization as a share of node capacity",
 		Type:        MetricGauge,
-		ValueType:   ValueInt64,
+		ValueType:   ValueFloat,
 		Units:       UnitsCount,
 	},
 }
@@ -400,7 +400,7 @@ var MetricNodeMemoryUtilization = Metric{
 		Name:        "memory/node_utilization",
 		Description: "Memory utilization as a share of memory capacity",
 		Type:        MetricGauge,
-		ValueType:   ValueInt64,
+		ValueType:   ValueFloat,
 		Units:       UnitsCount,
 	},
 }
@@ -410,7 +410,7 @@ var MetricNodeCpuReservation = Metric{
 		Name:        "cpu/node_reservation",
 		Description: "Share of cpu that is reserved on the node",
 		Type:        MetricGauge,
-		ValueType:   ValueInt64,
+		ValueType:   ValueFloat,
 		Units:       UnitsCount,
 	},
 }
@@ -420,7 +420,7 @@ var MetricNodeMemoryReservation = Metric{
 		Name:        "memory/node_reservation",
 		Description: "Share of memory that is reserved on the node",
 		Type:        MetricGauge,
-		ValueType:   ValueInt64,
+		ValueType:   ValueFloat,
 		Units:       UnitsCount,
 	},
 }
