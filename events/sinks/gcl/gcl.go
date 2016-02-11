@@ -19,11 +19,11 @@ import (
 	"net/url"
 	"time"
 
+	gce_token "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/events/core"
 
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	gcl "google.golang.org/api/logging/v2beta1"
 	gce "google.golang.org/cloud/compute/metadata"
 )
@@ -79,8 +79,14 @@ func CreateGCLSink(uri *url.URL) (core.EventSink, error) {
 		return nil, err
 	}
 
+	// Obtain GCE token.
+	token, err := gce_token.GetGCEToken()
+	if err != nil {
+		return nil, err
+	}
+
 	// Create Google Cloud Logging service.
-	client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
+	client := oauth2.NewClient(oauth2.NoContext, token)
 	gclService, err := gcl.New(client)
 	if err != nil {
 		return nil, err
