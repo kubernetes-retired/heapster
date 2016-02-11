@@ -177,8 +177,8 @@ func main() {
 		// If allowed users is set, then we need to enable Client Authentication
 		if len(*argAllowedUsers) > 0 {
 			server := &http.Server{
-				Addr: addr,
-				Handler: mux,
+				Addr:      addr,
+				Handler:   mux,
 				TLSConfig: &tls.Config{ClientAuth: tls.RequestClientCert},
 			}
 			glog.Fatal(server.ListenAndServeTLS(*argTLSCertFile, *argTLSKeyFile))
