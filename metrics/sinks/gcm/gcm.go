@@ -19,11 +19,11 @@ import (
 	"net/url"
 	"time"
 
+	gce_token "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
 
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	gcm "google.golang.org/api/cloudmonitoring/v2beta2"
 	gce "google.golang.org/cloud/compute/metadata"
 )
@@ -235,8 +235,14 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 
+	// Obtain GCE token.
+	token, err := gce_token.GetGCEToken()
+	if err != nil {
+		return nil, err
+	}
+
 	// Create Google Cloud Monitoring service.
-	client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
+	client := oauth2.NewClient(oauth2.NoContext, token)
 	gcmService, err := gcm.New(client)
 	if err != nil {
 		return nil, err
