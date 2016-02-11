@@ -17,6 +17,7 @@ package gcm
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -61,7 +62,11 @@ func getReq() *gcm.WriteTimeseriesRequest {
 }
 
 func fullLabelName(name string) string {
-	return fmt.Sprintf("%s/%s/label/%s", customApiPrefix, metricDomain, name)
+	// handle correctly GCE specific labels
+	if !strings.Contains(name, "compute.googleapis.com") {
+		return fmt.Sprintf("%s/%s/label/%s", customApiPrefix, metricDomain, name)
+	}
+	return name
 }
 
 func fullMetricName(name string) string {
