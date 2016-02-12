@@ -17,6 +17,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
@@ -172,7 +173,19 @@ func main() {
 		}
 		mux.Handle("/", handler)
 		mux.Handle("/metrics", promHandler)
-		glog.Fatal(http.ListenAndServeTLS(addr, *argTLSCertFile, *argTLSKeyFile, mux))
+
+		// If allowed users is set, then we need to enable Client Authentication
+		if len(*argAllowedUsers) > 0 {
+			server := &http.Server{
+				Addr:      addr,
+				Handler:   mux,
+				TLSConfig: &tls.Config{ClientAuth: tls.RequestClientCert},
+			}
+			glog.Fatal(server.ListenAndServeTLS(*argTLSCertFile, *argTLSKeyFile))
+		} else {
+			glog.Fatal(http.ListenAndServeTLS(addr, *argTLSCertFile, *argTLSKeyFile, mux))
+		}
+
 	} else {
 		mux.Handle("/", handler)
 		mux.Handle("/metrics", promHandler)
