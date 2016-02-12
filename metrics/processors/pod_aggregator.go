@@ -40,25 +40,22 @@ func (this *PodAggregator) Name() string {
 }
 
 func (this *PodAggregator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
-	result := core.DataBatch{
-		Timestamp:  batch.Timestamp,
-		MetricSets: make(map[string]*core.MetricSet, len(batch.MetricSets)),
-	}
+	newPods := make(map[string]*core.MetricSet)
+
 	for key, metricSet := range batch.MetricSets {
-		result.MetricSets[key] = metricSet
 		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found && metricSetType == core.MetricSetTypePodContainer {
 			// Aggregating containers
 			podName, found := metricSet.Labels[core.LabelPodName.Key]
 			ns, found2 := metricSet.Labels[core.LabelNamespaceName.Key]
 			if found && found2 {
 				podKey := core.PodKey(ns, podName)
-				pod, found := result.MetricSets[podKey]
+				pod, found := batch.MetricSets[podKey]
 				if !found {
-					pod, found = batch.MetricSets[podKey]
+					pod, found = newPods[podKey]
 					if !found {
 						glog.V(2).Infof("Pod not found adding %s", podKey)
 						pod = this.podMetricSet(metricSet.Labels)
-						result.MetricSets[podKey] = pod
+						newPods[podKey] = pod
 					}
 				}
 
@@ -89,8 +86,10 @@ func (this *PodAggregator) Process(batch *core.DataBatch) (*core.DataBatch, erro
 			}
 		}
 	}
-
-	return &result, nil
+	for key, val := range newPods {
+		batch.MetricSets[key] = val
+	}
+	return batch, nil
 }
 
 func (this *PodAggregator) podMetricSet(labels map[string]string) *core.MetricSet {

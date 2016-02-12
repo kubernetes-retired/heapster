@@ -28,21 +28,20 @@ func (this *NamespaceAggregator) Name() string {
 }
 
 func (this *NamespaceAggregator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
-	result := core.DataBatch{
-		Timestamp:  batch.Timestamp,
-		MetricSets: make(map[string]*core.MetricSet),
-	}
-
+	namespaces := make(map[string]*core.MetricSet)
 	for key, metricSet := range batch.MetricSets {
-		result.MetricSets[key] = metricSet
 		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found && metricSetType == core.MetricSetTypePod {
 			// Aggregating pods
 			if namespaceName, found := metricSet.Labels[core.LabelNamespaceName.Key]; found {
 				namespaceKey := core.NamespaceKey(namespaceName)
-				namespace, found := result.MetricSets[namespaceKey]
+				namespace, found := namespaces[namespaceKey]
 				if !found {
-					namespace = namespaceMetricSet(namespaceName, metricSet.Labels[core.LabelPodNamespaceUID.Key])
-					result.MetricSets[namespaceKey] = namespace
+					if nsFromBatch, found := batch.MetricSets[namespaceKey]; found {
+						namespace = nsFromBatch
+					} else {
+						namespace = namespaceMetricSet(namespaceName, metricSet.Labels[core.LabelPodNamespaceUID.Key])
+						namespaces[namespaceKey] = namespace
+					}
 				}
 				if err := aggregate(metricSet, namespace, this.MetricsToAggregate); err != nil {
 					return nil, err
@@ -52,8 +51,10 @@ func (this *NamespaceAggregator) Process(batch *core.DataBatch) (*core.DataBatch
 			}
 		}
 	}
-
-	return &result, nil
+	for key, val := range namespaces {
+		batch.MetricSets[key] = val
+	}
+	return batch, nil
 }
 
 func namespaceMetricSet(namespaceName, uid string) *core.MetricSet {
