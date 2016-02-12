@@ -26,23 +26,53 @@ import (
 // * metrics that need to be stored for longer time (15 min, 1 hour).
 // The user of this struct needs to decide what are the long-stored metrics uprfront.
 type MetricSink struct {
-	// Request can come from other threads
+	// Request can come from other threads.
 	lock sync.Mutex
 
-	// list of metrics that will be stored for up to X seconds
+	// List of metrics that will be stored for up to X seconds.
 	longStoreMetrics   []string
 	longStoreDuration  time.Duration
 	shortStoreDuration time.Duration
 
-	// Stores full DataBatch with all metrics and labels
+	// Stores full DataBatch with all metrics and labels.
 	shortStore []*core.DataBatch
-	// Stores timmed DataBatches with selected metrics and no labels
-	longStore []*core.DataBatch
+	// Memory-efficient long/mid term storage for metrics.
+	longStore []*multimetricStore
+}
+
+// Stores values of a single metrics for different MetricSets.
+// Assumes that the user knows what the metric is.
+type int64Store map[string]int64
+
+type multimetricStore struct {
+	// Timestamp of the batch from which the metrics were taken.
+	timestamp time.Time
+	// Metric name to int64store with metric values.
+	store map[string]int64Store
 }
 
 type TimestampedMetricValue struct {
 	core.MetricValue
 	Timestamp time.Time
+}
+
+func buildMultimetricStore(metrics []string, batch *core.DataBatch) *multimetricStore {
+	store := multimetricStore{
+		timestamp: batch.Timestamp,
+		store:     make(map[string]int64Store, len(metrics)),
+	}
+	for _, metric := range metrics {
+		store.store[metric] = make(int64Store, len(batch.MetricSets))
+	}
+	for key, ms := range batch.MetricSets {
+		for _, metric := range metrics {
+			if metricValue, found := ms.MetricValues[metric]; found {
+				metricstore := store.store[metric]
+				metricstore[key] = metricValue.IntValue
+			}
+		}
+	}
+	return &store
 }
 
 func (this *MetricSink) Name() string {
@@ -54,14 +84,13 @@ func (this *MetricSink) Stop() {
 }
 
 func (this *MetricSink) ExportData(batch *core.DataBatch) {
-	trimmed := this.trimDataBatch(batch)
-
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
 	now := time.Now()
 	// TODO: add sorting
-	this.longStore = append(popOld(this.longStore, now.Add(-this.longStoreDuration)), trimmed)
+	this.longStore = append(popOldStore(this.longStore, now.Add(-this.longStoreDuration)),
+		buildMultimetricStore(this.longStoreMetrics, batch))
 	this.shortStore = append(popOld(this.shortStore, now.Add(-this.shortStoreDuration)), batch)
 }
 
@@ -80,39 +109,56 @@ func (this *MetricSink) GetMetric(metricName string, keys []string, start, end t
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
-	var storeToUse []*core.DataBatch = nil
+	useLongStore := false
 	for _, longStoreMetric := range this.longStoreMetrics {
 		if longStoreMetric == metricName {
-			storeToUse = this.longStore
+			useLongStore = true
 		}
-	}
-	if storeToUse == nil {
-		storeToUse = this.shortStore
 	}
 
 	result := make(map[string][]TimestampedMetricValue)
-
-	for _, batch := range storeToUse {
-		// Inclusive start and end.
-		if !batch.Timestamp.Before(start) && !batch.Timestamp.After(end) {
-			for _, key := range keys {
-				metricSet, found := batch.MetricSets[key]
-				if !found {
-					continue
+	if useLongStore {
+		for _, store := range this.longStore {
+			// Inclusive start and end.
+			if !store.timestamp.Before(start) && !store.timestamp.After(end) {
+				substore := store.store[metricName]
+				for _, key := range keys {
+					if val, found := substore[key]; found {
+						result[key] = append(result[key], TimestampedMetricValue{
+							Timestamp: store.timestamp,
+							MetricValue: core.MetricValue{
+								IntValue:   val,
+								ValueType:  core.ValueInt64,
+								MetricType: core.MetricGauge,
+							},
+						})
+					}
 				}
-				metricValue, found := metricSet.MetricValues[metricName]
-				if !found {
-					continue
+			}
+		}
+	} else {
+		for _, batch := range this.shortStore {
+			// Inclusive start and end.
+			if !batch.Timestamp.Before(start) && !batch.Timestamp.After(end) {
+				for _, key := range keys {
+					metricSet, found := batch.MetricSets[key]
+					if !found {
+						continue
+					}
+					metricValue, found := metricSet.MetricValues[metricName]
+					if !found {
+						continue
+					}
+					keyResult, found := result[key]
+					if !found {
+						keyResult = make([]TimestampedMetricValue, 0)
+					}
+					keyResult = append(keyResult, TimestampedMetricValue{
+						Timestamp:   batch.Timestamp,
+						MetricValue: metricValue,
+					})
+					result[key] = keyResult
 				}
-				keyResult, found := result[key]
-				if !found {
-					keyResult = make([]TimestampedMetricValue, 0)
-				}
-				keyResult = append(keyResult, TimestampedMetricValue{
-					Timestamp:   batch.Timestamp,
-					MetricValue: metricValue,
-				})
-				result[key] = keyResult
 			}
 		}
 	}
@@ -124,13 +170,6 @@ func (this *MetricSink) GetMetricNames(key string) []string {
 	defer this.lock.Unlock()
 
 	metricNames := make(map[string]bool)
-	for _, batch := range this.longStore {
-		if set, found := batch.MetricSets[key]; found {
-			for key := range set.MetricValues {
-				metricNames[key] = true
-			}
-		}
-	}
 	for _, batch := range this.shortStore {
 		if set, found := batch.MetricSets[key]; found {
 			for key := range set.MetricValues {
@@ -216,28 +255,6 @@ func (this *MetricSink) GetSystemContainersFromNode(node string) []string {
 		})
 }
 
-func (this *MetricSink) trimDataBatch(batch *core.DataBatch) *core.DataBatch {
-	result := core.DataBatch{
-		Timestamp:  batch.Timestamp,
-		MetricSets: make(map[string]*core.MetricSet),
-	}
-	for metricSetKey, metricSet := range batch.MetricSets {
-		trimmedMetricSet := core.MetricSet{
-			MetricValues: make(map[string]core.MetricValue),
-		}
-		for _, metricName := range this.longStoreMetrics {
-			metricValue, found := metricSet.MetricValues[metricName]
-			if found {
-				trimmedMetricSet.MetricValues[metricName] = metricValue
-			}
-		}
-		if len(trimmedMetricSet.MetricValues) > 0 {
-			result.MetricSets[metricSetKey] = &trimmedMetricSet
-		}
-	}
-	return &result
-}
-
 func popOld(storage []*core.DataBatch, cutoffTime time.Time) []*core.DataBatch {
 	result := make([]*core.DataBatch, 0)
 	for _, batch := range storage {
@@ -248,12 +265,22 @@ func popOld(storage []*core.DataBatch, cutoffTime time.Time) []*core.DataBatch {
 	return result
 }
 
+func popOldStore(storages []*multimetricStore, cutoffTime time.Time) []*multimetricStore {
+	result := make([]*multimetricStore, 0, len(storages))
+	for _, store := range storages {
+		if store.timestamp.After(cutoffTime) {
+			result = append(result, store)
+		}
+	}
+	return result
+}
+
 func NewMetricSink(shortStoreDuration, longStoreDuration time.Duration, longStoreMetrics []string) *MetricSink {
 	return &MetricSink{
 		longStoreMetrics:   longStoreMetrics,
 		longStoreDuration:  longStoreDuration,
 		shortStoreDuration: shortStoreDuration,
-		longStore:          make([]*core.DataBatch, 0),
+		longStore:          make([]*multimetricStore, 0),
 		shortStore:         make([]*core.DataBatch, 0),
 	}
 }
