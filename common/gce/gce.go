@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	waitForTokenInterval = 1 * time.Second
-	waitForTokenTimeout  = 30 * time.Second
+	waitForTokenInterval = 3 * time.Second
+	waitForTokenTimeout  = 3 * time.Minute
 )
 
 func GetGCEToken() (oauth2.TokenSource, error) {
