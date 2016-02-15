@@ -15,6 +15,7 @@
 package sources
 
 import (
+	"math/rand"
 	"time"
 
 	. "k8s.io/heapster/metrics/core"
@@ -24,7 +25,9 @@ import (
 )
 
 const (
-	DefaultMetricsScrapeTimeout = 20 * time.Second
+	DefaultMetricsScrapeTimeout              = 20 * time.Second
+	MaxDelayInMs                             = 4 * 1000
+	MaxDelayIntroductionClusterSizeThreshold = 500
 )
 
 var (
@@ -80,8 +83,18 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 	startTime := time.Now()
 	timeoutTime := startTime.Add(this.metricsScrapeTimeout)
 
+	delayInMs := (MaxDelayInMs * len(sources)) / MaxDelayIntroductionClusterSizeThreshold
+	if delayInMs > MaxDelayInMs {
+		delayInMs = MaxDelayInMs
+	}
+
 	for _, source := range sources {
-		go func(source MetricsSource, channel chan *DataBatch, start, end, timeoutTime time.Time) {
+
+		go func(source MetricsSource, channel chan *DataBatch, start, end, timeoutTime time.Time, delayInMs int) {
+
+			// Prevents network congestion.
+			time.Sleep(time.Duration(rand.Intn(delayInMs)) * time.Millisecond)
+
 			glog.V(2).Infof("Querying source: %s", source)
 			metrics := scrape(source, start, end)
 			now := time.Now()
@@ -99,7 +112,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 				glog.Warningf("Failed to send the response back %s", source)
 				return
 			}
-		}(source, responseChannel, start, end, timeoutTime)
+		}(source, responseChannel, start, end, timeoutTime, delayInMs)
 	}
 	response := DataBatch{
 		Timestamp:  end,
