@@ -49,7 +49,7 @@ func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, e
 			podName := v.Labels[core.LabelPodName.Key]
 			pod, err := this.getPod(namespace, podName)
 			if err != nil {
-				glog.Errorf("Error getting pod %s from cache: %v", core.PodKey(namespace, podName), err)
+				glog.V(3).Infof("Failed to get pod %s from cache: %v", core.PodKey(namespace, podName), err)
 				continue
 			}
 			addPodInfo(k, v, pod, batch, newMs)
@@ -58,7 +58,7 @@ func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, e
 			podName := v.Labels[core.LabelPodName.Key]
 			pod, err := this.getPod(namespace, podName)
 			if err != nil {
-				glog.Errorf("Error getting pod %s from cache: %v", core.PodKey(namespace, podName), err)
+				glog.V(3).Infof("Failed to get pod %s from cache: %v", core.PodKey(namespace, podName), err)
 				continue
 			}
 			addContainerInfo(k, v, pod, batch, newMs)
