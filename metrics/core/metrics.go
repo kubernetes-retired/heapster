@@ -20,6 +20,10 @@ import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
+const (
+	CustomMetricPrefix = "custom/"
+)
+
 // Provided by Kubelet/cadvisor.
 var StandardMetrics = []Metric{
 	MetricUptime,
