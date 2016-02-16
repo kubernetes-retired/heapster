@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	DefaultMetricsScrapeTimeout              = 20 * time.Second
-	MaxDelayInMs                             = 4 * 1000
-	MaxDelayIntroductionClusterSizeThreshold = 500
+	DefaultMetricsScrapeTimeout = 20 * time.Second
+	MaxDelayMs                  = 4 * 1000
+	DelayPerSourceMs            = 8
 )
 
 var (
@@ -83,9 +83,9 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 	startTime := time.Now()
 	timeoutTime := startTime.Add(this.metricsScrapeTimeout)
 
-	delayInMs := (MaxDelayInMs * len(sources)) / MaxDelayIntroductionClusterSizeThreshold
-	if delayInMs > MaxDelayInMs {
-		delayInMs = MaxDelayInMs
+	delayMs := DelayPerSourceMs * len(sources)
+	if delayMs > MaxDelayMs {
+		delayMs = MaxDelayMs
 	}
 
 	for _, source := range sources {
@@ -93,7 +93,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 		go func(source MetricsSource, channel chan *DataBatch, start, end, timeoutTime time.Time, delayInMs int) {
 
 			// Prevents network congestion.
-			time.Sleep(time.Duration(rand.Intn(delayInMs)) * time.Millisecond)
+			time.Sleep(time.Duration(rand.Intn(delayMs)) * time.Millisecond)
 
 			glog.V(2).Infof("Querying source: %s", source)
 			metrics := scrape(source, start, end)
@@ -112,7 +112,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 				glog.Warningf("Failed to send the response back %s", source)
 				return
 			}
-		}(source, responseChannel, start, end, timeoutTime, delayInMs)
+		}(source, responseChannel, start, end, timeoutTime, delayMs)
 	}
 	response := DataBatch{
 		Timestamp:  end,
