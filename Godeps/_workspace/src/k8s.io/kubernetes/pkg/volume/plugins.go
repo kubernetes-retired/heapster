@@ -24,7 +24,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_1"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/types"
 	utilerrors "k8s.io/kubernetes/pkg/util/errors"
@@ -49,6 +49,10 @@ type VolumeOptions struct {
 	AccessModes []api.PersistentVolumeAccessMode
 	// Reclamation policy for a persistent volume
 	PersistentVolumeReclaimPolicy api.PersistentVolumeReclaimPolicy
+	// PV.Name of the appropriate PersistentVolume. Used to generate cloud volume name.
+	PVName string
+	// Unique name of Kubernetes cluster.
+	ClusterName string
 	// Tags to attach to the real volume in the cloud provider - e.g. AWS EBS
 	CloudTags *map[string]string
 }
@@ -115,6 +119,14 @@ type ProvisionableVolumePlugin interface {
 	// NewProvisioner creates a new volume.Provisioner which knows how to create PersistentVolumes in accordance with
 	// the plugin's underlying storage provider
 	NewProvisioner(options VolumeOptions) (Provisioner, error)
+}
+
+// AttachableVolumePlugin is an extended interface of VolumePlugin and is used for volumes that require attachment
+// to a node before mounting.
+type AttachableVolumePlugin interface {
+	VolumePlugin
+	NewAttacher(spec *Spec) (Attacher, error)
+	NewDetacher(name string, podUID types.UID) (Detacher, error)
 }
 
 // VolumeHost is an interface that plugins can use to access the kubelet.
@@ -384,6 +396,34 @@ func (pm *VolumePluginMgr) FindCreatablePluginBySpec(spec *Spec) (ProvisionableV
 	return nil, fmt.Errorf("no creatable volume plugin matched")
 }
 
+// FindAttachablePluginBySpec fetches a persistent volume plugin by name.  Unlike the other "FindPlugin" methods, this
+// does not return error if no plugin is found.  All volumes require a builder and cleaner, but not every volume will
+// have an attacher/detacher.
+func (pm *VolumePluginMgr) FindAttachablePluginBySpec(spec *Spec) (AttachableVolumePlugin, error) {
+	volumePlugin, err := pm.FindPluginBySpec(spec)
+	if err != nil {
+		return nil, err
+	}
+	if attachableVolumePlugin, ok := volumePlugin.(AttachableVolumePlugin); ok {
+		return attachableVolumePlugin, nil
+	}
+	return nil, nil
+}
+
+// FindAttachablePluginByName fetches an attachable volume plugin by name. Unlike the other "FindPlugin" methods, this
+// does not return error if no plugin is found.  All volumes require a builder and cleaner, but not every volume will
+// have an attacher/detacher.
+func (pm *VolumePluginMgr) FindAttachablePluginByName(name string) (AttachableVolumePlugin, error) {
+	volumePlugin, err := pm.FindPluginByName(name)
+	if err != nil {
+		return nil, err
+	}
+	if attachablePlugin, ok := volumePlugin.(AttachableVolumePlugin); ok {
+		return attachablePlugin, nil
+	}
+	return nil, nil
+}
+
 // NewPersistentVolumeRecyclerPodTemplate creates a template for a recycler pod.  By default, a recycler pod simply runs
 // "rm -rf" on a volume and tests for emptiness.  Most attributes of the template will be correct for most
 // plugin implementations.  The following attributes can be overridden per plugin via configuration:
@@ -416,7 +456,7 @@ func NewPersistentVolumeRecyclerPodTemplate() *api.Pod {
 					Name:    "pv-recycler",
 					Image:   "gcr.io/google_containers/busybox",
 					Command: []string{"/bin/sh"},
-					Args:    []string{"-c", "test -e /scrub && echo $(date) > /scrub/trash.txt && find /scrub -mindepth 1 -maxdepth 1 -delete && test -z \"$(ls -A /scrub)\" || exit 1"},
+					Args:    []string{"-c", "test -e /scrub && rm -rf /scrub/..?* /scrub/.[!.]* /scrub/*  && test -z \"$(ls -A /scrub)\" || exit 1"},
 					VolumeMounts: []api.VolumeMount{
 						{
 							Name:      "vol",

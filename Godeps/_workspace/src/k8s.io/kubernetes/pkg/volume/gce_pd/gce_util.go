@@ -27,7 +27,6 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	gcecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
-	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/exec"
 	"k8s.io/kubernetes/pkg/util/keymutex"
 	"k8s.io/kubernetes/pkg/util/runtime"
@@ -134,7 +133,7 @@ func (gceutil *GCEDiskUtil) CreateVolume(c *gcePersistentDiskProvisioner) (volum
 		return "", 0, err
 	}
 
-	name := fmt.Sprintf("kube-dynamic-%s", util.NewUUID())
+	name := volume.GenerateVolumeName(c.options.ClusterName, c.options.PVName, 63) // GCE PD name can have up to 63 characters
 	requestBytes := c.options.Capacity.Value()
 	// GCE works with gigabytes, convert to GiB with rounding up
 	requestGB := volume.RoundUpSize(requestBytes, 1024*1024*1024)
@@ -147,7 +146,7 @@ func (gceutil *GCEDiskUtil) CreateVolume(c *gcePersistentDiskProvisioner) (volum
 		return "", 0, err
 	}
 
-	err = cloud.CreateDisk(name, zone.FailureDomain, int64(requestGB))
+	err = cloud.CreateDisk(name, zone.FailureDomain, int64(requestGB), *c.options.CloudTags)
 	if err != nil {
 		glog.V(2).Infof("Error creating GCE PD volume: %v", err)
 		return "", 0, err
@@ -262,7 +261,7 @@ func detachDiskAndVerify(c *gcePersistentDiskCleaner) {
 				// Log error, if any, and continue checking periodically.
 				glog.Errorf("Error verifying GCE PD (%q) is detached: %v", c.pdName, err)
 			} else if allPathsRemoved {
-				// All paths to the PD have been succefully removed
+				// All paths to the PD have been successfully removed
 				unmountPDAndRemoveGlobalPath(c)
 				glog.Infof("Successfully detached GCE PD %q.", c.pdName)
 				return

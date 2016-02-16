@@ -43,6 +43,20 @@ func Convert_api_AWSElasticBlockStoreVolumeSource_To_v1_AWSElasticBlockStoreVolu
 	return autoConvert_api_AWSElasticBlockStoreVolumeSource_To_v1_AWSElasticBlockStoreVolumeSource(in, out, s)
 }
 
+func autoConvert_api_AzureFileVolumeSource_To_v1_AzureFileVolumeSource(in *api.AzureFileVolumeSource, out *AzureFileVolumeSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.AzureFileVolumeSource))(in)
+	}
+	out.SecretName = in.SecretName
+	out.ShareName = in.ShareName
+	out.ReadOnly = in.ReadOnly
+	return nil
+}
+
+func Convert_api_AzureFileVolumeSource_To_v1_AzureFileVolumeSource(in *api.AzureFileVolumeSource, out *AzureFileVolumeSource, s conversion.Scope) error {
+	return autoConvert_api_AzureFileVolumeSource_To_v1_AzureFileVolumeSource(in, out, s)
+}
+
 func autoConvert_api_Binding_To_v1_Binding(in *api.Binding, out *Binding, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*api.Binding))(in)
@@ -99,6 +113,7 @@ func autoConvert_api_CephFSVolumeSource_To_v1_CephFSVolumeSource(in *api.CephFSV
 	} else {
 		out.Monitors = nil
 	}
+	out.Path = in.Path
 	out.User = in.User
 	out.SecretFile = in.SecretFile
 	// unable to generate simple pointer conversion for api.LocalObjectReference -> v1.LocalObjectReference
@@ -254,6 +269,30 @@ func autoConvert_api_ConfigMapList_To_v1_ConfigMapList(in *api.ConfigMapList, ou
 
 func Convert_api_ConfigMapList_To_v1_ConfigMapList(in *api.ConfigMapList, out *ConfigMapList, s conversion.Scope) error {
 	return autoConvert_api_ConfigMapList_To_v1_ConfigMapList(in, out, s)
+}
+
+func autoConvert_api_ConfigMapVolumeSource_To_v1_ConfigMapVolumeSource(in *api.ConfigMapVolumeSource, out *ConfigMapVolumeSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.ConfigMapVolumeSource))(in)
+	}
+	if err := Convert_api_LocalObjectReference_To_v1_LocalObjectReference(&in.LocalObjectReference, &out.LocalObjectReference, s); err != nil {
+		return err
+	}
+	if in.Items != nil {
+		out.Items = make([]KeyToPath, len(in.Items))
+		for i := range in.Items {
+			if err := Convert_api_KeyToPath_To_v1_KeyToPath(&in.Items[i], &out.Items[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
+	return nil
+}
+
+func Convert_api_ConfigMapVolumeSource_To_v1_ConfigMapVolumeSource(in *api.ConfigMapVolumeSource, out *ConfigMapVolumeSource, s conversion.Scope) error {
+	return autoConvert_api_ConfigMapVolumeSource_To_v1_ConfigMapVolumeSource(in, out, s)
 }
 
 func autoConvert_api_Container_To_v1_Container(in *api.Container, out *Container, s conversion.Scope) error {
@@ -976,11 +1015,34 @@ func autoConvert_api_HTTPGetAction_To_v1_HTTPGetAction(in *api.HTTPGetAction, ou
 	}
 	out.Host = in.Host
 	out.Scheme = URIScheme(in.Scheme)
+	if in.HTTPHeaders != nil {
+		out.HTTPHeaders = make([]HTTPHeader, len(in.HTTPHeaders))
+		for i := range in.HTTPHeaders {
+			if err := Convert_api_HTTPHeader_To_v1_HTTPHeader(&in.HTTPHeaders[i], &out.HTTPHeaders[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.HTTPHeaders = nil
+	}
 	return nil
 }
 
 func Convert_api_HTTPGetAction_To_v1_HTTPGetAction(in *api.HTTPGetAction, out *HTTPGetAction, s conversion.Scope) error {
 	return autoConvert_api_HTTPGetAction_To_v1_HTTPGetAction(in, out, s)
+}
+
+func autoConvert_api_HTTPHeader_To_v1_HTTPHeader(in *api.HTTPHeader, out *HTTPHeader, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.HTTPHeader))(in)
+	}
+	out.Name = in.Name
+	out.Value = in.Value
+	return nil
+}
+
+func Convert_api_HTTPHeader_To_v1_HTTPHeader(in *api.HTTPHeader, out *HTTPHeader, s conversion.Scope) error {
+	return autoConvert_api_HTTPHeader_To_v1_HTTPHeader(in, out, s)
 }
 
 func autoConvert_api_Handler_To_v1_Handler(in *api.Handler, out *Handler, s conversion.Scope) error {
@@ -1048,6 +1110,19 @@ func autoConvert_api_ISCSIVolumeSource_To_v1_ISCSIVolumeSource(in *api.ISCSIVolu
 
 func Convert_api_ISCSIVolumeSource_To_v1_ISCSIVolumeSource(in *api.ISCSIVolumeSource, out *ISCSIVolumeSource, s conversion.Scope) error {
 	return autoConvert_api_ISCSIVolumeSource_To_v1_ISCSIVolumeSource(in, out, s)
+}
+
+func autoConvert_api_KeyToPath_To_v1_KeyToPath(in *api.KeyToPath, out *KeyToPath, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.KeyToPath))(in)
+	}
+	out.Key = in.Key
+	out.Path = in.Path
+	return nil
+}
+
+func Convert_api_KeyToPath_To_v1_KeyToPath(in *api.KeyToPath, out *KeyToPath, s conversion.Scope) error {
+	return autoConvert_api_KeyToPath_To_v1_KeyToPath(in, out, s)
 }
 
 func autoConvert_api_Lifecycle_To_v1_Lifecycle(in *api.Lifecycle, out *Lifecycle, s conversion.Scope) error {
@@ -1946,6 +2021,15 @@ func autoConvert_api_PersistentVolumeSource_To_v1_PersistentVolumeSource(in *api
 	} else {
 		out.Flocker = nil
 	}
+	// unable to generate simple pointer conversion for api.AzureFileVolumeSource -> v1.AzureFileVolumeSource
+	if in.AzureFile != nil {
+		out.AzureFile = new(AzureFileVolumeSource)
+		if err := Convert_api_AzureFileVolumeSource_To_v1_AzureFileVolumeSource(in.AzureFile, out.AzureFile, s); err != nil {
+			return err
+		}
+	} else {
+		out.AzureFile = nil
+	}
 	return nil
 }
 
@@ -2780,6 +2864,12 @@ func autoConvert_api_SecurityContext_To_v1_SecurityContext(in *api.SecurityConte
 	} else {
 		out.RunAsNonRoot = nil
 	}
+	if in.ReadOnlyRootFilesystem != nil {
+		out.ReadOnlyRootFilesystem = new(bool)
+		*out.ReadOnlyRootFilesystem = *in.ReadOnlyRootFilesystem
+	} else {
+		out.ReadOnlyRootFilesystem = nil
+	}
 	return nil
 }
 
@@ -3172,6 +3262,24 @@ func autoConvert_api_VolumeSource_To_v1_VolumeSource(in *api.VolumeSource, out *
 	} else {
 		out.FC = nil
 	}
+	// unable to generate simple pointer conversion for api.AzureFileVolumeSource -> v1.AzureFileVolumeSource
+	if in.AzureFile != nil {
+		out.AzureFile = new(AzureFileVolumeSource)
+		if err := Convert_api_AzureFileVolumeSource_To_v1_AzureFileVolumeSource(in.AzureFile, out.AzureFile, s); err != nil {
+			return err
+		}
+	} else {
+		out.AzureFile = nil
+	}
+	// unable to generate simple pointer conversion for api.ConfigMapVolumeSource -> v1.ConfigMapVolumeSource
+	if in.ConfigMap != nil {
+		out.ConfigMap = new(ConfigMapVolumeSource)
+		if err := Convert_api_ConfigMapVolumeSource_To_v1_ConfigMapVolumeSource(in.ConfigMap, out.ConfigMap, s); err != nil {
+			return err
+		}
+	} else {
+		out.ConfigMap = nil
+	}
 	return nil
 }
 
@@ -3205,6 +3313,20 @@ func autoConvert_v1_AWSElasticBlockStoreVolumeSource_To_api_AWSElasticBlockStore
 
 func Convert_v1_AWSElasticBlockStoreVolumeSource_To_api_AWSElasticBlockStoreVolumeSource(in *AWSElasticBlockStoreVolumeSource, out *api.AWSElasticBlockStoreVolumeSource, s conversion.Scope) error {
 	return autoConvert_v1_AWSElasticBlockStoreVolumeSource_To_api_AWSElasticBlockStoreVolumeSource(in, out, s)
+}
+
+func autoConvert_v1_AzureFileVolumeSource_To_api_AzureFileVolumeSource(in *AzureFileVolumeSource, out *api.AzureFileVolumeSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*AzureFileVolumeSource))(in)
+	}
+	out.SecretName = in.SecretName
+	out.ShareName = in.ShareName
+	out.ReadOnly = in.ReadOnly
+	return nil
+}
+
+func Convert_v1_AzureFileVolumeSource_To_api_AzureFileVolumeSource(in *AzureFileVolumeSource, out *api.AzureFileVolumeSource, s conversion.Scope) error {
+	return autoConvert_v1_AzureFileVolumeSource_To_api_AzureFileVolumeSource(in, out, s)
 }
 
 func autoConvert_v1_Binding_To_api_Binding(in *Binding, out *api.Binding, s conversion.Scope) error {
@@ -3263,6 +3385,7 @@ func autoConvert_v1_CephFSVolumeSource_To_api_CephFSVolumeSource(in *CephFSVolum
 	} else {
 		out.Monitors = nil
 	}
+	out.Path = in.Path
 	out.User = in.User
 	out.SecretFile = in.SecretFile
 	// unable to generate simple pointer conversion for v1.LocalObjectReference -> api.LocalObjectReference
@@ -3418,6 +3541,30 @@ func autoConvert_v1_ConfigMapList_To_api_ConfigMapList(in *ConfigMapList, out *a
 
 func Convert_v1_ConfigMapList_To_api_ConfigMapList(in *ConfigMapList, out *api.ConfigMapList, s conversion.Scope) error {
 	return autoConvert_v1_ConfigMapList_To_api_ConfigMapList(in, out, s)
+}
+
+func autoConvert_v1_ConfigMapVolumeSource_To_api_ConfigMapVolumeSource(in *ConfigMapVolumeSource, out *api.ConfigMapVolumeSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*ConfigMapVolumeSource))(in)
+	}
+	if err := Convert_v1_LocalObjectReference_To_api_LocalObjectReference(&in.LocalObjectReference, &out.LocalObjectReference, s); err != nil {
+		return err
+	}
+	if in.Items != nil {
+		out.Items = make([]api.KeyToPath, len(in.Items))
+		for i := range in.Items {
+			if err := Convert_v1_KeyToPath_To_api_KeyToPath(&in.Items[i], &out.Items[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
+	return nil
+}
+
+func Convert_v1_ConfigMapVolumeSource_To_api_ConfigMapVolumeSource(in *ConfigMapVolumeSource, out *api.ConfigMapVolumeSource, s conversion.Scope) error {
+	return autoConvert_v1_ConfigMapVolumeSource_To_api_ConfigMapVolumeSource(in, out, s)
 }
 
 func autoConvert_v1_Container_To_api_Container(in *Container, out *api.Container, s conversion.Scope) error {
@@ -4153,11 +4300,34 @@ func autoConvert_v1_HTTPGetAction_To_api_HTTPGetAction(in *HTTPGetAction, out *a
 	}
 	out.Host = in.Host
 	out.Scheme = api.URIScheme(in.Scheme)
+	if in.HTTPHeaders != nil {
+		out.HTTPHeaders = make([]api.HTTPHeader, len(in.HTTPHeaders))
+		for i := range in.HTTPHeaders {
+			if err := Convert_v1_HTTPHeader_To_api_HTTPHeader(&in.HTTPHeaders[i], &out.HTTPHeaders[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.HTTPHeaders = nil
+	}
 	return nil
 }
 
 func Convert_v1_HTTPGetAction_To_api_HTTPGetAction(in *HTTPGetAction, out *api.HTTPGetAction, s conversion.Scope) error {
 	return autoConvert_v1_HTTPGetAction_To_api_HTTPGetAction(in, out, s)
+}
+
+func autoConvert_v1_HTTPHeader_To_api_HTTPHeader(in *HTTPHeader, out *api.HTTPHeader, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*HTTPHeader))(in)
+	}
+	out.Name = in.Name
+	out.Value = in.Value
+	return nil
+}
+
+func Convert_v1_HTTPHeader_To_api_HTTPHeader(in *HTTPHeader, out *api.HTTPHeader, s conversion.Scope) error {
+	return autoConvert_v1_HTTPHeader_To_api_HTTPHeader(in, out, s)
 }
 
 func autoConvert_v1_Handler_To_api_Handler(in *Handler, out *api.Handler, s conversion.Scope) error {
@@ -4225,6 +4395,19 @@ func autoConvert_v1_ISCSIVolumeSource_To_api_ISCSIVolumeSource(in *ISCSIVolumeSo
 
 func Convert_v1_ISCSIVolumeSource_To_api_ISCSIVolumeSource(in *ISCSIVolumeSource, out *api.ISCSIVolumeSource, s conversion.Scope) error {
 	return autoConvert_v1_ISCSIVolumeSource_To_api_ISCSIVolumeSource(in, out, s)
+}
+
+func autoConvert_v1_KeyToPath_To_api_KeyToPath(in *KeyToPath, out *api.KeyToPath, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*KeyToPath))(in)
+	}
+	out.Key = in.Key
+	out.Path = in.Path
+	return nil
+}
+
+func Convert_v1_KeyToPath_To_api_KeyToPath(in *KeyToPath, out *api.KeyToPath, s conversion.Scope) error {
+	return autoConvert_v1_KeyToPath_To_api_KeyToPath(in, out, s)
 }
 
 func autoConvert_v1_Lifecycle_To_api_Lifecycle(in *Lifecycle, out *api.Lifecycle, s conversion.Scope) error {
@@ -5051,6 +5234,15 @@ func autoConvert_v1_PersistentVolumeSource_To_api_PersistentVolumeSource(in *Per
 	} else {
 		out.FlexVolume = nil
 	}
+	// unable to generate simple pointer conversion for v1.AzureFileVolumeSource -> api.AzureFileVolumeSource
+	if in.AzureFile != nil {
+		out.AzureFile = new(api.AzureFileVolumeSource)
+		if err := Convert_v1_AzureFileVolumeSource_To_api_AzureFileVolumeSource(in.AzureFile, out.AzureFile, s); err != nil {
+			return err
+		}
+	} else {
+		out.AzureFile = nil
+	}
 	return nil
 }
 
@@ -5833,6 +6025,12 @@ func autoConvert_v1_SecurityContext_To_api_SecurityContext(in *SecurityContext, 
 	} else {
 		out.RunAsNonRoot = nil
 	}
+	if in.ReadOnlyRootFilesystem != nil {
+		out.ReadOnlyRootFilesystem = new(bool)
+		*out.ReadOnlyRootFilesystem = *in.ReadOnlyRootFilesystem
+	} else {
+		out.ReadOnlyRootFilesystem = nil
+	}
 	return nil
 }
 
@@ -6226,6 +6424,24 @@ func autoConvert_v1_VolumeSource_To_api_VolumeSource(in *VolumeSource, out *api.
 	} else {
 		out.FC = nil
 	}
+	// unable to generate simple pointer conversion for v1.AzureFileVolumeSource -> api.AzureFileVolumeSource
+	if in.AzureFile != nil {
+		out.AzureFile = new(api.AzureFileVolumeSource)
+		if err := Convert_v1_AzureFileVolumeSource_To_api_AzureFileVolumeSource(in.AzureFile, out.AzureFile, s); err != nil {
+			return err
+		}
+	} else {
+		out.AzureFile = nil
+	}
+	// unable to generate simple pointer conversion for v1.ConfigMapVolumeSource -> api.ConfigMapVolumeSource
+	if in.ConfigMap != nil {
+		out.ConfigMap = new(api.ConfigMapVolumeSource)
+		if err := Convert_v1_ConfigMapVolumeSource_To_api_ConfigMapVolumeSource(in.ConfigMap, out.ConfigMap, s); err != nil {
+			return err
+		}
+	} else {
+		out.ConfigMap = nil
+	}
 	return nil
 }
 
@@ -6236,6 +6452,7 @@ func Convert_v1_VolumeSource_To_api_VolumeSource(in *VolumeSource, out *api.Volu
 func init() {
 	err := api.Scheme.AddGeneratedConversionFuncs(
 		autoConvert_api_AWSElasticBlockStoreVolumeSource_To_v1_AWSElasticBlockStoreVolumeSource,
+		autoConvert_api_AzureFileVolumeSource_To_v1_AzureFileVolumeSource,
 		autoConvert_api_Binding_To_v1_Binding,
 		autoConvert_api_Capabilities_To_v1_Capabilities,
 		autoConvert_api_CephFSVolumeSource_To_v1_CephFSVolumeSource,
@@ -6245,6 +6462,7 @@ func init() {
 		autoConvert_api_ComponentStatus_To_v1_ComponentStatus,
 		autoConvert_api_ConfigMapKeySelector_To_v1_ConfigMapKeySelector,
 		autoConvert_api_ConfigMapList_To_v1_ConfigMapList,
+		autoConvert_api_ConfigMapVolumeSource_To_v1_ConfigMapVolumeSource,
 		autoConvert_api_ConfigMap_To_v1_ConfigMap,
 		autoConvert_api_ContainerImage_To_v1_ContainerImage,
 		autoConvert_api_ContainerPort_To_v1_ContainerPort,
@@ -6277,9 +6495,11 @@ func init() {
 		autoConvert_api_GitRepoVolumeSource_To_v1_GitRepoVolumeSource,
 		autoConvert_api_GlusterfsVolumeSource_To_v1_GlusterfsVolumeSource,
 		autoConvert_api_HTTPGetAction_To_v1_HTTPGetAction,
+		autoConvert_api_HTTPHeader_To_v1_HTTPHeader,
 		autoConvert_api_Handler_To_v1_Handler,
 		autoConvert_api_HostPathVolumeSource_To_v1_HostPathVolumeSource,
 		autoConvert_api_ISCSIVolumeSource_To_v1_ISCSIVolumeSource,
+		autoConvert_api_KeyToPath_To_v1_KeyToPath,
 		autoConvert_api_Lifecycle_To_v1_Lifecycle,
 		autoConvert_api_LimitRangeItem_To_v1_LimitRangeItem,
 		autoConvert_api_LimitRangeList_To_v1_LimitRangeList,
@@ -6361,6 +6581,7 @@ func init() {
 		autoConvert_api_Volume_To_v1_Volume,
 		autoConvert_unversioned_ExportOptions_To_v1_ExportOptions,
 		autoConvert_v1_AWSElasticBlockStoreVolumeSource_To_api_AWSElasticBlockStoreVolumeSource,
+		autoConvert_v1_AzureFileVolumeSource_To_api_AzureFileVolumeSource,
 		autoConvert_v1_Binding_To_api_Binding,
 		autoConvert_v1_Capabilities_To_api_Capabilities,
 		autoConvert_v1_CephFSVolumeSource_To_api_CephFSVolumeSource,
@@ -6370,6 +6591,7 @@ func init() {
 		autoConvert_v1_ComponentStatus_To_api_ComponentStatus,
 		autoConvert_v1_ConfigMapKeySelector_To_api_ConfigMapKeySelector,
 		autoConvert_v1_ConfigMapList_To_api_ConfigMapList,
+		autoConvert_v1_ConfigMapVolumeSource_To_api_ConfigMapVolumeSource,
 		autoConvert_v1_ConfigMap_To_api_ConfigMap,
 		autoConvert_v1_ContainerImage_To_api_ContainerImage,
 		autoConvert_v1_ContainerPort_To_api_ContainerPort,
@@ -6403,9 +6625,11 @@ func init() {
 		autoConvert_v1_GitRepoVolumeSource_To_api_GitRepoVolumeSource,
 		autoConvert_v1_GlusterfsVolumeSource_To_api_GlusterfsVolumeSource,
 		autoConvert_v1_HTTPGetAction_To_api_HTTPGetAction,
+		autoConvert_v1_HTTPHeader_To_api_HTTPHeader,
 		autoConvert_v1_Handler_To_api_Handler,
 		autoConvert_v1_HostPathVolumeSource_To_api_HostPathVolumeSource,
 		autoConvert_v1_ISCSIVolumeSource_To_api_ISCSIVolumeSource,
+		autoConvert_v1_KeyToPath_To_api_KeyToPath,
 		autoConvert_v1_Lifecycle_To_api_Lifecycle,
 		autoConvert_v1_LimitRangeItem_To_api_LimitRangeItem,
 		autoConvert_v1_LimitRangeList_To_api_LimitRangeList,
