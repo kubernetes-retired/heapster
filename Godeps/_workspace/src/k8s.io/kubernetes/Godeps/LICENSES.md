@@ -13,7 +13,6 @@ github.com/aws/aws-sdk-go | Apache-2
 github.com/beorn7/perks/quantile | MIT?
 github.com/blang/semver | MITname
 github.com/boltdb/bolt | MITname
-github.com/bradfitz/http2 | BSDlikeRef
 github.com/camlistore/go4 | Apache-2
 github.com/ClusterHQ/flocker-go | UNKNOWN
 github.com/codegangsta/negroni | MITname
@@ -23,7 +22,7 @@ github.com/coreos/go-oidc | Apache-2
 github.com/coreos/go-semver | Apache-2
 github.com/coreos/go-systemd | Apache-2
 github.com/coreos/pkg | Apache-2
-github.com/coreos/rkt | Apache-2
+github.com/coreos/rkt | MITname
 github.com/cpuguy83/go-md2man | MITname
 github.com/davecgh/go-spew | MIToldwithoutSellandNoDocumentationRequi
 github.com/daviddengcn/go-colortext | BSD?
@@ -73,6 +72,7 @@ github.com/onsi/ginkgo | spdxMIT
 github.com/onsi/gomega | spdxMIT
 github.com/opencontainers/runc | Apache-2
 github.com/pborman/uuid | spdxBSD3
+github.com/pmezard/go-difflib | BSD3
 github.com/prometheus/client_golang | Apache-2
 github.com/prometheus/client_model | Apache-2
 github.com/prometheus/common/expfmt | Apache-2
@@ -89,7 +89,7 @@ github.com/skynetservices/skydns | MITname
 github.com/spf13/cobra | Apache-2
 github.com/spf13/pflag | spdxBSD3
 github.com/stretchr/objx | MIT?
-github.com/stretchr/testify | MIT?
+github.com/stretchr/testify | spdxMIT
 github.com/syndtr/gocapability | spdxBSD2
 github.com/ugorji/go | MITname
 github.com/vishvananda/netlink | Apache-2

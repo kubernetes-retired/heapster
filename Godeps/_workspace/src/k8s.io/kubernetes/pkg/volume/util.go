@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_1"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/watch"
@@ -89,15 +89,15 @@ type realRecyclerClient struct {
 }
 
 func (c *realRecyclerClient) CreatePod(pod *api.Pod) (*api.Pod, error) {
-	return c.client.Legacy().Pods(pod.Namespace).Create(pod)
+	return c.client.Core().Pods(pod.Namespace).Create(pod)
 }
 
 func (c *realRecyclerClient) GetPod(name, namespace string) (*api.Pod, error) {
-	return c.client.Legacy().Pods(namespace).Get(name)
+	return c.client.Core().Pods(namespace).Get(name)
 }
 
 func (c *realRecyclerClient) DeletePod(name, namespace string) error {
-	return c.client.Legacy().Pods(namespace).Delete(name, nil)
+	return c.client.Core().Pods(namespace).Delete(name, nil)
 }
 
 // WatchPod returns a ListWatch for watching a pod.  The stopChannel is used
@@ -109,11 +109,11 @@ func (c *realRecyclerClient) WatchPod(name, namespace, resourceVersion string, s
 	podLW := &cache.ListWatch{
 		ListFunc: func(options api.ListOptions) (runtime.Object, error) {
 			options.FieldSelector = fieldSelector
-			return c.client.Legacy().Pods(namespace).List(options)
+			return c.client.Core().Pods(namespace).List(options)
 		},
 		WatchFunc: func(options api.ListOptions) (watch.Interface, error) {
 			options.FieldSelector = fieldSelector
-			return c.client.Legacy().Pods(namespace).Watch(options)
+			return c.client.Core().Pods(namespace).Watch(options)
 		},
 	}
 	queue := cache.NewFIFO(cache.MetaNamespaceKeyFunc)
@@ -147,4 +147,21 @@ func CalculateTimeoutForVolume(minimumTimeout, timeoutIncrement int, pv *api.Per
 // (2 GiB is the smallest allocatable volume that can hold 1500MiB)
 func RoundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {
 	return (volumeSizeBytes + allocationUnitBytes - 1) / allocationUnitBytes
+}
+
+// GenerateVolumeName returns a PV name with clusterName prefix.
+// The function should be used to generate a name of GCE PD or Cinder volume.
+// It basically adds "<clusterName>-dynamic-" before the PV name,
+// making sure the resulting string fits given length and cuts "dynamic"
+// if not.
+func GenerateVolumeName(clusterName, pvName string, maxLength int) string {
+	prefix := clusterName + "-dynamic"
+	pvLen := len(pvName)
+
+	// cut the "<clusterName>-dynamic" to fit full pvName into maxLength
+	// +1 for the '-' dash
+	if pvLen+1+len(prefix) > maxLength {
+		prefix = prefix[:maxLength-pvLen-1]
+	}
+	return prefix + "-" + pvName
 }

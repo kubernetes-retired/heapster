@@ -39,6 +39,7 @@ import (
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
+	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/net"
 	"k8s.io/kubernetes/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/watch"
@@ -110,10 +111,11 @@ type Request struct {
 	resp *http.Response
 
 	backoffMgr BackoffManager
+	throttle   util.RateLimiter
 }
 
 // NewRequest creates a new request helper object for accessing runtime.Objects on a server.
-func NewRequest(client HTTPClient, verb string, baseURL *url.URL, versionedAPIPath string, content ContentConfig, backoff BackoffManager) *Request {
+func NewRequest(client HTTPClient, verb string, baseURL *url.URL, versionedAPIPath string, content ContentConfig, backoff BackoffManager, throttle util.RateLimiter) *Request {
 	if backoff == nil {
 		glog.V(2).Infof("Not implementing request backoff strategy.")
 		backoff = &NoBackoff{}
@@ -130,6 +132,7 @@ func NewRequest(client HTTPClient, verb string, baseURL *url.URL, versionedAPIPa
 		pathPrefix: path.Join(pathPrefix, versionedAPIPath),
 		content:    content,
 		backoffMgr: backoff,
+		throttle:   throttle,
 	}
 	if len(content.ContentType) > 0 {
 		r.SetHeader("Accept", content.ContentType+", */*")
@@ -361,6 +364,7 @@ var fieldMappings = versionToResourceToFieldMapping{
 			ObjectNameField:              ObjectNameField,
 			EventReason:                  EventReason,
 			EventSource:                  EventSource,
+			EventType:                    EventType,
 			EventInvolvedKind:            EventInvolvedKind,
 			EventInvolvedNamespace:       EventInvolvedNamespace,
 			EventInvolvedName:            EventInvolvedName,
@@ -611,6 +615,8 @@ func (r Request) finalURLTemplate() string {
 // Watch attempts to begin watching the requested location.
 // Returns a watch.Interface, or an error.
 func (r *Request) Watch() (watch.Interface, error) {
+	// We specifically don't want to rate limit watches, so we
+	// don't use r.throttle here.
 	if r.err != nil {
 		return nil, r.err
 	}
@@ -642,6 +648,7 @@ func (r *Request) Watch() (watch.Interface, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
 		if result := r.transformResponse(resp, req); result.err != nil {
 			return nil, result.err
 		}
@@ -675,6 +682,11 @@ func (r *Request) Stream() (io.ReadCloser, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
+
+	if r.throttle != nil {
+		r.throttle.Accept()
+	}
+
 	url := r.URL().String()
 	req, err := http.NewRequest(r.verb, url, nil)
 	if err != nil {
@@ -807,6 +819,10 @@ func (r *Request) request(fn func(*http.Request, *http.Response)) error {
 //  * If the server responds with a status: *errors.StatusError or *errors.UnexpectedObjectError
 //  * http.Client.Do errors are returned directly.
 func (r *Request) Do() Result {
+	if r.throttle != nil {
+		r.throttle.Accept()
+	}
+
 	var result Result
 	err := r.request(func(req *http.Request, resp *http.Response) {
 		result = r.transformResponse(resp, req)
@@ -819,6 +835,10 @@ func (r *Request) Do() Result {
 
 // DoRaw executes the request but does not process the response body.
 func (r *Request) DoRaw() ([]byte, error) {
+	if r.throttle != nil {
+		r.throttle.Accept()
+	}
+
 	var result Result
 	err := r.request(func(req *http.Request, resp *http.Response) {
 		result.body, result.err = ioutil.ReadAll(resp.Body)
@@ -841,10 +861,13 @@ func (r *Request) transformResponse(resp *http.Response, req *http.Request) Resu
 
 	// Did the server give us a status response?
 	isStatusResponse := false
-	var status *unversioned.Status
-	result, err := runtime.Decode(r.content.Codec, body)
-	if out, ok := result.(*unversioned.Status); err == nil && ok && len(out.Status) > 0 {
-		status = out
+	// Because release-1.1 server returns Status with empty APIVersion at paths
+	// to the Extensions resources, we need to use DecodeInto here to provide
+	// default groupVersion, otherwise a status response won't be correctly
+	// decoded.
+	status := &unversioned.Status{}
+	err := runtime.DecodeInto(r.content.Codec, body, status)
+	if err == nil && len(status.Status) > 0 {
 		isStatusResponse = true
 	}
 
