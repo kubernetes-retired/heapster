@@ -38,8 +38,6 @@ const (
 	kubernetesPodNamespaceLabel = "io.kubernetes.pod.namespace"
 	kubernetesPodUID            = "io.kubernetes.pod.uid"
 	kubernetesContainerLabel    = "io.kubernetes.container.name"
-
-	CustomMetricPrefix = "CM:"
 )
 
 var (

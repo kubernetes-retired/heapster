@@ -33,24 +33,6 @@ import (
 // when manager.model has not been initialized.
 var errModelNotActivated = errors.New("the model is not activated")
 
-var supportedMetrics = map[string]struct{}{
-	"memory/usage":             {},
-	"network/tx":               {},
-	"memory/limit":             {},
-	"cpu/request":              {},
-	"network/rx_errors":        {},
-	"memory/major_page_faults": {},
-	"cpu/usage":                {},
-	"cpu/usage_rate":           {},
-	"network/tx_errors":        {},
-	"cpu/limit":                {},
-	"memory/working_set":       {},
-	"network/rx":               {},
-	"uptime":                   {},
-	"memory/request":           {},
-	"memory/page_faults":       {},
-}
-
 // Deprecated - clients should switch to full metric names ASAP.
 var deprecatedMetricNamesConversion = map[string]string{
 	"cpu-usage":      "cpu/usage_rate",
@@ -242,32 +224,41 @@ func (a *Api) RegisterModel(container *restful.Container) {
 
 // availableMetrics returns a list of available cluster metric names.
 func (a *Api) availableClusterMetrics(request *restful.Request, response *restful.Response) {
-	a.processMetricNamesRequest(response)
+	a.processMetricNamesRequest(core.ClusterKey(), response)
 }
 
 // availableMetrics returns a list of available node metric names.
 func (a *Api) availableNodeMetrics(request *restful.Request, response *restful.Response) {
-	a.processMetricNamesRequest(response)
+	a.processMetricNamesRequest(core.NodeKey(request.PathParameter("node-name")), response)
 }
 
 // availableMetrics returns a list of available namespace metric names.
 func (a *Api) availableNamespaceMetrics(request *restful.Request, response *restful.Response) {
-	a.processMetricNamesRequest(response)
+	a.processMetricNamesRequest(core.NamespaceKey(request.PathParameter("namespace-name")), response)
 }
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availablePodMetrics(request *restful.Request, response *restful.Response) {
-	a.processMetricNamesRequest(response)
+	a.processMetricNamesRequest(
+		core.PodKey(request.PathParameter("namespace-name"),
+			request.PathParameter("pod-name")), response)
 }
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availablePodContainerMetrics(request *restful.Request, response *restful.Response) {
-	a.processMetricNamesRequest(response)
+	a.processMetricNamesRequest(
+		core.PodContainerKey(request.PathParameter("namespace-name"),
+			request.PathParameter("pod-name"),
+			request.PathParameter("container-name"),
+		), response)
 }
 
 // availableMetrics returns a list of available pod metric names.
 func (a *Api) availableFreeContainerMetrics(request *restful.Request, response *restful.Response) {
-	a.processMetricNamesRequest(response)
+	a.processMetricNamesRequest(
+		core.NodeContainerKey(request.PathParameter("node-name"),
+			request.PathParameter("container-name"),
+		), response)
 }
 
 func (a *Api) nodeList(request *restful.Request, response *restful.Response) {
@@ -324,15 +315,10 @@ func (a *Api) podListMetrics(request *restful.Request, response *restful.Respons
 	ns := request.PathParameter("namespace-name")
 	keys := []string{}
 	metricName := request.PathParameter("metric-name")
-	convertedMetricName, valid := validateMetricName(metricName)
-	if !valid {
-		response.WriteError(http.StatusBadRequest, fmt.Errorf("Metric not supported: %s", metricName))
-		return
-	}
+	convertedMetricName := convertMetricName(metricName)
 	for _, podName := range strings.Split(request.PathParameter("pod-list"), ",") {
 		keys = append(keys, core.PodKey(ns, podName))
 	}
-
 	metrics := a.metricSink.GetMetric(convertedMetricName, keys, start, end)
 	result := types.MetricResultList{
 		Items: make([]types.MetricResult, 0, len(keys)),
@@ -383,35 +369,22 @@ func (a *Api) processMetricRequest(key string, request *restful.Request, respons
 		return
 	}
 	metricName := request.PathParameter("metric-name")
-	convertedMetricName, valid := validateMetricName(metricName)
-	if !valid {
-		response.WriteError(http.StatusBadRequest, fmt.Errorf("Metric not supported: %s", metricName))
-		return
-	}
+	convertedMetricName := convertMetricName(metricName)
 	metrics := a.metricSink.GetMetric(convertedMetricName, []string{key}, start, end)
 	converted := exportTimestampedMetricValue(metrics[key])
 	response.WriteEntity(converted)
 }
 
-func (a *Api) processMetricNamesRequest(response *restful.Response) {
-	metricNames := make([]string, 0, len(supportedMetrics)+len(deprecatedMetricNamesConversion))
-	for key, _ := range supportedMetrics {
-		metricNames = append(metricNames, key)
-	}
-	for key, _ := range deprecatedMetricNamesConversion {
-		metricNames = append(metricNames, key)
-	}
+func (a *Api) processMetricNamesRequest(key string, response *restful.Response) {
+	metricNames := a.metricSink.GetMetricNames(key)
 	response.WriteEntity(metricNames)
 }
 
-func validateMetricName(metricName string) (string, bool) {
-	if _, ok := supportedMetrics[metricName]; ok {
-		return metricName, true
-	}
+func convertMetricName(metricName string) string {
 	if convertedMetricName, ok := deprecatedMetricNamesConversion[metricName]; ok {
-		return convertedMetricName, true
+		return convertedMetricName
 	}
-	return "", false
+	return metricName
 }
 
 func getStartEndTime(request *restful.Request) (time.Time, time.Time, error) {
