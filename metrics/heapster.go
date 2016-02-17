@@ -101,9 +101,12 @@ func main() {
 		core.MetricMemoryLimit.Name,
 	}
 
-	dataProcessors := []core.DataProcessor{}
+	dataProcessors := []core.DataProcessor{
+		// Convert cumulaties to rate
+		processors.NewRateCalculator(core.RateMetricsMapping),
+	}
 
-	// pod enricher goes first
+	// pod enricher goes next
 	if url, err := getKubernetesAddress(argSources); err == nil {
 		podBasedEnricher, err := processors.NewPodBasedEnricher(url)
 		if err != nil {
@@ -122,7 +125,7 @@ func main() {
 
 	// then aggregators
 	dataProcessors = append(dataProcessors,
-		&processors.PodAggregator{},
+		processors.NewPodAggregator(),
 		&processors.NamespaceAggregator{
 			MetricsToAggregate: metricsToAggregate,
 		},

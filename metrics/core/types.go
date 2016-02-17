@@ -86,7 +86,6 @@ type MetricValue struct {
 	FloatValue float32
 	MetricType MetricType
 	ValueType  ValueType
-	Start      time.Time
 }
 
 func (this *MetricValue) GetValue() interface{} {
@@ -119,6 +118,8 @@ func (this *LabeledMetric) GetValue() interface{} {
 }
 
 type MetricSet struct {
+	CreateTime     time.Time
+	ScrapeTime     time.Time
 	MetricValues   map[string]MetricValue
 	Labels         map[string]string
 	LabeledMetrics []LabeledMetric

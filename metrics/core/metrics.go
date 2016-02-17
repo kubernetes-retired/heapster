@@ -90,8 +90,7 @@ var MetricUptime = Metric{
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds(),
-			Start:      spec.CreationTime}
+			IntValue:   time.Since(spec.CreationTime).Nanoseconds() / time.Millisecond.Nanoseconds()}
 	},
 }
 
@@ -110,8 +109,7 @@ var MetricCpuUsage = Metric{
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Cpu.Usage.Total),
-			Start:      spec.CreationTime}
+			IntValue:   int64(stat.Cpu.Usage.Total)}
 	},
 }
 
@@ -168,8 +166,7 @@ var MetricMemoryPageFaults = Metric{
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Memory.ContainerData.Pgfault),
-			Start:      spec.CreationTime}
+			IntValue:   int64(stat.Memory.ContainerData.Pgfault)}
 	},
 }
 
@@ -188,8 +185,7 @@ var MetricMemoryMajorPageFaults = Metric{
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Memory.ContainerData.Pgmajfault),
-			Start:      spec.CreationTime}
+			IntValue:   int64(stat.Memory.ContainerData.Pgmajfault)}
 	},
 }
 
@@ -208,8 +204,7 @@ var MetricNetworkRx = Metric{
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Network.RxBytes),
-			Start:      spec.CreationTime}
+			IntValue:   int64(stat.Network.RxBytes)}
 	},
 }
 
@@ -228,8 +223,7 @@ var MetricNetworkRxErrors = Metric{
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Network.RxErrors),
-			Start:      spec.CreationTime}
+			IntValue:   int64(stat.Network.RxErrors)}
 	},
 }
 
@@ -248,8 +242,7 @@ var MetricNetworkTx = Metric{
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Network.TxBytes),
-			Start:      spec.CreationTime}
+			IntValue:   int64(stat.Network.TxBytes)}
 	},
 }
 
@@ -268,8 +261,7 @@ var MetricNetworkTxErrors = Metric{
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Network.TxErrors),
-			Start:      spec.CreationTime}
+			IntValue:   int64(stat.Network.TxErrors)}
 	},
 }
 
