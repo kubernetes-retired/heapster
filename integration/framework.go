@@ -100,6 +100,7 @@ var (
 
 func exists(path string) bool {
 	if _, err := os.Stat(path); err != nil {
+		glog.V(2).Infof("%q does not exist", path)
 		return false
 	}
 	return true
@@ -233,6 +234,13 @@ func requireNewCluster(baseDir, version string) bool {
 	return !strings.Contains(versionInfo.GitVersion, version)
 }
 
+func requireDownload(baseDir string) bool {
+	// Check that cluster scripts are present.
+	return !exists(filepath.Join(baseDir, "cluster", "kube-up.sh")) ||
+		!exists(filepath.Join(baseDir, "cluster", "kube-down.sh")) ||
+		!exists(filepath.Join(baseDir, "cluster", "validate-cluster.sh"))
+}
+
 func downloadAndSetupCluster(version string) (baseDir string, err error) {
 	// Create a temp dir to store the kube release files.
 	tempDir := filepath.Join(*workDir, version)
@@ -245,7 +253,10 @@ func downloadAndSetupCluster(version string) (baseDir string, err error) {
 
 	kubeBaseDir := filepath.Join(tempDir, "kubernetes")
 
-	if !exists(kubeBaseDir) {
+	if requireDownload(kubeBaseDir) {
+		if exists(kubeBaseDir) {
+			os.RemoveAll(kubeBaseDir)
+		}
 		if err := downloadRelease(tempDir, version); err != nil {
 			return "", err
 		}
