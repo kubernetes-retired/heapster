@@ -28,7 +28,7 @@ func TestRateCalculator(t *testing.T) {
 	now := time.Now()
 
 	prev := &core.DataBatch{
-		Timestamp: now,
+		Timestamp: now.Add(-time.Minute),
 		MetricSets: map[string]*core.MetricSet{
 			key: {
 				CreateTime: now.Add(-time.Hour),
