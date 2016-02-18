@@ -16,6 +16,8 @@ package processors
 
 import (
 	"k8s.io/heapster/metrics/core"
+
+	"github.com/golang/glog"
 )
 
 type RateCalculator struct {
@@ -32,11 +34,22 @@ func (this *RateCalculator) Process(batch *core.DataBatch) (*core.DataBatch, err
 		this.previousBatch = batch
 		return batch, nil
 	}
+	if !batch.Timestamp.After(this.previousBatch.Timestamp) {
+		// something got out of sync, do nothing.
+		glog.Errorf("New data batch has timestamp before the previous one: new:%v old:%v", batch.Timestamp, this.previousBatch.Timestamp)
+		return batch, nil
+	}
 
 	for key, newMs := range batch.MetricSets {
 
 		if oldMs, found := this.previousBatch.MetricSets[key]; found {
-			if newMs.ScrapeTime.UnixNano()-oldMs.ScrapeTime.UnixNano() <= 0 {
+			if !newMs.ScrapeTime.After(oldMs.ScrapeTime) {
+				// New must be strictly after old.
+				continue
+			}
+			if newMs.CreateTime != oldMs.CreateTime {
+				glog.V(4).Infof("Skipping rates for %s - different crate time new:%v  old:%v", key, newMs.CreateTime, oldMs.CreateTime)
+				// Create time for container must be the same.
 				continue
 			}
 
