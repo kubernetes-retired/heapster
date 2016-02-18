@@ -133,7 +133,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 		}
 	}
 	end := time.Now()
-	glog.V(4).Info("Exported %d data to influxDB in %s", len(dataPoints), end.Sub(start))
+	glog.V(4).Info("Exported %d events to influxDB in %s", len(dataPoints), end.Sub(start))
 }
 
 func (sink *influxdbSink) Name() string {
