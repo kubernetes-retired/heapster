@@ -57,11 +57,6 @@ func init() {
 	prometheus.MustRegister(kubeletRequestLatency)
 }
 
-type cpuVal struct {
-	Val       int64
-	Timestamp time.Time
-}
-
 // Kubelet-provided metrics for pod and system container.
 type kubeletMetricsSource struct {
 	host          Host
@@ -69,7 +64,6 @@ type kubeletMetricsSource struct {
 	nodename      string
 	hostname      string
 	hostId        string
-	cpuLastVal    map[string]cpuVal
 }
 
 func (this *kubeletMetricsSource) Name() string {
@@ -117,6 +111,8 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 
 	var metricSetKey string
 	cMetrics := &MetricSet{
+		CreateTime:   c.Spec.CreationTime,
+		ScrapeTime:   c.Stats[0].Timestamp,
 		MetricValues: map[string]MetricValue{},
 		Labels: map[string]string{
 			LabelNodename.Key: this.nodename,
@@ -214,24 +210,6 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		}
 	}
 
-	// This is temporary workaround to support cpu/usege_rate metric.
-	if currentVal, ok := cMetrics.MetricValues["cpu/usage"]; ok {
-		if lastVal, ok := this.cpuLastVal[metricSetKey]; ok {
-			// cpu/usage values are in nanoseconds; we want to have it in millicores (that's why constant 1000 is here).
-			rateVal := 1000 * (currentVal.IntValue - lastVal.Val) / (c.Stats[0].Timestamp.UnixNano() - lastVal.Timestamp.UnixNano())
-			cMetrics.MetricValues["cpu/usage_rate"] = MetricValue{
-				ValueType:  ValueInt64,
-				MetricType: MetricGauge,
-				IntValue:   rateVal,
-			}
-		}
-		this.cpuLastVal[metricSetKey] = cpuVal{
-			Val:       currentVal.IntValue,
-			Timestamp: c.Stats[0].Timestamp,
-		}
-	}
-	// TODO: add labels: LabelPodNamespaceUID, LabelLabels, LabelResourceID
-
 	return metricSetKey, cMetrics
 }
 
@@ -255,12 +233,6 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 		result.MetricSets[name] = metrics
 		keys[name] = true
 	}
-	// No remember data for pods that have been removed.
-	for key := range this.cpuLastVal {
-		if _, ok := keys[key]; !ok {
-			delete(this.cpuLastVal, key)
-		}
-	}
 	return result
 }
 
@@ -274,7 +246,6 @@ type kubeletProvider struct {
 	nodeLister    *cache.StoreToNodeLister
 	reflector     *cache.Reflector
 	kubeletClient *KubeletClient
-	cpuLastVals   map[string]map[string]cpuVal
 }
 
 func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
@@ -293,25 +264,14 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 			glog.Errorf("%v", err)
 			continue
 		}
-		if _, ok := this.cpuLastVals[node.Name]; !ok {
-			this.cpuLastVals[node.Name] = make(map[string]cpuVal)
-		}
 		sources = append(sources, &kubeletMetricsSource{
 			host:          Host{IP: ip, Port: this.kubeletClient.GetPort()},
 			kubeletClient: this.kubeletClient,
 			nodename:      node.Name,
 			hostname:      hostname,
 			hostId:        node.Spec.ExternalID,
-			cpuLastVal:    this.cpuLastVals[node.Name],
 		})
 	}
-
-	for key := range this.cpuLastVals {
-		if _, ok := nodeNames[key]; !ok {
-			delete(this.cpuLastVals, key)
-		}
-	}
-
 	return sources
 }
 
@@ -360,6 +320,5 @@ func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 		nodeLister:    nodeLister,
 		reflector:     reflector,
 		kubeletClient: kubeletClient,
-		cpuLastVals:   make(map[string]map[string]cpuVal),
 	}, nil
 }

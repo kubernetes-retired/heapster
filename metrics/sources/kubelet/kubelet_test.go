@@ -31,9 +31,8 @@ import (
 
 func TestDecodeMetrics1(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		nodename:   "test",
-		hostname:   "test-hostname",
-		cpuLastVal: make(map[string]cpuVal),
+		nodename: "test",
+		hostname: "test-hostname",
 	}
 	c1 := cadvisor_api.ContainerInfo{
 		ContainerReference: cadvisor_api.ContainerReference{
@@ -65,13 +64,8 @@ func TestDecodeMetrics1(t *testing.T) {
 
 func TestDecodeMetrics2(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		nodename:   "test",
-		hostname:   "test-hostname",
-		cpuLastVal: make(map[string]cpuVal),
-	}
-	kMS.cpuLastVal["node:test"] = cpuVal{
-		Val:       100,
-		Timestamp: time.Now(),
+		nodename: "test",
+		hostname: "test-hostname",
 	}
 	c1 := cadvisor_api.ContainerInfo{
 		ContainerReference: cadvisor_api.ContainerReference{
@@ -103,9 +97,8 @@ func TestDecodeMetrics2(t *testing.T) {
 
 func TestDecodeMetrics3(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		nodename:   "test",
-		hostname:   "test-hostname",
-		cpuLastVal: make(map[string]cpuVal),
+		nodename: "test",
+		hostname: "test-hostname",
 	}
 	c1 := cadvisor_api.ContainerInfo{
 		ContainerReference: cadvisor_api.ContainerReference{
@@ -136,9 +129,8 @@ func TestDecodeMetrics3(t *testing.T) {
 
 func TestDecodeMetrics4(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		nodename:   "test",
-		hostname:   "test-hostname",
-		cpuLastVal: make(map[string]cpuVal),
+		nodename: "test",
+		hostname: "test-hostname",
 	}
 	c1 := cadvisor_api.ContainerInfo{
 		ContainerReference: cadvisor_api.ContainerReference{
@@ -175,9 +167,8 @@ func TestDecodeMetrics4(t *testing.T) {
 
 func TestDecodeMetrics5(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		nodename:   "test",
-		hostname:   "test-hostname",
-		cpuLastVal: make(map[string]cpuVal),
+		nodename: "test",
+		hostname: "test-hostname",
 	}
 	c1 := cadvisor_api.ContainerInfo{
 		ContainerReference: cadvisor_api.ContainerReference{
@@ -218,9 +209,8 @@ func TestDecodeMetrics5(t *testing.T) {
 
 func TestDecodeMetrics6(t *testing.T) {
 	kMS := kubeletMetricsSource{
-		nodename:   "test",
-		hostname:   "test-hostname",
-		cpuLastVal: make(map[string]cpuVal),
+		nodename: "test",
+		hostname: "test-hostname",
 	}
 	c1 := cadvisor_api.ContainerInfo{
 		ContainerReference: cadvisor_api.ContainerReference{
@@ -458,7 +448,6 @@ func TestScrapeMetrics(t *testing.T) {
 
 	mtrcSrc := kubeletMetricsSource{
 		kubeletClient: &client,
-		cpuLastVal:    make(map[string]cpuVal),
 	}
 
 	split := strings.SplitN(strings.Replace(server.URL, "http://", "", 1), ":", 2)

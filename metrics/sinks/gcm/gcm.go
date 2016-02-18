@@ -73,7 +73,7 @@ func fullMetricName(name string) string {
 	return fmt.Sprintf("%s/%s/%s", customApiPrefix, metricDomain, name)
 }
 
-func (sink *gcmSink) getTimeseriesPoint(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue) *gcm.TimeseriesPoint {
+func (sink *gcmSink) getTimeseriesPoint(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, createTime time.Time) *gcm.TimeseriesPoint {
 	point := &gcm.Point{
 		Start: timestamp.Format(time.RFC3339),
 		End:   timestamp.Format(time.RFC3339),
@@ -90,7 +90,7 @@ func (sink *gcmSink) getTimeseriesPoint(timestamp time.Time, labels map[string]s
 	}
 	// For cumulative metric use the provided start time.
 	if val.MetricType == core.MetricCumulative {
-		point.Start = val.Start.Format(time.RFC3339)
+		point.Start = createTime.Format(time.RFC3339)
 	}
 
 	finalLabels := make(map[string]string)
@@ -143,7 +143,7 @@ func (sink *gcmSink) ExportData(dataBatch *core.DataBatch) {
 	req := getReq()
 	for _, metricSet := range dataBatch.MetricSets {
 		for metric, val := range metricSet.MetricValues {
-			point := sink.getTimeseriesPoint(dataBatch.Timestamp, metricSet.Labels, metric, val)
+			point := sink.getTimeseriesPoint(dataBatch.Timestamp, metricSet.Labels, metric, val, metricSet.CreateTime)
 			if point != nil {
 				req.Timeseries = append(req.Timeseries, point)
 			}

@@ -33,6 +33,7 @@ var LabelsToPopulate = []core.LabelDescriptor{
 }
 
 type PodAggregator struct {
+	skippedMetrics map[string]struct{}
 }
 
 func (this *PodAggregator) Name() string {
@@ -60,6 +61,10 @@ func (this *PodAggregator) Process(batch *core.DataBatch) (*core.DataBatch, erro
 				}
 
 				for metricName, metricValue := range metricSet.MetricValues {
+					if _, found := this.skippedMetrics[metricName]; found {
+						continue
+					}
+
 					aggregatedValue, found := pod.MetricValues[metricName]
 					if found {
 						if aggregatedValue.ValueType != metricValue.ValueType {
@@ -104,5 +109,17 @@ func (this *PodAggregator) podMetricSet(labels map[string]string) *core.MetricSe
 	return &core.MetricSet{
 		MetricValues: make(map[string]core.MetricValue),
 		Labels:       newLabels,
+	}
+}
+
+func NewPodAggregator() *PodAggregator {
+	skipped := make(map[string]struct{})
+	for _, metric := range core.StandardMetrics {
+		if metric.MetricDescriptor.Type == core.MetricCumulative {
+			skipped[metric.MetricDescriptor.Name] = struct{}{}
+		}
+	}
+	return &PodAggregator{
+		skippedMetrics: skipped,
 	}
 }

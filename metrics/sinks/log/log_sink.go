@@ -39,6 +39,7 @@ func batchToString(batch *core.DataBatch) string {
 	for key, ms := range batch.MetricSets {
 		buffer.WriteString(fmt.Sprintf("MetricSet: %s\n", key))
 		padding := "   "
+		buffer.WriteString(fmt.Sprintf("%sScrape time: %v %v\n", padding, ms.ScrapeTime, ms.ScrapeTime.UnixNano()))
 		buffer.WriteString(fmt.Sprintf("%sLabels:\n", padding))
 		for labelName, labelValue := range ms.Labels {
 			buffer.WriteString(fmt.Sprintf("%s%s%s = %s\n", padding, padding, labelName, labelValue))
