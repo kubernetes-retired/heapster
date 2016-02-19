@@ -23,9 +23,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 
 	cadvisor "github.com/google/cadvisor/info/v1"
+	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
 	kube_client "k8s.io/kubernetes/pkg/kubelet/client"
 )
 
@@ -38,6 +40,19 @@ type Host struct {
 type KubeletClient struct {
 	config *kube_client.KubeletClientConfig
 	client *http.Client
+}
+
+type ErrNotFound struct {
+	endpoint string
+}
+
+func (err *ErrNotFound) Error() string {
+	return fmt.Sprintf("%q not found", err.endpoint)
+}
+
+func IsNotFoundError(err error) bool {
+	_, isNotFound := err.(*ErrNotFound)
+	return isNotFound
 }
 
 func sampleContainerStats(stats []*cadvisor.ContainerStats) []*cadvisor.ContainerStats {
@@ -57,7 +72,9 @@ func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http
 	if err != nil {
 		return fmt.Errorf("failed to read response body - %v", err)
 	}
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode == http.StatusNotFound {
+		return &ErrNotFound{req.URL.String()}
+	} else if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("request failed - %q, response: %q", response.Status, string(body))
 	}
 	err = json.Unmarshal(body, value)
@@ -109,6 +126,29 @@ func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) 
 	url := fmt.Sprintf("%s://%s:%d/stats/container/", scheme, host.IP, host.Port)
 
 	return self.getAllContainers(url, start, end)
+}
+
+func (self *KubeletClient) GetSummary(host Host) (*stats.Summary, error) {
+	url := url.URL{
+		Scheme: "http",
+		Host:   fmt.Sprintf("%s:%d", host.IP, host.Port),
+		Path:   "/stats/summary/",
+	}
+	if self.config != nil && self.config.EnableHttps {
+		url.Scheme = "https"
+	}
+
+	req, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	summary := &stats.Summary{}
+	client := self.client
+	if client == nil {
+		client = http.DefaultClient
+	}
+	err = self.postRequestAndGetValue(client, req, summary)
+	return summary, err
 }
 
 func (self *KubeletClient) GetPort() int {

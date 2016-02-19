@@ -196,9 +196,11 @@ func main() {
 	}
 }
 
+// Gets the address of the kubernetes source from the list of source URIs.
+// Possible kubernetes sources are: 'kubernetes' and 'kubernetes.summary_api'
 func getKubernetesAddress(args flags.Uris) (*url.URL, error) {
 	for _, uri := range args {
-		if uri.Key == "kubernetes" {
+		if strings.SplitN(uri.Key, ".", 2)[0] == "kubernetes" {
 			return &uri.Val, nil
 		}
 	}

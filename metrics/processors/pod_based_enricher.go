@@ -96,6 +96,9 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 	for _, container := range pod.Spec.Containers {
 		if key == core.PodContainerKey(pod.Namespace, pod.Name, container.Name) {
 			updateContainerResourcesAndLimits(containerMs, container)
+			if _, ok := containerMs.Labels[core.LabelContainerBaseImage.Key]; !ok {
+				containerMs.Labels[core.LabelContainerBaseImage.Key] = container.Image
+			}
 			break
 		}
 	}

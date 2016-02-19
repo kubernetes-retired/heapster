@@ -115,7 +115,8 @@ func (this *PodAggregator) podMetricSet(labels map[string]string) *core.MetricSe
 func NewPodAggregator() *PodAggregator {
 	skipped := make(map[string]struct{})
 	for _, metric := range core.StandardMetrics {
-		if metric.MetricDescriptor.Type == core.MetricCumulative {
+		if metric.MetricDescriptor.Type == core.MetricCumulative ||
+			metric.MetricDescriptor.Type == core.MetricDelta {
 			skipped[metric.MetricDescriptor.Name] = struct{}{}
 		}
 	}

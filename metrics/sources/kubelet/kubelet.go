@@ -66,6 +66,16 @@ type kubeletMetricsSource struct {
 	hostId        string
 }
 
+func NewKubeletMetricsSource(host Host, client *KubeletClient, nodeName string, hostName string, hostId string) MetricsSource {
+	return &kubeletMetricsSource{
+		host:          host,
+		kubeletClient: client,
+		nodename:      nodeName,
+		hostname:      hostName,
+		hostId:        hostId,
+	}
+}
+
 func (this *kubeletMetricsSource) Name() string {
 	return this.String()
 }
@@ -264,13 +274,13 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 			glog.Errorf("%v", err)
 			continue
 		}
-		sources = append(sources, &kubeletMetricsSource{
-			host:          Host{IP: ip, Port: this.kubeletClient.GetPort()},
-			kubeletClient: this.kubeletClient,
-			nodename:      node.Name,
-			hostname:      hostname,
-			hostId:        node.Spec.ExternalID,
-		})
+		sources = append(sources, NewKubeletMetricsSource(
+			Host{IP: ip, Port: this.kubeletClient.GetPort()},
+			this.kubeletClient,
+			node.Name,
+			hostname,
+			node.Spec.ExternalID,
+		))
 	}
 	return sources
 }
@@ -301,7 +311,7 @@ func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
 
 func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	// create clients
-	kubeConfig, kubeletConfig, err := getKubeConfigs(uri)
+	kubeConfig, kubeletConfig, err := GetKubeConfigs(uri)
 	if err != nil {
 		return nil, err
 	}
