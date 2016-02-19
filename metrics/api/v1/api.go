@@ -104,6 +104,8 @@ func convertMetricDescriptor(md core.MetricDescriptor) types.MetricDescriptor {
 		result.Type = "cumulative"
 	case core.MetricGauge:
 		result.Type = "gauge"
+	case core.MetricDelta:
+		result.Type = "delta"
 	}
 
 	switch md.ValueType {
