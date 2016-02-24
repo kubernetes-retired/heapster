@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -46,6 +47,11 @@ var (
 	eventPodID   = sink_api.LabelPodId.Key
 	eventPodName = sink_api.LabelPodName.Key
 	eventHost    = sink_api.LabelHostname.Key
+)
+
+var (
+	// Matches any disallowed character in OpenTSDB names.
+	disallowedCharsRegexp = regexp.MustCompile("[^[:alnum:]\\-_\\./]")
 )
 
 // openTSDBClient defines the minimal methods which will be used to
@@ -130,10 +136,24 @@ func (tsdbSink *openTSDBSink) Name() string {
 	return opentsdbSinkName
 }
 
+// Converts the given OpenTSDB metric or tag name/value to a form that is
+// accepted by OpenTSDB. As the OpenTSDB documentation states:
+// 'Metric names, tag names and tag values have to be made of alpha numeric
+// characters, dash "-", underscore "_", period ".", and forward slash "/".'
+func toValidOpenTsdbName(name string) (validName string) {
+	// This takes care of some cases where dash "-" characters were
+	// encoded as '\\x2d' in received Timeseries Points
+	validName = fmt.Sprintf("%s", name)
+
+	// replace all illegal characters with '_'
+	return disallowedCharsRegexp.ReplaceAllLiteralString(validName, "_")
+}
+
 // timeSeriesToPoint transfers the contents holding in the given pointer of sink_api.Timeseries
 // into the instance of opentsdbclient.DataPoint
 func (tsdbSink *openTSDBSink) timeSeriesToPoint(timeseries *sink_api.Timeseries) opentsdbclient.DataPoint {
-	seriesName := strings.Replace(timeseries.Point.Name, "/", "_", -1)
+	seriesName := strings.Replace(
+		toValidOpenTsdbName(timeseries.Point.Name), "/", "_", -1)
 	if timeseries.MetricDescriptor.Units.String() != "" {
 		seriesName = fmt.Sprintf("%s_%s", seriesName, timeseries.MetricDescriptor.Units.String())
 	}
@@ -147,6 +167,8 @@ func (tsdbSink *openTSDBSink) timeSeriesToPoint(timeseries *sink_api.Timeseries)
 		Timestamp: timeseries.Point.End.Unix(),
 	}
 	for key, value := range timeseries.Point.Labels {
+		key = toValidOpenTsdbName(key)
+		value = toValidOpenTsdbName(value)
 		if value != "" {
 			datapoint.Tags[key] = value
 		}
