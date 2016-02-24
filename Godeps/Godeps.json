@@ -28,6 +28,14 @@
 			"Rev": "31b736133b98f26d5e078ec9eb591666edfd091f"
 		},
 		{
+			"ImportPath": "github.com/bluebreezecf/opentsdb-goclient/client",
+			"Rev": "2ddb54cc73419e58d20e917a60bb902349fae4cf"
+		},
+		{
+			"ImportPath": "github.com/bluebreezecf/opentsdb-goclient/config",
+			"Rev": "2ddb54cc73419e58d20e917a60bb902349fae4cf"
+		},
+		{
 			"ImportPath": "github.com/boltdb/bolt",
 			"Comment": "v1.0-113-g980670a",
 			"Rev": "980670afcebfd86727505b3061d8667195234816"

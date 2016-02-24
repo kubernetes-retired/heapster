@@ -82,6 +82,17 @@ The following options are available:
 
 A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. To increase the performance of Hawkular sink in case of multiple instances of Hawkular-Metrics (such as scaled scenario in OpenShift) modify the parameters of batchSize and concurrencyLimit to balance the load on Hawkular-Metrics instances.
 
+### OpenTSDB
+This sink supports monitoring metrics and events.
+To use the opentsdb sink add the following flag:
+
+    --sink=opentsdb:<OPENTSDB_SERVER_URL>
+
+Currently, accessing opentsdb via its rest apis doesn't need any authentication, so you
+can enable opentsdb sink like this:
+
+    --sink=opentsdb:http://192.168.1.8:4242
+
 ## Modifying the sinks at runtime
 
 Using the `/api/v1/sinks` endpoint, it is possible to fetch the sinks
