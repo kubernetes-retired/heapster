@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -37,6 +38,11 @@ const (
 	sinkRegisterName    = "opentsdb"
 	defaultOpentsdbHost = "127.0.0.1:4242"
 	batchSize           = 1000
+)
+
+var (
+	// Matches any disallowed character in OpenTSDB names.
+	disallowedCharsRegexp = regexp.MustCompile("[^[:alnum:]\\-_\\./]")
 )
 
 // openTSDBClient defines the minimal methods which will be used to
@@ -100,10 +106,23 @@ func (tsdbSink *openTSDBSink) Stop() {
 	// Do nothing
 }
 
+// Converts the given OpenTSDB metric or tag name/value to a form that is
+// accepted by OpenTSDB. As the OpenTSDB documentation states:
+// 'Metric names, tag names and tag values have to be made of alpha numeric
+// characters, dash "-", underscore "_", period ".", and forward slash "/".'
+func toValidOpenTsdbName(name string) (validName string) {
+	// This takes care of some cases where dash "-" characters were
+	// encoded as '\\x2d' in received Timeseries Points
+	validName = fmt.Sprintf("%s", name)
+
+	// replace all illegal characters with '_'
+	return disallowedCharsRegexp.ReplaceAllLiteralString(validName, "_")
+}
+
 // timeSeriesToPoint transfers the contents holding in the given pointer of sink_api.Timeseries
 // into the instance of opentsdbclient.DataPoint
 func (tsdbSink *openTSDBSink) metricToPoint(name string, value core.MetricValue, timestamp time.Time, labels map[string]string) opentsdbclient.DataPoint {
-	seriesName := strings.Replace(name, "/", "_", -1)
+	seriesName := strings.Replace(toValidOpenTsdbName(name), "/", "_", -1)
 
 	if value.MetricType.String() != "" {
 		seriesName = fmt.Sprintf("%s_%s", seriesName, value.MetricType.String())
@@ -121,6 +140,9 @@ func (tsdbSink *openTSDBSink) metricToPoint(name string, value core.MetricValue,
 	}
 
 	for key, value := range labels {
+		key = toValidOpenTsdbName(key)
+		value = toValidOpenTsdbName(value)
+
 		if value != "" {
 			datapoint.Tags[key] = value
 		}
