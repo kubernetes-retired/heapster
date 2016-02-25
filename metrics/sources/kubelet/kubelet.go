@@ -29,6 +29,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/cache"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
+	"k8s.io/kubernetes/pkg/labels"
 )
 
 const (
@@ -265,6 +266,10 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 		glog.Errorf("error while listing nodes: %v", err)
 		return sources
 	}
+	if len(nodes.Items) == 0 {
+		glog.Error("No nodes received from APIserver.")
+		return sources
+	}
 
 	nodeNames := make(map[string]bool)
 	for _, node := range nodes.Items {
@@ -320,6 +325,14 @@ func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Get nodes to test if the client is configured well. Watch gives less error information.
+	if _, err := kubeClient.Nodes().List(kube_api.ListOptions{
+		LabelSelector: labels.Everything(),
+		FieldSelector: fields.Everything()}); err != nil {
+		glog.Errorf("Failed to load nodes: %v", err)
+	}
+
 	// watch nodes
 	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
 	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
