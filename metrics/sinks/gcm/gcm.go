@@ -21,11 +21,12 @@ import (
 	"sync"
 	"time"
 
-	gce_token "k8s.io/heapster/common/gce"
+	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
 
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	gcm "google.golang.org/api/cloudmonitoring/v2beta2"
 	gce "google.golang.org/cloud/compute/metadata"
 )
@@ -252,20 +253,18 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("invalid metrics parameter: %s", metrics)
 	}
 
+	if err := gce_util.EnsureOnGCE(); err != nil {
+		return nil, err
+	}
+
 	// Detect project ID
 	projectId, err := gce.ProjectID()
 	if err != nil {
 		return nil, err
 	}
 
-	// Obtain GCE token.
-	token, err := gce_token.GetGCEToken()
-	if err != nil {
-		return nil, err
-	}
-
 	// Create Google Cloud Monitoring service.
-	client := oauth2.NewClient(oauth2.NoContext, token)
+	client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
 	gcmService, err := gcm.New(client)
 	if err != nil {
 		return nil, err
