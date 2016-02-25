@@ -19,23 +19,20 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+	"google.golang.org/cloud/compute/metadata"
 )
 
 const (
-	waitForTokenInterval = 3 * time.Second
-	waitForTokenTimeout  = 3 * time.Minute
+	waitForGCEInterval = 2 * time.Second
+	waitForGCETimeout  = time.Minute
 )
 
-func GetGCEToken() (oauth2.TokenSource, error) {
-	token := google.ComputeTokenSource("")
-	for start := time.Now(); time.Since(start) < waitForTokenTimeout; time.Sleep(waitForTokenInterval) {
-		if _, err := token.Token(); err != nil {
-			glog.Errorf("Waiting for GCE token error: %v", err)
-		} else {
-			return token, nil
+func EnsureOnGCE() error {
+	for start := time.Now(); time.Since(start) < waitForGCETimeout; time.Sleep(waitForGCEInterval) {
+		glog.Infof("Waiting for GCE metadata to be available")
+		if metadata.OnGCE() {
+			return nil
 		}
 	}
-	return nil, fmt.Errorf("timeout while waiting for GCE token")
+	return fmt.Errorf("not running on GCE")
 }
