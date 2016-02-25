@@ -122,8 +122,7 @@ func toValidOpenTsdbName(name string) (validName string) {
 // timeSeriesToPoint transfers the contents holding in the given pointer of sink_api.Timeseries
 // into the instance of opentsdbclient.DataPoint
 func (tsdbSink *openTSDBSink) metricToPoint(name string, value core.MetricValue, timestamp time.Time, labels map[string]string) opentsdbclient.DataPoint {
-	seriesName := strings.Replace(
-		toValidOpenTsdbName(timeseries.Point.Name), "/", "_", -1)
+	seriesName := strings.Replace(toValidOpenTsdbName(name), "/", "_", -1)
 
 	if value.MetricType.String() != "" {
 		seriesName = fmt.Sprintf("%s_%s", seriesName, value.MetricType.String())

@@ -27,6 +27,7 @@ import (
 	"k8s.io/heapster/metrics/sinks/kafka"
 	"k8s.io/heapster/metrics/sinks/log"
 	"k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/heapster/metrics/sinks/opentsdb"
 	"k8s.io/heapster/metrics/sinks/riemann"
 )
 
@@ -51,6 +52,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 			core.MetricMemoryUsage.MetricDescriptor.Name}), nil
 	case "riemann":
 		return riemann.CreateRiemannSink(&uri.Val)
+	case "opentsdb":
+		return opentsdb.CreateOpenTSDBSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
