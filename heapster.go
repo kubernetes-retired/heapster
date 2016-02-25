@@ -31,7 +31,9 @@ import (
 	"k8s.io/heapster/sinks"
 	"k8s.io/heapster/sinks/cache"
 	source_api "k8s.io/heapster/sources/api"
+	timeSync "k8s.io/heapster/timesync"
 	"k8s.io/heapster/version"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 var (
@@ -63,6 +65,18 @@ func main() {
 	if err := validateFlags(); err != nil {
 		glog.Fatal(err)
 	}
+
+	for _, src := range argSources {
+		//just check timestamp of kuberenete nodes
+		if src.Key == "kubernetes" {
+			timeSyncChecker, err := timeSync.NewTimeSyncChecker(&src.Val, *argCacheDuration)
+			if err != nil {
+				glog.Fatal(err)
+			}
+			go util.Until(timeSyncChecker.CheckTimeSync, timeSync.CheckDuration, util.NeverStop)
+		}
+	}
+
 	sources, sink, manager, err := doWork()
 	if err != nil {
 		glog.Fatal(err)
