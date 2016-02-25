@@ -101,6 +101,7 @@ var targetLabelNames = map[string]struct{}{
 	sinksApi.LabelLabels.Key:             {},
 	sinksApi.LabelHostname.Key:           {},
 	sinksApi.LabelHostID.Key:             {},
+	sinksApi.LabelNodeName.Key:           {},
 	sinksApi.LabelPodNamespaceUID.Key:    {},
 	sinksApi.LabelContainerBaseImage.Key: {},
 }

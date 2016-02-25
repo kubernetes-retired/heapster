@@ -79,6 +79,7 @@ func TestMetricTransform(t *testing.T) {
 
 	l := make(map[string]string)
 	l["spooky"] = "notvisible"
+	l[sink_api.LabelNodeName.Key] = "myNode"
 	l[sink_api.LabelHostname.Key] = "localhost"
 	l[sink_api.LabelHostID.Key] = "localhost"
 	l[sink_api.LabelContainerName.Key] = "docker"
@@ -111,7 +112,7 @@ func TestMetricTransform(t *testing.T) {
 	m, err = hSink.pointToMetricHeader(&ts)
 	assert.NoError(t, err)
 
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", p.Labels[sink_api.LabelContainerName.Key], p.Labels[sink_api.LabelHostID.Key], p.Name), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", p.Labels[sink_api.LabelContainerName.Key], p.Labels[sink_api.LabelNodeName.Key], p.Name), m.Id)
 
 }
 

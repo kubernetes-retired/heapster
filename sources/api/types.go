@@ -34,6 +34,7 @@ type PodMetadata struct {
 	HostPublicIP   string
 	HostInternalIP string
 	ExternalID     string
+	NodeName       string
 }
 
 // PodState is the state of a pod, used as either input (desired state) or output (current state)
@@ -72,6 +73,7 @@ type ContainerStats struct {
 type Container struct {
 	Hostname   string
 	ExternalID string
+	NodeName   string
 	Name       string
 	Image      string
 	Spec       ContainerSpec
