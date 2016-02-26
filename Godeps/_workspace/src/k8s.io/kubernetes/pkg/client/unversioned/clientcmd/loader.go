@@ -26,21 +26,25 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/golang/glog"
 	"github.com/imdario/mergo"
 
 	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 	clientcmdlatest "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api/latest"
-	"k8s.io/kubernetes/pkg/util/errors"
+	utilerrors "k8s.io/kubernetes/pkg/util/errors"
 )
 
 const (
 	RecommendedConfigPathFlag   = "kubeconfig"
 	RecommendedConfigPathEnvVar = "KUBECONFIG"
-	RecommendedHomeFileName     = "/.kube/config"
+	RecommendedHomeDir          = ".kube"
+	RecommendedFileName         = "config"
+	RecommendedSchemaName       = "schema"
 )
 
 var OldRecommendedHomeFile = path.Join(os.Getenv("HOME"), "/.kube/.kubeconfig")
-var RecommendedHomeFile = path.Join(os.Getenv("HOME"), RecommendedHomeFileName)
+var RecommendedHomeFile = path.Join(os.Getenv("HOME"), RecommendedHomeDir, RecommendedFileName)
+var RecommendedSchemaFile = path.Join(os.Getenv("HOME"), RecommendedHomeDir, RecommendedSchemaName)
 
 // ClientConfigLoadingRules is an ExplicitPath and string slice of specific locations that are used for merging together a Config
 // Callers can put the chain together however they want, but we'd recommend:
@@ -143,7 +147,7 @@ func (rules *ClientConfigLoadingRules) Load() (*clientcmdapi.Config, error) {
 		}
 	}
 
-	return config, errors.NewAggregate(errlist)
+	return config, utilerrors.NewAggregate(errlist)
 }
 
 // Migrate uses the MigrationRules map.  If a destination file is not present, then the source file is checked.
@@ -222,6 +226,7 @@ func LoadFromFile(filename string) (*clientcmdapi.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	glog.V(3).Infoln("Config loaded from file", filename)
 
 	// set LocationOfOrigin on every Cluster, User, and Context
 	for key, obj := range config.AuthInfos {
@@ -235,6 +240,16 @@ func LoadFromFile(filename string) (*clientcmdapi.Config, error) {
 	for key, obj := range config.Contexts {
 		obj.LocationOfOrigin = filename
 		config.Contexts[key] = obj
+	}
+
+	if config.AuthInfos == nil {
+		config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+	}
+	if config.Clusters == nil {
+		config.Clusters = map[string]*clientcmdapi.Cluster{}
+	}
+	if config.Contexts == nil {
+		config.Contexts = map[string]*clientcmdapi.Context{}
 	}
 
 	return config, nil

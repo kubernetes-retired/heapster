@@ -39,17 +39,18 @@ func GetOldRCs(deployment extensions.Deployment, c client.Interface) ([]*api.Rep
 	// 2. Find the corresponding RCs for pods in podList.
 	// TODO: Right now we list all RCs and then filter. We should add an API for this.
 	oldRCs := map[string]api.ReplicationController{}
-	rcList, err := c.ReplicationControllers(namespace).List(labels.Everything())
+	rcList, err := c.ReplicationControllers(namespace).List(labels.Everything(), fields.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("error listing replication controllers: %v", err)
 	}
+	newRCTemplate := GetNewRCTemplate(deployment)
 	for _, pod := range podList.Items {
 		podLabelsSelector := labels.Set(pod.ObjectMeta.Labels)
 		for _, rc := range rcList.Items {
 			rcLabelsSelector := labels.SelectorFromSet(rc.Spec.Selector)
 			if rcLabelsSelector.Matches(podLabelsSelector) {
 				// Filter out RC that has the same pod template spec as the deployment - that is the new RC.
-				if api.Semantic.DeepEqual(rc.Spec.Template, GetNewRCTemplate(deployment)) {
+				if api.Semantic.DeepEqual(rc.Spec.Template, &newRCTemplate) {
 					continue
 				}
 				oldRCs[rc.ObjectMeta.Name] = rc
@@ -67,14 +68,14 @@ func GetOldRCs(deployment extensions.Deployment, c client.Interface) ([]*api.Rep
 // Returns nil if the new RC doesnt exist yet.
 func GetNewRC(deployment extensions.Deployment, c client.Interface) (*api.ReplicationController, error) {
 	namespace := deployment.ObjectMeta.Namespace
-	rcList, err := c.ReplicationControllers(namespace).List(labels.Everything())
+	rcList, err := c.ReplicationControllers(namespace).List(labels.Everything(), fields.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("error listing replication controllers: %v", err)
 	}
 	newRCTemplate := GetNewRCTemplate(deployment)
 
 	for _, rc := range rcList.Items {
-		if api.Semantic.DeepEqual(rc.Spec.Template, newRCTemplate) {
+		if api.Semantic.DeepEqual(rc.Spec.Template, &newRCTemplate) {
 			// This is the new RC.
 			return &rc, nil
 		}
@@ -84,9 +85,9 @@ func GetNewRC(deployment extensions.Deployment, c client.Interface) (*api.Replic
 }
 
 // Returns the desired PodTemplateSpec for the new RC corresponding to the given RC.
-func GetNewRCTemplate(deployment extensions.Deployment) *api.PodTemplateSpec {
+func GetNewRCTemplate(deployment extensions.Deployment) api.PodTemplateSpec {
 	// newRC will have the same template as in deployment spec, plus a unique label in some cases.
-	newRCTemplate := &api.PodTemplateSpec{
+	newRCTemplate := api.PodTemplateSpec{
 		ObjectMeta: deployment.Spec.Template.ObjectMeta,
 		Spec:       deployment.Spec.Template.Spec,
 	}
@@ -113,7 +114,7 @@ func CloneAndAddLabel(labels map[string]string, labelKey string, labelValue uint
 	return newLabels
 }
 
-func GetPodTemplateSpecHash(template *api.PodTemplateSpec) uint32 {
+func GetPodTemplateSpecHash(template api.PodTemplateSpec) uint32 {
 	podTemplateSpecHasher := adler32.New()
 	util.DeepHashObject(podTemplateSpecHasher, template)
 	return podTemplateSpecHasher.Sum32()

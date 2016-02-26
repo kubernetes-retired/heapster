@@ -26,6 +26,7 @@ import (
 	"k8s.io/heapster/sources/api"
 	"k8s.io/heapster/sources/datasource"
 	"k8s.io/heapster/sources/nodes"
+	kube_api "k8s.io/kubernetes/pkg/api/unversioned"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	kubeClientCmdApi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
@@ -101,7 +102,13 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 		if configOverrides.ClusterInfo.Server != "" {
 			kubeConfig.Host = configOverrides.ClusterInfo.Server
 		}
-		kubeConfig.Version = configOverrides.ClusterInfo.APIVersion
+
+		version, err := kube_api.ParseGroupVersion(configOverrides.ClusterInfo.APIVersion)
+		if err != nil {
+			return nil, fmt.Errorf("invalid kubernetes API version specified: %s", configOverrides.ClusterInfo.APIVersion)
+		}
+
+		kubeConfig.GroupVersion = &version
 		kubeConfig.Insecure = configOverrides.ClusterInfo.InsecureSkipTLSVerify
 		if configOverrides.ClusterInfo.InsecureSkipTLSVerify {
 			kubeConfig.TLSClientConfig.CAFile = ""
@@ -119,17 +126,22 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 				return nil, err
 			}
 		} else {
+			version, err := kube_api.ParseGroupVersion(configOverrides.ClusterInfo.APIVersion)
+			if err != nil {
+				return nil, fmt.Errorf("invalid kubernetes API version specified: %s", configOverrides.ClusterInfo.APIVersion)
+			}
+
 			kubeConfig = &kube_client.Config{
-				Host:     configOverrides.ClusterInfo.Server,
-				Version:  configOverrides.ClusterInfo.APIVersion,
-				Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
+				Host:         configOverrides.ClusterInfo.Server,
+				GroupVersion: &version,
+				Insecure:     configOverrides.ClusterInfo.InsecureSkipTLSVerify,
 			}
 		}
 	}
 	if len(kubeConfig.Host) == 0 {
 		return nil, fmt.Errorf("invalid kubernetes master url specified")
 	}
-	if len(kubeConfig.Version) == 0 {
+	if (kubeConfig.GroupVersion) == nil {
 		return nil, fmt.Errorf("invalid kubernetes API version specified")
 	}
 
@@ -169,13 +181,14 @@ func CreateKubeSources(uri *url.URL, c cache.Cache) ([]api.Source, error) {
 			return nil, err
 		}
 	}
-	glog.Infof("Using Kubernetes client with master %q and version %q\n", kubeConfig.Host, kubeConfig.Version)
+	glog.Infof("Using Kubernetes client with master %q and version %q\n", kubeConfig.Host, kubeConfig.GroupVersion)
 	glog.Infof("Using kubelet port %d", kubeletPort)
 
 	kubeletConfig := &kube_client.KubeletConfig{
 		Port:            uint(kubeletPort),
 		EnableHttps:     kubeletHttps,
 		TLSClientConfig: kubeConfig.TLSClientConfig,
+		BearerToken:     kubeConfig.BearerToken,
 	}
 
 	kubeletApi, err := datasource.NewKubelet(kubeletConfig)

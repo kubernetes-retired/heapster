@@ -53,8 +53,7 @@ func (c *ConversionError) Error() string {
 var Semantic = conversion.EqualitiesOrDie(
 	func(a, b resource.Quantity) bool {
 		// Ignore formatting, only care that numeric value stayed the same.
-		// TODO: if we decide it's important, after we drop v1beta1/2, we
-		// could start comparing format.
+		// TODO: if we decide it's important, it should be safe to start comparing the format.
 		//
 		// Uninitialized quantities are equivalent to 0 quantities.
 		if a.Amount == nil && b.MilliValue() == 0 {
@@ -80,18 +79,34 @@ var Semantic = conversion.EqualitiesOrDie(
 )
 
 var standardResources = sets.NewString(
-	string(ResourceMemory),
 	string(ResourceCPU),
+	string(ResourceMemory),
 	string(ResourcePods),
 	string(ResourceQuotas),
 	string(ResourceServices),
 	string(ResourceReplicationControllers),
 	string(ResourceSecrets),
 	string(ResourcePersistentVolumeClaims),
-	string(ResourceStorage))
+	string(ResourceStorage),
+)
 
+// IsStandardResourceName returns true if the resource is known to the system
 func IsStandardResourceName(str string) bool {
 	return standardResources.Has(str)
+}
+
+var integerResources = sets.NewString(
+	string(ResourcePods),
+	string(ResourceQuotas),
+	string(ResourceServices),
+	string(ResourceReplicationControllers),
+	string(ResourceSecrets),
+	string(ResourcePersistentVolumeClaims),
+)
+
+// IsIntegerResourceName returns true if the resource is measured in integer values
+func IsIntegerResourceName(str string) bool {
+	return integerResources.Has(str)
 }
 
 // NewDeleteOptions returns a DeleteOptions indicating the resource should

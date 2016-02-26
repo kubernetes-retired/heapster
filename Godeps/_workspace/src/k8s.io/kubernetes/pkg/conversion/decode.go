@@ -17,9 +17,11 @@ limitations under the License.
 package conversion
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
+
+	"github.com/ugorji/go/codec"
 )
 
 func (s *Scheme) DecodeToVersionedObject(data []byte) (obj interface{}, version, kind string, err error) {
@@ -38,7 +40,7 @@ func (s *Scheme) DecodeToVersionedObject(data []byte) (obj interface{}, version,
 		return nil, "", "", err
 	}
 
-	if err := json.Unmarshal(data, obj); err != nil {
+	if err := codec.NewDecoderBytes(data, new(codec.JsonHandle)).Decode(obj); err != nil {
 		return nil, "", "", err
 	}
 	return
@@ -139,7 +141,7 @@ func (s *Scheme) DecodeIntoWithSpecifiedVersionKind(data []byte, obj interface{}
 	if err != nil {
 		return err
 	}
-	if err := json.Unmarshal(data, external); err != nil {
+	if err := codec.NewDecoderBytes(data, new(codec.JsonHandle)).Decode(external); err != nil {
 		return err
 	}
 	flags, meta := s.generateConvertMeta(dataVersion, objVersion, external)
@@ -149,4 +151,12 @@ func (s *Scheme) DecodeIntoWithSpecifiedVersionKind(data []byte, obj interface{}
 
 	// Version and Kind should be blank in memory.
 	return s.SetVersionAndKind("", "", obj)
+}
+
+func (s *Scheme) DecodeParametersInto(parameters url.Values, obj interface{}) error {
+	if err := s.Convert(&parameters, obj); err != nil {
+		return err
+	}
+	// TODO: Should we do any convertion here?
+	return nil
 }

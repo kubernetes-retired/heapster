@@ -22,7 +22,6 @@ import (
 	"sort"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/util/fielderrors"
 	"k8s.io/kubernetes/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/util/validation"
 )
@@ -163,6 +162,20 @@ func (r *Requirement) Matches(ls Labels) bool {
 	default:
 		return false
 	}
+}
+
+func (r *Requirement) Key() string {
+	return r.key
+}
+func (r *Requirement) Operator() Operator {
+	return r.operator
+}
+func (r *Requirement) Values() sets.String {
+	ret := sets.String{}
+	for k := range r.strValues {
+		ret.Insert(k)
+	}
+	return ret
 }
 
 // Return true if the LabelSelector doesn't restrict selection space
@@ -688,14 +701,14 @@ const qualifiedNameErrorMsg string = "must match regex [" + validation.DNS1123Su
 
 func validateLabelKey(k string) error {
 	if !validation.IsQualifiedName(k) {
-		return fielderrors.NewFieldInvalid("label key", k, qualifiedNameErrorMsg)
+		return validation.NewInvalidError("label key", k, qualifiedNameErrorMsg)
 	}
 	return nil
 }
 
 func validateLabelValue(v string) error {
 	if !validation.IsValidLabelValue(v) {
-		return fielderrors.NewFieldInvalid("label value", v, qualifiedNameErrorMsg)
+		return validation.NewInvalidError("label value", v, qualifiedNameErrorMsg)
 	}
 	return nil
 }
@@ -715,5 +728,7 @@ func SelectorFromSet(ls Set) Selector {
 			requirements = append(requirements, *r)
 		}
 	}
+	// sort to have deterministic string representation
+	sort.Sort(ByKey(requirements))
 	return LabelSelector(requirements)
 }

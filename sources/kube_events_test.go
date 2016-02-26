@@ -37,7 +37,7 @@ func TestEventsBasic(t *testing.T) {
 	}
 	server := httptest.NewServer(&handler)
 	defer server.Close()
-	client := client.NewOrDie(&client.Config{Host: server.URL, Version: testapi.Default.Version()})
+	client := client.NewOrDie(&client.Config{Host: server.URL, GroupVersion: testapi.Default.GroupVersion()})
 	cache := cache.NewCache(time.Hour, time.Hour)
 	source := NewKubeEvents(client, cache)
 	_, err := source.GetInfo(time.Now(), time.Now().Add(time.Minute))

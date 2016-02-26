@@ -137,7 +137,8 @@ func (eventSource *eventsSourceImpl) watchLoop(eventClient kubeclient.EventInter
 		return
 	}
 
-	watcher, err := eventClient.Watch(kubelabels.Everything(), kubefields.Everything(), resourceVersion)
+	listOptions := kubeapi.ListOptions{ResourceVersion: resourceVersion}
+	watcher, err := eventClient.Watch(kubelabels.Everything(), kubefields.Everything(), listOptions)
 	if err != nil {
 		glog.Errorf("Failed to start watch for new events: %v", err)
 		errorChan <- err

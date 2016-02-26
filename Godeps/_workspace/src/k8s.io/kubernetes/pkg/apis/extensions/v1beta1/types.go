@@ -19,7 +19,7 @@ package v1beta1
 import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
 // describes the attributes of a scale subresource
@@ -33,20 +33,20 @@ type ScaleStatus struct {
 	// actual number of observed instances of the scaled object.
 	Replicas int `json:"replicas"`
 
-	// label query over pods that should match the replicas count. More info: http://releases.k8s.io/release-1.1/docs/user-guide/labels.md#label-selectors
+	// label query over pods that should match the replicas count. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md#label-selectors
 	Selector map[string]string `json:"selector,omitempty"`
 }
 
 // represents a scaling request for a resource.
 type Scale struct {
 	unversioned.TypeMeta `json:",inline"`
-	// Standard object metadata; More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#metadata.
+	// Standard object metadata; More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata.
 	v1.ObjectMeta `json:"metadata,omitempty"`
 
-	// defines the behavior of the scale. More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status.
+	// defines the behavior of the scale. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status.
 	Spec ScaleSpec `json:"spec,omitempty"`
 
-	// current status of the scale. More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status. Read-only.
+	// current status of the scale. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status. Read-only.
 	Status ScaleStatus `json:"status,omitempty"`
 }
 
@@ -57,9 +57,9 @@ type ReplicationControllerDummy struct {
 
 // SubresourceReference contains enough information to let you inspect or modify the referred subresource.
 type SubresourceReference struct {
-	// Kind of the referent; More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds"
+	// Kind of the referent; More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
 	Kind string `json:"kind,omitempty"`
-	// Name of the referent; More info: http://releases.k8s.io/release-1.1/docs/user-guide/identifiers.md#names
+	// Name of the referent; More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#names
 	Name string `json:"name,omitempty"`
 	// API version of the referent
 	APIVersion string `json:"apiVersion,omitempty"`
@@ -110,10 +110,10 @@ type HorizontalPodAutoscalerStatus struct {
 // configuration of a horizontal pod autoscaler.
 type HorizontalPodAutoscaler struct {
 	unversioned.TypeMeta `json:",inline"`
-	// Standard object metadata. More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#metadata
+	// Standard object metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	v1.ObjectMeta `json:"metadata,omitempty"`
 
-	// behaviour of autoscaler. More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status.
+	// behaviour of autoscaler. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status.
 	Spec HorizontalPodAutoscalerSpec `json:"spec,omitempty"`
 
 	// current information about the autoscaler.
@@ -199,7 +199,7 @@ type DeploymentSpec struct {
 	Selector map[string]string `json:"selector,omitempty"`
 
 	// Template describes the pods that will be created.
-	Template *v1.PodTemplateSpec `json:"template,omitempty"`
+	Template v1.PodTemplateSpec `json:"template"`
 
 	// The deployment strategy to use to replace existing pods with new ones.
 	Strategy DeploymentStrategy `json:"strategy,omitempty"`
@@ -250,7 +250,7 @@ type RollingUpdateDeployment struct {
 	// can be scaled down further, followed by scaling up the new RC, ensuring
 	// that the total number of pods available at all times during the update is at
 	// least 70% of desired pods.
-	MaxUnavailable *util.IntOrString `json:"maxUnavailable,omitempty"`
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
 
 	// The maximum number of pods that can be scheduled above the desired number of
 	// pods.
@@ -263,7 +263,7 @@ type RollingUpdateDeployment struct {
 	// 130% of desired pods. Once old pods have been killed,
 	// new RC can be scaled up further, ensuring that total number of pods running
 	// at any time during the update is atmost 130% of desired pods.
-	MaxSurge *util.IntOrString `json:"maxSurge,omitempty"`
+	MaxSurge *intstr.IntOrString `json:"maxSurge,omitempty"`
 
 	// Minimum number of seconds for which a newly created pod should be ready
 	// without any of its container crashing, for it to be considered available.
@@ -295,14 +295,14 @@ type DaemonSetSpec struct {
 	// Selector is a label query over pods that are managed by the daemon set.
 	// Must match in order to be controlled.
 	// If empty, defaulted to labels on Pod template.
-	// More info: http://releases.k8s.io/release-1.1/docs/user-guide/labels.md#label-selectors
-	Selector map[string]string `json:"selector,omitempty"`
+	// More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md#label-selectors
+	Selector *PodSelector `json:"selector,omitempty"`
 
 	// Template is the object that describes the pod that will be created.
 	// The DaemonSet will create exactly one copy of this pod on every node
 	// that matches the template's node selector (or on every node if no node
 	// selector is specified).
-	// More info: http://releases.k8s.io/release-1.1/docs/user-guide/replication-controller.md#pod-template
+	// More info: http://releases.k8s.io/HEAD/docs/user-guide/replication-controller.md#pod-template
 	Template *v1.PodTemplateSpec `json:"template,omitempty"`
 }
 
@@ -310,17 +310,17 @@ type DaemonSetSpec struct {
 type DaemonSetStatus struct {
 	// CurrentNumberScheduled is the number of nodes that are running at least 1
 	// daemon pod and are supposed to run the daemon pod.
-	// More info: http://releases.k8s.io/release-1.1/docs/admin/daemon.md
+	// More info: http://releases.k8s.io/HEAD/docs/admin/daemon.md
 	CurrentNumberScheduled int `json:"currentNumberScheduled"`
 
 	// NumberMisscheduled is the number of nodes that are running the daemon pod, but are
 	// not supposed to run the daemon pod.
-	// More info: http://releases.k8s.io/release-1.1/docs/admin/daemon.md
+	// More info: http://releases.k8s.io/HEAD/docs/admin/daemon.md
 	NumberMisscheduled int `json:"numberMisscheduled"`
 
 	// DesiredNumberScheduled is the total number of nodes that should be running the daemon
 	// pod (including nodes correctly running the daemon pod).
-	// More info: http://releases.k8s.io/release-1.1/docs/admin/daemon.md
+	// More info: http://releases.k8s.io/HEAD/docs/admin/daemon.md
 	DesiredNumberScheduled int `json:"desiredNumberScheduled"`
 }
 
@@ -328,18 +328,18 @@ type DaemonSetStatus struct {
 type DaemonSet struct {
 	unversioned.TypeMeta `json:",inline"`
 	// Standard object's metadata.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	v1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the desired behavior of this daemon set.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
 	Spec DaemonSetSpec `json:"spec,omitempty"`
 
 	// Status is the current status of this daemon set. This data may be
 	// out of date by some window of time.
 	// Populated by the system.
 	// Read-only.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
 	Status DaemonSetStatus `json:"status,omitempty"`
 }
 
@@ -347,7 +347,7 @@ type DaemonSet struct {
 type DaemonSetList struct {
 	unversioned.TypeMeta `json:",inline"`
 	// Standard list metadata.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	unversioned.ListMeta `json:"metadata,omitempty"`
 
 	// Items is a list of daemon sets.
@@ -358,7 +358,7 @@ type DaemonSetList struct {
 type ThirdPartyResourceDataList struct {
 	unversioned.TypeMeta `json:",inline"`
 	// Standard list metadata
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	unversioned.ListMeta `json:"metadata,omitempty"`
 
 	// Items is the list of ThirdpartyResourceData.
@@ -369,15 +369,15 @@ type ThirdPartyResourceDataList struct {
 type Job struct {
 	unversioned.TypeMeta `json:",inline"`
 	// Standard object's metadata.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	v1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec is a structure defining the expected behavior of a job.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
 	Spec JobSpec `json:"spec,omitempty"`
 
 	// Status is a structure describing current status of a job.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
 	Status JobStatus `json:"status,omitempty"`
 }
 
@@ -385,7 +385,7 @@ type Job struct {
 type JobList struct {
 	unversioned.TypeMeta `json:",inline"`
 	// Standard list metadata
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	unversioned.ListMeta `json:"metadata,omitempty"`
 
 	// Items is the list of Job.
@@ -399,21 +399,21 @@ type JobSpec struct {
 	// run at any given time. The actual number of pods running in steady state will
 	// be less than this number when ((.spec.completions - .status.successful) < .spec.parallelism),
 	// i.e. when the work left to do is less than max parallelism.
-	// More info: http://releases.k8s.io/release-1.1/docs/user-guide/jobs.md
+	// More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md
 	Parallelism *int `json:"parallelism,omitempty"`
 
 	// Completions specifies the desired number of successfully finished pods the
 	// job should be run with. Defaults to 1.
-	// More info: http://releases.k8s.io/release-1.1/docs/user-guide/jobs.md
+	// More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md
 	Completions *int `json:"completions,omitempty"`
 
 	// Selector is a label query over pods that should match the pod count.
-	// More info: http://releases.k8s.io/release-1.1/docs/user-guide/labels.md#label-selectors
+	// More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md#label-selectors
 	Selector *PodSelector `json:"selector,omitempty"`
 
 	// Template is the object that describes the pod that will be created when
 	// executing a job.
-	// More info: http://releases.k8s.io/release-1.1/docs/user-guide/jobs.md
+	// More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md
 	Template v1.PodTemplateSpec `json:"template"`
 }
 
@@ -421,7 +421,7 @@ type JobSpec struct {
 type JobStatus struct {
 
 	// Conditions represent the latest available observations of an object's current state.
-	// More info: http://releases.k8s.io/release-1.1/docs/user-guide/jobs.md
+	// More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md
 	Conditions []JobCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
 	// StartTime represents time when the job was acknowledged by the Job Manager.
@@ -475,15 +475,15 @@ type JobCondition struct {
 type Ingress struct {
 	unversioned.TypeMeta `json:",inline"`
 	// Standard object's metadata.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	v1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec is the desired state of the Ingress.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
 	Spec IngressSpec `json:"spec,omitempty"`
 
 	// Status is the current state of the Ingress.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
 	Status IngressStatus `json:"status,omitempty"`
 }
 
@@ -491,7 +491,7 @@ type Ingress struct {
 type IngressList struct {
 	unversioned.TypeMeta `json:",inline"`
 	// Standard object's metadata.
-	// More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	unversioned.ListMeta `json:"metadata,omitempty"`
 
 	// Items is the list of Ingress.
@@ -501,11 +501,13 @@ type IngressList struct {
 // IngressSpec describes the Ingress the user wishes to exist.
 type IngressSpec struct {
 	// A default backend capable of servicing requests that don't match any
-	// IngressRule. It is optional to allow the loadbalancer controller or
-	// defaulting logic to specify a global default.
+	// rule. At least one of 'backend' or 'rules' must be specified. This field
+	// is optional to allow the loadbalancer controller or defaulting logic to
+	// specify a global default.
 	Backend *IngressBackend `json:"backend,omitempty"`
-	// A list of host rules used to configure the Ingress.
-	Rules []IngressRule `json:"rules"`
+	// A list of host rules used to configure the Ingress. If unspecified, or
+	// no rule matches, all traffic is sent to the default backend.
+	Rules []IngressRule `json:"rules,omitempty"`
 	// TODO: Add the ability to specify load-balancer IP through claims
 }
 
@@ -516,7 +518,8 @@ type IngressStatus struct {
 }
 
 // IngressRule represents the rules mapping the paths under a specified host to
-// the related backend services.
+// the related backend services. Incoming requests are first evaluated for a host
+// match, then routed to the backend associated with the matching IngressRuleValue.
 type IngressRule struct {
 	// Host is the fully qualified domain name of a network host, as defined
 	// by RFC 3986. Note the following deviations from the "host" part of the
@@ -527,14 +530,22 @@ type IngressRule struct {
 	//	  Currently the port of an Ingress is implicitly :80 for http and
 	//	  :443 for https.
 	// Both these may change in the future.
-	// Incoming requests are matched against the Host before the IngressRuleValue.
+	// Incoming requests are matched against the host before the IngressRuleValue.
+	// If the host is unspecified, the Ingress routes all traffic based on the
+	// specified IngressRuleValue.
 	Host string `json:"host,omitempty"`
 	// IngressRuleValue represents a rule to route requests for this IngressRule.
-	IngressRuleValue `json:",inline"`
+	// If unspecified, the rule defaults to a http catch-all. Whether that sends
+	// just traffic matching the host to the default backend or all traffic to the
+	// default backend, is left to the controller fulfilling the Ingress. Http is
+	// currently the only supported IngressRuleValue.
+	IngressRuleValue `json:",inline,omitempty"`
 }
 
 // IngressRuleValue represents a rule to apply against incoming requests. If the
-// rule is satisfied, the request is routed to the specified backend.
+// rule is satisfied, the request is routed to the specified backend. Currently
+// mixing different types of rules in a single Ingress is disallowed, so exactly
+// one of the following must be set.
 type IngressRuleValue struct {
 	//TODO:
 	// 1. Consider renaming this resource and the associated rules so they
@@ -542,39 +553,106 @@ type IngressRuleValue struct {
 	// 2. Consider adding fields for ingress-type specific global options
 	// usable by a loadbalancer, like http keep-alive.
 
-	// Currently mixing different types of rules in a single Ingress is
-	// disallowed, so exactly one of the following must be set.
-	HTTP *HTTPIngressRuleValue `json:"http"`
+	HTTP *HTTPIngressRuleValue `json:"http,omitempty"`
 }
 
-// HTTPIngressRuleValue is a list of http selectors pointing to IngressBackends.
-// In the example: http://<host>/<path>?<searchpart> -> IngressBackend where
-// parts of the url correspond to RFC 3986, this resource will be used to
+// HTTPIngressRuleValue is a list of http selectors pointing to backends.
+// In the example: http://<host>/<path>?<searchpart> -> backend where
+// where parts of the url correspond to RFC 3986, this resource will be used
 // to match against everything after the last '/' and before the first '?'
 // or '#'.
 type HTTPIngressRuleValue struct {
-	// A collection of paths that map requests to IngressBackends.
+	// A collection of paths that map requests to backends.
 	Paths []HTTPIngressPath `json:"paths"`
+	// TODO: Consider adding fields for ingress-type specific global
+	// options usable by a loadbalancer, like http keep-alive.
 }
 
-// IngressPath associates a path regex with an IngressBackend.
-// Incoming urls matching the Path are forwarded to the Backend.
+// HTTPIngressPath associates a path regex with a backend. Incoming urls matching
+// the path are forwarded to the backend.
 type HTTPIngressPath struct {
-	// Path is a regex matched against the url of an incoming request.
+	// Path is a extended POSIX regex as defined by IEEE Std 1003.1,
+	// (i.e this follows the egrep/unix syntax, not the perl syntax)
+	// matched against the path of an incoming request. Currently it can
+	// contain characters disallowed from the conventional "path"
+	// part of a URL as defined by RFC 3986. Paths must begin with
+	// a '/'. If unspecified, the path defaults to a catch all sending
+	// traffic to the backend.
 	Path string `json:"path,omitempty"`
 
-	// Define the referenced service endpoint which the traffic will be
-	// forwarded to.
+	// Backend defines the referenced service endpoint to which the traffic
+	// will be forwarded to.
 	Backend IngressBackend `json:"backend"`
 }
 
-// IngressBackend describes all endpoints for a given Service and port.
+// IngressBackend describes all endpoints for a given service and port.
 type IngressBackend struct {
 	// Specifies the name of the referenced service.
 	ServiceName string `json:"serviceName"`
 
 	// Specifies the port of the referenced service.
-	ServicePort util.IntOrString `json:"servicePort"`
+	ServicePort intstr.IntOrString `json:"servicePort"`
+}
+
+type NodeResource string
+
+const (
+	// Percentage of node's CPUs that is currently used.
+	CpuConsumption NodeResource = "CpuConsumption"
+
+	// Percentage of node's CPUs that is currently requested for pods.
+	CpuRequest NodeResource = "CpuRequest"
+
+	// Percentage od node's memory that is currently used.
+	MemConsumption NodeResource = "MemConsumption"
+
+	// Percentage of node's CPUs that is currently requested for pods.
+	MemRequest NodeResource = "MemRequest"
+)
+
+// NodeUtilization describes what percentage of a particular resource is used on a node.
+type NodeUtilization struct {
+	Resource NodeResource `json:"resource"`
+
+	// The accepted values are from 0 to 1.
+	Value float64 `json:"value"`
+}
+
+// Configuration of the Cluster Autoscaler
+type ClusterAutoscalerSpec struct {
+	// Minimum number of nodes that the cluster should have.
+	MinNodes int `json:"minNodes"`
+
+	// Maximum number of nodes that the cluster should have.
+	MaxNodes int `json:"maxNodes"`
+
+	// Target average utilization of the cluster nodes. New nodes will be added if one of the
+	// targets is exceeded. Cluster size will be decreased if the current utilization is too low
+	// for all targets.
+	TargetUtilization []NodeUtilization `json:"target"`
+}
+
+type ClusterAutoscaler struct {
+	unversioned.TypeMeta `json:",inline"`
+
+	// Standard object's metadata.
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
+	// For now (experimental api) it is required that the name is set to "ClusterAutoscaler" and namespace is "default".
+	v1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec defines the desired behavior of this daemon set.
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
+	Spec ClusterAutoscalerSpec `json:"spec,omitempty"`
+}
+
+// There will be just one (or none) ClusterAutoscaler.
+type ClusterAutoscalerList struct {
+	unversioned.TypeMeta `json:",inline"`
+	// Standard object's metadata.
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
+	unversioned.ListMeta `json:"metadata,omitempty"`
+
+	Items []ClusterAutoscaler `json:"items"`
 }
 
 // A pod selector is a label query over a set of pods. The result of matchLabels and

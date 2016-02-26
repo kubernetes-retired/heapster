@@ -16,6 +16,6 @@ package client
 
 // Discoverer is an interface that wraps the Discover method.
 type Discoverer interface {
-	// Discover looks up the etcd servers for the domain.
+	// Dicover looks up the etcd servers for the domain.
 	Discover(domain string) ([]string, error)
 }

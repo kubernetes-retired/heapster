@@ -23,7 +23,7 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/types"
-	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
 // Common string formats
@@ -681,7 +681,7 @@ type HTTPGetAction struct {
 	// Optional: Path to access on the HTTP server.
 	Path string `json:"path,omitempty"`
 	// Required: Name or number of the port to access on the container.
-	Port util.IntOrString `json:"port,omitempty"`
+	Port intstr.IntOrString `json:"port,omitempty"`
 	// Optional: Host name to connect to, defaults to the pod IP.
 	Host string `json:"host,omitempty"`
 	// Optional: Scheme to use for connecting to the host, defaults to HTTP.
@@ -701,7 +701,7 @@ const (
 // TCPSocketAction describes an action based on opening a socket
 type TCPSocketAction struct {
 	// Required: Port to connect to.
-	Port util.IntOrString `json:"port,omitempty"`
+	Port intstr.IntOrString `json:"port,omitempty"`
 }
 
 // ExecAction describes a "run in container" action.
@@ -713,7 +713,8 @@ type ExecAction struct {
 	Command []string `json:"command,omitempty"`
 }
 
-// Probe describes a liveness probe to be examined to the container.
+// Probe describes a health check to be performed against a container to determine whether it is
+// alive or ready to receive traffic.
 type Probe struct {
 	// The action taken to determine the health of a container
 	Handler `json:",inline"`
@@ -721,6 +722,13 @@ type Probe struct {
 	InitialDelaySeconds int64 `json:"initialDelaySeconds,omitempty"`
 	// Length of time before health checking times out.  In seconds.
 	TimeoutSeconds int64 `json:"timeoutSeconds,omitempty"`
+	// How often (in seconds) to perform the probe.
+	PeriodSeconds int64 `json:"periodSeconds,omitempty"`
+	// Minimum consecutive successes for the probe to be considered successful after having failed.
+	// Must be 1 for liveness.
+	SuccessThreshold int `json:"successThreshold,omitempty"`
+	// Minimum consecutive failures for the probe to be considered failed after having succeeded.
+	FailureThreshold int `json:"failureThreshold,omitempty"`
 }
 
 // PullPolicy describes a policy for if/when to pull a container image
@@ -789,7 +797,8 @@ type Container struct {
 	TerminationMessagePath string `json:"terminationMessagePath,omitempty"`
 	// Required: Policy for pulling images for this container
 	ImagePullPolicy PullPolicy `json:"imagePullPolicy"`
-	// Optional: SecurityContext defines the security options the pod should be run with
+	// Optional: SecurityContext defines the security options the container should be run with.
+	// If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 	SecurityContext *SecurityContext `json:"securityContext,omitempty"`
 
 	// Variables for interactive containers, these have very specialized use-cases (e.g. debugging)
@@ -987,9 +996,22 @@ type PodSpec struct {
 	// the scheduler simply schedules this pod onto that node, assuming that it fits resource
 	// requirements.
 	NodeName string `json:"nodeName,omitempty"`
-	// Use the host's network namespace. If this option is set, the ports that will be
+	// SecurityContext holds pod-level security attributes and common container settings.
+	// Optional: Defaults to empty.  See type description for default values of each field.
+	SecurityContext *PodSecurityContext `json:"securityContext,omitempty"`
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.  For example,
+	// in the case of docker, only DockerConfig type secrets are honored.
+	ImagePullSecrets []LocalObjectReference `json:"imagePullSecrets,omitempty"`
+}
+
+// PodSecurityContext holds pod-level security attributes and common container settings.
+// Some fields are also present in container.securityContext.  Field values of
+// container.securityContext take precedence over field values of PodSecurityContext.
+type PodSecurityContext struct {
+	// Use the host's network namespace.  If this option is set, the ports that will be
 	// used must be specified.
-	// Optional: Default to false.
+	// Optional: Default to false
 	HostNetwork bool `json:"hostNetwork,omitempty"`
 	// Use the host's pid namespace.
 	// Optional: Default to false.
@@ -997,10 +1019,39 @@ type PodSpec struct {
 	// Use the host's ipc namespace.
 	// Optional: Default to false.
 	HostIPC bool `json:"hostIPC,omitempty"`
-	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec.
-	// If specified, these secrets will be passed to individual puller implementations for them to use.  For example,
-	// in the case of docker, only DockerConfig type secrets are honored.
-	ImagePullSecrets []LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// The SELinux context to be applied to all containers.
+	// If unspecified, the container runtime will allocate a random SELinux context for each
+	// container.  May also be set in SecurityContext.  If set in
+	// both SecurityContext and PodSecurityContext, the value specified in SecurityContext
+	// takes precedence for that container.
+	SELinuxOptions *SELinuxOptions `json:"seLinuxOptions,omitempty"`
+	// The UID to run the entrypoint of the container process.
+	// Defaults to user specified in image metadata if unspecified.
+	// May also be set in SecurityContext.  If set in both SecurityContext and
+	// PodSecurityContext, the value specified in SecurityContext takes precedence
+	// for that container.
+	RunAsUser *int64 `json:"runAsUser,omitempty"`
+	// Indicates that the container must run as a non-root user.
+	// If true, the Kubelet will validate the image at runtime to ensure that it
+	// does not run as UID 0 (root) and fail to start the container if it does.
+	// If unset or false, no such validation will be performed.
+	// May also be set in SecurityContext.  If set in both SecurityContext and
+	// PodSecurityContext, the value specified in SecurityContext takes precedence.
+	RunAsNonRoot *bool `json:"runAsNonRoot,omitempty"`
+	// A list of groups applied to the first process run in each container, in addition
+	// to the container's primary GID.  If unspecified, no groups will be added to
+	// any container.
+	SupplementalGroups []int64 `json:"supplementalGroups,omitempty"`
+	// A special supplemental group that applies to all containers in a pod.
+	// Some volume types allow the Kubelet to change the ownership of that volume
+	// to be owned by the pod:
+	//
+	// 1. The owning GID will be the FSGroup
+	// 2. The setgid bit is set (new files created in the volume will be owned by FSGroup)
+	// 3. The permission bits are OR'd with rw-rw----
+	//
+	// If unset, the Kubelet will not modify the ownership and permissions of any volume.
+	FSGroup *int64 `json:"fsGroup,omitempty"`
 }
 
 // PodStatus represents information about the status of a pod. Status may trail the actual
@@ -1094,7 +1145,6 @@ type ReplicationControllerSpec struct {
 	// Template is the object that describes the pod that will be created if
 	// insufficient replicas are detected. Internally, this takes precedence over a
 	// TemplateRef.
-	// Must be set before converting to a v1beta1 or v1beta2 API object.
 	Template *PodTemplateSpec `json:"template,omitempty"`
 }
 
@@ -1250,7 +1300,7 @@ type ServicePort struct {
 	// is a string, it will be looked up as a named port in the target
 	// Pod's container ports.  If this is not specified, the default value
 	// is the sames as the Port field (an identity map).
-	TargetPort util.IntOrString `json:"targetPort"`
+	TargetPort intstr.IntOrString `json:"targetPort"`
 
 	// The port on each node on which this service is exposed.
 	// Default is to auto-allocate a port if the ServiceType of this Service requires one.
@@ -1605,6 +1655,8 @@ type ListOptions struct {
 	Watch bool
 	// The resource version to watch (no effect on list yet)
 	ResourceVersion string
+	// Timeout for the list/watch call.
+	TimeoutSeconds *int64
 }
 
 // PodLogOptions is the query options for a Pod's logs REST call
@@ -1729,6 +1781,14 @@ type EventSource struct {
 	Host string `json:"host,omitempty"`
 }
 
+// Valid values for event types (new types could be added in future)
+const (
+	// Information only and will not cause any problems
+	EventTypeNormal string = "Normal"
+	// These events are to warn that something might go wrong
+	EventTypeWarning string = "Warning"
+)
+
 // Event is a report of an event somewhere in the cluster.
 // TODO: Decide whether to store these separately or with the object they apply to.
 type Event struct {
@@ -1759,6 +1819,9 @@ type Event struct {
 
 	// The number of times this event has occurred.
 	Count int `json:"count,omitempty"`
+
+	// Type of this event (Normal, Warning), new types could be added in the future.
+	Type string `json:"type,omitempty"`
 }
 
 // EventList is a list of events.
@@ -2027,41 +2090,44 @@ type ComponentStatusList struct {
 	Items []ComponentStatus `json:"items"`
 }
 
-// SecurityContext holds security configuration that will be applied to a container.  SecurityContext
-// contains duplication of some existing fields from the Container resource.  These duplicate fields
-// will be populated based on the Container configuration if they are not set.  Defining them on
-// both the Container AND the SecurityContext will result in an error.
+// SecurityContext holds security configuration that will be applied to a container.
+// Some fields are present in both SecurityContext and PodSecurityContext.  When both
+// are set, the values in SecurityContext take precedence.
 type SecurityContext struct {
-	// Capabilities are the capabilities to add/drop when running the container
+	// The capabilities to add/drop when running containers.
+	// Defaults to the default set of capabilities granted by the container runtime.
 	Capabilities *Capabilities `json:"capabilities,omitempty"`
-
-	// Run the container in privileged mode
+	// Run container in privileged mode.
+	// Processes in privileged containers are essentially equivalent to root on the host.
+	// Defaults to false.
 	Privileged *bool `json:"privileged,omitempty"`
-
-	// SELinuxOptions are the labels to be applied to the container
-	// and volumes
+	// The SELinux context to be applied to the container.
+	// If unspecified, the container runtime will allocate a random SELinux context for each
+	// container.  May also be set in PodSecurityContext.  If set in both SecurityContext and
+	// PodSecurityContext, the value specified in SecurityContext takes precedence.
 	SELinuxOptions *SELinuxOptions `json:"seLinuxOptions,omitempty"`
-
-	// RunAsUser is the UID to run the entrypoint of the container process.
+	// The UID to run the entrypoint of the container process.
+	// Defaults to user specified in image metadata if unspecified.
+	// May also be set in PodSecurityContext.  If set in both SecurityContext and
+	// PodSecurityContext, the value specified in SecurityContext takes precedence.
 	RunAsUser *int64 `json:"runAsUser,omitempty"`
-
-	// RunAsNonRoot indicates that the container should be run as a non-root user.  If the RunAsUser
-	// field is not explicitly set then the kubelet may check the image for a specified user or
-	// perform defaulting to specify a user.
-	RunAsNonRoot bool
+	// Indicates that the container must run as a non-root user.
+	// If true, the Kubelet will validate the image at runtime to ensure that it
+	// does not run as UID 0 (root) and fail to start the container if it does.
+	// If unset or false, no such validation will be performed.
+	// May also be set in PodSecurityContext.  If set in both SecurityContext and
+	// PodSecurityContext, the value specified in SecurityContext takes precedence.
+	RunAsNonRoot *bool `json:"runAsNonRoot,omitempty"`
 }
 
 // SELinuxOptions are the labels to be applied to the container.
 type SELinuxOptions struct {
 	// SELinux user label
 	User string `json:"user,omitempty"`
-
 	// SELinux role label
 	Role string `json:"role,omitempty"`
-
 	// SELinux type label
 	Type string `json:"type,omitempty"`
-
 	// SELinux level label.
 	Level string `json:"level,omitempty"`
 }
