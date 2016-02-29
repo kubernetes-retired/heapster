@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	waitForGCEInterval = 2 * time.Second
-	waitForGCETimeout  = time.Minute
+	waitForGCEInterval = 5 * time.Second
+	waitForGCETimeout  = 3 * time.Minute
 )
 
 func EnsureOnGCE() error {
