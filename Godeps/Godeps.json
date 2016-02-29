@@ -259,11 +259,11 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "3b90a77d2885fb0429e8a21ab72fc73ca6f8b401"
+			"Rev": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context/ctxhttp",
-			"Rev": "3b90a77d2885fb0429e8a21ab72fc73ca6f8b401"
+			"Rev": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2",
@@ -339,11 +339,11 @@
 		},
 		{
 			"ImportPath": "google.golang.org/cloud/compute/metadata",
-			"Rev": "542bfb014d8e28df6e27be847dfdc40c510dab1a"
+			"Rev": "3fb76bc404703eddc53d1e407eaa665ab3881362"
 		},
 		{
 			"ImportPath": "google.golang.org/cloud/internal",
-			"Rev": "542bfb014d8e28df6e27be847dfdc40c510dab1a"
+			"Rev": "3fb76bc404703eddc53d1e407eaa665ab3881362"
 		},
 		{
 			"ImportPath": "gopkg.in/v2/yaml",
