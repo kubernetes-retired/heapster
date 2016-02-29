@@ -16,7 +16,7 @@ INFLUXDB_USER=${INFLUXDB_USER:-root}
 DASHBOARD_LOCATION=${DASHBOARD_LOCATION:-"/dashboards"}
 
 # Allow access to dashboards without having to log in
-export GF_AUTH_ANONYMOUS_ENABLED=true
+export GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED:-true}
 export GF_SERVER_HTTP_PORT=${GRAFANA_PORT}
 
 BACKEND_ACCESS_MODE=${BACKEND_ACCESS_MODE:-proxy}
@@ -32,7 +32,7 @@ echo "Using the following backend access mode for InfluxDB: ${BACKEND_ACCESS_MOD
 
 set -m
 echo "Starting Grafana in the background"
-exec /usr/sbin/grafana-server --config=/etc/grafana/grafana.ini cfg:default.paths.data=/var/lib/grafana cfg:default.paths.logs=/var/log/grafana &
+exec /usr/sbin/grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini cfg:default.paths.data=/var/lib/grafana cfg:default.paths.logs=/var/log/grafana &
 
 echo "Waiting for Grafana to come up..."
 until $(curl --fail --output /dev/null --silent http://${GRAFANA_USER}:${GRAFANA_PASSWD}@localhost:${GRAFANA_PORT}/api/org); do
@@ -42,7 +42,7 @@ done
 echo "Grafana is up and running."
 echo "Creating default influxdb datasource..."
 curl -i -XPOST -H "${HEADER_ACCEPT}" -H "${HEADER_CONTENT_TYPE}" "http://${GRAFANA_USER}:${GRAFANA_PASSWD}@localhost:${GRAFANA_PORT}/api/datasources" -d '
-{ 
+{
   "name": "influxdb-datasource",
   "type": "influxdb",
   "access": "'"${BACKEND_ACCESS_MODE}"'",
