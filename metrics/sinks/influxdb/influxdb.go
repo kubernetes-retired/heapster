@@ -63,7 +63,7 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 			if core.ValueInt64 == metricValue.ValueType {
 				value = metricValue.IntValue
 			} else if core.ValueFloat == metricValue.ValueType {
-				value = metricValue.FloatValue
+				value = float64(metricValue.FloatValue)
 			} else {
 				continue
 			}
@@ -89,7 +89,7 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 			if core.ValueInt64 == labeledMetric.ValueType {
 				value = labeledMetric.IntValue
 			} else if core.ValueFloat == labeledMetric.ValueType {
-				value = labeledMetric.FloatValue
+				value = float64(labeledMetric.FloatValue)
 			} else {
 				continue
 			}
