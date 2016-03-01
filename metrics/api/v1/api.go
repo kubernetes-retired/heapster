@@ -156,8 +156,16 @@ func (a *Api) exportMetrics(request *restful.Request, response *restful.Response
 	shortStorage := a.metricSink.GetShortStore()
 	tsmap := make(map[string]*types.Timeseries)
 
+	var newestBatch *core.DataBatch = nil
+
 	for _, batch := range shortStorage {
-		for key, ms := range batch.MetricSets {
+		if newestBatch == nil || newestBatch.Timestamp.Before(batch.Timestamp) {
+			newestBatch = batch
+		}
+	}
+
+	if newestBatch != nil {
+		for key, ms := range newestBatch.MetricSets {
 			ts := tsmap[key]
 
 			msType := ms.Labels[core.LabelMetricSetType.Key]
@@ -187,11 +195,11 @@ func (a *Api) exportMetrics(request *restful.Request, response *restful.Response
 				if _, ok := a.gkeMetrics[metricName]; ok {
 					points := ts.Metrics[metricName]
 					if points == nil {
-						points = make([]types.Point, 0, len(shortStorage))
+						points = make([]types.Point, 0, 1)
 					}
 					point := types.Point{
-						Start: batch.Timestamp,
-						End:   batch.Timestamp,
+						Start: newestBatch.Timestamp,
+						End:   newestBatch.Timestamp,
 					}
 					var value interface{}
 					if metricVal.ValueType == core.ValueInt64 {
