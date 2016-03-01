@@ -76,7 +76,7 @@ func NewSummaryMetricsSource(node NodeInfo, client *kubelet.KubeletClient, fallb
 	return &summaryMetricsSource{
 		node:          node,
 		kubeletClient: client,
-		useFallback:   summarySupported(node.KubeletVersion),
+		useFallback:   !summarySupported(node.KubeletVersion),
 		fallback:      fallback,
 	}
 }
