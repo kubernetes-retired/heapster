@@ -193,13 +193,15 @@ func (a *Api) exportMetrics(request *restful.Request, response *restful.Response
 						Start: batch.Timestamp,
 						End:   batch.Timestamp,
 					}
+					var value interface{}
 					if metricVal.ValueType == core.ValueInt64 {
-						point.Value = &metricVal.IntValue
+						value = metricVal.IntValue
 					} else if metricVal.ValueType == core.ValueFloat {
-						point.Value = &metricVal.FloatValue
+						value = metricVal.FloatValue
 					} else {
 						continue
 					}
+					point.Value = value
 					points = append(points, point)
 					ts.Metrics[metricName] = points
 				}
