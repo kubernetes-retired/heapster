@@ -163,7 +163,6 @@ func (a *Api) exportMetrics(request *restful.Request, response *restful.Response
 			msType := ms.Labels[core.LabelMetricSetType.Key]
 
 			if msType != core.MetricSetTypeNode &&
-				msType != core.MetricSetTypePod &&
 				msType != core.MetricSetTypePodContainer &&
 				msType != core.MetricSetTypeSystemContainer {
 				continue
