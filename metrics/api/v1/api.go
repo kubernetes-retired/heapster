@@ -201,6 +201,10 @@ func (a *Api) exportMetrics(request *restful.Request, response *restful.Response
 						Start: newestBatch.Timestamp,
 						End:   newestBatch.Timestamp,
 					}
+					// For cumulative metric use the provided start time.
+					if metricVal.MetricType == core.MetricCumulative {
+						point.Start = ms.CreateTime
+					}
 					var value interface{}
 					if metricVal.ValueType == core.ValueInt64 {
 						value = metricVal.IntValue
