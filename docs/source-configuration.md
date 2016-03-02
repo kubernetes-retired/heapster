@@ -23,7 +23,7 @@ Heapster requires an authentication token to connect with the apiserver securely
 
 If you don't want to setup inClusterConfig, you can still use Heapster! To run without auth, use the following config:
 
-	--source=kubernetes:http://<address-of-kubernetes-master>:<http-port>?inClusterConfig=false&auth=""
+	--source=kubernetes:http://<address-of-kubernetes-master>:<http-port>?inClusterConfig=false
 
 This requires the apiserver to be setup completely without auth, which can be done by binding the insecure port to all interfaces (see the apiserver `--insecure-bind-address` option) but *WARNING* be aware of the security repercussions. Only do this if you trust *EVERYONE* on your network.
 
