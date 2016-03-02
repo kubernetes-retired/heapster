@@ -4,11 +4,11 @@ TAG = v0.20.0-alpha10
 PREFIX = gcr.io/google_containers
 FLAGS = 
 
-SUPPORTED_KUBE_VERSIONS = "1.0.6"
+SUPPORTED_KUBE_VERSIONS = ""
 TEST_NAMESPACE = heapster-e2e-tests
 
 deps:
-	go get -u github.com/tools/godep
+	go get github.com/tools/godep
 
 build: clean deps
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build ./...
