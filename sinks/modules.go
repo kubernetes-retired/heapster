@@ -21,6 +21,7 @@ import (
 	_ "k8s.io/heapster/sinks/hawkular"
 	_ "k8s.io/heapster/sinks/influxdb"
 	_ "k8s.io/heapster/sinks/kafka"
+	_ "k8s.io/heapster/sinks/monasca"
 	_ "k8s.io/heapster/sinks/opentsdb"
 	_ "k8s.io/heapster/sinks/riemann"
 )
