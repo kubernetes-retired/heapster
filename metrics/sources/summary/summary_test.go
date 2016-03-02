@@ -409,19 +409,22 @@ func TestFallback(t *testing.T) {
 
 func TestSummarySupported(t *testing.T) {
 	tests := []struct {
-		version         string
-		expectSupported bool
+		version        string
+		expectFallback bool
 	}{
-		{"v1.2.0-alpha.8", true},
-		{"v1.2.0", true},
-		{"v1.2.0-alpha.6", false},
-		{"v1.3.0-alpha.1", true},
-		{"v1.1.8", false},
-		{"v1.0.6", false},
-		{"v-invalid", false},
+		{"v1.2.0-alpha.8", false},
+		{"v1.2.0", false},
+		{"v1.2.0-alpha.6", true},
+		{"v1.3.0-alpha.1", false},
+		{"v1.1.8", true},
+		{"v1.0.6", true},
+		{"v-invalid", true},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectSupported, summarySupported(test.version), test.version)
+		node := nodeInfo
+		node.KubeletVersion = test.version
+		source := NewSummaryMetricsSource(node, nil, nil).(*summaryMetricsSource)
+		assert.Equal(t, test.expectFallback, source.useFallback, test.version)
 	}
 }
