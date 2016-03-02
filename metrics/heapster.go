@@ -101,6 +101,13 @@ func main() {
 		core.MetricMemoryLimit.Name,
 	}
 
+	metricsToAggregateForNode := []string{
+		core.MetricCpuRequest.Name,
+		core.MetricCpuLimit.Name,
+		core.MetricMemoryRequest.Name,
+		core.MetricMemoryLimit.Name,
+	}
+
 	dataProcessors := []core.DataProcessor{
 		// Convert cumulaties to rate
 		processors.NewRateCalculator(core.RateMetricsMapping),
@@ -130,7 +137,7 @@ func main() {
 			MetricsToAggregate: metricsToAggregate,
 		},
 		&processors.NodeAggregator{
-			MetricsToAggregate: metricsToAggregate,
+			MetricsToAggregate: metricsToAggregateForNode,
 		},
 		&processors.ClusterAggregator{
 			MetricsToAggregate: metricsToAggregate,
