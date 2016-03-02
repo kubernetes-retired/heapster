@@ -122,6 +122,9 @@ var podLabels = []LabelDescriptor{
 
 var metricLabels = []LabelDescriptor{
 	LabelResourceID,
+}
+
+var customMetricLabels = []LabelDescriptor{
 	LabelCustomMetricName,
 }
 
@@ -162,8 +165,9 @@ func PodLabels() []LabelDescriptor {
 }
 
 func MetricLabels() []LabelDescriptor {
-	result := make([]LabelDescriptor, len(metricLabels))
+	result := make([]LabelDescriptor, len(metricLabels)+len(customMetricLabels))
 	copy(result, metricLabels)
+	copy(result, customMetricLabels)
 	return result
 }
 
