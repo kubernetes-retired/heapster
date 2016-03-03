@@ -126,6 +126,53 @@ func (sink *gcmSink) getTimeseriesPoint(timestamp time.Time, labels map[string]s
 	return &gcm.TimeseriesPoint{Point: point, TimeseriesDesc: desc}
 }
 
+func (sink *gcmSink) getTimeseriesPointForLabeledMetrics(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *gcm.TimeseriesPoint {
+	// Only all. There are no atuoscaling labeled metrics.
+	if sink.metricFilter != metricsAll {
+		return nil
+	}
+
+	point := &gcm.Point{
+		Start: timestamp.Format(time.RFC3339),
+		End:   timestamp.Format(time.RFC3339),
+	}
+	switch metric.ValueType {
+	case core.ValueInt64:
+		point.Int64Value = &metric.IntValue
+	case core.ValueFloat:
+		v := float64(metric.FloatValue)
+		point.DoubleValue = &v
+	default:
+		glog.Errorf("Type not supported %v in %v", metric.ValueType, metric)
+		return nil
+	}
+	// For cumulative metric use the provided start time.
+	if metric.MetricType == core.MetricCumulative {
+		point.Start = createTime.Format(time.RFC3339)
+	}
+
+	finalLabels := make(map[string]string)
+	supportedLables := core.GcmLabels()
+	for key, value := range labels {
+		if _, ok := supportedLables[key]; ok {
+			finalLabels[fullLabelName(key)] = value
+		}
+	}
+	for key, value := range metric.Labels {
+		if _, ok := supportedLables[key]; ok {
+			finalLabels[fullLabelName(key)] = value
+		}
+	}
+
+	desc := &gcm.TimeseriesDescriptor{
+		Project: sink.project,
+		Labels:  finalLabels,
+		Metric:  fullMetricName(metric.Name),
+	}
+
+	return &gcm.TimeseriesPoint{Point: point, TimeseriesDesc: desc}
+}
+
 func (sink *gcmSink) sendRequest(req *gcm.WriteTimeseriesRequest) {
 	_, err := sink.gcmService.Timeseries.Write(sink.project, req).Do()
 	if err != nil {
@@ -145,6 +192,16 @@ func (sink *gcmSink) ExportData(dataBatch *core.DataBatch) {
 	for _, metricSet := range dataBatch.MetricSets {
 		for metric, val := range metricSet.MetricValues {
 			point := sink.getTimeseriesPoint(dataBatch.Timestamp, metricSet.Labels, metric, val, metricSet.CreateTime)
+			if point != nil {
+				req.Timeseries = append(req.Timeseries, point)
+			}
+			if len(req.Timeseries) >= maxTimeseriesPerRequest {
+				sink.sendRequest(req)
+				req = getReq()
+			}
+		}
+		for _, metric := range metricSet.LabeledMetrics {
+			point := sink.getTimeseriesPointForLabeledMetrics(dataBatch.Timestamp, metricSet.Labels, metric, metricSet.CreateTime)
 			if point != nil {
 				req.Timeseries = append(req.Timeseries, point)
 			}
