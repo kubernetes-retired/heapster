@@ -93,6 +93,29 @@ can enable opentsdb sink like this:
 
     --sink=opentsdb:http://192.168.1.8:4242
 
+### Monasca
+This sink supports monitoring metrics only.
+To use the Monasca sink add the following flag:
+
+	--sink=monasca:[?<OPTIONS>]
+
+The available options are listed below, and some of them are mandatory. You need to provide access to the Identity service of OpenStack (keystone).
+Currently, only authorization through `username` / `userID` + `password` / `APIKey` is supported.
+
+The Monasca sink is then created with either the provided Monasca API Server URL, or the URL is discovered automatically if none is provided by the user.
+
+The following options are available:
+
+* `user-id` - ID of the OpenStack user
+* `username` - Name of the OpenStack user
+* `tenant-id` - ID of the OpenStack tenant (project)
+* `keystone-url` - URL to the Keystone identity service (*mandatory*). Must be a v3 server (required by Monasca)
+* `password` - Password of the OpenStack user
+* `api-key` - API-Key for the OpenStack user
+* `domain-id` - ID of the OpenStack user's domain
+* `domain-name` - Name of the OpenStack user's domain
+* `monasca-url` - URL of the Monasca API server (*optional*: the sink will attempt to discover the service if not provided)
+
 ## Modifying the sinks at runtime
 
 Using the `/api/v1/sinks` endpoint, it is possible to fetch the sinks

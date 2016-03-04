@@ -178,6 +178,10 @@
 			"Rev": "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
 		},
 		{
+			"ImportPath": "github.com/mitchellh/mapstructure",
+			"Rev": "d2dd0262208475919e1a362f675cfc0e7c10e905"
+		},
+		{
 			"ImportPath": "github.com/opencontainers/runc/libcontainer/cgroups",
 			"Comment": "v0.0.7",
 			"Rev": "7ca2aa4873aea7cb4265b1726acb24b90d8726c6"
@@ -234,11 +238,74 @@
 			"Rev": "490cc6eb5fa45bf8a8b7b73c8bc82a8160e8531d"
 		},
 		{
+			"ImportPath": "github.com/rackspace/gophercloud",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/openstack",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/openstack/identity/v2/tenants",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/openstack/identity/v2/tokens",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/openstack/identity/v3/endpoints",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/openstack/identity/v3/services",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/openstack/identity/v3/tokens",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/openstack/utils",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/pagination",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/testhelper",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud/testhelper/client",
+			"Comment": "v1.0.0-831-gf3d0534",
+			"Rev": "f3d053460f7c37970af6733bf370a3256e3648fb"
+		},
+		{
 			"ImportPath": "github.com/spf13/pflag",
 			"Rev": "5a13a75b13d132dc7d07dd19fd260257cd9c0290"
 		},
 		{
+			"ImportPath": "github.com/stretchr/objx",
+			"Rev": "1a9d0bb9f541897e62256577b352fdbc1fb4fd94"
+		},
+		{
 			"ImportPath": "github.com/stretchr/testify/assert",
+			"Rev": "2160c81a963bc827f650a9d420263d05d35bb97e"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/mock",
 			"Rev": "2160c81a963bc827f650a9d420263d05d35bb97e"
 		},
 		{
