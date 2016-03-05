@@ -17,6 +17,7 @@ package logsink
 import (
 	"bytes"
 	"fmt"
+	"sort"
 
 	"github.com/golang/glog"
 	"k8s.io/heapster/metrics/core"
@@ -36,16 +37,19 @@ func (this *LogSink) Stop() {
 func batchToString(batch *core.DataBatch) string {
 	var buffer bytes.Buffer
 	buffer.WriteString(fmt.Sprintf("DataBatch     Timestamp: %s\n\n", batch.Timestamp))
-	for key, ms := range batch.MetricSets {
+	for _, key := range sortedMetricSetKeys(batch.MetricSets) {
+		ms := batch.MetricSets[key]
 		buffer.WriteString(fmt.Sprintf("MetricSet: %s\n", key))
 		padding := "   "
 		buffer.WriteString(fmt.Sprintf("%sScrape time: %v %v\n", padding, ms.ScrapeTime, ms.ScrapeTime.UnixNano()))
 		buffer.WriteString(fmt.Sprintf("%sLabels:\n", padding))
-		for labelName, labelValue := range ms.Labels {
+		for _, labelName := range sortedLabelKeys(ms.Labels) {
+			labelValue := ms.Labels[labelName]
 			buffer.WriteString(fmt.Sprintf("%s%s%s = %s\n", padding, padding, labelName, labelValue))
 		}
 		buffer.WriteString(fmt.Sprintf("%sMetrics:\n", padding))
-		for metricName, metricValue := range ms.MetricValues {
+		for _, metricName := range sortedMetricValueKeys(ms.MetricValues) {
+			metricValue := ms.MetricValues[metricName]
 			if core.ValueInt64 == metricValue.ValueType {
 				buffer.WriteString(fmt.Sprintf("%s%s%s = %d\n", padding, padding, metricName, metricValue.IntValue))
 			} else if core.ValueFloat == metricValue.ValueType {
@@ -78,4 +82,37 @@ func (this *LogSink) ExportData(batch *core.DataBatch) {
 
 func NewLogSink() *LogSink {
 	return &LogSink{}
+}
+
+func sortedMetricSetKeys(m map[string]*core.MetricSet) []string {
+	keys := make([]string, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sortedLabelKeys(m map[string]string) []string {
+	keys := make([]string, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sortedMetricValueKeys(m map[string]core.MetricValue) []string {
+	keys := make([]string, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+	return keys
 }

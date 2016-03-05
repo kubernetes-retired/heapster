@@ -64,3 +64,63 @@ func TestSimpleWrite(t *testing.T) {
 	assert.True(t, strings.Contains(log, "hard"))
 	assert.True(t, strings.Contains(log, fmt.Sprintf("%s", now)))
 }
+
+func TestSortedOutput(t *testing.T) {
+	const (
+		label1  = "abcLabel"
+		label2  = "xyzLabel"
+		pod1    = "pod1"
+		pod2    = "pod2"
+		metric1 = "metricA"
+		metric2 = "metricB"
+	)
+	metricVal := core.MetricValue{
+		ValueType:  core.ValueInt64,
+		MetricType: core.MetricGauge,
+		IntValue:   31415,
+	}
+	metricSet := func(pod string) *core.MetricSet {
+		return &core.MetricSet{
+			Labels: map[string]string{label2 + pod: pod, label1 + pod: pod},
+			MetricValues: map[string]core.MetricValue{
+				metric2 + pod: metricVal,
+				metric1 + pod: metricVal,
+			},
+			LabeledMetrics: []core.LabeledMetric{},
+		}
+	}
+	now := time.Now()
+	batch := core.DataBatch{
+		Timestamp: now,
+		MetricSets: map[string]*core.MetricSet{
+			pod2: metricSet(pod2),
+			pod1: metricSet(pod1),
+		},
+	}
+	log := batchToString(&batch)
+	sorted := []string{
+		pod1,
+		label1 + pod1,
+		label2 + pod1,
+		metric1 + pod1,
+		metric2 + pod1,
+		pod2,
+		label1 + pod2,
+		label2 + pod2,
+		metric1 + pod2,
+		metric2 + pod2,
+	}
+	var (
+		previous      string
+		previousIndex int
+	)
+	for _, metric := range sorted {
+		metricIndex := strings.Index(log, metric)
+		assert.NotEqual(t, -1, metricIndex, "%q not found", metric)
+		if previous != "" {
+			assert.True(t, previousIndex < metricIndex, "%q should be before %q", previous, metric)
+		}
+		previous = metric
+		previousIndex = metricIndex
+	}
+}
