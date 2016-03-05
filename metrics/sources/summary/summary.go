@@ -350,11 +350,13 @@ func (this *summaryMetricsSource) addLabeledIntMetric(metrics *MetricSet, metric
 	}
 
 	val := LabeledMetric{
-		Name:       metric.Name,
-		Labels:     labels,
-		ValueType:  ValueInt64,
-		MetricType: metric.Type,
-		IntValue:   int64(*value),
+		Name:   metric.Name,
+		Labels: labels,
+		MetricValue: MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: metric.Type,
+			IntValue:   int64(*value),
+		},
 	}
 	metrics.LabeledMetrics = append(metrics.LabeledMetrics, val)
 }

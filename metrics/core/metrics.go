@@ -444,9 +444,11 @@ var MetricFilesystemUsage = Metric{
 				Labels: map[string]string{
 					LabelResourceID.Key: fs.Device,
 				},
-				ValueType:  ValueInt64,
-				MetricType: MetricCumulative,
-				IntValue:   int64(fs.Usage),
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.Usage),
+				},
 			})
 		}
 		return result
@@ -473,9 +475,11 @@ var MetricFilesystemLimit = Metric{
 				Labels: map[string]string{
 					LabelResourceID.Key: fs.Device,
 				},
-				ValueType:  ValueInt64,
-				MetricType: MetricCumulative,
-				IntValue:   int64(fs.Limit),
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.Limit),
+				},
 			})
 		}
 		return result

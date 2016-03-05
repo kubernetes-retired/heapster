@@ -15,11 +15,13 @@
 package v1
 
 import (
+	"time"
+
 	restful "github.com/emicklei/go-restful"
 
 	"k8s.io/heapster/metrics/api/v1/types"
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/heapster/metrics/sinks/metric"
+	metricsink "k8s.io/heapster/metrics/sinks/metric"
 )
 
 type Api struct {
@@ -131,7 +133,7 @@ func convertMetricDescriptor(md core.MetricDescriptor) types.MetricDescriptor {
 	return result
 }
 
-func (a *Api) exportMetricsSchema(request *restful.Request, response *restful.Response) {
+func (a *Api) exportMetricsSchema(_ *restful.Request, response *restful.Response) {
 	result := types.TimeseriesSchema{
 		Metrics:      make([]types.MetricDescriptor, 0),
 		CommonLabels: make([]types.LabelDescriptor, 0),
@@ -160,78 +162,96 @@ func (a *Api) exportMetricsSchema(request *restful.Request, response *restful.Re
 	response.WriteEntity(result)
 }
 
-func (a *Api) exportMetrics(request *restful.Request, response *restful.Response) {
-	shortStorage := a.metricSink.GetShortStore()
+func (a *Api) exportMetrics(_ *restful.Request, response *restful.Response) {
+	response.WriteEntity(a.processMetricsRequest(a.metricSink.GetShortStore()))
+}
+
+func (a *Api) processMetricsRequest(shortStorage []*core.DataBatch) []*types.Timeseries {
 	tsmap := make(map[string]*types.Timeseries)
 
-	var newestBatch *core.DataBatch = nil
-
+	var newestBatch *core.DataBatch
 	for _, batch := range shortStorage {
 		if newestBatch == nil || newestBatch.Timestamp.Before(batch.Timestamp) {
 			newestBatch = batch
 		}
 	}
 
-	if newestBatch != nil {
-		for key, ms := range newestBatch.MetricSets {
-			ts := tsmap[key]
+	var timeseries []*types.Timeseries
+	if newestBatch == nil {
+		return timeseries
+	}
+	for key, ms := range newestBatch.MetricSets {
+		ts := tsmap[key]
 
-			msType := ms.Labels[core.LabelMetricSetType.Key]
+		msType := ms.Labels[core.LabelMetricSetType.Key]
 
-			if msType != core.MetricSetTypeNode &&
-				msType != core.MetricSetTypePodContainer &&
-				msType != core.MetricSetTypeSystemContainer {
-				continue
+		switch msType {
+		case core.MetricSetTypeNode, core.MetricSetTypePodContainer, core.MetricSetTypeSystemContainer:
+		default:
+			continue
+		}
+
+		if ts == nil {
+			ts = &types.Timeseries{
+				Metrics: make(map[string][]types.Point),
+				Labels:  make(map[string]string),
 			}
-
-			if ts == nil {
-				ts = &types.Timeseries{
-					Metrics: make(map[string][]types.Point),
-					Labels:  make(map[string]string),
+			for labelName, labelValue := range ms.Labels {
+				if _, ok := a.gkeLabels[labelName]; ok {
+					ts.Labels[labelName] = labelValue
 				}
-				for labelName, labelValue := range ms.Labels {
-					if _, ok := a.gkeLabels[labelName]; ok {
-						ts.Labels[labelName] = labelValue
-					}
-				}
-				if msType == core.MetricSetTypeNode {
-					ts.Labels[core.LabelContainerName.Key] = "machine"
-				}
-				tsmap[key] = ts
 			}
-			for metricName, metricVal := range ms.MetricValues {
-				if _, ok := a.gkeMetrics[metricName]; ok {
-					points := ts.Metrics[metricName]
-					if points == nil {
-						points = make([]types.Point, 0, 1)
-					}
-					point := types.Point{
-						Start: newestBatch.Timestamp,
-						End:   newestBatch.Timestamp,
-					}
-					// For cumulative metric use the provided start time.
-					if metricVal.MetricType == core.MetricCumulative {
-						point.Start = ms.CreateTime
-					}
-					var value interface{}
-					if metricVal.ValueType == core.ValueInt64 {
-						value = metricVal.IntValue
-					} else if metricVal.ValueType == core.ValueFloat {
-						value = metricVal.FloatValue
-					} else {
-						continue
-					}
-					point.Value = value
-					points = append(points, point)
-					ts.Metrics[metricName] = points
-				}
+			if msType == core.MetricSetTypeNode {
+				ts.Labels[core.LabelContainerName.Key] = "machine"
+			}
+			tsmap[key] = ts
+		}
+		for metricName, metricVal := range ms.MetricValues {
+			if _, ok := a.gkeMetrics[metricName]; ok {
+				processPoint(ts, newestBatch, metricName, &metricVal, nil, ms.CreateTime)
+			}
+		}
+		for _, metric := range ms.LabeledMetrics {
+			if _, ok := a.gkeMetrics[metric.Name]; ok {
+				processPoint(ts, newestBatch, metric.Name, &metric.MetricValue, metric.Labels, ms.CreateTime)
 			}
 		}
 	}
-	timeseries := make([]*types.Timeseries, 0, len(tsmap))
+	timeseries = make([]*types.Timeseries, 0, len(tsmap))
 	for _, ts := range tsmap {
 		timeseries = append(timeseries, ts)
 	}
+	return timeseries
+}
 
-	response.WriteEntity(timeseries)
+func processPoint(ts *types.Timeseries, db *core.DataBatch, metricName string, metricVal *core.MetricValue, labels map[string]string, creationTime time.Time) {
+	points := ts.Metrics[metricName]
+	if points == nil {
+		points = make([]types.Point, 0, 1)
+	}
+	point := types.Point{
+		Start: db.Timestamp,
+		End:   db.Timestamp,
+	}
+	// For cumulative metric use the provided start time.
+	if metricVal.MetricType == core.MetricCumulative {
+		point.Start = creationTime
+	}
+	var value interface{}
+	if metricVal.ValueType == core.ValueInt64 {
+		value = metricVal.IntValue
+	} else if metricVal.ValueType == core.ValueFloat {
+		value = metricVal.FloatValue
+	} else {
+		return
+	}
+	point.Value = value
+	if labels != nil {
+		point.Labels = make(map[string]string)
+		for key, value := range labels {
+			point.Labels[key] = value
+		}
+	}
+	points = append(points, point)
+	ts.Metrics[metricName] = points
 }

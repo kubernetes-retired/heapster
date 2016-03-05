@@ -102,12 +102,9 @@ func (this *MetricValue) GetValue() interface{} {
 }
 
 type LabeledMetric struct {
-	Name       string
-	Labels     map[string]string
-	IntValue   int64
-	FloatValue float32
-	MetricType MetricType
-	ValueType  ValueType
+	Name   string
+	Labels map[string]string
+	MetricValue
 }
 
 func (this *LabeledMetric) GetValue() interface{} {
