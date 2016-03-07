@@ -42,10 +42,12 @@ func TestSimpleWrite(t *testing.T) {
 		},
 		LabeledMetrics: []core.LabeledMetric{
 			{
-				Name:       "lm",
-				ValueType:  core.ValueInt64,
-				MetricType: core.MetricGauge,
-				IntValue:   279,
+				Name: "lm",
+				MetricValue: core.MetricValue{
+					MetricType: core.MetricGauge,
+					ValueType:  core.ValueInt64,
+					IntValue:   279,
+				},
 				Labels: map[string]string{
 					"disk": "hard",
 				},
