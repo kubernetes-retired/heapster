@@ -51,8 +51,10 @@ var testInput = &core.DataBatch{
 						core.LabelLabels.Key:        "run:test,pod.name:default/test-u2dc",
 						core.LabelHostID.Key:        "",
 					},
-					ValueType: core.ValueInt64,
-					IntValue:  1,
+					MetricValue: core.MetricValue{
+						ValueType: core.ValueInt64,
+						IntValue:  1,
+					},
 				},
 				core.LabeledMetric{
 					Name: "memory/usage",
@@ -61,8 +63,10 @@ var testInput = &core.DataBatch{
 						core.LabelLabels.Key:        "pod.name:default/test-u2dc,run:test2,foo:bar",
 						core.LabelHostID.Key:        "myhost",
 					},
-					ValueType:  core.ValueFloat,
-					FloatValue: 64.0,
+					MetricValue: core.MetricValue{
+						ValueType:  core.ValueFloat,
+						FloatValue: 64.0,
+					},
 				},
 			},
 		},
