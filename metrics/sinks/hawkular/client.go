@@ -163,6 +163,62 @@ func (self *hawkularSink) registerIfNecessary(ms *core.MetricSet, metricName str
 	return nil
 }
 
+func (self *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric core.LabeledMetric, m ...metrics.Modifier) error {
+	key := self.idName(ms, metric.Name)
+
+	if resourceId, found := metric.Labels[core.LabelResourceID.Key]; found {
+		key = self.idName(ms, metric.Name+separator+resourceId)
+	}
+
+	self.regLock.Lock()
+	defer self.regLock.Unlock()
+
+	// If found, check it matches the current stored definition (could be old info from
+	// the stored metrics cache for example)
+	if _, found := self.reg[key]; !found {
+		// Register the metric descriptor here..
+		if md, f := self.models[metric.Name]; f {
+			// Copy the original map
+			mdd := *md
+			tags := make(map[string]string)
+			for k, v := range mdd.Tags {
+				tags[k] = v
+			}
+			mdd.Tags = tags
+
+			// Set tag values
+			for k, v := range ms.Labels {
+				mdd.Tags[k] = v
+			}
+
+			// Set the labelled values
+			for k, v := range metric.Labels {
+				mdd.Tags[k] = v
+			}
+
+			mdd.Tags[groupTag] = self.groupName(ms, metric.Name)
+			mdd.Tags[descriptorTag] = metric.Name
+
+			m = append(m, self.modifiers...)
+
+			// Create metric, use updateTags instead of Create because we know it is unique
+			if err := self.client.UpdateTags(heapsterTypeToHawkularType(metric.MetricType), key, mdd.Tags, m...); err != nil {
+				// Log error and don't add this key to the lookup table
+				glog.Errorf("Could not update tags: %s", err)
+				return err
+			}
+
+			// Add to the lookup table
+			self.reg[key] = &mdd
+		} else {
+			return fmt.Errorf("Could not find definition model with name %s", metric.Name)
+		}
+	}
+	// TODO Compare the definition tags and update if necessary? Quite expensive operation..
+
+	return nil
+}
+
 func toBatches(m []metrics.MetricHeader, batchSize int) chan []metrics.MetricHeader {
 	if batchSize == 0 {
 		c := make(chan []metrics.MetricHeader, 1)
@@ -230,6 +286,35 @@ func (self *hawkularSink) pointToMetricHeader(ms *core.MetricSet, metricName str
 		Id:   name,
 		Data: []metrics.Datapoint{m},
 		Type: heapsterTypeToHawkularType(metricValue.MetricType),
+	}
+
+	return mh, nil
+}
+
+// Converts Timeseries to metric structure used by the Hawkular
+func (self *hawkularSink) pointToLabeledMetricHeader(ms *core.MetricSet, metric core.LabeledMetric, timestamp time.Time) (*metrics.MetricHeader, error) {
+
+	name := self.idName(ms, metric.Name)
+	if resourceId, found := metric.Labels[core.LabelResourceID.Key]; found {
+		name = self.idName(ms, metric.Name+separator+resourceId)
+	}
+
+	var value float64
+	if metric.ValueType == core.ValueInt64 {
+		value = float64(metric.IntValue)
+	} else {
+		value = float64(metric.FloatValue)
+	}
+
+	m := metrics.Datapoint{
+		Value:     value,
+		Timestamp: metrics.UnixMilli(timestamp),
+	}
+
+	mh := &metrics.MetricHeader{
+		Id:   name,
+		Data: []metrics.Datapoint{m},
+		Type: heapsterTypeToHawkularType(metric.MetricType),
 	}
 
 	return mh, nil

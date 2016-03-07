@@ -75,6 +75,7 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 	totalCount := 0
 	for _, ms := range db.MetricSets {
 		totalCount += len(ms.MetricValues)
+		totalCount += len(ms.LabeledMetrics)
 	}
 
 	if len(db.MetricSets) > 0 {
@@ -125,6 +126,42 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 
 				tmhs[tenant] = append(tmhs[tenant], *mH)
 			}
+		LabeledStore:
+			for _, labeledMetric := range ms.LabeledMetrics {
+
+				for _, filter := range self.filters {
+					if !filter(ms, labeledMetric.Name) {
+						continue LabeledStore
+					}
+				}
+
+				tenant := self.client.Tenant
+
+				if &self.labelTenant != nil {
+					if v, found := ms.Labels[self.labelTenant]; found {
+						tenant = v
+					}
+				}
+
+				wg.Add(1)
+				go func(ms *core.MetricSet, labeledMetric core.LabeledMetric, tenant string) {
+					defer wg.Done()
+					self.registerLabeledIfNecessary(ms, labeledMetric, metrics.Tenant(tenant))
+				}(ms, labeledMetric, tenant)
+
+				mH, err := self.pointToLabeledMetricHeader(ms, labeledMetric, db.Timestamp)
+				if err != nil {
+					// One transformation error should not prevent the whole process
+					glog.Errorf(err.Error())
+					continue
+				}
+
+				if _, found := tmhs[tenant]; !found {
+					tmhs[tenant] = make([]metrics.MetricHeader, 0)
+				}
+
+				tmhs[tenant] = append(tmhs[tenant], *mH)
+			}
 		}
 		self.sendData(tmhs, wg) // Send to a limited channel? Only batches.. egg.
 		wg.Wait()
@@ -157,8 +194,9 @@ func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 	if err := sink.init(); err != nil {
 		return nil, err
 	}
-	metrics := make([]core.MetricDescriptor, 0, len(core.StandardMetrics))
-	for _, metric := range core.StandardMetrics {
+
+	metrics := make([]core.MetricDescriptor, 0, len(core.AllMetrics))
+	for _, metric := range core.AllMetrics {
 		metrics = append(metrics, metric.MetricDescriptor)
 	}
 	sink.Register(metrics)

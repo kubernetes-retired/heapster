@@ -80,6 +80,8 @@ func TestMetricTransform(t *testing.T) {
 	l[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
 	metricName := "test/metric/1"
+	labeledMetricNameA := "test/labeledmetric/A"
+	labeledMetricNameB := "test/labeledmetric/B"
 
 	metricSet := core.MetricSet{
 		Labels: l,
@@ -90,9 +92,29 @@ func TestMetricTransform(t *testing.T) {
 				IntValue:   123456,
 			},
 		},
+		LabeledMetrics: []core.LabeledMetric{
+			{
+				Name: labeledMetricNameA,
+				Labels: map[string]string{
+					core.LabelResourceID.Key: "XYZ",
+				},
+				MetricValue: core.MetricValue{
+					MetricType: core.MetricGauge,
+					FloatValue: 124.456,
+				},
+			},
+			{
+				Name: labeledMetricNameB,
+				MetricValue: core.MetricValue{
+					MetricType: core.MetricGauge,
+					FloatValue: 454,
+				},
+			},
+		},
 	}
 
 	now := time.Now()
+	//
 	m, err := hSink.pointToMetricHeader(&metricSet, metricName, now)
 	assert.NoError(t, err)
 
@@ -105,11 +127,25 @@ func TestMetricTransform(t *testing.T) {
 
 	delete(l, core.LabelPodId.Key)
 
+	//
 	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
 	assert.NoError(t, err)
 
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelHostID.Key], metricName), m.Id)
 
+	//
+	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
+	assert.NoError(t, err)
+
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key],
+		metricSet.Labels[core.LabelHostID.Key], labeledMetricNameA,
+		metricSet.LabeledMetrics[0].Labels[core.LabelResourceID.Key]), m.Id)
+
+	//
+	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[1], now)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key],
+		metricSet.Labels[core.LabelHostID.Key], labeledMetricNameB), m.Id)
 }
 
 func TestRecentTest(t *testing.T) {
