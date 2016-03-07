@@ -41,6 +41,9 @@ func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink) *Api {
 	for _, val := range core.LabeledMetrics {
 		gkeMetrics[val.Name] = val.MetricDescriptor
 	}
+	gkeMetrics[core.MetricCpuLimit.Name] = core.MetricCpuLimit.MetricDescriptor
+	gkeMetrics[core.MetricMemoryLimit.Name] = core.MetricMemoryLimit.MetricDescriptor
+
 	for _, val := range core.CommonLabels() {
 		gkeLabels[val.Key] = val
 	}
@@ -144,11 +147,17 @@ func (a *Api) exportMetricsSchema(_ *restful.Request, response *restful.Response
 			result.Metrics = append(result.Metrics, convertMetricDescriptor(metric.MetricDescriptor))
 		}
 	}
+	for _, metric := range core.AdditionalMetrics {
+		if _, found := a.gkeMetrics[metric.Name]; found {
+			result.Metrics = append(result.Metrics, convertMetricDescriptor(metric.MetricDescriptor))
+		}
+	}
 	for _, metric := range core.LabeledMetrics {
 		if _, found := a.gkeMetrics[metric.Name]; found {
 			result.Metrics = append(result.Metrics, convertMetricDescriptor(metric.MetricDescriptor))
 		}
 	}
+
 	for _, label := range core.CommonLabels() {
 		if _, found := a.gkeLabels[label.Key]; found {
 			result.PodLabels = append(result.PodLabels, convertLabelDescriptor(label))
