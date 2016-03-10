@@ -446,7 +446,7 @@ var MetricFilesystemUsage = Metric{
 				},
 				MetricValue: MetricValue{
 					ValueType:  ValueInt64,
-					MetricType: MetricCumulative,
+					MetricType: MetricGauge,
 					IntValue:   int64(fs.Usage),
 				},
 			})
@@ -477,7 +477,7 @@ var MetricFilesystemLimit = Metric{
 				},
 				MetricValue: MetricValue{
 					ValueType:  ValueInt64,
-					MetricType: MetricCumulative,
+					MetricType: MetricGauge,
 					IntValue:   int64(fs.Limit),
 				},
 			})
