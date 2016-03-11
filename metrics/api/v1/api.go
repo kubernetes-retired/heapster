@@ -160,7 +160,12 @@ func (a *Api) exportMetricsSchema(_ *restful.Request, response *restful.Response
 
 	for _, label := range core.CommonLabels() {
 		if _, found := a.gkeLabels[label.Key]; found {
-			result.PodLabels = append(result.PodLabels, convertLabelDescriptor(label))
+			result.CommonLabels = append(result.CommonLabels, convertLabelDescriptor(label))
+		}
+	}
+	for _, label := range core.ContainerLabels() {
+		if _, found := a.gkeLabels[label.Key]; found {
+			result.CommonLabels = append(result.CommonLabels, convertLabelDescriptor(label))
 		}
 	}
 	for _, label := range core.PodLabels() {
