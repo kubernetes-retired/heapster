@@ -22,6 +22,8 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/conversion"
+	"k8s.io/kubernetes/pkg/runtime"
+	"speter.net/go/exp/math/dec/inf"
 )
 
 const (
@@ -32,21 +34,47 @@ const (
 	mirrorAnnotationValue_1_0 = "mirror"
 )
 
-func addConversionFuncs() {
+func addConversionFuncs(scheme *runtime.Scheme) {
 	// Add non-generated conversion functions
-	err := api.Scheme.AddConversionFuncs(
-		convert_api_Pod_To_v1_Pod,
-		convert_api_PodSpec_To_v1_PodSpec,
-		convert_api_ReplicationControllerSpec_To_v1_ReplicationControllerSpec,
-		convert_api_ServiceSpec_To_v1_ServiceSpec,
-		convert_v1_Pod_To_api_Pod,
-		convert_v1_PodSpec_To_api_PodSpec,
-		convert_v1_ReplicationControllerSpec_To_api_ReplicationControllerSpec,
-		convert_v1_ServiceSpec_To_api_ServiceSpec,
+	err := scheme.AddConversionFuncs(
+		Convert_api_Pod_To_v1_Pod,
+		Convert_api_PodSpec_To_v1_PodSpec,
+		Convert_api_ReplicationControllerSpec_To_v1_ReplicationControllerSpec,
+		Convert_api_ServiceSpec_To_v1_ServiceSpec,
+		Convert_v1_Pod_To_api_Pod,
+		Convert_v1_PodSpec_To_api_PodSpec,
+		Convert_v1_ReplicationControllerSpec_To_api_ReplicationControllerSpec,
+		Convert_v1_ServiceSpec_To_api_ServiceSpec,
+		Convert_v1_ResourceList_To_api_ResourceList,
 	)
 	if err != nil {
 		// If one of the conversion functions is malformed, detect it immediately.
 		panic(err)
+	}
+
+	// Add field label conversions for kinds having selectable nothing but ObjectMeta fields.
+	for _, kind := range []string{
+		"Endpoints",
+		"ResourceQuota",
+		"PersistentVolumeClaim",
+		"Service",
+		"ServiceAccount",
+		"ConfigMap",
+	} {
+		err = api.Scheme.AddFieldLabelConversionFunc("v1", kind,
+			func(label, value string) (string, string, error) {
+				switch label {
+				case "metadata.namespace",
+					"metadata.name":
+					return label, value, nil
+				default:
+					return "", "", fmt.Errorf("field label %q not supported for %q", label, kind)
+				}
+			})
+		if err != nil {
+			// If one of the conversion functions is malformed, detect it immediately.
+			panic(err)
+		}
 	}
 
 	// Add field conversion funcs.
@@ -59,7 +87,8 @@ func addConversionFuncs() {
 				"metadata.annotations",
 				"status.phase",
 				"status.podIP",
-				"spec.nodeName":
+				"spec.nodeName",
+				"spec.restartPolicy":
 				return label, value, nil
 				// This is for backwards compatibility with old v1 clients which send spec.host
 			case "spec.host":
@@ -91,6 +120,7 @@ func addConversionFuncs() {
 		func(label, value string) (string, string, error) {
 			switch label {
 			case "metadata.name",
+				"metadata.namespace",
 				"status.replicas":
 				return label, value, nil
 			default:
@@ -112,7 +142,10 @@ func addConversionFuncs() {
 				"involvedObject.resourceVersion",
 				"involvedObject.fieldPath",
 				"reason",
-				"source":
+				"source",
+				"type",
+				"metadata.namespace",
+				"metadata.name":
 				return label, value, nil
 			default:
 				return "", "", fmt.Errorf("field label not supported: %s", label)
@@ -125,7 +158,21 @@ func addConversionFuncs() {
 	err = api.Scheme.AddFieldLabelConversionFunc("v1", "Namespace",
 		func(label, value string) (string, string, error) {
 			switch label {
-			case "status.phase":
+			case "status.phase",
+				"metadata.name":
+				return label, value, nil
+			default:
+				return "", "", fmt.Errorf("field label not supported: %s", label)
+			}
+		})
+	if err != nil {
+		// If one of the conversion functions is malformed, detect it immediately.
+		panic(err)
+	}
+	err = api.Scheme.AddFieldLabelConversionFunc("v1", "PersistentVolume",
+		func(label, value string) (string, string, error) {
+			switch label {
+			case "metadata.name":
 				return label, value, nil
 			default:
 				return "", "", fmt.Errorf("field label not supported: %s", label)
@@ -138,33 +185,9 @@ func addConversionFuncs() {
 	err = api.Scheme.AddFieldLabelConversionFunc("v1", "Secret",
 		func(label, value string) (string, string, error) {
 			switch label {
-			case "type":
-				return label, value, nil
-			default:
-				return "", "", fmt.Errorf("field label not supported: %s", label)
-			}
-		})
-	if err != nil {
-		// If one of the conversion functions is malformed, detect it immediately.
-		panic(err)
-	}
-	err = api.Scheme.AddFieldLabelConversionFunc("v1", "ServiceAccount",
-		func(label, value string) (string, string, error) {
-			switch label {
-			case "metadata.name":
-				return label, value, nil
-			default:
-				return "", "", fmt.Errorf("field label not supported: %s", label)
-			}
-		})
-	if err != nil {
-		// If one of the conversion functions is malformed, detect it immediately.
-		panic(err)
-	}
-	err = api.Scheme.AddFieldLabelConversionFunc("v1", "Endpoints",
-		func(label, value string) (string, string, error) {
-			switch label {
-			case "metadata.name":
+			case "type",
+				"metadata.namespace",
+				"metadata.name":
 				return label, value, nil
 			default:
 				return "", "", fmt.Errorf("field label not supported: %s", label)
@@ -176,12 +199,12 @@ func addConversionFuncs() {
 	}
 }
 
-func convert_api_ReplicationControllerSpec_To_v1_ReplicationControllerSpec(in *api.ReplicationControllerSpec, out *ReplicationControllerSpec, s conversion.Scope) error {
+func Convert_api_ReplicationControllerSpec_To_v1_ReplicationControllerSpec(in *api.ReplicationControllerSpec, out *ReplicationControllerSpec, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*api.ReplicationControllerSpec))(in)
 	}
-	out.Replicas = new(int)
-	*out.Replicas = in.Replicas
+	out.Replicas = new(int32)
+	*out.Replicas = int32(in.Replicas)
 	if in.Selector != nil {
 		out.Selector = make(map[string]string)
 		for key, val := range in.Selector {
@@ -192,7 +215,7 @@ func convert_api_ReplicationControllerSpec_To_v1_ReplicationControllerSpec(in *a
 	}
 	//if in.TemplateRef != nil {
 	//	out.TemplateRef = new(ObjectReference)
-	//	if err := convert_api_ObjectReference_To_v1_ObjectReference(in.TemplateRef, out.TemplateRef, s); err != nil {
+	//	if err := Convert_api_ObjectReference_To_v1_ObjectReference(in.TemplateRef, out.TemplateRef, s); err != nil {
 	//		return err
 	//	}
 	//} else {
@@ -200,7 +223,7 @@ func convert_api_ReplicationControllerSpec_To_v1_ReplicationControllerSpec(in *a
 	//}
 	if in.Template != nil {
 		out.Template = new(PodTemplateSpec)
-		if err := convert_api_PodTemplateSpec_To_v1_PodTemplateSpec(in.Template, out.Template, s); err != nil {
+		if err := Convert_api_PodTemplateSpec_To_v1_PodTemplateSpec(in.Template, out.Template, s); err != nil {
 			return err
 		}
 	} else {
@@ -209,11 +232,11 @@ func convert_api_ReplicationControllerSpec_To_v1_ReplicationControllerSpec(in *a
 	return nil
 }
 
-func convert_v1_ReplicationControllerSpec_To_api_ReplicationControllerSpec(in *ReplicationControllerSpec, out *api.ReplicationControllerSpec, s conversion.Scope) error {
+func Convert_v1_ReplicationControllerSpec_To_api_ReplicationControllerSpec(in *ReplicationControllerSpec, out *api.ReplicationControllerSpec, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*ReplicationControllerSpec))(in)
 	}
-	out.Replicas = *in.Replicas
+	out.Replicas = int(*in.Replicas)
 	if in.Selector != nil {
 		out.Selector = make(map[string]string)
 		for key, val := range in.Selector {
@@ -224,7 +247,7 @@ func convert_v1_ReplicationControllerSpec_To_api_ReplicationControllerSpec(in *R
 	}
 	//if in.TemplateRef != nil {
 	//	out.TemplateRef = new(api.ObjectReference)
-	//	if err := convert_v1_ObjectReference_To_api_ObjectReference(in.TemplateRef, out.TemplateRef, s); err != nil {
+	//	if err := Convert_v1_ObjectReference_To_api_ObjectReference(in.TemplateRef, out.TemplateRef, s); err != nil {
 	//		return err
 	//	}
 	//} else {
@@ -232,7 +255,7 @@ func convert_v1_ReplicationControllerSpec_To_api_ReplicationControllerSpec(in *R
 	//}
 	if in.Template != nil {
 		out.Template = new(api.PodTemplateSpec)
-		if err := convert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in.Template, out.Template, s); err != nil {
+		if err := Convert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in.Template, out.Template, s); err != nil {
 			return err
 		}
 	} else {
@@ -243,14 +266,14 @@ func convert_v1_ReplicationControllerSpec_To_api_ReplicationControllerSpec(in *R
 
 // The following two PodSpec conversions are done here to support ServiceAccount
 // as an alias for ServiceAccountName.
-func convert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conversion.Scope) error {
+func Convert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*api.PodSpec))(in)
 	}
 	if in.Volumes != nil {
 		out.Volumes = make([]Volume, len(in.Volumes))
 		for i := range in.Volumes {
-			if err := convert_api_Volume_To_v1_Volume(&in.Volumes[i], &out.Volumes[i], s); err != nil {
+			if err := Convert_api_Volume_To_v1_Volume(&in.Volumes[i], &out.Volumes[i], s); err != nil {
 				return err
 			}
 		}
@@ -260,7 +283,7 @@ func convert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conversi
 	if in.Containers != nil {
 		out.Containers = make([]Container, len(in.Containers))
 		for i := range in.Containers {
-			if err := convert_api_Container_To_v1_Container(&in.Containers[i], &out.Containers[i], s); err != nil {
+			if err := Convert_api_Container_To_v1_Container(&in.Containers[i], &out.Containers[i], s); err != nil {
 				return err
 			}
 		}
@@ -293,13 +316,22 @@ func convert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conversi
 	// DeprecatedServiceAccount is an alias for ServiceAccountName.
 	out.DeprecatedServiceAccount = in.ServiceAccountName
 	out.NodeName = in.NodeName
-	out.HostNetwork = in.HostNetwork
-	out.HostPID = in.HostPID
-	out.HostIPC = in.HostIPC
+	if in.SecurityContext != nil {
+		out.SecurityContext = new(PodSecurityContext)
+		if err := Convert_api_PodSecurityContext_To_v1_PodSecurityContext(in.SecurityContext, out.SecurityContext, s); err != nil {
+			return err
+		}
+
+		// the host namespace fields have to be handled here for backward compatibility
+		// with v1.0.0
+		out.HostPID = in.SecurityContext.HostPID
+		out.HostNetwork = in.SecurityContext.HostNetwork
+		out.HostIPC = in.SecurityContext.HostIPC
+	}
 	if in.ImagePullSecrets != nil {
 		out.ImagePullSecrets = make([]LocalObjectReference, len(in.ImagePullSecrets))
 		for i := range in.ImagePullSecrets {
-			if err := convert_api_LocalObjectReference_To_v1_LocalObjectReference(&in.ImagePullSecrets[i], &out.ImagePullSecrets[i], s); err != nil {
+			if err := Convert_api_LocalObjectReference_To_v1_LocalObjectReference(&in.ImagePullSecrets[i], &out.ImagePullSecrets[i], s); err != nil {
 				return err
 			}
 		}
@@ -309,14 +341,14 @@ func convert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conversi
 	return nil
 }
 
-func convert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conversion.Scope) error {
+func Convert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*PodSpec))(in)
 	}
 	if in.Volumes != nil {
 		out.Volumes = make([]api.Volume, len(in.Volumes))
 		for i := range in.Volumes {
-			if err := convert_v1_Volume_To_api_Volume(&in.Volumes[i], &out.Volumes[i], s); err != nil {
+			if err := Convert_v1_Volume_To_api_Volume(&in.Volumes[i], &out.Volumes[i], s); err != nil {
 				return err
 			}
 		}
@@ -326,7 +358,7 @@ func convert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conversi
 	if in.Containers != nil {
 		out.Containers = make([]api.Container, len(in.Containers))
 		for i := range in.Containers {
-			if err := convert_v1_Container_To_api_Container(&in.Containers[i], &out.Containers[i], s); err != nil {
+			if err := Convert_v1_Container_To_api_Container(&in.Containers[i], &out.Containers[i], s); err != nil {
 				return err
 			}
 		}
@@ -362,13 +394,25 @@ func convert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conversi
 		out.ServiceAccountName = in.DeprecatedServiceAccount
 	}
 	out.NodeName = in.NodeName
-	out.HostNetwork = in.HostNetwork
-	out.HostPID = in.HostPID
-	out.HostIPC = in.HostIPC
+	if in.SecurityContext != nil {
+		out.SecurityContext = new(api.PodSecurityContext)
+		if err := Convert_v1_PodSecurityContext_To_api_PodSecurityContext(in.SecurityContext, out.SecurityContext, s); err != nil {
+			return err
+		}
+	}
+
+	// the host namespace fields have to be handled specially for backward compatibility
+	// with v1.0.0
+	if out.SecurityContext == nil {
+		out.SecurityContext = new(api.PodSecurityContext)
+	}
+	out.SecurityContext.HostNetwork = in.HostNetwork
+	out.SecurityContext.HostPID = in.HostPID
+	out.SecurityContext.HostIPC = in.HostIPC
 	if in.ImagePullSecrets != nil {
 		out.ImagePullSecrets = make([]api.LocalObjectReference, len(in.ImagePullSecrets))
 		for i := range in.ImagePullSecrets {
-			if err := convert_v1_LocalObjectReference_To_api_LocalObjectReference(&in.ImagePullSecrets[i], &out.ImagePullSecrets[i], s); err != nil {
+			if err := Convert_v1_LocalObjectReference_To_api_LocalObjectReference(&in.ImagePullSecrets[i], &out.ImagePullSecrets[i], s); err != nil {
 				return err
 			}
 		}
@@ -379,8 +423,8 @@ func convert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conversi
 	return nil
 }
 
-func convert_api_Pod_To_v1_Pod(in *api.Pod, out *Pod, s conversion.Scope) error {
-	if err := autoconvert_api_Pod_To_v1_Pod(in, out, s); err != nil {
+func Convert_api_Pod_To_v1_Pod(in *api.Pod, out *Pod, s conversion.Scope) error {
+	if err := autoConvert_api_Pod_To_v1_Pod(in, out, s); err != nil {
 		return err
 	}
 	// We need to reset certain fields for mirror pods from pre-v1.1 kubelet
@@ -397,12 +441,12 @@ func convert_api_Pod_To_v1_Pod(in *api.Pod, out *Pod, s conversion.Scope) error 
 	return nil
 }
 
-func convert_v1_Pod_To_api_Pod(in *Pod, out *api.Pod, s conversion.Scope) error {
-	return autoconvert_v1_Pod_To_api_Pod(in, out, s)
+func Convert_v1_Pod_To_api_Pod(in *Pod, out *api.Pod, s conversion.Scope) error {
+	return autoConvert_v1_Pod_To_api_Pod(in, out, s)
 }
 
-func convert_api_ServiceSpec_To_v1_ServiceSpec(in *api.ServiceSpec, out *ServiceSpec, s conversion.Scope) error {
-	if err := autoconvert_api_ServiceSpec_To_v1_ServiceSpec(in, out, s); err != nil {
+func Convert_api_ServiceSpec_To_v1_ServiceSpec(in *api.ServiceSpec, out *ServiceSpec, s conversion.Scope) error {
+	if err := autoConvert_api_ServiceSpec_To_v1_ServiceSpec(in, out, s); err != nil {
 		return err
 	}
 	// Publish both externalIPs and deprecatedPublicIPs fields in v1.
@@ -412,8 +456,8 @@ func convert_api_ServiceSpec_To_v1_ServiceSpec(in *api.ServiceSpec, out *Service
 	return nil
 }
 
-func convert_v1_ServiceSpec_To_api_ServiceSpec(in *ServiceSpec, out *api.ServiceSpec, s conversion.Scope) error {
-	if err := autoconvert_v1_ServiceSpec_To_api_ServiceSpec(in, out, s); err != nil {
+func Convert_v1_ServiceSpec_To_api_ServiceSpec(in *ServiceSpec, out *api.ServiceSpec, s conversion.Scope) error {
+	if err := autoConvert_v1_ServiceSpec_To_api_ServiceSpec(in, out, s); err != nil {
 		return err
 	}
 	// Prefer the legacy deprecatedPublicIPs field, if provided.
@@ -423,5 +467,99 @@ func convert_v1_ServiceSpec_To_api_ServiceSpec(in *ServiceSpec, out *api.Service
 			out.ExternalIPs = append(out.ExternalIPs, ip)
 		}
 	}
+	return nil
+}
+
+func Convert_api_PodSecurityContext_To_v1_PodSecurityContext(in *api.PodSecurityContext, out *PodSecurityContext, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.PodSecurityContext))(in)
+	}
+
+	out.SupplementalGroups = in.SupplementalGroups
+	if in.SELinuxOptions != nil {
+		out.SELinuxOptions = new(SELinuxOptions)
+		if err := Convert_api_SELinuxOptions_To_v1_SELinuxOptions(in.SELinuxOptions, out.SELinuxOptions, s); err != nil {
+			return err
+		}
+	} else {
+		out.SELinuxOptions = nil
+	}
+	if in.RunAsUser != nil {
+		out.RunAsUser = new(int64)
+		*out.RunAsUser = *in.RunAsUser
+	} else {
+		out.RunAsUser = nil
+	}
+	if in.RunAsNonRoot != nil {
+		out.RunAsNonRoot = new(bool)
+		*out.RunAsNonRoot = *in.RunAsNonRoot
+	} else {
+		out.RunAsNonRoot = nil
+	}
+	if in.FSGroup != nil {
+		out.FSGroup = new(int64)
+		*out.FSGroup = *in.FSGroup
+	} else {
+		out.FSGroup = nil
+	}
+	return nil
+}
+
+func Convert_v1_PodSecurityContext_To_api_PodSecurityContext(in *PodSecurityContext, out *api.PodSecurityContext, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*PodSecurityContext))(in)
+	}
+
+	out.SupplementalGroups = in.SupplementalGroups
+	if in.SELinuxOptions != nil {
+		out.SELinuxOptions = new(api.SELinuxOptions)
+		if err := Convert_v1_SELinuxOptions_To_api_SELinuxOptions(in.SELinuxOptions, out.SELinuxOptions, s); err != nil {
+			return err
+		}
+	} else {
+		out.SELinuxOptions = nil
+	}
+	if in.RunAsUser != nil {
+		out.RunAsUser = new(int64)
+		*out.RunAsUser = *in.RunAsUser
+	} else {
+		out.RunAsUser = nil
+	}
+	if in.RunAsNonRoot != nil {
+		out.RunAsNonRoot = new(bool)
+		*out.RunAsNonRoot = *in.RunAsNonRoot
+	} else {
+		out.RunAsNonRoot = nil
+	}
+	if in.FSGroup != nil {
+		out.FSGroup = new(int64)
+		*out.FSGroup = *in.FSGroup
+	} else {
+		out.FSGroup = nil
+	}
+	return nil
+}
+
+func Convert_v1_ResourceList_To_api_ResourceList(in *ResourceList, out *api.ResourceList, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*ResourceList))(in)
+	}
+	if *in == nil {
+		return nil
+	}
+
+	converted := make(api.ResourceList)
+	for key, val := range *in {
+		value := val.Copy()
+
+		// TODO(#18538): We round up resource values to milli scale to maintain API compatibility.
+		// In the future, we should instead reject values that need rounding.
+		const milliScale = 3
+		value.Amount.Round(value.Amount, milliScale, inf.RoundUp)
+
+		converted[api.ResourceName(key)] = *value
+	}
+
+	*out = converted
 	return nil
 }

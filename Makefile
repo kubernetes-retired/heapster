@@ -1,24 +1,24 @@
 all: build
 
-TAG = v0.19.1
+TAG = v0.20.0-alpha12
 PREFIX = gcr.io/google_containers
-FLAGS =
+FLAGS = 
 
-SUPPORTED_KUBE_VERSIONS = "1.0.6"
+SUPPORTED_KUBE_VERSIONS = ""
 TEST_NAMESPACE = heapster-e2e-tests
 
 deps:
-	go get -u github.com/tools/godep
+	go get github.com/tools/godep
 
 build: clean deps
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build ./...
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o heapster k8s.io/heapster/metrics
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o eventer k8s.io/heapster/events
 
 sanitize:
 	hooks/check_boilerplate.sh
 	hooks/check_gofmt.sh
 	hooks/run_vet.sh
-	hooks/check_generate.sh
 
 test-unit: clean deps sanitize build
 	GOOS=linux GOARCH=amd64 godep go test --test.short -race ./... $(FLAGS)
@@ -31,6 +31,7 @@ test-integration: clean deps build
 
 container: build
 	cp heapster deploy/docker/heapster
+	cp eventer deploy/docker/eventer
 	docker build -t $(PREFIX)/heapster:$(TAG) deploy/docker/
 
 grafana:
@@ -41,6 +42,8 @@ influxdb:
 
 clean:
 	rm -f heapster
+	rm -f eventer
 	rm -f deploy/docker/heapster
+	rm -f deploy/docker/eventer
 
 .PHONY: all deps build sanitize test-unit test-unit-cov test-integration container grafana influxdb clean

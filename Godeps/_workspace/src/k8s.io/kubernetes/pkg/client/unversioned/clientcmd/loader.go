@@ -25,22 +25,27 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ghodss/yaml"
+	"github.com/golang/glog"
 	"github.com/imdario/mergo"
 
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 	clientcmdlatest "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api/latest"
-	"k8s.io/kubernetes/pkg/util/errors"
+	"k8s.io/kubernetes/pkg/runtime"
+	utilerrors "k8s.io/kubernetes/pkg/util/errors"
 )
 
 const (
 	RecommendedConfigPathFlag   = "kubeconfig"
 	RecommendedConfigPathEnvVar = "KUBECONFIG"
-	RecommendedHomeFileName     = "/.kube/config"
+	RecommendedHomeDir          = ".kube"
+	RecommendedFileName         = "config"
+	RecommendedSchemaName       = "schema"
 )
 
 var OldRecommendedHomeFile = path.Join(os.Getenv("HOME"), "/.kube/.kubeconfig")
-var RecommendedHomeFile = path.Join(os.Getenv("HOME"), RecommendedHomeFileName)
+var RecommendedHomeFile = path.Join(os.Getenv("HOME"), RecommendedHomeDir, RecommendedFileName)
+var RecommendedSchemaFile = path.Join(os.Getenv("HOME"), RecommendedHomeDir, RecommendedSchemaName)
 
 // ClientConfigLoadingRules is an ExplicitPath and string slice of specific locations that are used for merging together a Config
 // Callers can put the chain together however they want, but we'd recommend:
@@ -143,7 +148,7 @@ func (rules *ClientConfigLoadingRules) Load() (*clientcmdapi.Config, error) {
 		}
 	}
 
-	return config, errors.NewAggregate(errlist)
+	return config, utilerrors.NewAggregate(errlist)
 }
 
 // Migrate uses the MigrationRules map.  If a destination file is not present, then the source file is checked.
@@ -222,6 +227,7 @@ func LoadFromFile(filename string) (*clientcmdapi.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	glog.V(6).Infoln("Config loaded from file", filename)
 
 	// set LocationOfOrigin on every Cluster, User, and Context
 	for key, obj := range config.AuthInfos {
@@ -237,6 +243,16 @@ func LoadFromFile(filename string) (*clientcmdapi.Config, error) {
 		config.Contexts[key] = obj
 	}
 
+	if config.AuthInfos == nil {
+		config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+	}
+	if config.Clusters == nil {
+		config.Clusters = map[string]*clientcmdapi.Cluster{}
+	}
+	if config.Contexts == nil {
+		config.Contexts = map[string]*clientcmdapi.Context{}
+	}
+
 	return config, nil
 }
 
@@ -248,11 +264,11 @@ func Load(data []byte) (*clientcmdapi.Config, error) {
 	if len(data) == 0 {
 		return config, nil
 	}
-
-	if err := clientcmdlatest.Codec.DecodeInto(data, config); err != nil {
+	decoded, _, err := clientcmdlatest.Codec.Decode(data, &unversioned.GroupVersionKind{Version: clientcmdlatest.Version, Kind: "Config"}, config)
+	if err != nil {
 		return nil, err
 	}
-	return config, nil
+	return decoded.(*clientcmdapi.Config), nil
 }
 
 // WriteToFile serializes the config to yaml and writes it out to a file.  If not present, it creates the file with the mode 0600.  If it is present
@@ -277,15 +293,7 @@ func WriteToFile(config clientcmdapi.Config, filename string) error {
 // Write serializes the config to yaml.
 // Encapsulates serialization without assuming the destination is a file.
 func Write(config clientcmdapi.Config) ([]byte, error) {
-	json, err := clientcmdlatest.Codec.Encode(&config)
-	if err != nil {
-		return nil, err
-	}
-	content, err := yaml.JSONToYAML(json)
-	if err != nil {
-		return nil, err
-	}
-	return content, nil
+	return runtime.Encode(clientcmdlatest.Codec, &config)
 }
 
 func (rules ClientConfigLoadingRules) ResolvePaths() bool {

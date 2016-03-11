@@ -30,7 +30,7 @@ func (self *ResourceList) Cpu() *resource.Quantity {
 	if val, ok := (*self)[ResourceCPU]; ok {
 		return &val
 	}
-	return &resource.Quantity{}
+	return &resource.Quantity{Format: resource.DecimalSI}
 }
 
 // Returns the Memory limit if specified.
@@ -38,7 +38,7 @@ func (self *ResourceList) Memory() *resource.Quantity {
 	if val, ok := (*self)[ResourceMemory]; ok {
 		return &val
 	}
-	return &resource.Quantity{}
+	return &resource.Quantity{Format: resource.BinarySI}
 }
 
 func (self *ResourceList) Pods() *resource.Quantity {
@@ -66,7 +66,7 @@ func GetExistingContainerStatus(statuses []ContainerStatus, name string) Contain
 	return ContainerStatus{}
 }
 
-// IsPodReady retruns true if a pod is ready; false otherwise.
+// IsPodReady returns true if a pod is ready; false otherwise.
 func IsPodReady(pod *Pod) bool {
 	return IsPodReadyConditionTrue(pod.Status)
 }
@@ -80,9 +80,9 @@ func IsPodReadyConditionTrue(status PodStatus) bool {
 // Extracts the pod ready condition from the given status and returns that.
 // Returns nil if the condition is not present.
 func GetPodReadyCondition(status PodStatus) *PodCondition {
-	for _, c := range status.Conditions {
+	for i, c := range status.Conditions {
 		if c.Type == PodReady {
-			return &c
+			return &status.Conditions[i]
 		}
 	}
 	return nil
@@ -96,4 +96,27 @@ func IsNodeReady(node *Node) bool {
 		}
 	}
 	return false
+}
+
+// PodRequestsAndLimits returns a dictionary of all defined resources summed up for all
+// containers of the pod.
+func PodRequestsAndLimits(pod *Pod) (reqs map[ResourceName]resource.Quantity, limits map[ResourceName]resource.Quantity, err error) {
+	reqs, limits = map[ResourceName]resource.Quantity{}, map[ResourceName]resource.Quantity{}
+	for _, container := range pod.Spec.Containers {
+		for name, quantity := range container.Resources.Requests {
+			if value, ok := reqs[name]; !ok {
+				reqs[name] = *quantity.Copy()
+			} else if err = value.Add(quantity); err != nil {
+				return nil, nil, err
+			}
+		}
+		for name, quantity := range container.Resources.Limits {
+			if value, ok := limits[name]; !ok {
+				limits[name] = *quantity.Copy()
+			} else if err = value.Add(quantity); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	return
 }

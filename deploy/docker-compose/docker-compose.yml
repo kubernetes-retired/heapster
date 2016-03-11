@@ -1,5 +1,5 @@
 heapster:
-    image: kubernetes/heapster:v0.19.0
+    image: kubernetes/heapster:v0.14.3
     ports:
         - "8082:8082"
     links:

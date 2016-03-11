@@ -20,7 +20,64 @@ import (
 	"errors"
 	"math/rand"
 	"time"
+
+	"k8s.io/kubernetes/pkg/util/runtime"
 )
+
+// For any test of the style:
+//   ...
+//   <- time.After(timeout):
+//      t.Errorf("Timed out")
+// The value for timeout should effectively be "forever." Obviously we don't want our tests to truly lock up forever, but 30s
+// is long enough that it is effectively forever for the things that can slow down a run on a heavily contended machine
+// (GC, seeks, etc), but not so long as to make a developer ctrl-c a test run if they do happen to break that test.
+var ForeverTestTimeout = time.Second * 30
+
+// NeverStop may be passed to Until to make it never stop.
+var NeverStop <-chan struct{} = make(chan struct{})
+
+// Forever is syntactic sugar on top of Until
+func Forever(f func(), period time.Duration) {
+	Until(f, period, NeverStop)
+}
+
+// Until loops until stop channel is closed, running f every period.
+// Until is syntactic sugar on top of JitterUntil with zero jitter factor
+func Until(f func(), period time.Duration, stopCh <-chan struct{}) {
+	JitterUntil(f, period, 0.0, stopCh)
+}
+
+// JitterUntil loops until stop channel is closed, running f every period.
+// If jitterFactor is positive, the period is jittered before every run of f.
+// If jitterFactor is not positive, the period is unchanged.
+// Catches any panics, and keeps going. f may not be invoked if
+// stop channel is already closed. Pass NeverStop to Until if you
+// don't want it stop.
+func JitterUntil(f func(), period time.Duration, jitterFactor float64, stopCh <-chan struct{}) {
+	select {
+	case <-stopCh:
+		return
+	default:
+	}
+
+	for {
+		func() {
+			defer runtime.HandleCrash()
+			f()
+		}()
+
+		jitteredPeriod := period
+		if jitterFactor > 0.0 {
+			jitteredPeriod = Jitter(period, jitterFactor)
+		}
+
+		select {
+		case <-stopCh:
+			return
+		case <-time.After(jitteredPeriod):
+		}
+	}
+}
 
 // Jitter returns a time.Duration between duration and duration + maxFactor * duration,
 // to allow clients to avoid converging on periodic behavior.  If maxFactor is 0.0, a
@@ -40,6 +97,37 @@ var ErrWaitTimeout = errors.New("timed out waiting for the condition")
 // if the loop should be aborted.
 type ConditionFunc func() (done bool, err error)
 
+// Backoff is parameters applied to a Backoff function.
+type Backoff struct {
+	Duration time.Duration
+	Factor   float64
+	Jitter   float64
+	Steps    int
+}
+
+// ExponentialBackoff repeats a condition check up to steps times, increasing the wait
+// by multipling the previous duration by factor. If jitter is greater than zero,
+// a random amount of each duration is added (between duration and duration*(1+jitter)).
+// If the condition never returns true, ErrWaitTimeout is returned. All other errors
+// terminate immediately.
+func ExponentialBackoff(backoff Backoff, condition ConditionFunc) error {
+	duration := backoff.Duration
+	for i := 0; i < backoff.Steps; i++ {
+		if i != 0 {
+			adjusted := duration
+			if backoff.Jitter > 0.0 {
+				adjusted = Jitter(duration, backoff.Jitter)
+			}
+			time.Sleep(adjusted)
+			duration = time.Duration(float64(duration) * backoff.Factor)
+		}
+		if ok, err := condition(); err != nil || ok {
+			return err
+		}
+	}
+	return ErrWaitTimeout
+}
+
 // Poll tries a condition func until it returns true, an error, or the timeout
 // is reached. condition will always be invoked at least once but some intervals
 // may be missed if the condition takes too long or the time window is too short.
@@ -48,13 +136,17 @@ type ConditionFunc func() (done bool, err error)
 func Poll(interval, timeout time.Duration, condition ConditionFunc) error {
 	return pollInternal(poller(interval, timeout), condition)
 }
+
 func pollInternal(wait WaitFunc, condition ConditionFunc) error {
-	return WaitFor(wait, condition)
+	done := make(chan struct{})
+	defer close(done)
+	return WaitFor(wait, condition, done)
 }
 
 func PollImmediate(interval, timeout time.Duration, condition ConditionFunc) error {
 	return pollImmediateInternal(poller(interval, timeout), condition)
 }
+
 func pollImmediateInternal(wait WaitFunc, condition ConditionFunc) error {
 	done, err := condition()
 	if err != nil {
@@ -68,20 +160,22 @@ func pollImmediateInternal(wait WaitFunc, condition ConditionFunc) error {
 
 // PollInfinite polls forever.
 func PollInfinite(interval time.Duration, condition ConditionFunc) error {
-	return WaitFor(poller(interval, 0), condition)
+	done := make(chan struct{})
+	defer close(done)
+	return WaitFor(poller(interval, 0), condition, done)
 }
 
 // WaitFunc creates a channel that receives an item every time a test
 // should be executed and is closed when the last test should be invoked.
-type WaitFunc func() <-chan struct{}
+type WaitFunc func(done <-chan struct{}) <-chan struct{}
 
 // WaitFor gets a channel from wait(), and then invokes fn once for every value
 // placed on the channel and once more when the channel is closed.  If fn
 // returns an error the loop ends and that error is returned, and if fn returns
 // true the loop ends and nil is returned. ErrWaitTimeout will be returned if
 // the channel is closed without fn ever returning true.
-func WaitFor(wait WaitFunc, fn ConditionFunc) error {
-	c := wait()
+func WaitFor(wait WaitFunc, fn ConditionFunc, done <-chan struct{}) error {
+	c := wait(done)
 	for {
 		_, open := <-c
 		ok, err := fn()
@@ -104,11 +198,15 @@ func WaitFor(wait WaitFunc, fn ConditionFunc) error {
 // the channel is closed.  If timeout is 0, the channel
 // will never be closed.
 func poller(interval, timeout time.Duration) WaitFunc {
-	return WaitFunc(func() <-chan struct{} {
+	return WaitFunc(func(done <-chan struct{}) <-chan struct{} {
 		ch := make(chan struct{})
+
 		go func() {
+			defer close(ch)
+
 			tick := time.NewTicker(interval)
 			defer tick.Stop()
+
 			var after <-chan time.Time
 			if timeout != 0 {
 				// time.After is more convenient, but it
@@ -118,16 +216,24 @@ func poller(interval, timeout time.Duration) WaitFunc {
 				after = timer.C
 				defer timer.Stop()
 			}
+
 			for {
 				select {
 				case <-tick.C:
-					ch <- struct{}{}
+					// If the consumer isn't ready for this signal drop it and
+					// check the other channels.
+					select {
+					case ch <- struct{}{}:
+					default:
+					}
 				case <-after:
-					close(ch)
+					return
+				case <-done:
 					return
 				}
 			}
 		}()
+
 		return ch
 	})
 }

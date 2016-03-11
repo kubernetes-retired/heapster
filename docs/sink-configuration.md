@@ -1,4 +1,4 @@
-Configuring sinks
+Configuring sources
 ===================
 
 Heapster can store data into different backends (sinks). These are specified on the command line
@@ -77,39 +77,10 @@ The following options are available:
 * `filter` - Allows bypassing the store of matching metrics, any number of `filter` parameters can be given with a syntax of `filter=operation(param)`. Supported operations and their params:
   * `label` - The syntax is `label(labelName:regexp)` where `labelName` is 1:1 match and `regexp` to use for matching is given after `:` delimiter
   * `name` - The syntax is `name(regexp)` where MetricName is matched (such as `cpu/usage`) with a `regexp` filter
+* `batchSize`- How many metrics are sent in each request to Hawkular-Metrics (default is 1000)
+* `concurrencyLimit`- How many concurrent requests are used to send data to the Hawkular-Metrics (default is 5)
 
-A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported.
-
-### Kafka
-This sink supports monitoring metrics and events.
-To use the kafka sink add the following flag:
-
-    --sink="kafka:<?<OPTIONS>>"
-
-Normally, kafka server has multi brokers, so brokers' list need be configured for producer.
-So, we provide kafka brokers' list and topics about timeseries & topic in url's query string.
-Options can be set in query string, like this:
-
-* `brokers` - Kafka's brokers' list. 
-* `timeseriestopic` - Kafka's topic for timeseries. Default value : `heapster-metrics`
-* `eventstopic` - Kafka's topic for events.Default value : `heapster-events`
-
-For example, 
-
-    --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&timeseriestopic=testseries&eventstopic=testtopic"
-
-### Riemann
-This sink supports metrics and events.
-To use the reimann sink add the following flag:
-
-	--sink="riemann:<RIEMANN_SERVER_URL>[?<OPTIONS>]"
-
-The following options are available:
-
-* `ttl` - TTL for writes to Riemann. Default: `60 seconds`
-* `state` - FIXME. Default: `""`
-* `tags` - FIXME. Default. `none`
-* `storeEvents` - Control storage of events. Default: `true`
+A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. To increase the performance of Hawkular sink in case of multiple instances of Hawkular-Metrics (such as scaled scenario in OpenShift) modify the parameters of batchSize and concurrencyLimit to balance the load on Hawkular-Metrics instances.
 
 ### OpenTSDB
 This sink supports monitoring metrics and events.
@@ -121,6 +92,29 @@ Currently, accessing opentsdb via its rest apis doesn't need any authentication,
 can enable opentsdb sink like this:
 
     --sink=opentsdb:http://192.168.1.8:4242
+
+### Monasca
+This sink supports monitoring metrics only.
+To use the Monasca sink add the following flag:
+
+	--sink=monasca:[?<OPTIONS>]
+
+The available options are listed below, and some of them are mandatory. You need to provide access to the Identity service of OpenStack (keystone).
+Currently, only authorization through `username` / `userID` + `password` / `APIKey` is supported.
+
+The Monasca sink is then created with either the provided Monasca API Server URL, or the URL is discovered automatically if none is provided by the user.
+
+The following options are available:
+
+* `user-id` - ID of the OpenStack user
+* `username` - Name of the OpenStack user
+* `tenant-id` - ID of the OpenStack tenant (project)
+* `keystone-url` - URL to the Keystone identity service (*mandatory*). Must be a v3 server (required by Monasca)
+* `password` - Password of the OpenStack user
+* `api-key` - API-Key for the OpenStack user
+* `domain-id` - ID of the OpenStack user's domain
+* `domain-name` - Name of the OpenStack user's domain
+* `monasca-url` - URL of the Monasca API server (*optional*: the sink will attempt to discover the service if not provided)
 
 ## Modifying the sinks at runtime
 
@@ -135,14 +129,4 @@ echo '["gcm", "influxdb:http://monitoring-influxdb:8086"]' | curl \
     --insecure -u admin:<password> -X POST -d @- \
     -H "Accept: application/json" -H "Content-Type: application/json" \
     https://<master-ip>/api/v1/proxy/namespaces/kube-system/services/monitoring-heapster/api/v1/sinks
-```
-
-## Using multiple sinks
-
-Heapster can be configured to send k8s metrics and events to multiple sinks by specifying the`--sink=...` flag multiple times.
-
-For example, to send data to both gcm and influxdb at the same time, you can use the following:
-
-```shell
-    --sink=gcm --sink=influxdb:http://monitoring-influxdb:80/
 ```

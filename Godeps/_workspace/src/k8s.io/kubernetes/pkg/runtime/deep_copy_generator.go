@@ -24,7 +24,6 @@ import (
 	"sort"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/conversion"
 	"k8s.io/kubernetes/pkg/util/sets"
 )
 
@@ -69,7 +68,7 @@ type DeepCopyGenerator interface {
 	OverwritePackage(pkg, overwrite string)
 }
 
-func NewDeepCopyGenerator(scheme *conversion.Scheme, targetPkg string, include sets.String) DeepCopyGenerator {
+func NewDeepCopyGenerator(scheme *Scheme, targetPkg string, include sets.String) DeepCopyGenerator {
 	g := &deepCopyGenerator{
 		scheme:        scheme,
 		targetPkg:     targetPkg,
@@ -91,7 +90,7 @@ type pkgPathNamePair struct {
 }
 
 type deepCopyGenerator struct {
-	scheme    *conversion.Scheme
+	scheme    *Scheme
 	targetPkg string
 	copyables map[reflect.Type]bool
 	// map of package names to shortname
@@ -403,7 +402,8 @@ func (g *deepCopyGenerator) writeDeepCopyForPtr(b *buffer, inField reflect.Struc
 	ifStmt := fmt.Sprintf(ifFormat, inField.Name)
 	b.addLine(ifStmt, indent)
 
-	switch inField.Type.Elem().Kind() {
+	kind := inField.Type.Elem().Kind()
+	switch kind {
 	case reflect.Map, reflect.Ptr, reflect.Slice, reflect.Interface, reflect.Struct:
 		if _, found := g.copyables[inField.Type.Elem()]; found {
 			newFormat := "out.%s = new(%s)\n"
@@ -420,8 +420,10 @@ func (g *deepCopyGenerator) writeDeepCopyForPtr(b *buffer, inField reflect.Struc
 			ifStmt := fmt.Sprintf(ifFormat, inField.Name)
 			b.addLine(ifStmt, indent+1)
 			b.addLine("return err\n", indent+2)
-			b.addLine("} else if newVal == nil {\n", indent+1)
-			b.addLine(fmt.Sprintf("out.%s = nil\n", inField.Name), indent+2)
+			if kind != reflect.Struct {
+				b.addLine("} else if newVal == nil {\n", indent+1)
+				b.addLine(fmt.Sprintf("out.%s = nil\n", inField.Name), indent+2)
+			}
 			b.addLine("} else {\n", indent+1)
 			assignFormat := "out.%s = newVal.(%s)\n"
 			assignStmt := fmt.Sprintf(assignFormat, inField.Name, g.typeName(inField.Type))
@@ -455,7 +457,8 @@ func (g *deepCopyGenerator) writeDeepCopyForSlice(b *buffer, inField reflect.Str
 	forStmt := fmt.Sprintf(forFormat, inField.Name)
 	b.addLine(forStmt, indent+1)
 
-	switch inField.Type.Elem().Kind() {
+	kind := inField.Type.Elem().Kind()
+	switch kind {
 	case reflect.Map, reflect.Ptr, reflect.Slice, reflect.Interface, reflect.Struct:
 		if _, found := g.copyables[inField.Type.Elem()]; found {
 			assignFormat := "if err := %s(in.%s[i], &out.%s[i], c); err != nil {\n"
@@ -469,8 +472,10 @@ func (g *deepCopyGenerator) writeDeepCopyForSlice(b *buffer, inField reflect.Str
 			ifStmt := fmt.Sprintf(ifFormat, inField.Name)
 			b.addLine(ifStmt, indent+2)
 			b.addLine("return err\n", indent+3)
-			b.addLine("} else if newVal == nil {\n", indent+2)
-			b.addLine(fmt.Sprintf("out.%s[i] = nil\n", inField.Name), indent+3)
+			if kind != reflect.Struct {
+				b.addLine("} else if newVal == nil {\n", indent+2)
+				b.addLine(fmt.Sprintf("out.%s[i] = nil\n", inField.Name), indent+3)
+			}
 			b.addLine("} else {\n", indent+2)
 			assignFormat := "out.%s[i] = newVal.(%s)\n"
 			assignStmt := fmt.Sprintf(assignFormat, inField.Name, g.typeName(inField.Type.Elem()))
