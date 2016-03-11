@@ -29,7 +29,7 @@ The build steps are as follows, [go](https://github.com/golang) and [godep](http
 
 **Step 2: Build the source code**
 
-	cd k8s.io/heapster
+	cd kubernetes/heapster
 	make
 
 Then you can get the heapster binary in current path.
@@ -82,7 +82,7 @@ The `hostsFile` parameter defines a list of hosts to poll for metrics and must b
 ### Start heapster
 Now you can run a heapster, here is an example:
 
-	./heapster-master --source="cadvisor:external?cadvisorPort=8080" --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s
+	./heapster-master --source="cadvisor:external?cadvisorPort=8080" --use_model=true --model_resolution=10s --cache_duration=1m --stats_resolution=1s"
 
 The `hostsFile` use the default one `/var/run/heapster/hosts`.Then the heapster is running on the default port 8082,like this:
 
@@ -94,7 +94,7 @@ I0911 13:42:03.662594   21041 heapster.go:68] Starting heapster on port 8082
 
 ### Test it out
 If you got debug information as before, means that the heapster is working normally.You can test it by calling its [RESTful API](https://github.com/kubernetes/heapster/blob/master/docs/model.md).  
-You can use some restful tools to test, or just run a `curl` command. 
+You can use some restful tools to test, or just run a `curl` command (_ heapster implements gzip encoding, so we need add gunzip in command "curl"_).  
 
 	curl http://0.0.0.0:8082/api/v1/model/stats/
 
@@ -227,7 +227,3 @@ and you will get the response like this:
  }
 
 ```
-By default, API responses are not compressed. Heapster supports gzip compression of responses via standard [content negotiation](https://en.wikipedia.org/wiki/Content_negotiation). To enable, set the value of the `Accept-Encoding` to `gzip`. The corresponding `curl` command will be like:
-
-    curl http://0.0.0.0:8082/api/v1/model/stats/ -H "Accept-Encoding:gzip" | gunzip
-

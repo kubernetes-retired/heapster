@@ -25,10 +25,10 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	kclientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	kclientcmdkapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
+	kclientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -39,19 +39,19 @@ type kubeFramework interface {
 	Client() *kclient.Client
 
 	// Parses and Returns a replication Controller object contained in 'filePath'
-	ParseRC(filePath string) (*kapi.ReplicationController, error)
+	ParseRC(filePath string) (*api.ReplicationController, error)
 
 	// Parses and Returns a service object contained in 'filePath'
-	ParseService(filePath string) (*kapi.Service, error)
+	ParseService(filePath string) (*api.Service, error)
 
 	// Creates a kube service.
-	CreateService(ns string, service *kapi.Service) (*kapi.Service, error)
+	CreateService(ns string, service *api.Service) (*api.Service, error)
 
 	// Creates a namespace.
-	CreateNs(ns *kapi.Namespace) (*kapi.Namespace, error)
+	CreateNs(ns *api.Namespace) (*api.Namespace, error)
 
 	// Creates a kube replication controller.
-	CreateRC(ns string, rc *kapi.ReplicationController) (*kapi.ReplicationController, error)
+	CreateRC(ns string, rc *api.ReplicationController) (*api.ReplicationController, error)
 
 	// Deletes a namespace
 	DeleteNs(ns string) error
@@ -61,7 +61,7 @@ type kubeFramework interface {
 
 	// Returns a url that provides access to a kubernetes service via the proxy on the apiserver.
 	// This url requires master auth.
-	GetProxyUrlForService(service *kapi.Service) string
+	GetProxyUrlForService(service *api.Service) string
 
 	// Returns the node hostnames.
 	GetNodes() ([]string, error)
@@ -71,10 +71,10 @@ type kubeFramework interface {
 	GetRunningPodNames() ([]string, error)
 
 	// Returns pods in the cluster.
-	GetRunningPods() ([]*kapi.Pod, error)
+	GetRunningPods() ([]api.Pod, error)
 
 	WaitUntilPodRunning(ns string, podLabels map[string]string, timeout time.Duration) error
-	WaitUntilServiceActive(svc *kapi.Service, timeout time.Duration) error
+	WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error
 }
 
 type realKubeFramework struct {
@@ -100,6 +100,7 @@ var (
 
 func exists(path string) bool {
 	if _, err := os.Stat(path); err != nil {
+		glog.V(2).Infof("%q does not exist", path)
 		return false
 	}
 	return true
@@ -164,21 +165,14 @@ func destroyCluster(kubeBaseDir string) error {
 
 func downloadRelease(workDir, version string) error {
 	// Temporary download path.
-	filename := "kubernetes.tar.gz"
-	tmpDirPath := filepath.Join(workDir, "kube")
-	downloadPath := filepath.Join(tmpDirPath, filename)
-
+	downloadPath := filepath.Join(workDir, "kube")
 	// Format url.
 	downloadUrl := fmt.Sprintf(imageUrlTemplate, version)
 	glog.V(1).Infof("About to download kube release using url: %q", downloadUrl)
 
-	if err := exec.Command("mkdir", "-p", tmpDirPath).Run(); err != nil {
-		return fmt.Errorf("failed to mkdir -p %s - %v", tmpDirPath, err)
-	}
-
 	// Download kube code and store it in a temp dir.
-	if err := exec.Command("curl", "-L", downloadUrl, "-o", downloadPath).Run(); err != nil {
-		return fmt.Errorf("failed to curl kubernetes release @ %q to %s  - %v", downloadUrl, downloadPath, err)
+	if err := exec.Command("wget", downloadUrl, "-O", downloadPath).Run(); err != nil {
+		return fmt.Errorf("failed to wget kubernetes release @ %q - %v", downloadUrl, err)
 	}
 
 	// Un-tar kube release.
@@ -199,7 +193,7 @@ func getKubeClient() (string, *kclient.Client, error) {
 	config, err := kclientcmd.NewDefaultClientConfig(
 		*c,
 		&kclientcmd.ConfigOverrides{
-			ClusterInfo: kclientcmdkapi.Cluster{
+			ClusterInfo: kclientcmdapi.Cluster{
 				APIVersion: "v1",
 			},
 		}).ClientConfig()
@@ -234,10 +228,17 @@ func requireNewCluster(baseDir, version string) bool {
 	glog.V(1).Infof("checking if existing cluster can be used")
 	versionInfo, err := kubeClient.ServerVersion()
 	if err != nil {
-		glog.Errorf("failed to get kube version info - %q", err)
+		glog.V(1).Infof("failed to get kube version info - %q", err)
 		return true
 	}
 	return !strings.Contains(versionInfo.GitVersion, version)
+}
+
+func requireDownload(baseDir string) bool {
+	// Check that cluster scripts are present.
+	return !exists(filepath.Join(baseDir, "cluster", "kube-up.sh")) ||
+		!exists(filepath.Join(baseDir, "cluster", "kube-down.sh")) ||
+		!exists(filepath.Join(baseDir, "cluster", "validate-cluster.sh"))
 }
 
 func downloadAndSetupCluster(version string) (baseDir string, err error) {
@@ -252,7 +253,10 @@ func downloadAndSetupCluster(version string) (baseDir string, err error) {
 
 	kubeBaseDir := filepath.Join(tempDir, "kubernetes")
 
-	if !exists(kubeBaseDir) {
+	if requireDownload(kubeBaseDir) {
+		if exists(kubeBaseDir) {
+			os.RemoveAll(kubeBaseDir)
+		}
 		if err := downloadRelease(tempDir, version); err != nil {
 			return "", err
 		}
@@ -329,51 +333,53 @@ func (self *realKubeFramework) loadObject(filePath string) (runtime.Object, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to read object: %v", err)
 	}
-	return runtime.YAMLDecoder(kapi.Codec).Decode(data)
+	obj, _, err := api.Codecs.UniversalDecoder().Decode(data, nil, nil)
+	return obj, err
 }
 
-func (self *realKubeFramework) ParseRC(filePath string) (*kapi.ReplicationController, error) {
+func (self *realKubeFramework) ParseRC(filePath string) (*api.ReplicationController, error) {
 	obj, err := self.loadObject(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	rc, ok := obj.(*kapi.ReplicationController)
+	rc, ok := obj.(*api.ReplicationController)
 	if !ok {
 		return nil, fmt.Errorf("Failed to cast replicationController: %v", obj)
 	}
 	return rc, nil
 }
 
-func (self *realKubeFramework) ParseService(filePath string) (*kapi.Service, error) {
+func (self *realKubeFramework) ParseService(filePath string) (*api.Service, error) {
 	obj, err := self.loadObject(filePath)
 	if err != nil {
 		return nil, err
 	}
-	service, ok := obj.(*kapi.Service)
+	service, ok := obj.(*api.Service)
 	if !ok {
 		return nil, fmt.Errorf("Failed to cast service: %v", obj)
 	}
 	return service, nil
 }
 
-func (self *realKubeFramework) CreateService(ns string, service *kapi.Service) (*kapi.Service, error) {
+func (self *realKubeFramework) CreateService(ns string, service *api.Service) (*api.Service, error) {
 	service.Namespace = ns
 	newSvc, err := self.kubeClient.Services(ns).Create(service)
 	return newSvc, err
 }
 
 func (self *realKubeFramework) DeleteNs(ns string) error {
-	if _, err := self.kubeClient.Namespaces().Get(ns); err != nil {
-		glog.V(0).Infof("Cannot get namespace %q. Skipping deletion.", ns)
+
+	_, err := self.kubeClient.Namespaces().Get(ns)
+	if err != nil {
+		glog.V(0).Infof("Cannot get namespace %q. Skipping deletion: %s", ns, err)
 		return nil
 	}
-
 	glog.V(0).Infof("Deleting namespace %s", ns)
 	self.kubeClient.Namespaces().Delete(ns)
 
 	for i := 0; i < 5; i++ {
-		glog.Infof("Checking for namespace %s", ns)
+		glog.V(0).Infof("Checking for namespace %s", ns)
 		_, err := self.kubeClient.Namespaces().Get(ns)
 		if err != nil {
 			glog.V(0).Infof("%s doesn't exist", ns)
@@ -384,11 +390,11 @@ func (self *realKubeFramework) DeleteNs(ns string) error {
 	return fmt.Errorf("Namespace %s still exists", ns)
 }
 
-func (self *realKubeFramework) CreateNs(ns *kapi.Namespace) (*kapi.Namespace, error) {
+func (self *realKubeFramework) CreateNs(ns *api.Namespace) (*api.Namespace, error) {
 	return self.kubeClient.Namespaces().Create(ns)
 }
 
-func (self *realKubeFramework) CreateRC(ns string, rc *kapi.ReplicationController) (*kapi.ReplicationController, error) {
+func (self *realKubeFramework) CreateRC(ns string, rc *api.ReplicationController) (*api.ReplicationController, error) {
 	rc.Namespace = ns
 	return self.kubeClient.ReplicationControllers(ns).Create(rc)
 }
@@ -397,13 +403,16 @@ func (self *realKubeFramework) DestroyCluster() {
 	destroyCluster(self.baseDir)
 }
 
-func (self *realKubeFramework) GetProxyUrlForService(service *kapi.Service) string {
+func (self *realKubeFramework) GetProxyUrlForService(service *api.Service) string {
 	return fmt.Sprintf("%s/api/v1/proxy/namespaces/default/services/%s/", self.masterIP, service.Name)
 }
 
 func (self *realKubeFramework) GetNodes() ([]string, error) {
 	var nodes []string
-	nodeList, err := self.kubeClient.Nodes().List(labels.Everything(), fields.Everything())
+	nodeList, err := self.kubeClient.Nodes().List(api.ListOptions{
+		LabelSelector: labels.Everything(),
+		FieldSelector: fields.Everything(),
+	})
 	if err != nil {
 		return nodes, err
 	}
@@ -414,15 +423,19 @@ func (self *realKubeFramework) GetNodes() ([]string, error) {
 	return nodes, nil
 }
 
-func (self *realKubeFramework) GetRunningPods() ([]*kapi.Pod, error) {
-	podList, err := self.kubeClient.Pods(kapi.NamespaceAll).List(labels.Everything(), fields.Everything())
+func (self *realKubeFramework) GetRunningPods() ([]api.Pod, error) {
+	glog.V(0).Infof("Getting running pods")
+	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(api.ListOptions{
+		LabelSelector: labels.Everything(),
+		FieldSelector: fields.Everything(),
+	})
 	if err != nil {
 		return nil, err
 	}
-	pods := []*kapi.Pod{}
+	pods := []api.Pod{}
 	for _, pod := range podList.Items {
-		if pod.Status.Phase == kapi.PodRunning && !strings.Contains(pod.Spec.NodeName, "kubernetes-master") {
-			pods = append(pods, &pod)
+		if pod.Status.Phase == api.PodRunning && !strings.Contains(pod.Spec.NodeName, "kubernetes-master") {
+			pods = append(pods, pod)
 		}
 	}
 	return pods, nil
@@ -444,15 +457,17 @@ func (rkf *realKubeFramework) WaitUntilPodRunning(ns string, podLabels map[strin
 	glog.V(2).Infof("Waiting for pod %v in %s...", podLabels, ns)
 	podsInterface := rkf.Client().Pods(ns)
 	for i := 0; i < int(timeout/time.Second); i++ {
-		selector := labels.Set(podLabels).AsSelector()
-		podList, err := podsInterface.List(selector, fields.Everything())
+		podList, err := podsInterface.List(api.ListOptions{
+			LabelSelector: labels.Set(podLabels).AsSelector(),
+			FieldSelector: fields.Everything(),
+		})
 		if err != nil {
 			glog.V(1).Info(err)
 			return err
 		}
 		if len(podList.Items) > 0 {
 			podSpec := podList.Items[0]
-			if podSpec.Status.Phase == kapi.PodRunning {
+			if podSpec.Status.Phase == api.PodRunning {
 				return nil
 			}
 		}
@@ -461,7 +476,7 @@ func (rkf *realKubeFramework) WaitUntilPodRunning(ns string, podLabels map[strin
 	return fmt.Errorf("pod not in running state after %d", timeout/time.Second)
 }
 
-func (rkf *realKubeFramework) WaitUntilServiceActive(svc *kapi.Service, timeout time.Duration) error {
+func (rkf *realKubeFramework) WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error {
 	glog.V(2).Infof("Waiting for endpoints in service %s/%s", svc.Namespace, svc.Name)
 	for i := 0; i < int(timeout/time.Second); i++ {
 		e, err := rkf.Client().Endpoints(svc.Namespace).Get(svc.Name)

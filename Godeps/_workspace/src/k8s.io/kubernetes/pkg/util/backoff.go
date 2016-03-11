@@ -17,9 +17,10 @@ limitations under the License.
 package util
 
 import (
-	"math"
 	"sync"
 	"time"
+
+	"k8s.io/kubernetes/pkg/util/integer"
 )
 
 type backoffEntry struct {
@@ -65,9 +66,16 @@ func (p *Backoff) Next(id string, eventTime time.Time) {
 		entry = p.initEntryUnsafe(id)
 	} else {
 		delay := entry.backoff * 2 // exponential
-		entry.backoff = time.Duration(math.Min(float64(delay), float64(p.maxDuration)))
+		entry.backoff = time.Duration(integer.Int64Min(int64(delay), int64(p.maxDuration)))
 	}
 	entry.lastUpdate = p.Clock.Now()
+}
+
+// Reset forces clearing of all backoff data for a given key.
+func (p *Backoff) Reset(id string) {
+	p.Lock()
+	defer p.Unlock()
+	delete(p.perItemBackoff, id)
 }
 
 // Returns True if the elapsed time since eventTime is smaller than the current backoff window
@@ -82,6 +90,20 @@ func (p *Backoff) IsInBackOffSince(id string, eventTime time.Time) bool {
 		return false
 	}
 	return p.Clock.Now().Sub(eventTime) < entry.backoff
+}
+
+// Returns True if time since lastupdate is less than the current backoff window.
+func (p *Backoff) IsInBackOffSinceUpdate(id string, eventTime time.Time) bool {
+	p.Lock()
+	defer p.Unlock()
+	entry, ok := p.perItemBackoff[id]
+	if !ok {
+		return false
+	}
+	if hasExpired(eventTime, entry.lastUpdate, p.maxDuration) {
+		return false
+	}
+	return eventTime.Sub(entry.lastUpdate) < entry.backoff
 }
 
 // Garbage collect records that have aged past maxDuration. Backoff users are expected
@@ -105,7 +127,7 @@ func (p *Backoff) initEntryUnsafe(id string) *backoffEntry {
 	return entry
 }
 
-// After 2*maxDuration we restart the backoff factor to the begining
+// After 2*maxDuration we restart the backoff factor to the beginning
 func hasExpired(eventTime time.Time, lastUpdate time.Time, maxDuration time.Duration) bool {
 	return eventTime.Sub(lastUpdate) > maxDuration*2 // consider stable if it's ok for twice the maxDuration
 }

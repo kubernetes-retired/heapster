@@ -51,6 +51,7 @@ var map_APIResource = map[string]string{
 	"":           "APIResource specifies the name of a resource and whether it is namespaced.",
 	"name":       "name is the name of the resource.",
 	"namespaced": "namespaced indicates if a resource is namespaced or not.",
+	"kind":       "kind is the kind for the resource (e.g. 'Foo' is the kind for a resource 'foo')",
 }
 
 func (APIResource) SwaggerDoc() map[string]string {
@@ -76,20 +77,51 @@ func (APIVersions) SwaggerDoc() map[string]string {
 	return map_APIVersions
 }
 
-var map_GroupVersion = map[string]string{
+var map_ExportOptions = map[string]string{
+	"":       "ExportOptions is the query options to the standard REST get call.",
+	"export": "Should this value be exported.  Export strips fields that a user can not specify.`",
+	"exact":  "Should the export be exact.  Exact export maintains cluster-specific fields like 'Namespace'",
+}
+
+func (ExportOptions) SwaggerDoc() map[string]string {
+	return map_ExportOptions
+}
+
+var map_GroupVersionForDiscovery = map[string]string{
 	"":             "GroupVersion contains the \"group/version\" and \"version\" string of a version. It is made a struct to keep extensiblity.",
 	"groupVersion": "groupVersion specifies the API group and version in the form \"group/version\"",
 	"version":      "version specifies the version in the form of \"version\". This is to save the clients the trouble of splitting the GroupVersion.",
 }
 
-func (GroupVersion) SwaggerDoc() map[string]string {
-	return map_GroupVersion
+func (GroupVersionForDiscovery) SwaggerDoc() map[string]string {
+	return map_GroupVersionForDiscovery
+}
+
+var map_LabelSelector = map[string]string{
+	"":                 "A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.",
+	"matchLabels":      "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+	"matchExpressions": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+}
+
+func (LabelSelector) SwaggerDoc() map[string]string {
+	return map_LabelSelector
+}
+
+var map_LabelSelectorRequirement = map[string]string{
+	"":         "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
+	"key":      "key is the label key that the selector applies to.",
+	"operator": "operator represents a key's relationship to a set of values. Valid operators ard In, NotIn, Exists and DoesNotExist.",
+	"values":   "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.",
+}
+
+func (LabelSelectorRequirement) SwaggerDoc() map[string]string {
+	return map_LabelSelectorRequirement
 }
 
 var map_ListMeta = map[string]string{
 	"":                "ListMeta describes metadata that synthetic resources must have, including lists and various status objects. A resource may have only one of {ObjectMeta, ListMeta}.",
 	"selfLink":        "SelfLink is a URL representing this object. Populated by the system. Read-only.",
-	"resourceVersion": "String that identifies the server's internal version of this object that can be used by clients to determine when objects have changed. Value must be treated as opaque by clients and passed unmodified back to the server. Populated by the system. Read-only. More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#concurrency-control-and-consistency",
+	"resourceVersion": "String that identifies the server's internal version of this object that can be used by clients to determine when objects have changed. Value must be treated as opaque by clients and passed unmodified back to the server. Populated by the system. Read-only. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#concurrency-control-and-consistency",
 }
 
 func (ListMeta) SwaggerDoc() map[string]string {
@@ -115,8 +147,8 @@ func (RootPaths) SwaggerDoc() map[string]string {
 
 var map_Status = map[string]string{
 	"":         "Status is a return value for calls that don't return other objects.",
-	"metadata": "Standard list metadata. More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds",
-	"status":   "Status of the operation. One of: \"Success\" or \"Failure\". More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#spec-and-status",
+	"metadata": "Standard list metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds",
+	"status":   "Status of the operation. One of: \"Success\" or \"Failure\". More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status",
 	"message":  "A human-readable description of the status of this operation.",
 	"reason":   "A machine-readable description of why this operation is in the \"Failure\" status. If this value is empty there is no information available. A Reason clarifies an HTTP status code but does not override it.",
 	"details":  "Extended data associated with the reason.  Each reason may define its own extended details. This field is optional and the data returned is not guaranteed to conform to any schema except that defined by the reason type.",
@@ -141,7 +173,8 @@ func (StatusCause) SwaggerDoc() map[string]string {
 var map_StatusDetails = map[string]string{
 	"":                  "StatusDetails is a set of additional properties that MAY be set by the server to provide additional information about a response. The Reason field of a Status object defines what attributes will be set. Clients must ignore fields that do not match the defined type of each attribute, and should assume that any attribute may be empty, invalid, or under defined.",
 	"name":              "The name attribute of the resource associated with the status StatusReason (when there is a single name which can be described).",
-	"kind":              "The kind attribute of the resource associated with the status StatusReason. On some operations may differ from the requested resource Kind. More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds",
+	"group":             "The group attribute of the resource associated with the status StatusReason.",
+	"kind":              "The kind attribute of the resource associated with the status StatusReason. On some operations may differ from the requested resource Kind. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds",
 	"causes":            "The Causes array includes more details associated with the StatusReason failure. Not all StatusReasons may provide detailed causes.",
 	"retryAfterSeconds": "If specified, the time in seconds before the operation should be retried.",
 }
@@ -152,8 +185,8 @@ func (StatusDetails) SwaggerDoc() map[string]string {
 
 var map_TypeMeta = map[string]string{
 	"":           "TypeMeta describes an individual object in an API response or request with strings representing the type of the object and its API schema version. Structures that are versioned or persisted should inline TypeMeta.",
-	"kind":       "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#types-kinds",
-	"apiVersion": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.1/docs/devel/api-conventions.md#resources",
+	"kind":       "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds",
+	"apiVersion": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources",
 }
 
 func (TypeMeta) SwaggerDoc() map[string]string {

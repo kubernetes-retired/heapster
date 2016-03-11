@@ -20,17 +20,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
-	api_v1 "k8s.io/heapster/api/v1/types"
-	"k8s.io/heapster/model"
-	sink_api "k8s.io/heapster/sinks/api"
-	"k8s.io/heapster/sinks/cache"
+	api_v1 "k8s.io/heapster/metrics/api/v1/types"
+	"k8s.io/heapster/metrics/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	apiErrors "k8s.io/kubernetes/pkg/api/errors"
 	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
@@ -49,7 +46,7 @@ var (
 	heapsterImage          = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
 	avoidBuild             = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
 	namespace              = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
-	maxRetries             = flag.Int("retries", 50, "Number of attempts before failing this test.")
+	maxRetries             = flag.Int("retries", 20, "Number of attempts before failing this test.")
 	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
 )
 
@@ -57,7 +54,7 @@ func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_
 	glog.V(2).Infof("Deleting ns %s...", ns)
 	err := fm.DeleteNs(ns)
 	if err != nil {
-		glog.Errorf("Failed to delete %s", ns)
+		glog.V(2).Infof("Failed to delete %s", ns)
 		return err
 	}
 	glog.V(2).Infof("Deleted ns %s.", ns)
@@ -76,7 +73,7 @@ func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kub
 		},
 	}
 	if _, err := fm.CreateNs(&namespace); err != nil {
-		glog.Errorf("Failed to create ns: %v", err)
+		glog.V(2).Infof("Failed to create ns: %v", err)
 		return err
 	}
 
@@ -84,7 +81,7 @@ func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kub
 
 	glog.V(2).Infof("Creating rc %s/%s...", ns, (*rc).Name)
 	if newRc, err := fm.CreateRC(ns, *rc); err != nil {
-		glog.Errorf("Failed to create rc: %v", err)
+		glog.V(2).Infof("Failed to create rc: %v", err)
 		return err
 	} else {
 		*rc = newRc
@@ -93,7 +90,7 @@ func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kub
 
 	glog.V(2).Infof("Creating service %s/%s...", ns, (*service).Name)
 	if newSvc, err := fm.CreateService(ns, *service); err != nil {
-		glog.Errorf("Failed to create service: %v", err)
+		glog.V(2).Infof("Failed to create service: %v", err)
 		return err
 	} else {
 		*service = newSvc
@@ -148,10 +145,13 @@ func getHeapsterRcAndSvc(fm kubeFramework) (*kube_api.Service, *kube_api.Replica
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse heapster controller - %v", err)
 	}
-	rc.Spec.Template.Spec.Containers[0].Image = *heapsterImage
-	rc.Spec.Template.Spec.Containers[0].ImagePullPolicy = kube_api.PullNever
-	// increase logging level
-	rc.Spec.Template.Spec.Containers[0].Env = append(rc.Spec.Template.Spec.Containers[0].Env, kube_api.EnvVar{Name: "FLAGS", Value: "--vmodule=*=3"})
+	for i := range rc.Spec.Template.Spec.Containers {
+		rc.Spec.Template.Spec.Containers[i].Image = *heapsterImage
+		rc.Spec.Template.Spec.Containers[i].ImagePullPolicy = kube_api.PullNever
+		// increase logging level
+		rc.Spec.Template.Spec.Containers[i].Env = append(rc.Spec.Template.Spec.Containers[0].Env, kube_api.EnvVar{Name: "FLAGS", Value: "--vmodule=*=3"})
+	}
+
 	svc, err := fm.ParseService(*heapsterServiceFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse heapster service - %v", err)
@@ -195,7 +195,7 @@ func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*api_v1.Timeserie
 	}
 	var timeseries []*api_v1.Timeseries
 	if err := json.Unmarshal(body, &timeseries); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
+		glog.V(2).Infof("Timeseries error: %v %v", err, string(body))
 		return nil, err
 	}
 	return timeseries, nil
@@ -214,7 +214,7 @@ func getSchema(fm kubeFramework, svc *kube_api.Service) (*api_v1.TimeseriesSchem
 	}
 	var timeseriesSchema api_v1.TimeseriesSchema
 	if err := json.Unmarshal(body, &timeseriesSchema); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
+		glog.V(2).Infof("Metrics schema error: %v  %v", err, string(body))
 		return nil, err
 	}
 	return &timeseriesSchema, nil
@@ -229,7 +229,7 @@ var expectedSystemContainers = map[string]struct{}{
 }
 
 func isContainerBaseImageExpected(ts *api_v1.Timeseries) bool {
-	_, exists := expectedSystemContainers[ts.Labels[sink_api.LabelContainerName.Key]]
+	_, exists := expectedSystemContainers[ts.Labels[core.LabelContainerName.Key]]
 	return !exists
 }
 
@@ -238,10 +238,13 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 	if err != nil {
 		return err
 	}
+	glog.V(0).Infof("Expected pods: %v", expectedPods)
+
 	expectedNodes, err := fm.GetNodes()
 	if err != nil {
 		return err
 	}
+	glog.V(0).Infof("Expected nodes: %v", expectedNodes)
 
 	timeseries, err := getTimeseries(fm, svc)
 	if err != nil {
@@ -265,36 +268,46 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 	for _, ts := range timeseries {
 		// Verify the relevant labels are present.
 		// All common labels must be present.
-		for _, label := range sink_api.CommonLabels() {
-			if label == sink_api.LabelContainerBaseImage && !isContainerBaseImageExpected(ts) {
-				continue
-			}
+		podName, podMetric := ts.Labels[core.LabelPodName.Key]
+
+		for _, label := range core.CommonLabels() {
 			_, exists := ts.Labels[label.Key]
 			if !exists {
 				return fmt.Errorf("timeseries: %v does not contain common label: %v", ts, label)
 			}
 		}
-		podName, podMetric := ts.Labels[sink_api.LabelPodName.Key]
 		if podMetric {
-			for _, label := range sink_api.PodLabels() {
+			for _, label := range core.PodLabels() {
 				_, exists := ts.Labels[label.Key]
 				if !exists {
 					return fmt.Errorf("timeseries: %v does not contain pod label: %v", ts, label)
 				}
 			}
 		}
+
 		if podMetric {
 			actualPods[podName] = true
 		} else {
-			if cName, ok := ts.Labels[sink_api.LabelContainerName.Key]; ok {
-				hostname, ok := ts.Labels[sink_api.LabelHostname.Key]
+			if cName, ok := ts.Labels[core.LabelContainerName.Key]; ok {
+				hostname, ok := ts.Labels[core.LabelHostname.Key]
 				if !ok {
 					return fmt.Errorf("hostname label missing on container %+v", ts)
 				}
 
-				if cName == cache.NodeContainerName {
+				if cName == "machine" {
 					actualNodes[hostname] = true
+				} else {
+					for _, label := range core.ContainerLabels() {
+						if label == core.LabelContainerBaseImage && !isContainerBaseImageExpected(ts) {
+							continue
+						}
+						_, exists := ts.Labels[label.Key]
+						if !exists {
+							return fmt.Errorf("timeseries: %v does not contain container label: %v", ts, label)
+						}
+					}
 				}
+
 				if _, exists := expectedSystemContainers[cName]; exists {
 					if actualSystemContainers[cName] == nil {
 						actualSystemContainers[cName] = map[string]struct{}{}
@@ -352,41 +365,6 @@ func expectedItemsExist(expectedItems []string, actualItems map[string]bool) err
 	return nil
 }
 
-func getSinks(fm kubeFramework, svc *kube_api.Service) ([]string, error) {
-	body, err := fm.Client().Get().
-		Namespace(svc.Namespace).
-		Prefix("proxy").
-		Resource("services").
-		Name(svc.Name).
-		Suffix(sinksEndpoint).
-		Do().Raw()
-	if err != nil {
-		return nil, err
-	}
-	var sinks []string
-	if err := json.Unmarshal(body, &sinks); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
-		return nil, err
-	}
-	return sinks, nil
-}
-
-func setSinks(fm kubeFramework, svc *kube_api.Service, sinks []string) error {
-	data, err := json.Marshal(sinks)
-	if err != nil {
-		return err
-	}
-	return fm.Client().Post().
-		Namespace(svc.Namespace).
-		Prefix("proxy").
-		Resource("services").
-		Name(svc.Name).
-		Suffix(sinksEndpoint).
-		SetHeader("Content-Type", "application/json").
-		Body(data).
-		Do().Error()
-}
-
 func getErrorCauses(err error) string {
 	serr, ok := err.(*apiErrors.StatusError)
 	if !ok {
@@ -397,29 +375,6 @@ func getErrorCauses(err error) string {
 		causes = append(causes, c.Message)
 	}
 	return strings.Join(causes, ", ")
-}
-
-func runSinksTest(fm kubeFramework, svc *kube_api.Service) error {
-	for _, newSinks := range [...][]string{
-		{},
-		{
-			"gcm",
-		},
-		{},
-	} {
-		if err := setSinks(fm, svc, newSinks); err != nil {
-			glog.Errorf("Could not set sinks. Causes: %s", getErrorCauses(err))
-			return err
-		}
-		sinks, err := getSinks(fm, svc)
-		if err != nil {
-			return err
-		}
-		if !reflect.DeepEqual(sinks, newSinks) {
-			return fmt.Errorf("expected %v sinks, found %v", newSinks, sinks)
-		}
-	}
-	return nil
 }
 
 func getDataFromProxy(fm kubeFramework, svc *kube_api.Service, url string) ([]byte, error) {
@@ -481,50 +436,26 @@ func getStringResult(fm kubeFramework, svc *kube_api.Service, url string) ([]str
 	return data, nil
 }
 
-func getStatsResponse(fm kubeFramework, svc *kube_api.Service, url string) (*api_v1.StatsResponse, error) {
-	body, err := getDataFromProxy(fm, svc, url)
-	if err != nil {
-		return nil, err
-	}
-	var data api_v1.StatsResponse
-	if err := json.Unmarshal(body, &data); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
-		return nil, err
-	}
-	if len(data.Stats) == 0 {
-		return nil, fmt.Errorf("empty stats")
-	}
-	return &data, nil
-}
-
-func getEntityListEntry(fm kubeFramework, svc *kube_api.Service, url string) ([]model.EntityListEntry, error) {
-	body, err := getDataFromProxy(fm, svc, url)
-	if err != nil {
-		return nil, err
-	}
-	var data []model.EntityListEntry
-	if err := json.Unmarshal(body, &data); err != nil {
-		glog.V(2).Infof("response body: %v", string(body))
-		return nil, err
-	}
-	if len(data) == 0 {
-		return nil, fmt.Errorf("empty data")
-	}
-	return data, nil
-}
-
 func checkMetricResultSanity(metrics *api_v1.MetricResult) error {
+	bytes, err := json.Marshal(*metrics)
+	if err != nil {
+		return err
+	}
+	stringVersion := string(bytes)
+
 	if len(metrics.Metrics) == 0 {
-		return fmt.Errorf("empty metrics")
+		return fmt.Errorf("empty metrics: %s", stringVersion)
 	}
+	// There should be recent metrics in the response.
 	if time.Now().Sub(metrics.LatestTimestamp).Seconds() > 120 {
-		return fmt.Errorf("corrupted last timestamp")
+		return fmt.Errorf("corrupted last timestamp: %s", stringVersion)
 	}
-	if time.Now().Sub(metrics.Metrics[0].Timestamp).Seconds() > 120 {
-		return fmt.Errorf("corrupted timestamp")
+	// Metrics don't have to be sorted, so the oldest one can be first.
+	if time.Now().Sub(metrics.Metrics[0].Timestamp).Hours() > 1 {
+		return fmt.Errorf("corrupted timestamp: %s", stringVersion)
 	}
 	if metrics.Metrics[0].Value > 10000 {
-		return fmt.Errorf("value too big")
+		return fmt.Errorf("value too big: %s", stringVersion)
 	}
 	return nil
 }
@@ -557,47 +488,43 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 	if len(nodeList) == 0 {
 		return fmt.Errorf(("empty node list"))
 	}
+	podNamesList := make([]string, 0, len(podList))
+	for _, pod := range podList {
+		podNamesList = append(podNamesList, fmt.Sprintf("%s/%s", pod.Namespace, pod.Name))
+	}
+
+	glog.V(0).Infof("Expected nodes:\n%s", strings.Join(nodeList, "\n"))
+	glog.V(0).Infof("Expected pods:\n%s", strings.Join(podNamesList, "\n"))
+	allkeys, err := getStringResult(fm, svc, "/api/v1/model/debug/allkeys")
+	if err != nil {
+		return fmt.Errorf("Failed to get debug information about keys: %v", err)
+	}
+	glog.V(0).Infof("Available Heapster metric sets:\n%s", strings.Join(allkeys, "\n"))
 
 	metricUrlsToCheck := []string{}
 	batchMetricsUrlsToCheck := []string{}
 	stringUrlsToCheck := []string{}
-	entityListEntryUrlsToCheck := []string{}
-	statsUrlsToCheck := []string{}
 
-	metricUrlsToCheck = append(metricUrlsToCheck,
-		fmt.Sprintf("/api/v1/model/metrics/%s", "cpu-usage"),
+	/* TODO: enable once cluster aggregator is added.
+	   metricUrlsToCheck = append(metricUrlsToCheck,
+	   fmt.Sprintf("/api/v1/model/metrics/%s", "cpu-usage"),
 	)
+	*/
 
-	entityListEntryUrlsToCheck = append(entityListEntryUrlsToCheck,
-		"/api/v1/model/nodes",
-		"/api/v1/model/namespaces",
-	)
-
-	stringUrlsToCheck = append(stringUrlsToCheck,
-		"/api/v1/model/",
-		"/api/v1/model/metrics",
-	)
-
-	statsUrlsToCheck = append(statsUrlsToCheck,
-		"/api/v1/model/stats/",
-	)
+	/* TODO: add once Cluster metrics aggregator is added.
+	   "/api/v1/model/metrics",
+	   "/api/v1/model/"
+	*/
+	stringUrlsToCheck = append(stringUrlsToCheck)
 
 	for _, node := range nodeList {
 		metricUrlsToCheck = append(metricUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/nodes/%s/metrics/%s", node, "cpu/usage_rate"),
 			fmt.Sprintf("/api/v1/model/nodes/%s/metrics/%s", node, "cpu-usage"),
 		)
 
 		stringUrlsToCheck = append(stringUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/nodes/%s", node),
 			fmt.Sprintf("/api/v1/model/nodes/%s/metrics", node),
-		)
-
-		statsUrlsToCheck = append(statsUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/nodes/%s/stats", node),
-		)
-
-		entityListEntryUrlsToCheck = append(entityListEntryUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/nodes/%s/pods", node),
 		)
 	}
 
@@ -605,32 +532,23 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 		containerName := pod.Spec.Containers[0].Name
 
 		metricUrlsToCheck = append(metricUrlsToCheck,
+			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/metrics/%s", pod.Namespace, pod.Name, "cpu/usage_rate"),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/metrics/%s", pod.Namespace, pod.Name, "cpu-usage"),
+			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/metrics/%s", pod.Namespace, pod.Name, containerName, "cpu/usage_rate"),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/metrics/%s", pod.Namespace, pod.Name, containerName, "cpu-usage"),
+			fmt.Sprintf("/api/v1/model/namespaces/%s/metrics/%s", pod.Namespace, "cpu/usage_rate"),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/metrics/%s", pod.Namespace, "cpu-usage"),
 		)
 
 		batchMetricsUrlsToCheck = append(batchMetricsUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pod-list/%s,%s/metrics/%s", pod.Namespace, pod.Name, pod.Name, "cpu-usage"))
+			fmt.Sprintf("/api/v1/model/namespaces/%s/pod-list/%s,%s/metrics/%s", pod.Namespace, pod.Name, pod.Name, "cpu/usage_rate"),
+			fmt.Sprintf("/api/v1/model/namespaces/%s/pod-list/%s,%s/metrics/%s", pod.Namespace, pod.Name, pod.Name, "cpu-usage"),
+		)
 
 		stringUrlsToCheck = append(stringUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/namespaces/%s", pod.Namespace),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/metrics", pod.Namespace),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s", pod.Namespace, pod.Name),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/metrics", pod.Namespace, pod.Name),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s", pod.Namespace, pod.Name, containerName),
 			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/metrics", pod.Namespace, pod.Name, containerName),
-		)
-
-		entityListEntryUrlsToCheck = append(entityListEntryUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods", pod.Namespace),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers", pod.Namespace, pod.Name),
-		)
-
-		statsUrlsToCheck = append(statsUrlsToCheck,
-			fmt.Sprintf("/api/v1/model/namespaces/%s/stats", pod.Namespace),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/stats", pod.Namespace, pod.Name),
-			fmt.Sprintf("/api/v1/model/namespaces/%s/pods/%s/containers/%s/stats", pod.Namespace, pod.Name, containerName),
 		)
 	}
 
@@ -654,21 +572,6 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 			return fmt.Errorf("error while querying %s: %v", url, err)
 		}
 	}
-
-	for _, url := range statsUrlsToCheck {
-		_, err := getStatsResponse(fm, svc, url)
-		if err != nil {
-			return fmt.Errorf("error while querying %s: %v", url, err)
-		}
-	}
-
-	for _, url := range entityListEntryUrlsToCheck {
-		_, err := getEntityListEntry(fm, svc, url)
-		if err != nil {
-			return fmt.Errorf("error while querying %s: %v", url, err)
-		}
-	}
-
 	return nil
 }
 
@@ -709,16 +612,18 @@ func apiTest(kubeVersion string, zone string) error {
 			}
 			return err
 		},
-		func() error {
-			glog.V(2).Infof("Sinks test...")
-			err := runSinksTest(fm, svc)
-			if err == nil {
-				glog.V(2).Infof("Sinks test: OK")
-			} else {
-				glog.V(2).Infof("Sinks test error: %v", err)
-			}
-			return err
-		},
+		/*
+				TODO(mwielgus): Enable once dynamic sink setting is enabled.
+			func() error {
+				glog.V(2).Infof("Sinks test...")
+				err := runSinksTest(fm, svc)
+				if err == nil {
+					glog.V(2).Infof("Sinks test: OK")
+				} else {
+					glog.V(2).Infof("Sinks test error: %v", err)
+				}
+				return err
+			}, */
 		func() error {
 			glog.V(2).Infof("Model test")
 			err := runModelTest(fm, svc)

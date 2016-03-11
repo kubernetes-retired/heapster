@@ -1,8 +1,8 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Kubernetes Cluster",
-    "originalTitle": "Kubernetes Cluster",
+    "title": "Cluster",
+    "originalTitle": "Cluster",
     "tags": [],
     "style": "dark",
     "timezone": "browser",
@@ -11,28 +11,6 @@
     "sharedCrosshair": false,
     "rows": [
       {
-        "collapse": true,
-        "editable": true,
-        "height": "100px",
-        "panels": [
-          {
-            "content": "#### This dashboard displays Memory, CPU, Disk and Network metrics at both cluster and node levels. Select a node from the above dropdown to see metrics specific to that node. Select \"All\" to see metrics for all nodes side by side.\n\n##### * Cluster metrics are sum across all nodes.\n##### * Node metrics are displayed on one panel for easy comparison.\n##### * There's also a panel for each node so one could \"double-click\" into the node for further analysis.\n",
-            "editable": true,
-            "error": false,
-            "id": 1,
-            "links": [],
-            "mode": "markdown",
-            "span": 12,
-            "style": {},
-            "title": "",
-            "transparent": true,
-            "type": "text"
-          }
-        ],
-        "showTitle": true,
-        "title": "Documentation"
-      },
-      {
         "collapse": false,
         "editable": true,
         "height": "250px",
@@ -41,148 +19,6 @@
             "aliasColors": {},
             "bars": false,
             "datasource": null,
-            "decimals": 2,
-            "editable": true,
-            "error": false,
-            "fill": 3,
-            "grid": {
-              "leftLogBase": 1,
-              "leftMax": null,
-              "leftMin": null,
-              "rightLogBase": 1,
-              "rightMax": null,
-              "rightMin": null,
-              "threshold1": null,
-              "threshold1Color": "rgba(216, 200, 27, 0.27)",
-              "threshold2": null,
-              "threshold2Color": "rgba(234, 112, 112, 0.22)"
-            },
-            "id": 2,
-            "interval": ">30s",
-            "legend": {
-              "avg": false,
-              "current": true,
-              "max": false,
-              "min": false,
-              "show": true,
-              "total": false,
-              "values": true
-            },
-            "lines": true,
-            "linewidth": 3,
-            "links": [],
-            "nullPointMode": "null",
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "seriesOverrides": [],
-            "span": 12,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-              {
-                "alias": "Limit",
-                "fields": [
-                  {
-                    "func": "sum",
-                    "name": "value"
-                  }
-                ],
-                "groupBy": [
-                  {
-                    "interval": "auto",
-                    "type": "time"
-                  }
-                ],
-                "measurement": "memory/limit_bytes_gauge",
-                "query": "SELECT sum(\"value\") AS \"value\" FROM \"memory/limit_bytes_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval)",
-                "refId": "A",
-                "tags": [
-                  {
-                    "key": "container_name",
-                    "value": "machine"
-                  }
-                ]
-              },
-              {
-                "alias": "Usage",
-                "fields": [
-                  {
-                    "func": "sum",
-                    "name": "value"
-                  }
-                ],
-                "groupBy": [
-                  {
-                    "interval": "auto",
-                    "type": "time"
-                  }
-                ],
-                "measurement": "memory/usage_bytes_gauge",
-                "query": "SELECT sum(\"value\") AS \"value\" FROM \"memory/usage_bytes_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval)",
-                "refId": "B",
-                "tags": [
-                  {
-                    "key": "container_name",
-                    "value": "machine"
-                  }
-                ]
-              },
-              {
-                "alias": "Working Set",
-                "fields": [
-                  {
-                    "func": "sum",
-                    "name": "value"
-                  }
-                ],
-                "groupBy": [
-                  {
-                    "interval": "auto",
-                    "type": "time"
-                  }
-                ],
-                "measurement": "memory/working_set_bytes_gauge",
-                "query": "SELECT sum(\"value\") AS \"value\" FROM \"memory/working_set_bytes_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval)",
-                "refId": "C",
-                "tags": [
-                  {
-                    "key": "container_name",
-                    "value": "machine"
-                  }
-                ]
-              }
-            ],
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "",
-            "tooltip": {
-              "shared": true,
-              "value_type": "cumulative"
-            },
-            "type": "graph",
-            "x-axis": true,
-            "y-axis": true,
-            "y_formats": [
-              "bytes",
-              "bytes"
-            ]
-          }
-        ],
-        "showTitle": true,
-        "title": "Overall Cluster Memory Usage"
-      },
-      {
-        "collapse": false,
-        "editable": true,
-        "height": "250px",
-        "panels": [
-          {
-            "aliasColors": {},
-            "bars": false,
-            "datasource": null,
-            "decimals": 2,
             "editable": true,
             "error": false,
             "fill": 1,
@@ -199,20 +35,21 @@
               "threshold2Color": "rgba(234, 112, 112, 0.22)"
             },
             "id": 3,
-            "interval": ">30s",
+            "isNew": true,
+            "leftYAxisLabel": "Millicores",
             "legend": {
               "avg": false,
-              "current": true,
+              "current": false,
               "max": false,
               "min": false,
               "show": true,
               "total": false,
-              "values": true
+              "values": false
             },
             "lines": true,
-            "linewidth": 3,
+            "linewidth": 2,
             "links": [],
-            "nullPointMode": "null",
+            "nullPointMode": "connected",
             "percentage": false,
             "pointradius": 5,
             "points": false,
@@ -223,65 +60,138 @@
             "steppedLine": false,
             "targets": [
               {
-                "alias": "Limit {$tag_hostname}",
-                "fields": [
-                  {
-                    "func": "max",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Usage",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
                   },
                   {
-                    "key": "hostname",
-                    "type": "tag"
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "memory/limit_bytes_gauge",
-                "query": "SELECT max(\"value\") AS \"value\" FROM \"memory/limit_bytes_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
+                "measurement": "cpu/usage_rate",
+                "query": "SELECT sum(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   }
                 ]
               },
               {
-                "alias": "Usage {$tag_hostname}",
-                "fields": [
-                  {
-                    "func": "max",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Limit",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
                   },
                   {
-                    "key": "hostname",
-                    "type": "tag"
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "memory/working_set_bytes_gauge",
-                "query": "SELECT max(\"value\") AS \"value\" FROM \"memory/working_set_bytes_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
+                "measurement": "cpu/limit",
+                "query": "SELECT sum(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "B",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
+              },
+              {
+                "alias": "Request",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "cpu/request",
+                "query": "SELECT sum(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "refId": "C",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   }
                 ]
               }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "",
+            "title": "Overal Cluster CPU Usage",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -290,13 +200,12 @@
             "x-axis": true,
             "y-axis": true,
             "y_formats": [
-              "bytes",
-              "bytes"
+              "short",
+              "short"
             ]
           }
         ],
-        "showTitle": true,
-        "title": "Memory Usage Group By Node"
+        "title": "Row"
       },
       {
         "collapse": false,
@@ -307,10 +216,9 @@
             "aliasColors": {},
             "bars": false,
             "datasource": null,
-            "decimals": 2,
             "editable": true,
             "error": false,
-            "fill": 3,
+            "fill": 1,
             "grid": {
               "leftLogBase": 1,
               "leftMax": null,
@@ -324,123 +232,181 @@
               "threshold2Color": "rgba(234, 112, 112, 0.22)"
             },
             "id": 4,
-            "interval": ">30s",
+            "isNew": true,
+            "leftYAxisLabel": "Millicores",
             "legend": {
               "avg": false,
-              "current": true,
+              "current": false,
               "max": false,
               "min": false,
               "show": true,
               "total": false,
-              "values": true
+              "values": false
             },
             "lines": true,
-            "linewidth": 3,
+            "linewidth": 2,
             "links": [],
-            "minSpan": 6,
-            "nullPointMode": "null",
+            "nullPointMode": "connected",
             "percentage": false,
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "node",
-            "scopedVars": {},
             "seriesOverrides": [],
-            "span": 6,
+            "span": 12,
             "stack": false,
             "steppedLine": false,
             "targets": [
               {
-                "alias": "Limit",
-                "fields": [
-                  {
-                    "func": "max",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Usage $tag_nodename",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "memory/limit_bytes_gauge",
-                "query": "SELECT max(\"value\") AS \"value\" FROM \"memory/limit_bytes_gauge\" WHERE \"hostname\" =~ /$node/ AND \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval)",
+                "measurement": "cpu/usage_rate",
+                "query": "SELECT sum(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "hostname",
-                    "value": "/$node/"
-                  },
-                  {
-                    "condition": "AND",
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   }
                 ]
               },
               {
-                "alias": "Usage",
-                "fields": [
-                  {
-                    "func": "max",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Limit $tag_nodename",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "memory/usage_bytes_gauge",
-                "query": "SELECT max(\"value\") AS \"value\" FROM \"memory/usage_bytes_gauge\" WHERE \"hostname\" =~ /$node/ AND \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval)",
+                "measurement": "cpu/limit",
+                "query": "SELECT sum(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "B",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "hostname",
-                    "value": "/$node/"
-                  },
-                  {
-                    "condition": "AND",
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   }
                 ]
               },
               {
-                "alias": "Working Set",
-                "fields": [
-                  {
-                    "func": "max",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Request $tag_nodename",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
-                  }
-                ],
-                "measurement": "memory/working_set_bytes_gauge",
-                "query": "SELECT max(\"value\") AS \"value\" FROM \"memory/working_set_bytes_gauge\" WHERE \"hostname\" =~ /$node/ AND \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval)",
-                "refId": "C",
-                "tags": [
-                  {
-                    "key": "hostname",
-                    "value": "/$node/"
                   },
                   {
-                    "condition": "AND",
-                    "key": "container_name",
-                    "value": "machine"
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "cpu/request",
+                "query": "SELECT sum(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "C",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   }
                 ]
               }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "$node Memory Usage",
+            "title": "CPU Usage by Node",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -449,15 +415,237 @@
             "x-axis": true,
             "y-axis": true,
             "y_formats": [
-              "bytes",
-              "bytes"
+              "short",
+              "short"
+            ]
+          },
+          {
+            "aliasColors": {},
+            "bars": false,
+            "datasource": null,
+            "editable": true,
+            "error": false,
+            "fill": 1,
+            "grid": {
+              "leftLogBase": 1,
+              "leftMax": null,
+              "leftMin": null,
+              "rightLogBase": 1,
+              "rightMax": null,
+              "rightMin": null,
+              "threshold1": null,
+              "threshold1Color": "rgba(216, 200, 27, 0.27)",
+              "threshold2": null,
+              "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            },
+            "id": 6,
+            "isNew": true,
+            "leftYAxisLabel": "Millicores",
+            "legend": {
+              "avg": false,
+              "current": false,
+              "max": false,
+              "min": false,
+              "show": true,
+              "total": false,
+              "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "span": 12,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+              {
+                "alias": "Usage $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "cpu/usage_rate",
+                "query": "SELECT sum(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
+                  }
+                ]
+              },
+              {
+                "alias": "Limit $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "cpu/limit",
+                "query": "SELECT sum(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "B",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
+                  }
+                ]
+              },
+              {
+                "alias": "Request $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "cpu/request",
+                "query": "SELECT sum(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "C",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
+                  }
+                ]
+              }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "Individual CPU Usage: $nodename",
+            "tooltip": {
+              "shared": true,
+              "value_type": "cumulative"
+            },
+            "type": "graph",
+            "x-axis": true,
+            "y-axis": true,
+            "y_formats": [
+              "short",
+              "short"
             ]
           }
         ],
-        "repeat": null,
-        "scopedVars": {},
-        "showTitle": true,
-        "title": "Individual Node Memory Usage"
+        "title": "New row"
       },
       {
         "collapse": false,
@@ -468,7 +656,504 @@
             "aliasColors": {},
             "bars": false,
             "datasource": null,
-            "decimals": 2,
+            "editable": true,
+            "error": false,
+            "fill": 1,
+            "grid": {
+              "leftLogBase": 1,
+              "leftMax": null,
+              "leftMin": null,
+              "rightLogBase": 1,
+              "rightMax": null,
+              "rightMin": null,
+              "threshold1": null,
+              "threshold1Color": "rgba(216, 200, 27, 0.27)",
+              "threshold2": null,
+              "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            },
+            "id": 1,
+            "isNew": true,
+            "leftYAxisLabel": "bytes",
+            "legend": {
+              "avg": false,
+              "current": false,
+              "max": false,
+              "min": false,
+              "show": true,
+              "total": false,
+              "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "span": 12,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+              {
+                "alias": "Usage",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "memory/usage",
+                "query": "SELECT sum(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "refId": "B",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
+              },
+              {
+                "alias": "Working Set",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "memory/working_set",
+                "query": "SELECT sum(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "refId": "C",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
+              },
+              {
+                "alias": "Limit",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "hide": false,
+                "measurement": "memory/limit",
+                "query": "SELECT sum(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
+              },
+              {
+                "alias": "Request",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "hide": false,
+                "measurement": "memory/request",
+                "query": "SELECT sum(\"value\") FROM \"memory/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "refId": "D",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
+              }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "Overal Cluster Memory Usage",
+            "tooltip": {
+              "shared": true,
+              "value_type": "cumulative"
+            },
+            "type": "graph",
+            "x-axis": true,
+            "y-axis": true,
+            "y_formats": [
+              "bytes",
+              "short"
+            ]
+          },
+          {
+            "aliasColors": {},
+            "bars": false,
+            "datasource": null,
+            "editable": true,
+            "error": false,
+            "fill": 1,
+            "grid": {
+              "leftLogBase": 1,
+              "leftMax": null,
+              "leftMin": null,
+              "rightLogBase": 1,
+              "rightMax": null,
+              "rightMin": null,
+              "threshold1": null,
+              "threshold1Color": "rgba(216, 200, 27, 0.27)",
+              "threshold2": null,
+              "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            },
+            "id": 2,
+            "isNew": true,
+            "leftYAxisLabel": "Bytes",
+            "legend": {
+              "avg": false,
+              "current": false,
+              "max": false,
+              "min": false,
+              "show": true,
+              "total": false,
+              "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "span": 12,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+              {
+                "alias": "Usage $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "memory/usage",
+                "query": "SELECT sum(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "B",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
+              },
+              {
+                "alias": "Usage $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "memory/working_set",
+                "query": "SELECT sum(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
+              },
+              {
+                "alias": "Limit $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "memory/limit",
+                "query": "SELECT sum(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "C",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
+              },
+              {
+                "alias": "Request $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "memory/request",
+                "query": "SELECT sum(\"value\") FROM \"memory/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "D",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
+              }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "Memory Usage by Node",
+            "tooltip": {
+              "shared": true,
+              "value_type": "cumulative"
+            },
+            "type": "graph",
+            "x-axis": true,
+            "y-axis": true,
+            "y_formats": [
+              "bytes",
+              "short"
+            ]
+          }
+        ],
+        "title": "New row"
+      },
+      {
+        "collapse": false,
+        "editable": true,
+        "height": "250px",
+        "panels": [
+          {
+            "aliasColors": {},
+            "bars": false,
+            "datasource": null,
             "editable": true,
             "error": false,
             "fill": 1,
@@ -485,20 +1170,21 @@
               "threshold2Color": "rgba(234, 112, 112, 0.22)"
             },
             "id": 5,
-            "interval": ">30s",
+            "isNew": true,
+            "leftYAxisLabel": "Bytes",
             "legend": {
               "avg": false,
-              "current": true,
+              "current": false,
               "max": false,
               "min": false,
               "show": true,
               "total": false,
-              "values": true
+              "values": false
             },
             "lines": true,
-            "linewidth": 3,
+            "linewidth": 2,
             "links": [],
-            "nullPointMode": "null",
+            "nullPointMode": "connected",
             "percentage": false,
             "pointradius": 5,
             "points": false,
@@ -509,152 +1195,229 @@
             "steppedLine": false,
             "targets": [
               {
-                "alias": "Limit {$tag_hostname}",
-                "fields": [
-                  {
-                    "func": "last",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Usage $tag_nodename",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
                   },
                   {
-                    "key": "hostname",
+                    "params": [
+                      "nodename"
+                    ],
                     "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "cpu/limit_gauge",
-                "query": "SELECT last(\"value\") AS \"value\" FROM \"cpu/limit_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
-                "refId": "A",
-                "tags": [
-                  {
-                    "key": "container_name",
-                    "value": "machine"
-                  }
-                ]
-              },
-              {
-                "alias": "Usage {$tag_hostname}",
-                "query": "SELECT non_negative_derivative(max(value),1u) FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
-                "rawQuery": true,
+                "measurement": "memory/usage",
+                "query": "SELECT sum(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "B",
-                "target": ""
-              }
-            ],
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "",
-            "tooltip": {
-              "shared": true,
-              "value_type": "cumulative"
-            },
-            "type": "graph",
-            "x-axis": true,
-            "y-axis": true,
-            "y_formats": [
-              "ms",
-              "ms"
-            ]
-          }
-        ],
-        "showTitle": true,
-        "title": "CPU Usage Group By Node"
-      },
-      {
-        "collapse": false,
-        "editable": true,
-        "height": "250px",
-        "panels": [
-          {
-            "aliasColors": {},
-            "bars": false,
-            "datasource": null,
-            "decimals": 2,
-            "editable": true,
-            "error": false,
-            "fill": 3,
-            "grid": {
-              "leftLogBase": 1,
-              "leftMax": null,
-              "leftMin": null,
-              "rightLogBase": 1,
-              "rightMax": null,
-              "rightMin": null,
-              "threshold1": null,
-              "threshold1Color": "rgba(216, 200, 27, 0.27)",
-              "threshold2": null,
-              "threshold2Color": "rgba(234, 112, 112, 0.22)"
-            },
-            "id": 6,
-            "interval": ">30s",
-            "legend": {
-              "avg": false,
-              "current": true,
-              "max": false,
-              "min": false,
-              "show": true,
-              "total": false,
-              "values": true
-            },
-            "lines": true,
-            "linewidth": 3,
-            "links": [],
-            "minSpan": 6,
-            "nullPointMode": "null",
-            "percentage": false,
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "repeat": "node",
-            "scopedVars": {},
-            "seriesOverrides": [],
-            "span": 6,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-              {
-                "alias": "Limit",
-                "fields": [
-                  {
-                    "func": "last",
-                    "name": "value"
-                  }
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
                 ],
-                "groupBy": [
-                  {
-                    "interval": "auto",
-                    "type": "time"
-                  }
-                ],
-                "measurement": "cpu/limit_gauge",
-                "query": "SELECT last(\"value\") AS \"value\" FROM \"cpu/limit_gauge\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
-                "refId": "A",
                 "tags": [
                   {
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   },
                   {
                     "condition": "AND",
-                    "key": "hostname",
-                    "value": "/$node/"
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
                   }
                 ]
               },
               {
-                "alias": "Usage",
-                "query": "SELECT non_negative_derivative(max(value),1u) FROM \"cpu/usage_ns_cumulative\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
-                "rawQuery": true,
-                "refId": "B",
-                "target": ""
+                "alias": "Usage $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "memory/working_set",
+                "query": "SELECT sum(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
+                  }
+                ]
+              },
+              {
+                "alias": "Limit $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "memory/limit",
+                "query": "SELECT sum(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "C",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
+                  }
+                ]
+              },
+              {
+                "alias": "Request $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "memory/request",
+                "query": "SELECT sum(\"value\") FROM \"memory/request\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "D",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
+                  }
+                ]
               }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "$node CPU Usage",
+            "title": "Individual Node Memory Usage: $nodename",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -663,27 +1426,17 @@
             "x-axis": true,
             "y-axis": true,
             "y_formats": [
-              "ms",
-              "ms"
+              "bytes",
+              "short"
             ]
-          }
-        ],
-        "showTitle": true,
-        "title": "Individual Node CPU Usage"
-      },
-      {
-        "collapse": false,
-        "editable": true,
-        "height": "250px",
-        "panels": [
+          },
           {
             "aliasColors": {},
             "bars": false,
             "datasource": null,
-            "decimals": 2,
             "editable": true,
             "error": false,
-            "fill": 3,
+            "fill": 1,
             "grid": {
               "leftLogBase": 1,
               "leftMax": null,
@@ -697,20 +1450,21 @@
               "threshold2Color": "rgba(234, 112, 112, 0.22)"
             },
             "id": 7,
-            "interval": ">30s",
+            "isNew": true,
+            "leftYAxisLabel": "",
             "legend": {
               "avg": false,
-              "current": true,
+              "current": false,
               "max": false,
               "min": false,
               "show": true,
               "total": false,
-              "values": true
+              "values": false
             },
             "lines": true,
-            "linewidth": 3,
+            "linewidth": 2,
             "links": [],
-            "nullPointMode": "null",
+            "nullPointMode": "connected",
             "percentage": false,
             "pointradius": 5,
             "points": false,
@@ -721,57 +1475,95 @@
             "steppedLine": false,
             "targets": [
               {
-                "alias": "Limit",
-                "fields": [
-                  {
-                    "func": "sum",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Tx",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "filesystem/limit_bytes_gauge",
-                "query": "SELECT sum(\"value\") AS \"value\" FROM \"filesystem/limit_bytes_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval)",
+                "measurement": "network/tx_rate",
+                "query": "SELECT sum(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   }
                 ]
               },
               {
-                "alias": "Usage",
-                "fields": [
-                  {
-                    "func": "sum",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Rx",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "filesystem/usage_bytes_gauge",
-                "query": "SELECT sum(\"value\") AS \"value\" FROM \"filesystem/usage_bytes_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval)",
+                "measurement": "network/rx_rate",
+                "query": "SELECT sum(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "B",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   }
                 ]
               }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "",
+            "title": "Overal Cluster Network Usage",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -780,24 +1572,14 @@
             "x-axis": true,
             "y-axis": true,
             "y_formats": [
-              "bytes",
-              "bytes"
+              "Bps",
+              "short"
             ]
-          }
-        ],
-        "showTitle": true,
-        "title": "Overall Cluster Disk Usage"
-      },
-      {
-        "collapse": false,
-        "editable": true,
-        "height": "250px",
-        "panels": [
+          },
           {
             "aliasColors": {},
             "bars": false,
             "datasource": null,
-            "decimals": 2,
             "editable": true,
             "error": false,
             "fill": 1,
@@ -814,20 +1596,21 @@
               "threshold2Color": "rgba(234, 112, 112, 0.22)"
             },
             "id": 8,
-            "interval": ">30s",
+            "isNew": true,
+            "leftYAxisLabel": "",
             "legend": {
               "avg": false,
-              "current": true,
+              "current": false,
               "max": false,
               "min": false,
               "show": true,
               "total": false,
-              "values": true
+              "values": false
             },
             "lines": true,
-            "linewidth": 3,
+            "linewidth": 2,
             "links": [],
-            "nullPointMode": "null",
+            "nullPointMode": "connected",
             "percentage": false,
             "pointradius": 5,
             "points": false,
@@ -838,65 +1621,109 @@
             "steppedLine": false,
             "targets": [
               {
-                "alias": "Limit {$tag_hostname}",
-                "fields": [
-                  {
-                    "func": "last",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Tx $tag_nodename",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
                   },
                   {
-                    "key": "hostname",
+                    "params": [
+                      "nodename"
+                    ],
                     "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "filesystem/limit_bytes_gauge",
-                "query": "SELECT last(\"value\") AS \"value\" FROM \"filesystem/limit_bytes_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
+                "measurement": "network/tx_rate",
+                "query": "SELECT sum(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "rawQuery": false,
                 "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   }
                 ]
               },
               {
-                "alias": "Usage {$tag_hostname}",
-                "fields": [
-                  {
-                    "func": "last",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Rx $tag_nodename",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
                   },
                   {
-                    "key": "hostname",
+                    "params": [
+                      "nodename"
+                    ],
                     "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "filesystem/usage_bytes_gauge",
-                "query": "SELECT last(\"value\") AS \"value\" FROM \"filesystem/usage_bytes_gauge\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
+                "measurement": "network/rx_rate",
+                "query": "SELECT sum(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "rawQuery": false,
                 "refId": "B",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   }
                 ]
               }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "",
+            "title": "Network Usage by Node",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -905,27 +1732,17 @@
             "x-axis": true,
             "y-axis": true,
             "y_formats": [
-              "bytes",
-              "bytes"
+              "Bps",
+              "short"
             ]
-          }
-        ],
-        "showTitle": true,
-        "title": "Disk Usage Group By Node"
-      },
-      {
-        "collapse": false,
-        "editable": true,
-        "height": "250px",
-        "panels": [
+          },
           {
             "aliasColors": {},
             "bars": false,
             "datasource": null,
-            "decimals": 2,
             "editable": true,
             "error": false,
-            "fill": 3,
+            "fill": 1,
             "grid": {
               "leftLogBase": 1,
               "leftMax": null,
@@ -939,94 +1756,146 @@
               "threshold2Color": "rgba(234, 112, 112, 0.22)"
             },
             "id": 9,
-            "interval": ">30s",
+            "isNew": true,
+            "leftYAxisLabel": "",
             "legend": {
               "avg": false,
-              "current": true,
+              "current": false,
               "max": false,
               "min": false,
               "show": true,
               "total": false,
-              "values": true
+              "values": false
             },
             "lines": true,
-            "linewidth": 3,
+            "linewidth": 2,
             "links": [],
-            "minSpan": 6,
-            "nullPointMode": "null",
+            "nullPointMode": "connected",
             "percentage": false,
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "node",
-            "scopedVars": {},
             "seriesOverrides": [],
-            "span": 6,
+            "span": 12,
             "stack": false,
             "steppedLine": false,
             "targets": [
               {
-                "alias": "Limit",
-                "fields": [
-                  {
-                    "func": "last",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Tx $tag_nodename",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "filesystem/limit_bytes_gauge",
-                "query": "SELECT last(\"value\") AS \"value\" FROM \"filesystem/limit_bytes_gauge\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
+                "measurement": "network/tx_rate",
+                "query": "SELECT sum(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "rawQuery": false,
                 "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   },
                   {
                     "condition": "AND",
-                    "key": "hostname",
-                    "value": "/$node/"
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
                   }
                 ]
               },
               {
-                "alias": "Usage",
-                "fields": [
-                  {
-                    "func": "last",
-                    "name": "value"
-                  }
-                ],
+                "alias": "Rx $tag_nodename",
+                "dsType": "influxdb",
                 "groupBy": [
                   {
-                    "interval": "auto",
+                    "params": [
+                      "$interval"
+                    ],
                     "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
                   }
                 ],
-                "measurement": "filesystem/usage_bytes_gauge",
-                "query": "SELECT last(\"value\") AS \"value\" FROM \"filesystem/usage_bytes_gauge\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
+                "measurement": "network/rx_rate",
+                "query": "SELECT sum(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "rawQuery": false,
                 "refId": "B",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
                 "tags": [
                   {
-                    "key": "container_name",
-                    "value": "machine"
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
                   },
                   {
                     "condition": "AND",
-                    "key": "hostname",
-                    "value": "/$node/"
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
                   }
                 ]
               }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "$node Disk Usage",
+            "title": "Individual Node Network Usage: $nodename",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -1035,24 +1904,14 @@
             "x-axis": true,
             "y-axis": true,
             "y_formats": [
-              "bytes",
-              "bytes"
+              "Bps",
+              "short"
             ]
-          }
-        ],
-        "showTitle": true,
-        "title": "Individual Node Disk Usage"
-      },
-      {
-        "collapse": false,
-        "editable": true,
-        "height": "250px",
-        "panels": [
+          },
           {
             "aliasColors": {},
             "bars": false,
             "datasource": null,
-            "decimals": 2,
             "editable": true,
             "error": false,
             "fill": 1,
@@ -1069,52 +1928,120 @@
               "threshold2Color": "rgba(234, 112, 112, 0.22)"
             },
             "id": 10,
-            "interval": ">30s",
+            "isNew": true,
+            "leftYAxisLabel": "",
             "legend": {
               "avg": false,
-              "current": true,
+              "current": false,
               "max": false,
               "min": false,
               "show": true,
               "total": false,
-              "values": true
+              "values": false
             },
             "lines": true,
-            "linewidth": 3,
+            "linewidth": 2,
             "links": [],
-            "nullPointMode": "null",
+            "nullPointMode": "connected",
             "percentage": false,
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "seriesOverrides": [
-              {
-                "alias": "/Rx /",
-                "transform": "negative-Y"
-              }
-            ],
+            "seriesOverrides": [],
             "span": 12,
             "stack": false,
             "steppedLine": false,
             "targets": [
               {
-                "alias": "Tx {$tag_hostname}",
-                "query": "SELECT non_negative_derivative(max(value),1s) FROM \"network/tx_bytes_cumulative\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
-                "rawQuery": true,
+                "alias": "Usage",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "filesystem/usage",
+                "query": "SELECT sum(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "A",
-                "target": ""
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
               },
               {
-                "alias": "Rx {$tag_hostname}",
-                "query": "SELECT non_negative_derivative(max(value),1s) FROM \"network/rx_bytes_cumulative\" WHERE \"container_name\" = 'machine' AND $timeFilter GROUP BY time($interval), \"hostname\"",
-                "rawQuery": true,
+                "alias": "Limit",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "filesystem/limit",
+                "query": "SELECT sum(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "B",
-                "target": ""
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
               }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "",
+            "title": "Overal Cluster Filesystem Usage",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -1123,27 +2050,17 @@
             "x-axis": true,
             "y-axis": true,
             "y_formats": [
-              "Bps",
-              "Bps"
+              "bytes",
+              "short"
             ]
-          }
-        ],
-        "showTitle": true,
-        "title": "Network Usage Group By Node"
-      },
-      {
-        "collapse": false,
-        "editable": true,
-        "height": "250px",
-        "panels": [
+          },
           {
             "aliasColors": {},
             "bars": false,
             "datasource": null,
-            "decimals": 2,
             "editable": true,
             "error": false,
-            "fill": 3,
+            "fill": 1,
             "grid": {
               "leftLogBase": 1,
               "leftMax": null,
@@ -1157,50 +2074,132 @@
               "threshold2Color": "rgba(234, 112, 112, 0.22)"
             },
             "id": 11,
-            "interval": ">30s",
+            "isNew": true,
+            "leftYAxisLabel": "",
             "legend": {
               "avg": false,
-              "current": true,
+              "current": false,
               "max": false,
               "min": false,
               "show": true,
               "total": false,
-              "values": true
+              "values": false
             },
             "lines": true,
-            "linewidth": 3,
+            "linewidth": 2,
             "links": [],
-            "minSpan": 6,
-            "nullPointMode": "null",
+            "nullPointMode": "connected",
             "percentage": false,
             "pointradius": 5,
             "points": false,
             "renderer": "flot",
-            "repeat": "node",
-            "scopedVars": {},
             "seriesOverrides": [],
-            "span": 6,
-            "stack": true,
+            "span": 12,
+            "stack": false,
             "steppedLine": false,
             "targets": [
               {
-                "alias": "Tx",
-                "query": "SELECT non_negative_derivative(max(value),1s) FROM \"network/tx_bytes_cumulative\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
-                "rawQuery": true,
+                "alias": "Usage $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "filesystem/usage",
+                "query": "SELECT sum(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "A",
-                "target": ""
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
               },
               {
-                "alias": "Rx",
-                "query": "SELECT non_negative_derivative(max(value),1s) FROM \"network/rx_bytes_cumulative\" WHERE \"container_name\" = 'machine' AND \"hostname\" =~ /$node/ AND $timeFilter GROUP BY time($interval)",
-                "rawQuery": true,
+                "alias": "Limit $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "filesystem/limit",
+                "query": "SELECT sum(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "B",
-                "target": ""
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  }
+                ]
               }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "$node Network Usage",
+            "title": "Filesystem Usage by Node",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -1209,13 +2208,182 @@
             "x-axis": true,
             "y-axis": true,
             "y_formats": [
-              "Bps",
-              "Bps"
+              "bytes",
+              "short"
+            ]
+          },
+          {
+            "aliasColors": {},
+            "bars": false,
+            "datasource": null,
+            "editable": true,
+            "error": false,
+            "fill": 1,
+            "grid": {
+              "leftLogBase": 1,
+              "leftMax": null,
+              "leftMin": null,
+              "rightLogBase": 1,
+              "rightMax": null,
+              "rightMin": null,
+              "threshold1": null,
+              "threshold1Color": "rgba(216, 200, 27, 0.27)",
+              "threshold2": null,
+              "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            },
+            "id": 12,
+            "isNew": true,
+            "leftYAxisLabel": "",
+            "legend": {
+              "avg": false,
+              "current": false,
+              "max": false,
+              "min": false,
+              "show": true,
+              "total": false,
+              "values": false
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "connected",
+            "percentage": false,
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "span": 12,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+              {
+                "alias": "Usage $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "filesystem/usage",
+                "query": "SELECT sum(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "A",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
+                  }
+                ]
+              },
+              {
+                "alias": "Limit $tag_nodename",
+                "dsType": "influxdb",
+                "groupBy": [
+                  {
+                    "params": [
+                      "$interval"
+                    ],
+                    "type": "time"
+                  },
+                  {
+                    "params": [
+                      "nodename"
+                    ],
+                    "type": "tag"
+                  },
+                  {
+                    "params": [
+                      "null"
+                    ],
+                    "type": "fill"
+                  }
+                ],
+                "measurement": "filesystem/limit",
+                "query": "SELECT sum(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "refId": "B",
+                "resultFormat": "time_series",
+                "select": [
+                  [
+                    {
+                      "params": [
+                        "value"
+                      ],
+                      "type": "field"
+                    },
+                    {
+                      "params": [],
+                      "type": "sum"
+                    }
+                  ]
+                ],
+                "tags": [
+                  {
+                    "key": "type",
+                    "operator": "=",
+                    "value": "node"
+                  },
+                  {
+                    "condition": "AND",
+                    "key": "nodename",
+                    "operator": "=~",
+                    "value": "/$nodename$/"
+                  }
+                ]
+              }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "Individual Filesystem Usage: $nodename",
+            "tooltip": {
+              "shared": true,
+              "value_type": "cumulative"
+            },
+            "type": "graph",
+            "x-axis": true,
+            "y-axis": true,
+            "y_formats": [
+              "bytes",
+              "short"
             ]
           }
         ],
-        "showTitle": true,
-        "title": "Individual Node Network Usage"
+        "title": "New row"
       }
     ],
     "time": {
@@ -1223,9 +2391,6 @@
       "to": "now"
     },
     "timepicker": {
-      "collapse": false,
-      "enable": true,
-      "notice": false,
       "now": true,
       "refresh_intervals": [
         "5s",
@@ -1239,54 +2404,61 @@
         "2h",
         "1d"
       ],
-      "status": "Stable",
       "time_options": [
+        "5m",
         "15m",
         "1h",
-        "3h",
         "6h",
         "12h",
         "24h",
         "2d",
-        "7d"
-      ],
-      "type": "timepicker"
+        "7d",
+        "30d"
+      ]
     },
     "templating": {
       "list": [
         {
           "allFormat": "glob",
           "current": {
-            "text": "All",
-            "value": "{}"
+            "text": "kubernetes-minion-hly9",
+            "value": "kubernetes-minion-hly9"
           },
           "datasource": null,
-          "includeAll": true,
-          "label": "Node",
+          "includeAll": false,
           "multi": false,
           "multiFormat": "glob",
-          "name": "node",
+          "name": "nodename",
           "options": [
             {
-              "text": "All",
-              "value": "{}",
+              "text": "kubernetes-minion-a7kc",
+              "value": "kubernetes-minion-a7kc",
+              "selected": false
+            },
+            {
+              "text": "kubernetes-minion-hly9",
+              "value": "kubernetes-minion-hly9",
               "selected": true
+            },
+            {
+              "text": "kubernetes-minion-sfos",
+              "value": "kubernetes-minion-sfos",
+              "selected": false
             }
           ],
-          "query": "SHOW TAG VALUES FROM \"uptime_ms_cumulative\" WITH KEY = \"hostname\"",
+          "query": "SHOW TAG VALUES FROM \"uptime\" WITH KEY = \"nodename\"",
           "refresh": true,
-          "refresh_on_load": true,
           "regex": "",
-          "type": "query",
-          "useTags": false
+          "type": "query"
         }
       ]
     },
     "annotations": {
       "list": []
     },
-    "schemaVersion": 7,
-    "version": 0,
+    "refresh": false,
+    "schemaVersion": 8,
+    "version": 10,
     "links": []
   },
   "overwrite": false

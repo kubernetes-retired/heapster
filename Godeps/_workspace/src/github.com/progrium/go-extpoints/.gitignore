@@ -1,4 +1,0 @@
-examples/tool/tool
-examples/daemon/daemon
-go-extpoints
-tests/extpoints/extpoints.go
