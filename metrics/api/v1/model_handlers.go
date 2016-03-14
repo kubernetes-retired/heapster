@@ -326,6 +326,7 @@ func (a *Api) podListMetrics(request *restful.Request, response *restful.Respons
 	for _, key := range keys {
 		result.Items = append(result.Items, exportTimestampedMetricValue(metrics[key]))
 	}
+	response.PrettyPrint(false)
 	response.WriteEntity(result)
 }
 

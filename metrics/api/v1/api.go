@@ -177,6 +177,7 @@ func (a *Api) exportMetricsSchema(_ *restful.Request, response *restful.Response
 }
 
 func (a *Api) exportMetrics(_ *restful.Request, response *restful.Response) {
+	response.PrettyPrint(false)
 	response.WriteEntity(a.processMetricsRequest(a.metricSink.GetShortStore()))
 }
 
