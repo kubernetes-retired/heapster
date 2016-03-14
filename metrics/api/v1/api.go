@@ -200,7 +200,7 @@ func (a *Api) processMetricsRequest(shortStorage []*core.DataBatch) []*types.Tim
 		msType := ms.Labels[core.LabelMetricSetType.Key]
 
 		switch msType {
-		case core.MetricSetTypeNode, core.MetricSetTypePodContainer, core.MetricSetTypeSystemContainer:
+		case core.MetricSetTypeNode, core.MetricSetTypePod, core.MetricSetTypePodContainer, core.MetricSetTypeSystemContainer:
 		default:
 			continue
 		}
@@ -217,6 +217,9 @@ func (a *Api) processMetricsRequest(shortStorage []*core.DataBatch) []*types.Tim
 			}
 			if msType == core.MetricSetTypeNode {
 				ts.Labels[core.LabelContainerName.Key] = "machine"
+			}
+			if msType == core.MetricSetTypePod {
+				ts.Labels[core.LabelContainerName.Key] = "/pod"
 			}
 			tsmap[key] = ts
 		}

@@ -150,7 +150,7 @@ func TestRealInput(t *testing.T) {
 			if label.Key == core.LabelMetricSetType.Key {
 				continue
 			}
-			if label.Key == core.LabelContainerName.Key && val != "machine" {
+			if label.Key == core.LabelContainerName.Key && val != "machine" && val != "/pod" {
 				as.Equal(val, "test-value", "%q label's value is %q, expected 'test-value'", label.Key, val)
 			}
 		}
