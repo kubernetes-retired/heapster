@@ -9,6 +9,13 @@ continually add new flags to Heapster as new sinks are added. This also means
 heapster can store data into multiple sinks at once.
 
 ## Current sinks
+
+### Log
+
+This sinks writes all data to the standard output which is particularly useful for debugging.
+  
+   --sink=log
+
 ### InfluxDB
 This sink supports both monitoring metrics and events.
 *Supports InfluxDB versions v0.9 and above*
@@ -34,17 +41,9 @@ To use the GCM sink add the following flag:
 
 *Note: This sink works only on a Google Compute Enginer VM as of now*
 
-This sink does not export any options!
-
-### Google Cloud Monitoring Autoscaling
-This sink supports monitoring metrics for autoscaling purposes only.
-To use the GCM Autoscaling sink add the following flag:
-
-	--sink=gcmautoscaling
-
-*Note: This sink works only on a Google Compute Enginer VM as of now*
-
-This sink does not export any options!
+GCM has one option - `metrics` that can be set to:
+* all - the sink exports all metrics
+* autoscaling - the sink exports only autoscaling-related metrics
 
 ### Google Cloud Logging
 This sink supports events only.
@@ -116,17 +115,43 @@ The following options are available:
 * `domain-name` - Name of the OpenStack user's domain
 * `monasca-url` - URL of the Monasca API server (*optional*: the sink will attempt to discover the service if not provided)
 
-## Modifying the sinks at runtime
+### Kafka
+This sink supports monitoring metrics only.
+To use the kafka sink add the following flag:
 
-Using the `/api/v1/sinks` endpoint, it is possible to fetch the sinks
-currently in use via a GET request or to change them via a POST request. The
-format is the same as when passed via command line flags.
+    --sink="kafka:<?<OPTIONS>>"
 
-For example, to set gcm and influxdb as sinks, you may do the following:
+Normally, kafka server has multi brokers, so brokers' list need be configured for producer.
+So, we provide kafka brokers' list and topics about timeseries & topic in url's query string.
+Options can be set in query string, like this:
+
+* `brokers` - Kafka's brokers' list. 
+* `timeseriestopic` - Kafka's topic for timeseries. Default value : `heapster-metrics`
+* `eventstopic` - Kafka's topic for events.Default value : `heapster-events`
+
+For example, 
+
+    --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&timeseriestopic=testseries&eventstopic=testtopic"
+
+### Riemann
+This sink supports metrics only.
+To use the reimann sink add the following flag:
+
+	--sink="riemann:<RIEMANN_SERVER_URL>[?<OPTIONS>]"
+
+The following options are available:
+
+* `ttl` - TTL for writes to Riemann. Default: `60 seconds`
+* `state` - FIXME. Default: `""`
+* `tags` - FIXME. Default. `none`
+* `storeEvents` - Control storage of events. Default: `true`
+
+## Using multiple sinks
+
+Heapster can be configured to send k8s metrics and events to multiple sinks by specifying the`--sink=...` flag multiple times.
+
+For example, to send data to both gcm and influxdb at the same time, you can use the following:
 
 ```shell
-echo '["gcm", "influxdb:http://monitoring-influxdb:8086"]' | curl \
-    --insecure -u admin:<password> -X POST -d @- \
-    -H "Accept: application/json" -H "Content-Type: application/json" \
-    https://<master-ip>/api/v1/proxy/namespaces/kube-system/services/monitoring-heapster/api/v1/sinks
+    --sink=gcm --sink=influxdb:http://monitoring-influxdb:80/
 ```
