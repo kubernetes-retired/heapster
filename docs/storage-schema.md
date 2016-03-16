@@ -2,67 +2,63 @@
 
 Heapster exports the following metrics to its backends.
 
-| Metric Name              | Description                                                                                        | Type       | Units        | Supported Since |
-|--------------------------|----------------------------------------------------------------------------------------------------|------------|--------------|-----------------|
-| uptime                   | Number of millisecond since the container was started                                              | Cumulative | Milliseconds | v0.9            |
-| cpu/usage                | Cumulative CPU usage on all cores                                                                  | Cumulative | Nanoseconds  | v0.9            |
-| memory/usage             | Total memory usage                                                                                 | Gauge      | Bytes        | v0.9            |
-| memory/working_set       | Total working set usage. Working set is the memory being used and not easily dropped by the Kernel | Gauge      | Bytes        | v0.9            |
-| memory/page_faults       | Total number of page faults                                                                        | Cumulative | Count        | v0.9            |
-| memory/major_page_faults | Number of major page faults                                                                        | Cumulative | Count        | HEAD            |
-| network/rx               | Cumulative number of bytes received over the network                                               | Cumulative | Bytes        | v0.9            |
-| network/rx_errors        | Cumulative number of errors while receiving over the network                                       | Cumulative | Count        | v0.9            |
-| network/tx               | Cumulative number of bytes sent over the network                                                   | Cumulative | Bytes        | v0.9            |
-| network/tx_errors        | Cumulative number of errors while sending over the network                                         | Cumulative | Count        | v0.9            |
-| filesystem/usage         | Total number of bytes used on a filesystem identified by label 'resource_id'                       | Gauge      | Bytes        | v0.11.0         |
+| Metric Name | Description |
+|------------|-------------|
+| cpu/limit | CPU hard limit in millicores. |
+| cpu/node_reservation | Share of cpu that is reserved on the node. |
+| cpu/node_utilization | CPU utilization as a share of node capacity. |
+| cpu/request | CPU request (the guaranteed amount of resources) in millicores. |
+| cpu/usage | Cumulative CPU usage on all cores. |
+| cpu/usage_rate | CPU usage on all cores in millicores. |
+| filesystem/usage | Total number of bytes consumed on a filesystem. |
+| filesystem/limit | The total size of filesystem in bytes. |
+| filesystem/available | The number of available bytes remaining in a the filesystem |
+| memory/limit | Memory hard limit in bytes. |
+| memory/major_page_faults | Number of major page faults. |
+| memory/major_page_faults_rate | Number of major page faults per second. |
+| memory/node_reservation | Share of memory that is reserved on the node. |
+| memory/node_utilization | Memory utilization as a share of memory capacity. |
+| memory/page_faults | Number of page faults. |
+| memory/page_faults_rate | Number of page faults per second. |
+| memory/request | Memory request (the guaranteed amount of resources) in bytes. |
+| memory/usage | Total memory usage. |
+| memory/working_set | Total working set usage. Working set is the memory being used and not easily dropped by the kernel. |
+| network/rx | Cumulative number of bytes received over the network. |
+| network/rx_errors | Cumulative number of errors while receiving over the network. |
+| network/rx_errors_rate | Number of errors while receiving over the network per second. |
+| network/rx_rate | Number of bytes received over the network per second. |
+| network/tx | Cumulative number of bytes sent over the network |
+| network/tx_errors | Cumulative number of errors while sending over the network |
+| network/tx_errors_rate | Number of errors while sending over the network |
+| network/tx_rate | Number of bytes sent over the network per second. |
+| uptime  | Number of milliseconds since the container was started. |
 
-*Note: Gauge refers to instantaneous metrics*
+All custom (aka application) metrics are prefixed with 'custom/'.
 
 ## Labels
 
 Heapster tags each metric with the following labels.
 
-| Label Name     | Description                                                                   | Supported Since | Kubernetes specific |
-|----------------|-------------------------------------------------------------------------------|-----------------|---------------------|
-| pod_id         | Unique ID of a Pod                                                            | v0.9            | Yes                 |
-| pod_name       | User-provided name of a Pod                                                   | v0.13           | Yes                 |
-| pod_namespace  | The namespace of a Pod                                                        | v0.10           | Yes                 |
-| container_name | User-provided name of the container or full cgroup name for system containers | v0.9            | No                  |
-| labels         | Comma-separated list of user-provided labels. Format is 'key:value'           | v0.9            | Yes                 |
-| hostname       | Hostname where the container ran                                              | v0.9            | No                  |
-| namespace_id   | UID of the namespace of a Pod                                                 | v0.14.1         | Yes                 |
-| host_id        | Cloud-provider specified or user specified Identifier of a node               | v0.14.1         | Yes                 |
-| resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | v0.11.0 | No |
+| Label Name     | Description                                                                   |
+|----------------|-------------------------------------------------------------------------------|
+| pod_id         | Unique ID of a Pod                                                            |
+| pod_name       | User-provided name of a Pod                                                   |
+| pod_namespace  | The namespace of a Pod                                                        |
+| container_base_image | Base image for the container |  
+| container_name | User-provided name of the container or full cgroup name for system containers |
+| host_id        | Cloud-provider specified or user specified Identifier of a node               | 
+| hostname       | Hostname where the container ran                                              | 
+| labels         | Comma-separated list of user-provided labels. Format is 'key:value'           |
+| namespace_id   | UID of the namespace of a Pod                                                 |
+| resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | 
 
 
 ## Storage Schema
 
 ### InfluxDB
 
-Each metric translates to a separate 'series' in InfluxDB. Labels are stored as additional columns.
-The series name is constructed by combining the metric name with its type and units: "metric Name"_"units"_"type".
-
-###### Query
-`list series`
-
-###### Output
-
-```
-cpu/usage_ns_cumulative
-filesystem/usage
-memory/page_faults_gauge
-memory/usage_bytes_gauge
-memory/working_set_bytes_gauge
-network/rx_bytes_cumulative
-network/rx_errors_cumulative
-network/tx_bytes_cumulative
-network/tx_errors_cumulative
-uptime_ms_cumulative
-```
-
-*Note: Unit 'Count' is ignored*
-
-Heapster adds timestamp and sequence number to every metric.
+Each metric translates to a separate 'series' in InfluxDB. Labels are stored as tags.
+The metric name is not modified.
 
 ### Google Cloud Monitoring
 
