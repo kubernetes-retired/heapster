@@ -23,7 +23,7 @@ will be a list of (Timestamp, Value) pairs in the time range [start, end].
 defined, it is assumed as the zero Unix epoch time. If `end` is not defined,
 then all data later than `start` will be returned.
 
-### Cluster-level Metrics and Stats
+### Cluster-level Metrics
 `/api/v1/model/`: The root path of the model API, displays all browsable subpaths.
 
 `/api/v1/model/metrics/`: Returns a list of available cluster-level metrics.
@@ -31,18 +31,12 @@ then all data later than `start` will be returned.
 `/api/v1/model/metrics/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested cluster-level metric, between the time range specified by `start` and `end`. 
 
-`/api/v1/model/stats/`: Exposes the average, max and 95th percentile over the
-past minute, hour and day for each cluster metric.
-
-### Node-level Metrics and Stats
+### Node-level Metrics
 `/api/v1/model/nodes/`: Returns a list of all available nodes, along
 with their latest CPU and Memory Usage values.
 
 `/api/v1/model/nodes/{node-name}/`: Returns all browsable subpaths for a
 specific node.
-
-`/api/v1/model/nodes/{node-name}/pods/`: Returns a list of all available pods
-under a given node, along with their latest CPU and Memory Usage values.
 
 `/api/v1/model/nodes/{node-name}/metrics/`: Returns a list of available
 node-level metrics.
@@ -50,11 +44,7 @@ node-level metrics.
 `/api/v1/model/nodes/{node-name}/metrics/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested node-level metric, within the time range specified by `start` and `end`. 
 
-`/api/v1/model/nodes/{node-name}/stats/`: Exposes the average, max and 95th
-percentile over the past minute, hour and day for each node metric.
-
-
-### Namespace-level Metrics and Stats
+### Namespace-level Metrics 
 `/api/v1/model/namespaces/`: Returns a list of all available namespaces, along
 with their latest CPU and Memory Usage values.
 
@@ -66,11 +56,8 @@ a specific namespace.
 `/api/v1/model/namespaces/{namespace-name}/metrics/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested namespace-level metric, within the time range specified by `start` and `end`. 
 
-`/api/v1/model/namespaces/{namespace-name}/stats/`: Exposes the average, max and 95th percentile over the
-past minute, hour and day for each namespace metric.
 
-
-### Pod-level Metrics and Stats
+### Pod-level Metrics
 `/api/v1/model/namespaces/{namespace-name}/pods/`: Returns a list of all available pods under a given namespace, along
 with their latest CPU and Memory Usage values.
 
@@ -82,11 +69,7 @@ a specific Pod.
 `/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/metrics/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested pod-level metric, within the time range specified by `start` and `end`. 
 
-`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/stats/`: Exposes the average, max and 95th percentile over the
-past minute, hour and day for each pod-level metric.
-
-
-### Container-level Metrics and Stats
+### Container-level Metrics
 Container metrics and stats are accessible for both containers that belong to
 pods, as well as for free containers running in each node.
 
@@ -101,9 +84,6 @@ a specific container.
 `/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested container-level metric, within the time range specified by `start` and `end`. 
 
-`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/stats/`: Exposes the average, max and 95th percentile over the
-past minute, hour and day for each container metric.
-
 `/api/v1/model/nodes/{node-name}/freecontainers/`: Returns a list of all available free containers under a given node, along
 with their latest CPU and Memory Usage values.
 
@@ -114,9 +94,6 @@ a specific free container.
 
 `/api/v1/model/nodes/{node-name}/freecontainers/{container-name}/metrics/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested container-level metric, within the time range specified by `start` and `end`. 
-
-`/api/v1/model/nodes/{node-name}/freecontainers/{container-name}/stats/`: Exposes the average, max and 95th percentile over the
-past minute, hour and day for each container metric.
 
 ### Metric Types
 

@@ -12,11 +12,6 @@ Heapster can pull data from multiple sources. See [source-configuration.md](sour
     * Kubernetes does not hold on to events indefinitely. Heapster can be used to fetch events from Kubernetes and store them to a more persistent store.
     * Heapster issues a list/watch against the specified Kubernetes API server to fetch all existing and future events from that server.
     * Error conditions can cause heapster to re-list and watch events, which could result in duplicate events being pulled from Kubernetes. Sinks are responsible for de-duplication.
-* Cadvisor
-  * Standalone/External
-    * External cadvisor source "discovers" hosts from the specified file.
-  * CoreOS
-    * CoreOS cadvisor source discovers nodes from the specified fleet endpoints.
 
 ## Sinks
 Heapster can push data to multiple sinks. Heapster currently supports the following sinks:
