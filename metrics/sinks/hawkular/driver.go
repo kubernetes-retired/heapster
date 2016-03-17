@@ -41,6 +41,8 @@ const (
 	batchSizeDefault   = 1000
 	concurrencyDefault = 5
 
+	nodeId string = "labelNodeId"
+
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
@@ -177,6 +179,9 @@ func (self *hawkularSink) DebugInfo() string {
 	if &self.labelTenant != nil {
 		info += fmt.Sprintf("Using label '%s' as tenant information\n", self.labelTenant)
 	}
+	if &self.labelNodeId != nil {
+		info += fmt.Sprintf("Using label '%s' as node identified in resourceid\n", self.labelNodeId)
+	}
 
 	// TODO Add here statistics from the Hawkular-Metrics client instance
 	return info
@@ -224,6 +229,10 @@ func (self *hawkularSink) init() error {
 
 	if v, found := opts["labelToTenant"]; found {
 		self.labelTenant = v[0]
+	}
+
+	if v, found := opts[nodeId]; found {
+		self.labelNodeId = v[0]
 	}
 
 	if v, found := opts["useServiceAccount"]; found {
