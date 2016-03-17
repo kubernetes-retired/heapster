@@ -51,9 +51,14 @@ To use the InfluxDB sink add the following flag:
 
 	--sink=gcl
 
-*Note: This sink works only on a Google Compute Enginer VM as of now*
-
-This sink does not export any options!
+*Notes:* 
+ * This sink works only on a Google Compute Enginer VM as of now
+ * GCE instance must have “https://www.googleapis.com/auth/logging.write” auth scope
+ * GCE instance must have Logging API enabled for the project in Google Developer Console
+ * GCL Logs are accessible via:
+    * `https://console.developers.google.com/project/<project_ID>/logs?service=custom.googleapis.com`
+    * Where `project_ID` is the project ID of the Google Cloud Platform project ID.
+    * Select `kubernetes.io/events` from the `All logs` drop down menu.
 
 ### Hawkular-Metrics
 This sink supports monitoring metrics only.
