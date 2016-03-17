@@ -52,6 +52,10 @@ Heapster tags each metric with the following labels.
 | namespace_id   | UID of the namespace of a Pod                                                 |
 | resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | 
 
+## Aggregates
+
+The metrics are collected initally collected for nodes and containers and latter aggregated for pods, namespaces and clusters. 
+Disk and network metrics are not available at container level (only at pod and node level). 
 
 ## Storage Schema
 
