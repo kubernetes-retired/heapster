@@ -107,7 +107,17 @@ func (self *hawkularSink) idName(ms *core.MetricSet, metricName string) string {
 	if ms.Labels[core.LabelPodId.Key] != "" {
 		n = append(n, ms.Labels[core.LabelPodId.Key])
 	} else {
-		n = append(n, ms.Labels[core.LabelHostID.Key])
+		if &self.labelNodeId != nil {
+			if v, found := ms.Labels[self.labelNodeId]; found {
+				n = append(n, v)
+			} else {
+				glog.V(4).Infof("The labelNodeId was set to %s but there is no label with this value."+
+					"Using the default 'nodename' label instead.", self.labelNodeId)
+				n = append(n, ms.Labels[core.LabelNodename.Key])
+			}
+		} else {
+			n = append(n, ms.Labels[core.LabelNodename.Key])
+		}
 	}
 	n = append(n, metricName)
 

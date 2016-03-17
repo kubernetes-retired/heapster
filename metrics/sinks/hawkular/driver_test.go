@@ -78,6 +78,7 @@ func TestMetricTransform(t *testing.T) {
 	l[core.LabelHostID.Key] = "localhost"
 	l[core.LabelContainerName.Key] = "docker"
 	l[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	l[core.LabelNodename.Key] = "myNode"
 
 	metricName := "test/metric/1"
 	labeledMetricNameA := "test/labeledmetric/A"
@@ -131,21 +132,21 @@ func TestMetricTransform(t *testing.T) {
 	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
 	assert.NoError(t, err)
 
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelHostID.Key], metricName), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelNodename.Key], metricName), m.Id)
 
 	//
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
 
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key],
-		metricSet.Labels[core.LabelHostID.Key], labeledMetricNameA,
+		metricSet.Labels[core.LabelNodename.Key], labeledMetricNameA,
 		metricSet.LabeledMetrics[0].Labels[core.LabelResourceID.Key]), m.Id)
 
 	//
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[1], now)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key],
-		metricSet.Labels[core.LabelHostID.Key], labeledMetricNameB), m.Id)
+		metricSet.Labels[core.LabelNodename.Key], labeledMetricNameB), m.Id)
 }
 
 func TestRecentTest(t *testing.T) {
