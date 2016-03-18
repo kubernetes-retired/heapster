@@ -52,6 +52,7 @@ type riemannConfig struct {
 const (
 	// Maximum number of riemann Events to be sent in one batch.
 	maxSendBatchSize = 10000
+	max_retries      = 2
 )
 
 func CreateRiemannSink(uri *url.URL) (core.DataSink, error) {
@@ -81,21 +82,27 @@ func CreateRiemannSink(uri *url.URL) (core.DataSink, error) {
 
 	glog.Infof("Riemann sink URI: '%+v', host: '%+v', options: '%+v', ", uri, c.host, options)
 	rs := &riemannSink{
-		client: riemann_api.NewGorymanClient(c.host),
+		client: nil,
 		config: c,
 	}
 
 	err := rs.setupRiemannClient()
 	if err != nil {
-		return nil, err
+		glog.Warningf("Riemann sink not connected: %v", err)
+		// Warn but return the sink.
 	}
-
-	runtime.SetFinalizer(rs.client, func(c riemannClient) { c.Close() })
 	return rs, nil
 }
 
 func (rs *riemannSink) setupRiemannClient() error {
-	return rs.client.Connect()
+	client := riemann_api.NewGorymanClient(rs.config.host)
+	runtime.SetFinalizer(client, func(c riemannClient) { c.Close() })
+	err := client.Connect()
+	if err != nil {
+		return err
+	}
+	rs.client = client
+	return nil
 }
 
 // Return a user-friendly string describing the sink
@@ -111,6 +118,14 @@ func (sink *riemannSink) Stop() {
 func (sink *riemannSink) ExportData(dataBatch *core.DataBatch) {
 	sink.Lock()
 	defer sink.Unlock()
+
+	if sink.client == nil {
+		if err := sink.setupRiemannClient(); err != nil {
+			glog.Warningf("Riemann sink not connected: %v", err)
+			return
+		}
+	}
+
 	dataEvents := make([]riemann_api.Event, 0, 0)
 	for _, metricSet := range dataBatch.MetricSets {
 		for metricName, metricValue := range metricSet.MetricValues {
@@ -169,11 +184,25 @@ func (sink *riemannSink) ExportData(dataBatch *core.DataBatch) {
 }
 
 func (sink *riemannSink) sendData(dataEvents []riemann_api.Event) {
+	if sink.client == nil {
+		return
+	}
+
 	start := time.Now()
 	for _, event := range dataEvents {
-		err := sink.client.SendEvent(&event)
+		var err error = nil
+		for try := 0; try < max_retries; try++ {
+			err = sink.client.SendEvent(&event)
+			if err == nil {
+				break
+			}
+		}
 		if err != nil {
 			glog.V(2).Infof("Failed sending event to Riemann: %+v: %+v", event, err)
+			// Let's reconnect with the next export.
+			// Assumes that this happens under a lock.
+			sink.client.Close()
+			sink.client = nil
 		}
 	}
 	end := time.Now()
