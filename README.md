@@ -33,18 +33,6 @@ To run Heapster on a Kubernetes cluster with,
 
 Using Heapster to monitor an OpenShift cluster requires some additional changes to the Kubernetes instructions to allow communication between the Heapster instance and OpenShift's secured endpoints. To run a combination of Heapster and Hawkular-Metrics, follow [this guide](https://github.com/hawkular/hawkular-metrics/blob/master/containers/README.adoc).
 
-### Running Heapster on CoreOS
-
-Heapster communicates with the local fleet server to get cluster information. It expected cAdvisor to be running on all the nodes. Refer to [this guide](docs/coreos.md).
-
-### Running in other cluster management systems.
-
-Heapster can be used to enable cluster-wide monitoring on other cluster management solutions by running a simple cluster-specific buddy container that will help Heapster with discovery of hosts.
-
-### Running in standalone mode.
-
-It is also possible to run Heapster standalone on a host with cAdvisor using [this guide](docs/standalone.md).
-
 #### Troubleshooting guide [here](docs/debugging.md)
 
 ### Community
