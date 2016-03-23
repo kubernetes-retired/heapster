@@ -47,8 +47,8 @@ func (this *RateCalculator) Process(batch *core.DataBatch) (*core.DataBatch, err
 				// New must be strictly after old.
 				continue
 			}
-			if newMs.CreateTime != oldMs.CreateTime {
-				glog.V(4).Infof("Skipping rates for %s - different crate time new:%v  old:%v", key, newMs.CreateTime, oldMs.CreateTime)
+			if !newMs.CreateTime.Equal(oldMs.CreateTime) {
+				glog.V(4).Infof("Skipping rates for %s - different create time new:%v  old:%v", key, newMs.CreateTime, oldMs.CreateTime)
 				// Create time for container must be the same.
 				continue
 			}
