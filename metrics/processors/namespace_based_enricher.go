@@ -61,7 +61,11 @@ func (this *NamespaceBasedEnricher) addNamespaceInfo(metricSet *core.MetricSet) 
 					glog.Errorf("Wrong namespace store content")
 				}
 			} else {
-				glog.Warningf("Failed to get namespace: exist: %s error: %v", exists, err)
+				if err != nil {
+					glog.Warningf("Failed to get namespace %s: %v", namespaceName, err)
+				} else if !exists {
+					glog.Warningf("Namespace doesn't exist: %s", namespaceName)
+				}
 			}
 		}
 	}
