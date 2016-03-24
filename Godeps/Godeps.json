@@ -1,6 +1,6 @@
 {
 	"ImportPath": "k8s.io/heapster",
-	"GoVersion": "go1.5",
+	"GoVersion": "go1.6",
 	"GodepVersion": "v60",
 	"Packages": [
 		"./..."
