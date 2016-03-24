@@ -1,6 +1,7 @@
 {
 	"ImportPath": "k8s.io/heapster",
 	"GoVersion": "go1.5",
+	"GodepVersion": "v60",
 	"Packages": [
 		"./..."
 	],
@@ -406,11 +407,11 @@
 		},
 		{
 			"ImportPath": "google.golang.org/cloud/compute/metadata",
-			"Rev": "3fb76bc404703eddc53d1e407eaa665ab3881362"
+			"Rev": "702c65bd88b55b1b69f4bd200b881ae0eab6538c"
 		},
 		{
 			"ImportPath": "google.golang.org/cloud/internal",
-			"Rev": "3fb76bc404703eddc53d1e407eaa665ab3881362"
+			"Rev": "702c65bd88b55b1b69f4bd200b881ae0eab6538c"
 		},
 		{
 			"ImportPath": "gopkg.in/v2/yaml",
