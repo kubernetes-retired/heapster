@@ -170,6 +170,7 @@ func OnGCE() bool {
 	if onGCE.set {
 		return onGCE.v
 	}
+	onGCE.set = true
 
 	// We use the DNS name of the metadata service here instead of the IP address
 	// because we expect that to fail faster in the not-on-GCE case.
@@ -177,7 +178,6 @@ func OnGCE() bool {
 	if err != nil {
 		return false
 	}
-	onGCE.set = true
 	onGCE.v = res.Header.Get("Metadata-Flavor") == "Google"
 	return onGCE.v
 }
