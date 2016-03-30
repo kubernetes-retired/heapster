@@ -115,8 +115,7 @@ var podLabels = []LabelDescriptor{
 	LabelPodName,
 	LabelPodId,
 	LabelPodNamespace,
-	// TODO: Enable label once it is supported by NamespaceEnricher
-	//	LabelPodNamespaceUID,
+	LabelPodNamespaceUID,
 	LabelLabels,
 }
 
