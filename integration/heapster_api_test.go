@@ -287,6 +287,20 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 
 		if podMetric {
 			actualPods[podName] = true
+			// Extra explicit check that the expecte metrics are there:
+			requiredLabels := []string{
+				core.LabelPodNamespaceUID.Key,
+				core.LabelPodId.Key,
+				core.LabelHostID.Key,
+				// container name is checked later
+			}
+			for _, label := range requiredLabels {
+				_, exists := ts.Labels[label]
+				if !exists {
+					return fmt.Errorf("timeseries: %v does not contain required label: %v", ts, label)
+				}
+			}
+
 		} else {
 			if cName, ok := ts.Labels[core.LabelContainerName.Key]; ok {
 				hostname, ok := ts.Labels[core.LabelHostname.Key]
@@ -319,6 +333,12 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 			}
 		}
 
+		// Explicitely check for resource id
+		explicitRequirement := map[string][]string{
+			core.MetricFilesystemUsage.MetricDescriptor.Name: []string{core.LabelResourceID.Key},
+			core.MetricFilesystemLimit.MetricDescriptor.Name: []string{core.LabelResourceID.Key},
+			core.MetricFilesystemAvailable.Name:              []string{core.LabelResourceID.Key}}
+
 		for metricName, points := range ts.Metrics {
 			md, exists := mdMap[metricName]
 			if !exists {
@@ -334,6 +354,16 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 				}
 			}
 
+			required := explicitRequirement[metricName]
+			for _, label := range required {
+				for _, point := range points {
+					_, exists := point.Labels[label]
+					if !exists {
+						return fmt.Errorf("metric %q point %v does not contain metric label: %v", metricName, point, label)
+					}
+
+				}
+			}
 		}
 	}
 	// Validate that system containers are running on all the nodes.
