@@ -42,8 +42,7 @@ func (this *NodeAggregator) Process(batch *core.DataBatch) (*core.DataBatch, err
 				node, found := batch.MetricSets[nodeKey]
 				if !found {
 					glog.Warningf("Failed to find node: %s", nodeKey)
-				}
-				if err := aggregate(metricSet, node, this.MetricsToAggregate); err != nil {
+				} else if err := aggregate(metricSet, node, this.MetricsToAggregate); err != nil {
 					return nil, err
 				}
 			} else {
