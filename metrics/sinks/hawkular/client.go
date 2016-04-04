@@ -103,25 +103,52 @@ func (self *hawkularSink) groupName(ms *core.MetricSet, metricName string) strin
 
 func (self *hawkularSink) idName(ms *core.MetricSet, metricName string) string {
 	n := make([]string, 0, 3)
-	n = append(n, ms.Labels[core.LabelContainerName.Key])
-	if ms.Labels[core.LabelPodId.Key] != "" {
+
+	metricType := ms.Labels[core.LabelMetricSetType.Key]
+	switch metricType {
+	case core.MetricSetTypeNode:
+		n = append(n, "machine")
+		n = append(n, self.nodeName(ms))
+	case core.MetricSetTypeSystemContainer:
+		n = append(n, core.MetricSetTypeSystemContainer)
+		n = append(n, ms.Labels[core.LabelContainerName.Key])
 		n = append(n, ms.Labels[core.LabelPodId.Key])
-	} else {
-		if &self.labelNodeId != nil {
-			if v, found := ms.Labels[self.labelNodeId]; found {
-				n = append(n, v)
-			} else {
-				glog.V(4).Infof("The labelNodeId was set to %s but there is no label with this value."+
-					"Using the default 'nodename' label instead.", self.labelNodeId)
-				n = append(n, ms.Labels[core.LabelNodename.Key])
-			}
+	case core.MetricSetTypeCluster:
+		n = append(n, core.MetricSetTypeCluster)
+	case core.MetricSetTypeNamespace:
+		n = append(n, core.MetricSetTypeNamespace)
+		n = append(n, ms.Labels[core.LabelNamespaceName.Key])
+	case core.MetricSetTypePod:
+		n = append(n, core.MetricSetTypePod)
+		n = append(n, ms.Labels[core.LabelPodId.Key])
+	case core.MetricSetTypePodContainer:
+		n = append(n, ms.Labels[core.LabelContainerName.Key])
+		n = append(n, ms.Labels[core.LabelPodId.Key])
+	default:
+		n = append(n, ms.Labels[core.LabelContainerName.Key])
+		if ms.Labels[core.LabelPodId.Key] != "" {
+			n = append(n, ms.Labels[core.LabelPodId.Key])
 		} else {
-			n = append(n, ms.Labels[core.LabelNodename.Key])
+			n = append(n, self.nodeName(ms))
 		}
 	}
+
 	n = append(n, metricName)
 
 	return strings.Join(n, separator)
+}
+
+func (self *hawkularSink) nodeName(ms *core.MetricSet) string {
+	if &self.labelNodeId != nil {
+		if v, found := ms.Labels[self.labelNodeId]; found {
+			return v
+		} else {
+			glog.V(4).Infof("The labelNodeId was set to %s but there is no label with this value."+
+				"Using the default 'nodename' label instead.", self.labelNodeId)
+		}
+	}
+
+	return ms.Labels[core.LabelNodename.Key]
 }
 
 // Check that metrics tags are defined on the Hawkular server and if not,
