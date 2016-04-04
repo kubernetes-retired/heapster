@@ -149,6 +149,75 @@ func TestMetricTransform(t *testing.T) {
 		metricSet.Labels[core.LabelNodename.Key], labeledMetricNameB), m.Id)
 }
 
+func TestMetricIds(t *testing.T) {
+	hSink := dummySink()
+
+	l := make(map[string]string)
+	l["spooky"] = "notvisible"
+	l[core.LabelHostname.Key] = "localhost"
+	l[core.LabelHostID.Key] = "localhost"
+	l[core.LabelContainerName.Key] = "docker"
+	l[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
+	l[core.LabelNodename.Key] = "myNode"
+	l[core.LabelNamespaceName.Key] = "myNamespace"
+
+	metricName := "test/metric/nodeType"
+
+	metricSet := core.MetricSet{
+		Labels: l,
+		MetricValues: map[string]core.MetricValue{
+			metricName: {
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricGauge,
+				IntValue:   123456,
+			},
+		},
+	}
+
+	now := time.Now()
+	//
+	m, err := hSink.pointToMetricHeader(&metricSet, metricName, now)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
+
+	//
+	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeNode
+	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", "machine", metricSet.Labels[core.LabelNodename.Key], metricName), m.Id)
+
+	//
+	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypePod
+	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", core.MetricSetTypePod, metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
+
+	//
+	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypePodContainer
+	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
+
+	//
+	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeSystemContainer
+	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s/%s", core.MetricSetTypeSystemContainer, metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
+
+	//
+	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeCluster
+	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s/%s", core.MetricSetTypeCluster, metricName), m.Id)
+
+	//
+	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeNamespace
+	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", core.MetricSetTypeNamespace, metricSet.Labels[core.LabelNamespaceName.Key], metricName), m.Id)
+
+}
+
 func TestRecentTest(t *testing.T) {
 	hSink := dummySink()
 
