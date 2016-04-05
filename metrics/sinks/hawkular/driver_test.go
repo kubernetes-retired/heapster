@@ -114,9 +114,11 @@ func TestMetricTransform(t *testing.T) {
 		},
 	}
 
+	metricSet.LabeledMetrics = append(metricSet.LabeledMetrics, metricValueToLabeledMetric(metricSet.MetricValues)...)
+
 	now := time.Now()
 	//
-	m, err := hSink.pointToMetricHeader(&metricSet, metricName, now)
+	m, err := hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[2], now)
 	assert.NoError(t, err)
 
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key],
@@ -129,7 +131,7 @@ func TestMetricTransform(t *testing.T) {
 	delete(l, core.LabelPodId.Key)
 
 	//
-	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[2], now)
 	assert.NoError(t, err)
 
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelNodename.Key], metricName), m.Id)
@@ -173,46 +175,47 @@ func TestMetricIds(t *testing.T) {
 			},
 		},
 	}
+	metricSet.LabeledMetrics = metricValueToLabeledMetric(metricSet.MetricValues)
 
 	now := time.Now()
 	//
-	m, err := hSink.pointToMetricHeader(&metricSet, metricName, now)
+	m, err := hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeNode
-	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", "machine", metricSet.Labels[core.LabelNodename.Key], metricName), m.Id)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypePod
-	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", core.MetricSetTypePod, metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypePodContainer
-	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeSystemContainer
-	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s/%s", core.MetricSetTypeSystemContainer, metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeCluster
-	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s/%s", core.MetricSetTypeCluster, metricName), m.Id)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeNamespace
-	m, err = hSink.pointToMetricHeader(&metricSet, metricName, now)
+	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", core.MetricSetTypeNamespace, metricSet.Labels[core.LabelNamespaceName.Key], metricName), m.Id)
 

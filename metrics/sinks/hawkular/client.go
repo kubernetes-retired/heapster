@@ -28,37 +28,37 @@ import (
 )
 
 // Fetches definitions from the server and checks that they're matching the descriptors
-func (self *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
-	m := make([]metrics.Modifier, len(self.modifiers), len(self.modifiers)+1)
-	copy(m, self.modifiers)
+func (h *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
+	m := make([]metrics.Modifier, len(h.modifiers), len(h.modifiers)+1)
+	copy(m, h.modifiers)
 	m = append(m, metrics.Filters(metrics.TypeFilter(mt)))
 
-	mds, err := self.client.Definitions(m...)
+	mds, err := h.client.Definitions(m...)
 	if err != nil {
 		return err
 	}
 
-	self.regLock.Lock()
-	defer self.regLock.Unlock()
+	h.regLock.Lock()
+	defer h.regLock.Unlock()
 
 	for _, p := range mds {
 		// If no descriptorTag is found, this metric does not belong to Heapster
 		if mk, found := p.Tags[descriptorTag]; found {
-			if model, f := self.models[mk]; f {
-				if !self.recent(p, model) {
-					if err := self.client.UpdateTags(mt, p.Id, p.Tags, self.modifiers...); err != nil {
+			if model, f := h.models[mk]; f {
+				if !h.recent(p, model) {
+					if err := h.client.UpdateTags(mt, p.Id, p.Tags, h.modifiers...); err != nil {
 						return err
 					}
 				}
 			}
-			self.reg[p.Id] = p
+			h.reg[p.Id] = p
 		}
 	}
 	return nil
 }
 
 // Checks that stored definition is up to date with the model
-func (self *hawkularSink) recent(live *metrics.MetricDefinition, model *metrics.MetricDefinition) bool {
+func (h *hawkularSink) recent(live *metrics.MetricDefinition, model *metrics.MetricDefinition) bool {
 	recent := true
 	for k := range model.Tags {
 		if v, found := live.Tags[k]; !found {
@@ -72,7 +72,7 @@ func (self *hawkularSink) recent(live *metrics.MetricDefinition, model *metrics.
 }
 
 // Transform the MetricDescriptor to a format used by Hawkular-Metrics
-func (self *hawkularSink) descriptorToDefinition(md *core.MetricDescriptor) metrics.MetricDefinition {
+func (h *hawkularSink) descriptorToDefinition(md *core.MetricDescriptor) metrics.MetricDefinition {
 	tags := make(map[string]string)
 	// Postfix description tags with _description
 	for _, l := range md.Labels {
@@ -96,19 +96,19 @@ func (self *hawkularSink) descriptorToDefinition(md *core.MetricDescriptor) metr
 	return hmd
 }
 
-func (self *hawkularSink) groupName(ms *core.MetricSet, metricName string) string {
+func (h *hawkularSink) groupName(ms *core.MetricSet, metricName string) string {
 	n := []string{ms.Labels[core.LabelContainerName.Key], metricName}
 	return strings.Join(n, separator)
 }
 
-func (self *hawkularSink) idName(ms *core.MetricSet, metricName string) string {
+func (h *hawkularSink) idName(ms *core.MetricSet, metricName string) string {
 	n := make([]string, 0, 3)
 
 	metricType := ms.Labels[core.LabelMetricSetType.Key]
 	switch metricType {
 	case core.MetricSetTypeNode:
 		n = append(n, "machine")
-		n = append(n, self.nodeName(ms))
+		n = append(n, h.nodeName(ms))
 	case core.MetricSetTypeSystemContainer:
 		n = append(n, core.MetricSetTypeSystemContainer)
 		n = append(n, ms.Labels[core.LabelContainerName.Key])
@@ -129,7 +129,7 @@ func (self *hawkularSink) idName(ms *core.MetricSet, metricName string) string {
 		if ms.Labels[core.LabelPodId.Key] != "" {
 			n = append(n, ms.Labels[core.LabelPodId.Key])
 		} else {
-			n = append(n, self.nodeName(ms))
+			n = append(n, h.nodeName(ms))
 		}
 	}
 
@@ -138,83 +138,33 @@ func (self *hawkularSink) idName(ms *core.MetricSet, metricName string) string {
 	return strings.Join(n, separator)
 }
 
-func (self *hawkularSink) nodeName(ms *core.MetricSet) string {
-	if &self.labelNodeId != nil {
-		if v, found := ms.Labels[self.labelNodeId]; found {
+func (h *hawkularSink) nodeName(ms *core.MetricSet) string {
+	if &h.labelNodeId != nil {
+		if v, found := ms.Labels[h.labelNodeId]; found {
 			return v
-		} else {
-			glog.V(4).Infof("The labelNodeId was set to %s but there is no label with this value."+
-				"Using the default 'nodename' label instead.", self.labelNodeId)
 		}
+		glog.V(4).Infof("The labelNodeId was set to %s but there is no label with this value."+
+			"Using the default 'nodename' label instead.", h.labelNodeId)
 	}
 
 	return ms.Labels[core.LabelNodename.Key]
 }
 
-// Check that metrics tags are defined on the Hawkular server and if not,
-// register the metric definition.
-func (self *hawkularSink) registerIfNecessary(ms *core.MetricSet, metricName string, m ...metrics.Modifier) error {
-	key := self.idName(ms, metricName)
+func (h *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric core.LabeledMetric, m ...metrics.Modifier) error {
+	key := h.idName(ms, metric.Name)
 
-	self.regLock.Lock()
-	defer self.regLock.Unlock()
+	if resourceID, found := metric.Labels[core.LabelResourceID.Key]; found {
+		key = h.idName(ms, metric.Name+separator+resourceID)
+	}
+
+	h.regLock.Lock()
+	defer h.regLock.Unlock()
 
 	// If found, check it matches the current stored definition (could be old info from
 	// the stored metrics cache for example)
-	if _, found := self.reg[key]; !found {
+	if _, found := h.reg[key]; !found {
 		// Register the metric descriptor here..
-		if md, f := self.models[metricName]; f {
-			// Copy the original map
-			mdd := *md
-			tags := make(map[string]string)
-			for k, v := range mdd.Tags {
-				tags[k] = v
-			}
-			mdd.Tags = tags
-
-			// Set tag values
-			for k, v := range ms.Labels {
-				mdd.Tags[k] = v
-			}
-
-			mdd.Tags[groupTag] = self.groupName(ms, metricName)
-			mdd.Tags[descriptorTag] = metricName
-
-			m = append(m, self.modifiers...)
-
-			// Create metric, use updateTags instead of Create because we know it is unique
-			if err := self.client.UpdateTags(mdd.Type, key, mdd.Tags, m...); err != nil {
-				// Log error and don't add this key to the lookup table
-				glog.Errorf("Could not update tags: %s", err)
-				return err
-			}
-
-			// Add to the lookup table
-			self.reg[key] = &mdd
-		} else {
-			return fmt.Errorf("Could not find definition model with name %s", metricName)
-		}
-	}
-	// TODO Compare the definition tags and update if necessary? Quite expensive operation..
-
-	return nil
-}
-
-func (self *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric core.LabeledMetric, m ...metrics.Modifier) error {
-	key := self.idName(ms, metric.Name)
-
-	if resourceId, found := metric.Labels[core.LabelResourceID.Key]; found {
-		key = self.idName(ms, metric.Name+separator+resourceId)
-	}
-
-	self.regLock.Lock()
-	defer self.regLock.Unlock()
-
-	// If found, check it matches the current stored definition (could be old info from
-	// the stored metrics cache for example)
-	if _, found := self.reg[key]; !found {
-		// Register the metric descriptor here..
-		if md, f := self.models[metric.Name]; f {
+		if md, f := h.models[metric.Name]; f {
 			// Copy the original map
 			mdd := *md
 			tags := make(map[string]string)
@@ -233,20 +183,20 @@ func (self *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric 
 				mdd.Tags[k] = v
 			}
 
-			mdd.Tags[groupTag] = self.groupName(ms, metric.Name)
+			mdd.Tags[groupTag] = h.groupName(ms, metric.Name)
 			mdd.Tags[descriptorTag] = metric.Name
 
-			m = append(m, self.modifiers...)
+			m = append(m, h.modifiers...)
 
 			// Create metric, use updateTags instead of Create because we know it is unique
-			if err := self.client.UpdateTags(heapsterTypeToHawkularType(metric.MetricType), key, mdd.Tags, m...); err != nil {
+			if err := h.client.UpdateTags(heapsterTypeToHawkularType(metric.MetricType), key, mdd.Tags, m...); err != nil {
 				// Log error and don't add this key to the lookup table
 				glog.Errorf("Could not update tags: %s", err)
 				return err
 			}
 
 			// Add to the lookup table
-			self.reg[key] = &mdd
+			h.reg[key] = &mdd
 		} else {
 			return fmt.Errorf("Could not find definition model with name %s", metric.Name)
 		}
@@ -278,21 +228,21 @@ func toBatches(m []metrics.MetricHeader, batchSize int) chan []metrics.MetricHea
 	return c
 }
 
-func (self *hawkularSink) sendData(tmhs map[string][]metrics.MetricHeader, wg *sync.WaitGroup) {
+func (h *hawkularSink) sendData(tmhs map[string][]metrics.MetricHeader, wg *sync.WaitGroup) {
 	for k, v := range tmhs {
-		parts := toBatches(v, self.batchSize)
+		parts := toBatches(v, h.batchSize)
 		close(parts)
 
-		for i := 0; i < self.concurrencyLimit; i++ {
+		for i := 0; i < h.concurrencyLimit; i++ {
 			wg.Add(1)
 			go func(v []metrics.MetricHeader, k string) {
 				defer wg.Done()
 
 				for p := range parts {
-					m := make([]metrics.Modifier, len(self.modifiers), len(self.modifiers)+1)
-					copy(m, self.modifiers)
+					m := make([]metrics.Modifier, len(h.modifiers), len(h.modifiers)+1)
+					copy(m, h.modifiers)
 					m = append(m, metrics.Tenant(k))
-					if err := self.client.Write(p, m...); err != nil {
+					if err := h.client.Write(p, m...); err != nil {
 						glog.Errorf(err.Error())
 					}
 				}
@@ -302,38 +252,11 @@ func (self *hawkularSink) sendData(tmhs map[string][]metrics.MetricHeader, wg *s
 }
 
 // Converts Timeseries to metric structure used by the Hawkular
-func (self *hawkularSink) pointToMetricHeader(ms *core.MetricSet, metricName string, timestamp time.Time) (*metrics.MetricHeader, error) {
+func (h *hawkularSink) pointToLabeledMetricHeader(ms *core.MetricSet, metric core.LabeledMetric, timestamp time.Time) (*metrics.MetricHeader, error) {
 
-	metricValue := ms.MetricValues[metricName]
-	name := self.idName(ms, metricName)
-
-	var value float64
-	if metricValue.ValueType == core.ValueInt64 {
-		value = float64(metricValue.IntValue)
-	} else {
-		value = float64(metricValue.FloatValue)
-	}
-
-	m := metrics.Datapoint{
-		Value:     value,
-		Timestamp: metrics.UnixMilli(timestamp),
-	}
-
-	mh := &metrics.MetricHeader{
-		Id:   name,
-		Data: []metrics.Datapoint{m},
-		Type: heapsterTypeToHawkularType(metricValue.MetricType),
-	}
-
-	return mh, nil
-}
-
-// Converts Timeseries to metric structure used by the Hawkular
-func (self *hawkularSink) pointToLabeledMetricHeader(ms *core.MetricSet, metric core.LabeledMetric, timestamp time.Time) (*metrics.MetricHeader, error) {
-
-	name := self.idName(ms, metric.Name)
-	if resourceId, found := metric.Labels[core.LabelResourceID.Key]; found {
-		name = self.idName(ms, metric.Name+separator+resourceId)
+	name := h.idName(ms, metric.Name)
+	if resourceID, found := metric.Labels[core.LabelResourceID.Key]; found {
+		name = h.idName(ms, metric.Name+separator+resourceID)
 	}
 
 	var value float64
