@@ -623,6 +623,7 @@ func TestBatchingTimeseries(t *testing.T) {
 		for _, v := range mH {
 			ids = append(ids, v.Id)
 		}
+
 		calls++
 	}))
 	defer s.Close()

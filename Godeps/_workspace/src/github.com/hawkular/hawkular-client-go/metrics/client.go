@@ -1,8 +1,24 @@
+/*
+   Copyright 2015-2016 Red Hat, Inc. and/or its affiliates
+   and other contributors.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 package metrics
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -16,46 +32,19 @@ import (
 
 // TODO Instrumentation? To get statistics?
 
-// More detailed error
-type HawkularClientError struct {
-	msg  string
-	Code int
-}
-
-func (self *HawkularClientError) Error() string {
-	return fmt.Sprintf("Hawkular returned status code %d, error message: %s", self.Code, self.msg)
+func (c *HawkularClientError) Error() string {
+	return fmt.Sprintf("Hawkular returned status code %d, error message: %s", c.Code, c.msg)
 }
 
 // Client creation and instance config
 
 const (
-	base_url string        = "hawkular/metrics"
-	timeout  time.Duration = time.Duration(30 * time.Second)
+	baseURL            string        = "hawkular/metrics"
+	defaultConcurrency int           = 1
+	timeout            time.Duration = time.Duration(30 * time.Second)
 )
 
-type Parameters struct {
-	Tenant    string // Technically optional, but requires setting Tenant() option everytime
-	Url       string
-	TLSConfig *tls.Config
-	Token     string
-}
-
-type Client struct {
-	Tenant string
-	url    *url.URL
-	client *http.Client
-	Token  string
-}
-
-type HawkularClient interface {
-	Send(*http.Request) (*http.Response, error)
-}
-
-// Modifiers
-
-type Modifier func(*http.Request) error
-
-// Override function to replace the Tenant (defaults to Client default)
+// Tenant Override function to replace the Tenant (defaults to Client default)
 func Tenant(tenant string) Modifier {
 	return func(r *http.Request) error {
 		r.Header.Set("Hawkular-Tenant", tenant)
@@ -63,7 +52,7 @@ func Tenant(tenant string) Modifier {
 	}
 }
 
-// Add payload to the request
+// Data Add payload to the request
 func Data(data interface{}) Modifier {
 	return func(r *http.Request) error {
 		jsonb, err := json.Marshal(data)
@@ -84,20 +73,18 @@ func Data(data interface{}) Modifier {
 	}
 }
 
-func (self *Client) Url(method string, e ...Endpoint) Modifier {
+// URL Set the request URL
+func (c *Client) Url(method string, e ...Endpoint) Modifier {
 	// TODO Create composite URLs? Add().Add().. etc? Easier to modify on the fly..
 	return func(r *http.Request) error {
-		u := self.createUrl(e...)
+		u := c.createURL(e...)
 		r.URL = u
 		r.Method = method
 		return nil
 	}
 }
 
-// Filters for querying
-
-type Filter func(r *http.Request)
-
+// Filters Multiple Filter types to execute
 func Filters(f ...Filter) Modifier {
 	return func(r *http.Request) error {
 		for _, filter := range f {
@@ -107,7 +94,7 @@ func Filters(f ...Filter) Modifier {
 	}
 }
 
-// Add query parameters
+// Param Add query parameters
 func Param(k string, v string) Filter {
 	return func(r *http.Request) {
 		q := r.URL.Query()
@@ -116,55 +103,91 @@ func Param(k string, v string) Filter {
 	}
 }
 
+// TypeFilter Query parameter filtering with type
 func TypeFilter(t MetricType) Filter {
 	return Param("type", t.shortForm())
 }
 
+// TagsFilter Query parameter filtering with tags
 func TagsFilter(t map[string]string) Filter {
 	j := tagsEncoder(t)
 	return Param("tags", j)
 }
 
-// Requires HWKMETRICS-233
+// IdFilter Query parameter to add filtering by id name
 func IdFilter(regexp string) Filter {
 	return Param("id", regexp)
 }
 
+// StartTimeFilter Query parameter to filter with start time
 func StartTimeFilter(startTime time.Time) Filter {
 	return Param("start", strconv.Itoa(int(startTime.Unix())))
 }
 
+// EndTimeFilter Query parameter to filter with end time
 func EndTimeFilter(endTime time.Time) Filter {
 	return Param("end", strconv.Itoa(int(endTime.Unix())))
 }
 
+// BucketsFilter Query parameter to define amount of buckets
 func BucketsFilter(buckets int) Filter {
 	return Param("buckets", strconv.Itoa(buckets))
 }
 
+// LimitFilter Query parameter to limit result count
+func LimitFilter(limit int) Filter {
+	return Param("limit", strconv.Itoa(limit))
+}
+
+// OrderFilter Query parameter to define the ordering of datapoints
+func OrderFilter(order Order) Filter {
+	return Param("order", order.String())
+}
+
+// StartFromBeginningFilter Return data from the oldest stored datapoint
+func StartFromBeginningFilter() Filter {
+	return Param("fromEarliest", "true")
+}
+
+// StackedFilter Force downsampling of stacked return values
+func StackedFilter() Filter {
+	return Param("stacked", "true")
+}
+
+// PercentilesFilter Query parameter to define the requested percentiles
+func PercentilesFilter(percentiles []float64) Filter {
+	s := make([]string, 0, len(percentiles))
+	for _, v := range percentiles {
+		s = append(s, fmt.Sprintf("%v", v))
+	}
+	j := strings.Join(s, ",")
+	return Param("percentiles", j)
+}
+
 // The SEND method..
 
-func (self *Client) createRequest() *http.Request {
+func (c *Client) createRequest() *http.Request {
 	req := &http.Request{
 		Proto:      "HTTP/1.1",
 		ProtoMajor: 1,
 		ProtoMinor: 1,
 		Header:     make(http.Header),
-		Host:       self.url.Host,
+		Host:       c.url.Host,
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Hawkular-Tenant", self.Tenant)
+	req.Header.Add("Hawkular-Tenant", c.Tenant)
 
-	if len(self.Token) > 0 {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", self.Token))
+	if len(c.Token) > 0 {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token))
 	}
 
 	return req
 }
 
-func (self *Client) Send(o ...Modifier) (*http.Response, error) {
+// Send Sends a constructed request to the Hawkular-Metrics server
+func (c *Client) Send(o ...Modifier) (*http.Response, error) {
 	// Initialize
-	r := self.createRequest()
+	r := c.createRequest()
 
 	// Run all the modifiers
 	for _, f := range o {
@@ -174,24 +197,25 @@ func (self *Client) Send(o ...Modifier) (*http.Response, error) {
 		}
 	}
 
-	return self.client.Do(r)
+	rChan := make(chan *poolResponse)
+	preq := &poolRequest{r, rChan}
+
+	c.pool <- preq
+
+	presp := <-rChan
+	close(rChan)
+
+	return presp.resp, presp.err
 }
 
 // Commands
 
-func prepend(slice []Modifier, a ...Modifier) []Modifier {
-	p := make([]Modifier, 0, len(slice)+len(a))
-	p = append(p, a...)
-	p = append(p, slice...)
-	return p
-}
-
-// Create new Definition
-func (self *Client) Create(md MetricDefinition, o ...Modifier) (bool, error) {
+// Create Creates new metric Definition
+func (c *Client) Create(md MetricDefinition, o ...Modifier) (bool, error) {
 	// Keep the order, add custom prepend
-	o = prepend(o, self.Url("POST", TypeEndpoint(md.Type)), Data(md))
+	o = prepend(o, c.Url("POST", TypeEndpoint(md.Type)), Data(md))
 
-	r, err := self.Send(o...)
+	r, err := c.Send(o...)
 	if err != nil {
 		return false, err
 	}
@@ -199,7 +223,7 @@ func (self *Client) Create(md MetricDefinition, o ...Modifier) (bool, error) {
 	defer r.Body.Close()
 
 	if r.StatusCode > 399 {
-		err = self.parseErrorResponse(r)
+		err = c.parseErrorResponse(r)
 		if err, ok := err.(*HawkularClientError); ok {
 			if err.Code != http.StatusConflict {
 				return false, err
@@ -212,11 +236,11 @@ func (self *Client) Create(md MetricDefinition, o ...Modifier) (bool, error) {
 	return true, nil
 }
 
-// Fetch definitions
-func (self *Client) Definitions(o ...Modifier) ([]*MetricDefinition, error) {
-	o = prepend(o, self.Url("GET", TypeEndpoint(Generic)))
+// Definitions Fetch metric definitions
+func (c *Client) Definitions(o ...Modifier) ([]*MetricDefinition, error) {
+	o = prepend(o, c.Url("GET", TypeEndpoint(Generic)))
 
-	r, err := self.Send(o...)
+	r, err := c.Send(o...)
 	if err != nil {
 		return nil, err
 	}
@@ -236,17 +260,17 @@ func (self *Client) Definitions(o ...Modifier) ([]*MetricDefinition, error) {
 		}
 		return md, err
 	} else if r.StatusCode > 399 {
-		return nil, self.parseErrorResponse(r)
+		return nil, c.parseErrorResponse(r)
 	}
 
 	return nil, nil
 }
 
-// Return a single definition
-func (self *Client) Definition(t MetricType, id string, o ...Modifier) (*MetricDefinition, error) {
-	o = prepend(o, self.Url("GET", TypeEndpoint(t), SingleMetricEndpoint(id)))
+// Definition Return a single definition
+func (c *Client) Definition(t MetricType, id string, o ...Modifier) (*MetricDefinition, error) {
+	o = prepend(o, c.Url("GET", TypeEndpoint(t), SingleMetricEndpoint(id)))
 
-	r, err := self.Send(o...)
+	r, err := c.Send(o...)
 	if err != nil {
 		return nil, err
 	}
@@ -266,17 +290,17 @@ func (self *Client) Definition(t MetricType, id string, o ...Modifier) (*MetricD
 		}
 		return md, err
 	} else if r.StatusCode > 399 {
-		return nil, self.parseErrorResponse(r)
+		return nil, c.parseErrorResponse(r)
 	}
 
 	return nil, nil
 }
 
-// Update tags
-func (self *Client) UpdateTags(t MetricType, id string, tags map[string]string, o ...Modifier) error {
-	o = prepend(o, self.Url("PUT", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint()), Data(tags))
+// UpdateTags Update tags of a metric (or create if not existing)
+func (c *Client) UpdateTags(t MetricType, id string, tags map[string]string, o ...Modifier) error {
+	o = prepend(o, c.Url("PUT", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint()), Data(tags))
 
-	r, err := self.Send(o...)
+	r, err := c.Send(o...)
 	if err != nil {
 		return err
 	}
@@ -284,17 +308,17 @@ func (self *Client) UpdateTags(t MetricType, id string, tags map[string]string, 
 	defer r.Body.Close()
 
 	if r.StatusCode > 399 {
-		return self.parseErrorResponse(r)
+		return c.parseErrorResponse(r)
 	}
 
 	return nil
 }
 
-// Delete given tags from the definition
-func (self *Client) DeleteTags(t MetricType, id string, tags map[string]string, o ...Modifier) error {
-	o = prepend(o, self.Url("DELETE", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint(), TagsEndpoint(tags)))
+// DeleteTags Delete given tags from the definition
+func (c *Client) DeleteTags(t MetricType, id string, tags map[string]string, o ...Modifier) error {
+	o = prepend(o, c.Url("DELETE", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint(), TagsEndpoint(tags)))
 
-	r, err := self.Send(o...)
+	r, err := c.Send(o...)
 	if err != nil {
 		return err
 	}
@@ -302,17 +326,17 @@ func (self *Client) DeleteTags(t MetricType, id string, tags map[string]string, 
 	defer r.Body.Close()
 
 	if r.StatusCode > 399 {
-		return self.parseErrorResponse(r)
+		return c.parseErrorResponse(r)
 	}
 
 	return nil
 }
 
-// Fetch metric definition tags
-func (self *Client) Tags(t MetricType, id string, o ...Modifier) (map[string]string, error) {
-	o = prepend(o, self.Url("GET", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint()))
+// Tags Fetch metric definition's tags
+func (c *Client) Tags(t MetricType, id string, o ...Modifier) (map[string]string, error) {
+	o = prepend(o, c.Url("GET", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint()))
 
-	r, err := self.Send(o...)
+	r, err := c.Send(o...)
 	if err != nil {
 		return nil, err
 	}
@@ -332,14 +356,14 @@ func (self *Client) Tags(t MetricType, id string, o ...Modifier) (map[string]str
 		}
 		return tags, nil
 	} else if r.StatusCode > 399 {
-		return nil, self.parseErrorResponse(r)
+		return nil, c.parseErrorResponse(r)
 	}
 
 	return nil, nil
 }
 
-// Write datapoints to the server
-func (self *Client) Write(metrics []MetricHeader, o ...Modifier) error {
+// Write Write datapoints to the server
+func (c *Client) Write(metrics []MetricHeader, o ...Modifier) error {
 	if len(metrics) > 0 {
 		mHs := make(map[MetricType][]MetricHeader)
 		for _, m := range metrics {
@@ -359,9 +383,9 @@ func (self *Client) Write(metrics []MetricHeader, o ...Modifier) error {
 
 				// Should be sorted and splitted by type & tenant..
 				on := o
-				on = prepend(on, self.Url("POST", TypeEndpoint(k), DataEndpoint()), Data(v))
+				on = prepend(on, c.Url("POST", TypeEndpoint(k), DataEndpoint()), Data(v))
 
-				r, err := self.Send(on...)
+				r, err := c.Send(on...)
 				if err != nil {
 					errorsChan <- err
 					return
@@ -370,7 +394,7 @@ func (self *Client) Write(metrics []MetricHeader, o ...Modifier) error {
 				defer r.Body.Close()
 
 				if r.StatusCode > 399 {
-					errorsChan <- self.parseErrorResponse(r)
+					errorsChan <- c.parseErrorResponse(r)
 				}
 			}(k, v)
 		}
@@ -389,11 +413,11 @@ func (self *Client) Write(metrics []MetricHeader, o ...Modifier) error {
 	return nil
 }
 
-// Read data from the server
-func (self *Client) ReadMetric(t MetricType, id string, o ...Modifier) ([]*Datapoint, error) {
-	o = prepend(o, self.Url("GET", TypeEndpoint(t), SingleMetricEndpoint(id), DataEndpoint()))
+// ReadMetric Read metric datapoints from the server
+func (c *Client) ReadMetric(t MetricType, id string, o ...Modifier) ([]*Datapoint, error) {
+	o = prepend(o, c.Url("GET", TypeEndpoint(t), SingleMetricEndpoint(id), DataEndpoint()))
 
-	r, err := self.Send(o...)
+	r, err := c.Send(o...)
 	if err != nil {
 		return nil, err
 	}
@@ -415,14 +439,45 @@ func (self *Client) ReadMetric(t MetricType, id string, o ...Modifier) ([]*Datap
 		}
 		return dp, nil
 	} else if r.StatusCode > 399 {
-		return nil, self.parseErrorResponse(r)
+		return nil, c.parseErrorResponse(r)
 	}
 
 	return nil, nil
 }
 
-// Initialization
+// ReadBuckets Read datapoints from the server with in buckets (aggregates)
+func (c *Client) ReadBuckets(t MetricType, o ...Modifier) ([]*Bucketpoint, error) {
+	o = prepend(o, c.Url("GET", TypeEndpoint(t), DataEndpoint()))
 
+	r, err := c.Send(o...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer r.Body.Close()
+
+	if r.StatusCode == http.StatusOK {
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		// Check for GaugeBucketpoint and so on for the rest.. uh
+		bp := []*Bucketpoint{}
+		if b != nil {
+			if err = json.Unmarshal(b, &bp); err != nil {
+				return nil, err
+			}
+		}
+		return bp, nil
+	} else if r.StatusCode > 399 {
+		return nil, c.parseErrorResponse(r)
+	}
+
+	return nil, nil
+}
+
+// NewHawkularClient Initialization
 func NewHawkularClient(p Parameters) (*Client, error) {
 	uri, err := url.Parse(p.Url)
 	if err != nil {
@@ -430,7 +485,7 @@ func NewHawkularClient(p Parameters) (*Client, error) {
 	}
 
 	if uri.Path == "" {
-		uri.Path = base_url
+		uri.Path = baseURL
 	}
 
 	u := &url.URL{
@@ -448,21 +503,33 @@ func NewHawkularClient(p Parameters) (*Client, error) {
 		c.Transport = transport
 	}
 
-	return &Client{
+	if p.Concurrency < 1 {
+		p.Concurrency = 1
+	}
+
+	client := &Client{
 		url:    u,
 		Tenant: p.Tenant,
 		Token:  p.Token,
 		client: c,
-	}, nil
+		pool:   make(chan *poolRequest, p.Concurrency),
+	}
+
+	for i := 0; i < p.Concurrency; i++ {
+		go client.sendRoutine()
+	}
+
+	return client, nil
+}
+
+// Close Safely close the Hawkular-Metrics client and flush remaining work
+func (c *Client) Close() {
+	close(c.pool)
 }
 
 // HTTP Helper functions
 
-func cleanId(id string) string {
-	return url.QueryEscape(id)
-}
-
-func (self *Client) parseErrorResponse(resp *http.Response) error {
+func (c *Client) parseErrorResponse(resp *http.Response) error {
 	// Parse error messages here correctly..
 	reply, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -485,49 +552,52 @@ func (self *Client) parseErrorResponse(resp *http.Response) error {
 	}
 }
 
-// URL functions (...)
+// Endpoint URL functions (...)
 
-type Endpoint func(u *url.URL)
-
-func (self *Client) createUrl(e ...Endpoint) *url.URL {
-	mu := *self.url
+func (c *Client) createURL(e ...Endpoint) *url.URL {
+	mu := *c.url
 	for _, f := range e {
 		f(&mu)
 	}
 	return &mu
 }
 
+// TypeEndpoint URL endpoint setting metricType
 func TypeEndpoint(t MetricType) Endpoint {
 	return func(u *url.URL) {
-		addToUrl(u, t.String())
+		addToURL(u, t.String())
 	}
 }
 
+// SingleMetricEndpoint URL endpoint for requesting single metricID
 func SingleMetricEndpoint(id string) Endpoint {
 	return func(u *url.URL) {
-		addToUrl(u, url.QueryEscape(id))
+		addToURL(u, url.QueryEscape(id))
 	}
 }
 
+// TagEndpoint URL endpoint to check tags information
 func TagEndpoint() Endpoint {
 	return func(u *url.URL) {
-		addToUrl(u, "tags")
+		addToURL(u, "tags")
 	}
 }
 
+// TagsEndpoint URL endpoint which adds tags query
 func TagsEndpoint(tags map[string]string) Endpoint {
 	return func(u *url.URL) {
-		addToUrl(u, tagsEncoder(tags))
+		addToURL(u, tagsEncoder(tags))
 	}
 }
 
+// DataEndpoint URL endpoint for inserting / requesting datapoints
 func DataEndpoint() Endpoint {
 	return func(u *url.URL) {
-		addToUrl(u, "data")
+		addToURL(u, "data")
 	}
 }
 
-func addToUrl(u *url.URL, s string) *url.URL {
+func addToURL(u *url.URL, s string) *url.URL {
 	u.Opaque = fmt.Sprintf("%s/%s", u.Opaque, s)
 	return u
 }

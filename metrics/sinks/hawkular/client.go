@@ -231,20 +231,18 @@ func (h *hawkularSink) sendData(tmhs map[string][]metrics.MetricHeader, wg *sync
 		parts := toBatches(v, h.batchSize)
 		close(parts)
 
-		for i := 0; i < h.concurrencyLimit; i++ {
+		for p := range parts {
 			wg.Add(1)
-			go func(v []metrics.MetricHeader, k string) {
+			go func(batch []metrics.MetricHeader, tenant string) {
 				defer wg.Done()
 
-				for p := range parts {
-					m := make([]metrics.Modifier, len(h.modifiers), len(h.modifiers)+1)
-					copy(m, h.modifiers)
-					m = append(m, metrics.Tenant(k))
-					if err := h.client.Write(p, m...); err != nil {
-						glog.Errorf(err.Error())
-					}
+				m := make([]metrics.Modifier, len(h.modifiers), len(h.modifiers)+1)
+				copy(m, h.modifiers)
+				m = append(m, metrics.Tenant(tenant))
+				if err := h.client.Write(batch, m...); err != nil {
+					glog.Errorf(err.Error())
 				}
-			}(v, k)
+			}(p, k)
 		}
 	}
 }
