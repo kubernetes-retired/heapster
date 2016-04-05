@@ -58,8 +58,7 @@ type hawkularSink struct {
 	modifiers   []metrics.Modifier
 	filters     []Filter
 
-	batchSize        int
-	concurrencyLimit int
+	batchSize int
 }
 
 func heapsterTypeToHawkularType(t core.MetricType) metrics.MetricType {

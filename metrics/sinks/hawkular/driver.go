@@ -195,11 +195,11 @@ func (h *hawkularSink) init() error {
 	h.modifiers = make([]metrics.Modifier, 0)
 	h.filters = make([]Filter, 0)
 	h.batchSize = batchSizeDefault
-	h.concurrencyLimit = concurrencyDefault
 
 	p := metrics.Parameters{
-		Tenant: "heapster",
-		Url:    h.uri.String(),
+		Tenant:      "heapster",
+		Url:         h.uri.String(),
+		Concurrency: concurrencyDefault,
 	}
 
 	opts := h.uri.Query()
@@ -301,7 +301,7 @@ func (h *hawkularSink) init() error {
 		if err != nil || cs < 0 {
 			return fmt.Errorf("Supplied concurrency value of %s is invalid", v[0])
 		}
-		h.concurrencyLimit = cs
+		p.Concurrency = cs
 	}
 
 	if v, found := opts["batchSize"]; found {
