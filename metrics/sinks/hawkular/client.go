@@ -44,11 +44,9 @@ func (h *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
 	for _, p := range mds {
 		// If no descriptorTag is found, this metric does not belong to Heapster
 		if mk, found := p.Tags[descriptorTag]; found {
-			if model, f := h.models[mk]; f {
-				if !h.recent(p, model) {
-					if err := h.client.UpdateTags(mt, p.Id, p.Tags, h.modifiers...); err != nil {
-						return err
-					}
+			if model, f := h.models[mk]; f && !h.recent(p, model) {
+				if err := h.client.UpdateTags(mt, p.Id, p.Tags, h.modifiers...); err != nil {
+					return err
 				}
 			}
 			h.reg[p.Id] = p
@@ -139,7 +137,7 @@ func (h *hawkularSink) idName(ms *core.MetricSet, metricName string) string {
 }
 
 func (h *hawkularSink) nodeName(ms *core.MetricSet) string {
-	if &h.labelNodeId != nil {
+	if len(h.labelNodeId) > 0 {
 		if v, found := ms.Labels[h.labelNodeId]; found {
 			return v
 		}

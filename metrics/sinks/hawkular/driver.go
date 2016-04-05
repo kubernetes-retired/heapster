@@ -83,7 +83,7 @@ func (h *hawkularSink) ExportData(db *core.DataBatch) {
 	if len(db.MetricSets) > 0 {
 		tmhs := make(map[string][]metrics.MetricHeader)
 
-		if &h.labelTenant == nil {
+		if len(h.labelTenant) == 0 {
 			tmhs[h.client.Tenant] = make([]metrics.MetricHeader, 0, totalCount)
 		}
 
@@ -106,7 +106,7 @@ func (h *hawkularSink) ExportData(db *core.DataBatch) {
 
 				tenant := h.client.Tenant
 
-				if &h.labelTenant != nil {
+				if len(h.labelTenant) > 0 {
 					if v, found := ms.Labels[h.labelTenant]; found {
 						tenant = v
 					}
@@ -156,10 +156,10 @@ func (h *hawkularSink) DebugInfo() string {
 	h.regLock.Lock()
 	defer h.regLock.Unlock()
 	info += fmt.Sprintf("Known metrics: %d\n", len(h.reg))
-	if &h.labelTenant != nil {
+	if len(h.labelTenant) > 0 {
 		info += fmt.Sprintf("Using label '%s' as tenant information\n", h.labelTenant)
 	}
-	if &h.labelNodeId != nil {
+	if len(h.labelNodeId) > 0 {
 		info += fmt.Sprintf("Using label '%s' as node identified in resourceid\n", h.labelNodeId)
 	}
 
@@ -171,6 +171,7 @@ func (h *hawkularSink) Name() string {
 	return "Hawkular-Metrics Sink"
 }
 
+// NewHawkularSink Creates and returns a new hawkularSink instance
 func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 	sink := &hawkularSink{
 		uri:       u,
