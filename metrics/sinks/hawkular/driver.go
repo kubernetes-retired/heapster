@@ -48,17 +48,17 @@ const (
 
 // START: ExternalSink interface implementations
 
-func (self *hawkularSink) Register(mds []core.MetricDescriptor) error {
+func (h *hawkularSink) Register(mds []core.MetricDescriptor) error {
 	// Create model definitions based on the MetricDescriptors
 	for _, md := range mds {
-		hmd := self.descriptorToDefinition(&md)
-		self.models[md.Name] = &hmd
+		hmd := h.descriptorToDefinition(&md)
+		h.models[md.Name] = &hmd
 	}
 
 	// Fetch currently known metrics from Hawkular-Metrics and cache them
 	types := []metrics.MetricType{metrics.Gauge, metrics.Counter}
 	for _, t := range types {
-		err := self.updateDefinitions(t)
+		err := h.updateDefinitions(t)
 		if err != nil {
 			return err
 		}
@@ -67,13 +67,13 @@ func (self *hawkularSink) Register(mds []core.MetricDescriptor) error {
 	return nil
 }
 
-func (self *hawkularSink) Stop() {
-	self.regLock.Lock()
-	defer self.regLock.Unlock()
-	self.init()
+func (h *hawkularSink) Stop() {
+	h.regLock.Lock()
+	defer h.regLock.Unlock()
+	h.init()
 }
 
-func (self *hawkularSink) ExportData(db *core.DataBatch) {
+func (h *hawkularSink) ExportData(db *core.DataBatch) {
 	totalCount := 0
 	for _, ms := range db.MetricSets {
 		totalCount += len(ms.MetricValues)
@@ -83,64 +83,31 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 	if len(db.MetricSets) > 0 {
 		tmhs := make(map[string][]metrics.MetricHeader)
 
-		if &self.labelTenant == nil {
-			tmhs[self.client.Tenant] = make([]metrics.MetricHeader, 0, totalCount)
+		if len(h.labelTenant) == 0 {
+			tmhs[h.client.Tenant] = make([]metrics.MetricHeader, 0, totalCount)
 		}
 
 		wg := &sync.WaitGroup{}
 
 		for _, ms := range db.MetricSets {
-		Store:
-			for metricName := range ms.MetricValues {
 
-				for _, filter := range self.filters {
-					if !filter(ms, metricName) {
+			// // Transform ms.MetricValues to LabeledMetrics first
+			lms := metricValueToLabeledMetric(ms.MetricValues)
+			ms.LabeledMetrics = append(ms.LabeledMetrics, lms...)
+
+		Store:
+			for _, labeledMetric := range ms.LabeledMetrics {
+
+				for _, filter := range h.filters {
+					if !filter(ms, labeledMetric.Name) {
 						continue Store
 					}
 				}
 
-				tenant := self.client.Tenant
+				tenant := h.client.Tenant
 
-				if &self.labelTenant != nil {
-					if v, found := ms.Labels[self.labelTenant]; found {
-						tenant = v
-					}
-				}
-
-				// Registering should not block the processing
-				// This isn't concurrency limited (and is mostly network limited on HWKMETRICS end)
-				wg.Add(1)
-				go func(ms *core.MetricSet, metricName string, tenant string) {
-					defer wg.Done()
-					self.registerIfNecessary(ms, metricName, metrics.Tenant(tenant))
-				}(ms, metricName, tenant)
-
-				mH, err := self.pointToMetricHeader(ms, metricName, db.Timestamp)
-				if err != nil {
-					// One transformation error should not prevent the whole process
-					glog.Errorf(err.Error())
-					continue
-				}
-
-				if _, found := tmhs[tenant]; !found {
-					tmhs[tenant] = make([]metrics.MetricHeader, 0)
-				}
-
-				tmhs[tenant] = append(tmhs[tenant], *mH)
-			}
-		LabeledStore:
-			for _, labeledMetric := range ms.LabeledMetrics {
-
-				for _, filter := range self.filters {
-					if !filter(ms, labeledMetric.Name) {
-						continue LabeledStore
-					}
-				}
-
-				tenant := self.client.Tenant
-
-				if &self.labelTenant != nil {
-					if v, found := ms.Labels[self.labelTenant]; found {
+				if len(h.labelTenant) > 0 {
+					if v, found := ms.Labels[h.labelTenant]; found {
 						tenant = v
 					}
 				}
@@ -148,10 +115,10 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 				wg.Add(1)
 				go func(ms *core.MetricSet, labeledMetric core.LabeledMetric, tenant string) {
 					defer wg.Done()
-					self.registerLabeledIfNecessary(ms, labeledMetric, metrics.Tenant(tenant))
+					h.registerLabeledIfNecessary(ms, labeledMetric, metrics.Tenant(tenant))
 				}(ms, labeledMetric, tenant)
 
-				mH, err := self.pointToLabeledMetricHeader(ms, labeledMetric, db.Timestamp)
+				mH, err := h.pointToLabeledMetricHeader(ms, labeledMetric, db.Timestamp)
 				if err != nil {
 					// One transformation error should not prevent the whole process
 					glog.Errorf(err.Error())
@@ -165,32 +132,46 @@ func (self *hawkularSink) ExportData(db *core.DataBatch) {
 				tmhs[tenant] = append(tmhs[tenant], *mH)
 			}
 		}
-		self.sendData(tmhs, wg) // Send to a limited channel? Only batches.. egg.
+		h.sendData(tmhs, wg) // Send to a limited channel? Only batches.. egg.
 		wg.Wait()
 	}
 }
 
-func (self *hawkularSink) DebugInfo() string {
-	info := fmt.Sprintf("%s\n", self.Name())
-
-	self.regLock.Lock()
-	defer self.regLock.Unlock()
-	info += fmt.Sprintf("Known metrics: %d\n", len(self.reg))
-	if &self.labelTenant != nil {
-		info += fmt.Sprintf("Using label '%s' as tenant information\n", self.labelTenant)
+func metricValueToLabeledMetric(msValues map[string]core.MetricValue) []core.LabeledMetric {
+	lms := make([]core.LabeledMetric, 0, len(msValues))
+	for metricName, metricValue := range msValues {
+		lm := core.LabeledMetric{
+			Name:        metricName,
+			MetricValue: metricValue,
+			Labels:      make(map[string]string, 0),
+		}
+		lms = append(lms, lm)
 	}
-	if &self.labelNodeId != nil {
-		info += fmt.Sprintf("Using label '%s' as node identified in resourceid\n", self.labelNodeId)
+	return lms
+}
+
+func (h *hawkularSink) DebugInfo() string {
+	info := fmt.Sprintf("%s\n", h.Name())
+
+	h.regLock.Lock()
+	defer h.regLock.Unlock()
+	info += fmt.Sprintf("Known metrics: %d\n", len(h.reg))
+	if len(h.labelTenant) > 0 {
+		info += fmt.Sprintf("Using label '%s' as tenant information\n", h.labelTenant)
+	}
+	if len(h.labelNodeId) > 0 {
+		info += fmt.Sprintf("Using label '%s' as node identified in resourceid\n", h.labelNodeId)
 	}
 
 	// TODO Add here statistics from the Hawkular-Metrics client instance
 	return info
 }
 
-func (self *hawkularSink) Name() string {
+func (h *hawkularSink) Name() string {
 	return "Hawkular-Metrics Sink"
 }
 
+// NewHawkularSink Creates and returns a new hawkularSink instance
 func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 	sink := &hawkularSink{
 		uri:       u,
@@ -208,31 +189,31 @@ func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 	return sink, nil
 }
 
-func (self *hawkularSink) init() error {
-	self.reg = make(map[string]*metrics.MetricDefinition)
-	self.models = make(map[string]*metrics.MetricDefinition)
-	self.modifiers = make([]metrics.Modifier, 0)
-	self.filters = make([]Filter, 0)
-	self.batchSize = batchSizeDefault
-	self.concurrencyLimit = concurrencyDefault
+func (h *hawkularSink) init() error {
+	h.reg = make(map[string]*metrics.MetricDefinition)
+	h.models = make(map[string]*metrics.MetricDefinition)
+	h.modifiers = make([]metrics.Modifier, 0)
+	h.filters = make([]Filter, 0)
+	h.batchSize = batchSizeDefault
+	h.concurrencyLimit = concurrencyDefault
 
 	p := metrics.Parameters{
 		Tenant: "heapster",
-		Url:    self.uri.String(),
+		Url:    h.uri.String(),
 	}
 
-	opts := self.uri.Query()
+	opts := h.uri.Query()
 
 	if v, found := opts["tenant"]; found {
 		p.Tenant = v[0]
 	}
 
 	if v, found := opts["labelToTenant"]; found {
-		self.labelTenant = v[0]
+		h.labelTenant = v[0]
 	}
 
 	if v, found := opts[nodeId]; found {
-		self.labelNodeId = v[0]
+		h.labelNodeId = v[0]
 	}
 
 	if v, found := opts["useServiceAccount"]; found {
@@ -271,7 +252,7 @@ func (self *hawkularSink) init() error {
 			return fmt.Errorf("If user and password are used, serviceAccount cannot be used")
 		}
 		if p, f := opts["pass"]; f {
-			self.modifiers = append(self.modifiers, func(req *http.Request) error {
+			h.modifiers = append(h.modifiers, func(req *http.Request) error {
 				req.SetBasicAuth(u[0], p[0])
 				return nil
 			})
@@ -311,7 +292,7 @@ func (self *hawkularSink) init() error {
 		if err != nil {
 			return err
 		}
-		self.filters = filters
+		h.filters = filters
 	}
 
 	// Concurrency limitations
@@ -320,7 +301,7 @@ func (self *hawkularSink) init() error {
 		if err != nil || cs < 0 {
 			return fmt.Errorf("Supplied concurrency value of %s is invalid", v[0])
 		}
-		self.concurrencyLimit = cs
+		h.concurrencyLimit = cs
 	}
 
 	if v, found := opts["batchSize"]; found {
@@ -328,7 +309,7 @@ func (self *hawkularSink) init() error {
 		if err != nil || bs < 0 {
 			return fmt.Errorf("Supplied batchSize value of %s is invalid", v[0])
 		}
-		self.batchSize = bs
+		h.batchSize = bs
 	}
 
 	c, err := metrics.NewHawkularClient(p)
@@ -336,7 +317,7 @@ func (self *hawkularSink) init() error {
 		return err
 	}
 
-	self.client = c
+	h.client = c
 
 	glog.Infof("Initialised Hawkular Sink with parameters %v", p)
 	return nil
