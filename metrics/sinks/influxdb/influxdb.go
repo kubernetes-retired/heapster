@@ -68,11 +68,23 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 				continue
 			}
 
+			// Prepare measurement without fields
+			fieldName := "value"
+			measurementName := metricName
+			if sink.c.WithFields {
+				// Prepare measurement and field names
+				serieName := strings.SplitN(metricName, "/", 2)
+				measurementName = serieName[0]
+				if len(serieName) > 1 {
+					fieldName = serieName[1]
+				}
+			}
+
 			point := influxdb.Point{
-				Measurement: metricName,
+				Measurement: measurementName,
 				Tags:        metricSet.Labels,
 				Fields: map[string]interface{}{
-					"value": value,
+					fieldName: value,
 				},
 				Time: dataBatch.Timestamp.UTC(),
 			}
@@ -94,11 +106,23 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 				continue
 			}
 
+			// Prepare measurement without fields
+			fieldName := "value"
+			measurementName := labeledMetric.Name
+			if sink.c.WithFields {
+				// Prepare measurement and field names
+				serieName := strings.SplitN(labeledMetric.Name, "/", 2)
+				measurementName = serieName[0]
+				if len(serieName) > 1 {
+					fieldName = serieName[1]
+				}
+			}
+
 			point := influxdb.Point{
-				Measurement: labeledMetric.Name,
+				Measurement: measurementName,
 				Tags:        make(map[string]string),
 				Fields: map[string]interface{}{
-					"value": value,
+					fieldName: value,
 				},
 				Time: dataBatch.Timestamp.UTC(),
 			}

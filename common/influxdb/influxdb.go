@@ -32,11 +32,12 @@ type InfluxdbClient interface {
 }
 
 type InfluxdbConfig struct {
-	User     string
-	Password string
-	Secure   bool
-	Host     string
-	DbName   string
+	User       string
+	Password   string
+	Secure     bool
+	Host       string
+	DbName     string
+	WithFields bool
 }
 
 func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
@@ -67,11 +68,12 @@ func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
 
 func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 	config := InfluxdbConfig{
-		User:     "root",
-		Password: "root",
-		Host:     "localhost:8086",
-		DbName:   "k8s",
-		Secure:   false,
+		User:       "root",
+		Password:   "root",
+		Host:       "localhost:8086",
+		DbName:     "k8s",
+		Secure:     false,
+		WithFields: false,
 	}
 
 	if len(uri.Host) > 0 {
@@ -87,6 +89,13 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 	}
 	if len(opts["db"]) >= 1 {
 		config.DbName = opts["db"][0]
+	}
+	if len(opts["withfields"]) >= 1 {
+		val, err := strconv.ParseBool(opts["withfields"][0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse `withfields` flag - %v", err)
+		}
+		config.WithFields = val
 	}
 	if len(opts["secure"]) >= 1 {
 		val, err := strconv.ParseBool(opts["secure"][0])
