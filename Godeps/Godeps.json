@@ -785,6 +785,7 @@
 			"Rev": "bc8e0950689f19fafd454acd517abe7b251cf54f"
 		},
 		{
+			"ImportPath": "gopkg.in/olivere/elastic.v3"
 		}
 	]
 }
