@@ -16,6 +16,7 @@ package riemann
 
 import (
 	"net/url"
+	"reflect"
 	"runtime"
 	"strconv"
 	"sync"
@@ -126,27 +127,40 @@ func (sink *riemannSink) ExportData(dataBatch *core.DataBatch) {
 		}
 	}
 
-	dataEvents := make([]riemann_api.Event, 0, 0)
+	var dataEvents []riemann_api.Event
+	appendMetric := func(host, name string, value interface{}, labels map[string]string) {
+		event := riemann_api.Event{
+			Time:        dataBatch.Timestamp.Unix(),
+			Service:     name,
+			Host:        host,
+			Description: "", //no description - waste of bandwidth.
+			Attributes:  labels,
+			Metric:      value,
+			Ttl:         sink.config.ttl,
+			State:       sink.config.state,
+			Tags:        sink.config.tags,
+		}
+
+		dataEvents = append(dataEvents, event)
+		if len(dataEvents) >= maxSendBatchSize {
+			sink.sendData(dataEvents)
+			dataEvents = nil
+		}
+	}
+
+	riemannValue := func(value interface{}) interface{} {
+		// Workaround for error from goryman: "Metric of invalid type (type int64)"
+		if reflect.TypeOf(value).Kind() == reflect.Int64 {
+			return int(value.(int64))
+		}
+		return value
+	}
+
 	for _, metricSet := range dataBatch.MetricSets {
+		host := metricSet.Labels[core.LabelHostname.Key]
 		for metricName, metricValue := range metricSet.MetricValues {
 			if value := metricValue.GetValue(); value != nil {
-				event := riemann_api.Event{
-					Time:        dataBatch.Timestamp.Unix(),
-					Service:     metricName,
-					Host:        metricSet.Labels[core.LabelHostname.Key],
-					Description: "", //no description - waste of bandwidth.
-					Attributes:  metricSet.Labels,
-					Metric:      value,
-					Ttl:         sink.config.ttl,
-					State:       sink.config.state,
-					Tags:        sink.config.tags,
-				}
-
-				dataEvents = append(dataEvents, event)
-				if len(dataEvents) >= maxSendBatchSize {
-					sink.sendData(dataEvents)
-					dataEvents = make([]riemann_api.Event, 0, 0)
-				}
+				appendMetric(host, metricName, riemannValue(value), metricSet.Labels)
 			}
 		}
 		for _, metric := range metricSet.LabeledMetrics {
@@ -158,27 +172,12 @@ func (sink *riemannSink) ExportData(dataBatch *core.DataBatch) {
 				for k, v := range metric.Labels {
 					labels[k] = v
 				}
-				event := riemann_api.Event{
-					Time:        dataBatch.Timestamp.Unix(),
-					Service:     metric.Name,
-					Host:        metricSet.Labels[core.LabelHostname.Key],
-					Description: "", //no description - waste of bandwidth.
-					Attributes:  labels,
-					Metric:      value,
-					Ttl:         sink.config.ttl,
-					State:       sink.config.state,
-					Tags:        sink.config.tags,
-				}
-				dataEvents = append(dataEvents, event)
-				if len(dataEvents) >= maxSendBatchSize {
-					sink.sendData(dataEvents)
-					dataEvents = make([]riemann_api.Event, 0, 0)
-				}
+				appendMetric(host, metric.Name, riemannValue(value), labels)
 			}
 		}
 	}
 
-	if len(dataEvents) >= 0 {
+	if len(dataEvents) > 0 {
 		sink.sendData(dataEvents)
 	}
 }
