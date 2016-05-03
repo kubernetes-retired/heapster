@@ -188,8 +188,10 @@ func (sink *riemannSink) sendData(dataEvents []riemann_api.Event) {
 	}
 
 	start := time.Now()
+	errors := 0
 	for _, event := range dataEvents {
-		var err error = nil
+		glog.V(8).Infof("Sending event to Riemann:  %+v", event)
+		var err error
 		for try := 0; try < max_retries; try++ {
 			err = sink.client.SendEvent(&event)
 			if err == nil {
@@ -197,13 +199,15 @@ func (sink *riemannSink) sendData(dataEvents []riemann_api.Event) {
 			}
 		}
 		if err != nil {
-			glog.V(2).Infof("Failed sending event to Riemann: %+v: %+v", event, err)
-			// Let's reconnect with the next export.
-			// Assumes that this happens under a lock.
-			sink.client.Close()
-			sink.client = nil
+			errors++
+			glog.V(4).Infof("Failed to send event to Riemann: %+v: %+v", event, err)
 		}
 	}
 	end := time.Now()
-	glog.V(4).Info("Exported %d data to riemann in %s", len(dataEvents), end.Sub(start))
+	if errors > 0 {
+		glog.V(2).Info("There were errors sending events to Riemman, forcing reconnection")
+		sink.client.Close()
+		sink.client = nil
+	}
+	glog.V(4).Infof("Exported %d events to riemann in %s", len(dataEvents)-errors, end.Sub(start))
 }
