@@ -24,14 +24,14 @@ import (
 	"github.com/golang/glog"
 	"github.com/olivere/elastic"
 	"github.com/pborman/uuid"
-	"k8s.io/heapster/metrics/core"
 	event_core "k8s.io/heapster/events/core"
+	"k8s.io/heapster/metrics/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
 const (
 	eventSeriesIndex = "heapster-metrics"
-	typeName        = "k8s-heapster"
+	typeName         = "k8s-heapster"
 )
 
 // LimitFunc is a pluggable function to enforce limits on the object

@@ -16,12 +16,12 @@ package elasticsearch
 
 import (
 	"encoding/json"
-	"testing"
 	"fmt"
-	"time"
 	"github.com/olivere/elastic"
-	"k8s.io/heapster/metrics/core"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/heapster/metrics/core"
+	"testing"
+	"time"
 )
 
 type dataSavedToES struct {
@@ -45,7 +45,7 @@ func SaveDataIntoES_Stub(esClient *elastic.Client, indexName string, typeName st
 }
 
 // Returns a fake ES sink.
-func NewFakeSink() fakeESSink{
+func NewFakeSink() fakeESSink {
 	var ESClient elastic.Client
 	fakeSinkESNodes := make([]string, 2)
 	savedData := make([]dataSavedToES, 0)

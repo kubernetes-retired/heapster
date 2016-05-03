@@ -16,14 +16,14 @@ package elasticsearch
 
 import (
 	"encoding/json"
-	"testing"
 	"fmt"
-	"time"
 	"github.com/olivere/elastic"
-	"k8s.io/heapster/events/core"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/heapster/events/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	kube_api_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
+	"testing"
+	"time"
 )
 
 type dataSavedToES struct {
@@ -47,19 +47,19 @@ func SaveDataIntoES_Stub(esClient *elastic.Client, indexName string, typeName st
 }
 
 // Returns a fake ES sink.
-func NewFakeSink() fakeESSink{
+func NewFakeSink() fakeESSink {
 	var ESClient elastic.Client
 	fakeSinkESNodes := make([]string, 2)
 	savedData := make([]dataSavedToES, 0)
 	return fakeESSink{
 		&elasticSearchSink{
-			esClient:        &ESClient,
-			saveDataFunc:    SaveDataIntoES_Stub,
+			esClient:         &ESClient,
+			saveDataFunc:     SaveDataIntoES_Stub,
 			eventSeriesIndex: "heapster-metric-index",
-			needAuthen:      false,
-			esUserName:      "admin",
-			esUserSecret:    "admin",
-			esNodes:         fakeSinkESNodes,
+			needAuthen:       false,
+			esUserName:       "admin",
+			esUserSecret:     "admin",
+			esNodes:          fakeSinkESNodes,
 		},
 		savedData,
 	}
@@ -73,7 +73,7 @@ func TestStoreDataEmptyInput(t *testing.T) {
 }
 
 func TestStoreMultipleDataInput(t *testing.T) {
-		fakeSink := NewFakeSink()
+	fakeSink := NewFakeSink()
 	timestamp := time.Now()
 
 	now := time.Now()

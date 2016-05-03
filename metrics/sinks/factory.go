@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
+	"k8s.io/heapster/metrics/sinks/elasticsearch"
 	"k8s.io/heapster/metrics/sinks/gcm"
 	"k8s.io/heapster/metrics/sinks/hawkular"
 	"k8s.io/heapster/metrics/sinks/influxdb"
@@ -30,7 +31,6 @@ import (
 	"k8s.io/heapster/metrics/sinks/monasca"
 	"k8s.io/heapster/metrics/sinks/opentsdb"
 	"k8s.io/heapster/metrics/sinks/riemann"
-	"k8s.io/heapster/metrics/sinks/elasticsearch"
 )
 
 type SinkFactory struct {
