@@ -67,6 +67,30 @@ func getEventValue(event *kube_api.Event) (string, error) {
 	return string(bytes), nil
 }
 
+func eventToPointWithFields(event *kube_api.Event) (*influxdb.Point, error) {
+	point := influxdb.Point{
+		Measurement: "events",
+		Time:        event.LastTimestamp.Time.UTC(),
+		Fields: map[string]interface{}{
+			"message": event.Message,
+		},
+		Tags: map[string]string{
+			eventUID: string(event.UID),
+		},
+	}
+	if event.InvolvedObject.Kind == "Pod" {
+		point.Tags[metrics_core.LabelPodId.Key] = string(event.InvolvedObject.UID)
+	}
+	point.Tags["object_name"] = event.InvolvedObject.Name
+	point.Tags["type"] = event.Type
+	point.Tags["kind"] = event.InvolvedObject.Kind
+	point.Tags["component"] = event.Source.Component
+	point.Tags["reason"] = event.Reason
+	point.Tags[metrics_core.LabelNamespaceName.Key] = event.Namespace
+	point.Tags[metrics_core.LabelHostname.Key] = event.Source.Host
+	return &point, nil
+}
+
 func eventToPoint(event *kube_api.Event) (*influxdb.Point, error) {
 	value, err := getEventValue(event)
 	if err != nil {
@@ -97,7 +121,13 @@ func (sink *influxdbSink) ExportEvents(eventBatch *core.EventBatch) {
 
 	dataPoints := make([]influxdb.Point, 0, 10)
 	for _, event := range eventBatch.Events {
-		point, err := eventToPoint(event)
+		var point *influxdb.Point
+		var err error
+		if sink.c.WithFields {
+			point, err = eventToPointWithFields(event)
+		} else {
+			point, err = eventToPoint(event)
+		}
 		if err != nil {
 			glog.Warningf("Failed to convert event to point: %v", err)
 		}

@@ -61,8 +61,22 @@ Disk and network metrics are not available at container level (only at pod and n
 
 ### InfluxDB
 
+##### Default
+
 Each metric translates to a separate 'series' in InfluxDB. Labels are stored as tags.
 The metric name is not modified.
+
+##### Using fields
+
+If you want to use InfluxDB fields, you have to add `with_fields=true` as parameter in InfluxDB sink URL.
+(More information here: https://docs.influxdata.com/influxdb/v0.9/concepts/key_concepts/)
+
+In that case, each metric translates to a separate in 'series' in InfluxDB. This means that some metrics are grouped in the same 'measurement'.
+For example, we have the measurement 'cpu' with fields 'node_reservation', 'node_utilization', 'request', 'usage', 'usage_rate'.
+Also, all labels are stored as tags.
+Here the measurement list: cpu, filesystem, memory, network, uptime
+
+Also, standard Grafana dashboard are not working with this new schema, you have to use [new dashboards](/grafana/dashboards/influxdb_withfields)
 
 ### Google Cloud Monitoring
 
