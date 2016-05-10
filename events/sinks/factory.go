@@ -19,6 +19,7 @@ import (
 
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/events/core"
+	"k8s.io/heapster/events/sinks/elasticsearch"
 	"k8s.io/heapster/events/sinks/gcl"
 	"k8s.io/heapster/events/sinks/influxdb"
 	"k8s.io/heapster/events/sinks/log"
@@ -37,6 +38,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.EventSink, error) {
 		return logsink.CreateLogSink()
 	case "influxdb":
 		return influxdb.CreateInfluxdbSink(&uri.Val)
+	case "elasticsearch":
+		return elasticsearch.CreateElasticSearchSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
