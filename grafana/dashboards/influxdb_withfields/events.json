@@ -239,11 +239,6 @@
             "text": "All",
             "value": ".*",
             "selected": true
-          },
-          {
-            "text": "fernando-forevr",
-            "value": "fernando\\-forevr",
-            "selected": false
           }
         ],
         "query": "SHOW TAG VALUES FROM \"events\" WITH KEY = \"namespace_name\"",
@@ -295,11 +290,6 @@
             "text": "All",
             "value": ".*",
             "selected": true
-          },
-          {
-            "text": "qnlu-static-mode-stack-ahy1n",
-            "value": "qnlu\\-static\\-mode\\-stack\\-ahy1n",
-            "selected": false
           }
         ],
         "query": "SHOW TAG VALUES FROM \"events\" WITH KEY = \"object_name\" WHERE \"kind\" =~ /$kind$/ AND \"namespace_name\" =~ /$namespace$/ ",
