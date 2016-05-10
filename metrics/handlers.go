@@ -21,6 +21,7 @@ import (
 
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/metrics/api/v1"
+	metricsApi "k8s.io/heapster/metrics/apis/metrics"
 	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/util/metrics"
 )
@@ -37,6 +38,9 @@ func setupHandlers(metricSink *metricsink.MetricSink) http.Handler {
 	wsContainer.Router(restful.CurlyRouter{})
 	a := v1.NewApi(runningInKubernetes, metricSink)
 	a.Register(wsContainer)
+	// Metrics API
+	m := metricsApi.NewApi(metricSink)
+	m.Register(wsContainer)
 
 	handlePprofEndpoint := func(req *restful.Request, resp *restful.Response) {
 		name := strings.TrimPrefix(req.Request.URL.Path, pprofBasePath)
