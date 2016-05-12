@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/olivere/elastic"
 	"github.com/stretchr/testify/assert"
+	esCommon "k8s.io/heapster/common/elasticsearch"
 	"k8s.io/heapster/events/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	kube_api_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
@@ -53,13 +54,15 @@ func NewFakeSink() fakeESSink {
 	savedData := make([]dataSavedToES, 0)
 	return fakeESSink{
 		&elasticSearchSink{
-			esClient:         &ESClient,
-			saveDataFunc:     SaveDataIntoES_Stub,
-			eventSeriesIndex: "heapster-metric-index",
-			needAuthen:       false,
-			esUserName:       "admin",
-			esUserSecret:     "admin",
-			esNodes:          fakeSinkESNodes,
+			esClient:     &ESClient,
+			saveDataFunc: SaveDataIntoES_Stub,
+			esConfig: esCommon.ElasticSearchConfig{
+				Index:        "heapster-metric-index",
+				NeedAuthen:   false,
+				EsUserName:   "admin",
+				EsUserSecret: "admin",
+				EsNodes:      fakeSinkESNodes,
+			},
 		},
 		savedData,
 	}
@@ -75,7 +78,6 @@ func TestStoreDataEmptyInput(t *testing.T) {
 func TestStoreMultipleDataInput(t *testing.T) {
 	fakeSink := NewFakeSink()
 	timestamp := time.Now()
-
 	now := time.Now()
 	event1 := kube_api.Event{
 		Message:        "event1",
@@ -83,14 +85,12 @@ func TestStoreMultipleDataInput(t *testing.T) {
 		LastTimestamp:  kube_api_unversioned.NewTime(now),
 		FirstTimestamp: kube_api_unversioned.NewTime(now),
 	}
-
 	event2 := kube_api.Event{
 		Message:        "event2",
 		Count:          101,
 		LastTimestamp:  kube_api_unversioned.NewTime(now),
 		FirstTimestamp: kube_api_unversioned.NewTime(now),
 	}
-
 	data := core.EventBatch{
 		Timestamp: timestamp,
 		Events: []*kube_api.Event{
@@ -98,13 +98,8 @@ func TestStoreMultipleDataInput(t *testing.T) {
 			&event2,
 		},
 	}
-
 	fakeSink.ExportEvents(&data)
-
-	//expect msg string
+	// expect msg string
 	assert.Equal(t, 2, len(FakeESSink.savedData))
-	//msgsString := fmt.Sprintf("%s", FakeESSink.savedData)
-	//assert.Contains(t, msgsString, "")
-	fmt.Println(FakeESSink.savedData)
 	FakeESSink = fakeESSink{}
 }

@@ -15,7 +15,6 @@
 package elasticsearch
 
 import (
-	"fmt"
 	"net/url"
 	"sync"
 	"time"
@@ -23,28 +22,23 @@ import (
 	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/olivere/elastic"
-	"github.com/pborman/uuid"
+	esCommon "k8s.io/heapster/common/elasticsearch"
 	event_core "k8s.io/heapster/events/core"
 	"k8s.io/heapster/metrics/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
 const (
-	eventSeriesIndex = "heapster-metrics"
-	typeName         = "k8s-heapster"
+	typeName = "events"
 )
 
 // LimitFunc is a pluggable function to enforce limits on the object
 type SaveDataFunc func(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error
 
 type elasticSearchSink struct {
-	esClient         *elastic.Client
-	saveDataFunc     SaveDataFunc
-	eventSeriesIndex string
-	needAuthen       bool
-	esUserName       string
-	esUserSecret     string
-	esNodes          []string
+	esClient     *elastic.Client
+	saveDataFunc SaveDataFunc
+	esConfig     esCommon.ElasticSearchConfig
 	sync.RWMutex
 }
 
@@ -69,7 +63,6 @@ func eventToPoint(event *kube_api.Event) (*EsSinkPoint, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	point := EsSinkPoint{
 		EventTimestamp: event.LastTimestamp.Time.UTC(),
 		EventValue:     value,
@@ -88,47 +81,13 @@ func eventToPoint(event *kube_api.Event) (*EsSinkPoint, error) {
 func (sink *elasticSearchSink) ExportEvents(eventBatch *event_core.EventBatch) {
 	sink.Lock()
 	defer sink.Unlock()
-
 	for _, event := range eventBatch.Events {
 		point, err := eventToPoint(event)
 		if err != nil {
 			glog.Warningf("Failed to convert event to point: %v", err)
 		}
-		sink.saveDataFunc(sink.esClient, sink.eventSeriesIndex, typeName, point)
+		sink.saveDataFunc(sink.esClient, sink.esConfig.Index, typeName, point)
 	}
-}
-
-// SaveDataIntoES save metrics and events to ES by using ES client
-func SaveDataIntoES(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error {
-	if indexName == "" || typeName == "" || sinkData == nil {
-		return nil
-	}
-	// Use the IndexExists service to check if a specified index exists.
-	exists, err := esClient.IndexExists(indexName).Do()
-	if err != nil {
-		return err
-	}
-	if !exists {
-		// Create a new index.
-		createIndex, err := esClient.CreateIndex(indexName).Do()
-		if err != nil {
-			return err
-		}
-		if !createIndex.Acknowledged {
-			return fmt.Errorf("failed to create Index in ES cluster: %s", err)
-		}
-	}
-	indexID := uuid.NewUUID()
-	_, err = esClient.Index().
-		Index(indexName).
-		Type(typeName).
-		Id(string(indexID)).
-		BodyJson(sinkData).
-		Do()
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (sink *elasticSearchSink) Name() string {
@@ -140,49 +99,15 @@ func (sink *elasticSearchSink) Stop() {
 }
 
 func NewElasticSearchSink(uri *url.URL) (event_core.EventSink, error) {
-
 	var esSink elasticSearchSink
-	opts, err := url.ParseQuery(uri.RawQuery)
+	elasticsearchConfig, err := esCommon.CreateElasticSearchConfig(uri)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parser url's query string: %s", err)
-	}
+		glog.V(2).Infof("failed to config elasticsearch")
+		return nil, err
 
-	//set the index for eventSeries,the default value is "eventIndex"
-	esSink.eventSeriesIndex = eventSeriesIndex
-	if len(opts["eventSeriesIndex"]) > 0 {
-		esSink.eventSeriesIndex = opts["eventSeriesIndex"][0]
 	}
-
-	//If the ES cluster needs authentication, the username and secret
-	//should be set in sink config.Else, set the Authenticate flag to false
-	esSink.needAuthen = false
-	if len(opts["esUserName"]) > 0 && len(opts["esUserSecret"]) > 0 {
-		esSink.eventSeriesIndex = opts["esUserName"][0]
-		esSink.needAuthen = true
-	}
-
-	//set the URL endpoints of the ES's nodes. Notice that
-	// when sniffing is enabled, these URLs are used to initially sniff the
-	// cluster on startup.
-	if len(opts["nodes"]) < 1 {
-		return nil, fmt.Errorf("There is no node assigned for connecting ES cluster")
-	}
-	esSink.esNodes = append(esSink.esNodes, opts["nodes"]...)
-	glog.V(2).Infof("initializing elasticsearch sink with ES's nodes - %v", esSink.esNodes)
-
-	var client *(elastic.Client)
-	if esSink.needAuthen == false {
-		client, err = elastic.NewClient(elastic.SetURL(esSink.esNodes...))
-	} else {
-		client, err = elastic.NewClient(elastic.SetBasicAuth(esSink.esUserName, esSink.esUserSecret), elastic.SetURL(esSink.esNodes...))
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ElasticSearch client: %v", err)
-	}
-	esSink.esClient = client
-	esSink.saveDataFunc = SaveDataIntoES
-
+	esSink.esConfig = *elasticsearchConfig
+	esSink.saveDataFunc = esCommon.SaveDataIntoES
 	glog.V(2).Infof("elasticsearch sink setup successfully")
 	return &esSink, nil
 }

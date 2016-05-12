@@ -163,8 +163,7 @@ Thus, we can set `ES_SERVER_URL` to a dummy value, and provide nodes list or pro
 in url's query string.
 Besides, the following options can be set in query string:
 
-* `timeseriesIndex` - ES's index for timeseries. Default: `heapster-metrics`
-* `eventsIndex`     - ES's index for events. Default: `heapster-events`
+* `Index` - ES's index for metrics&events. Default: `heapster`
 
   if the ES cluster needs authentication, we should provide the username and secret.
 
@@ -173,11 +172,11 @@ Besides, the following options can be set in query string:
 
 Like this:
 
-    --sink="elasticsearch:?nodes=0.0.0.0:9200&timeseriesIndex=testMetric"
+    --sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testMetric"
 	
 	or
 	
-	--sink="elasticsearch:?nodes=0.0.0.0:9200&eventsIndex=testEvent"
+	--sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testEvent"
 
 ## Using multiple sinks
 

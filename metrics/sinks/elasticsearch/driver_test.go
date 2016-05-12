@@ -17,11 +17,13 @@ package elasticsearch
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/olivere/elastic"
-	"github.com/stretchr/testify/assert"
-	"k8s.io/heapster/metrics/core"
 	"testing"
 	"time"
+
+	"github.com/olivere/elastic"
+	"github.com/stretchr/testify/assert"
+	esCommon "k8s.io/heapster/common/elasticsearch"
+	"k8s.io/heapster/metrics/core"
 )
 
 type dataSavedToES struct {
@@ -51,13 +53,15 @@ func NewFakeSink() fakeESSink {
 	savedData := make([]dataSavedToES, 0)
 	return fakeESSink{
 		&elasticSearchSink{
-			esClient:        &ESClient,
-			saveDataFunc:    SaveDataIntoES_Stub,
-			timeSeriesIndex: "heapster-metric-index",
-			needAuthen:      false,
-			esUserName:      "admin",
-			esUserSecret:    "admin",
-			esNodes:         fakeSinkESNodes,
+			esClient:     &ESClient,
+			saveDataFunc: SaveDataIntoES_Stub,
+			esConfig: esCommon.ElasticSearchConfig{
+				Index:        "heapster-metric-index",
+				NeedAuthen:   false,
+				EsUserName:   "admin",
+				EsUserSecret: "admin",
+				EsNodes:      fakeSinkESNodes,
+			},
 		},
 		savedData,
 	}
