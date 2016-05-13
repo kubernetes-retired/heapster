@@ -21,7 +21,7 @@ import (
 	"strconv"
 
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	kube_client "k8s.io/kubernetes/pkg/client/restclient"
 	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	kubeClientCmdApi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 )

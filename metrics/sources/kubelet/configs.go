@@ -20,7 +20,7 @@ import (
 
 	"github.com/golang/glog"
 	kube_config "k8s.io/heapster/common/kubernetes"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	kube_client "k8s.io/kubernetes/pkg/client/restclient"
 	kubelet_client "k8s.io/kubernetes/pkg/kubelet/client"
 )
 
