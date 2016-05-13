@@ -94,6 +94,16 @@ func (this *MetricSink) ExportData(batch *core.DataBatch) {
 	this.shortStore = append(popOld(this.shortStore, now.Add(-this.shortStoreDuration)), batch)
 }
 
+func (this *MetricSink) GetLatestDataBatch() *core.DataBatch {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	if len(this.shortStore) == 0 {
+		return nil
+	}
+	return this.shortStore[len(this.shortStore)-1]
+}
+
 func (this *MetricSink) GetShortStore() []*core.DataBatch {
 	this.lock.Lock()
 	defer this.lock.Unlock()
@@ -241,6 +251,18 @@ func (this *MetricSink) GetPodsFromNamespace(namespace string) []string {
 		},
 		func(key string, ms *core.MetricSet) string {
 			return ms.Labels[core.LabelPodName.Key]
+		})
+}
+
+func (this *MetricSink) GetContainersForPodFromNamespace(namespace, pod string) []string {
+	return this.getAllNames(
+		func(ms *core.MetricSet) bool {
+			return ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypePodContainer &&
+				ms.Labels[core.LabelNamespaceName.Key] == namespace &&
+				ms.Labels[core.LabelPodName.Key] == pod
+		},
+		func(key string, ms *core.MetricSet) string {
+			return ms.Labels[core.LabelContainerName.Key]
 		})
 }
 
