@@ -4,7 +4,7 @@ TAG = v1.1.0-beta1
 PREFIX = gcr.io/google_containers
 FLAGS = 
 
-SUPPORTED_KUBE_VERSIONS = ""
+SUPPORTED_KUBE_VERSIONS = "1.2.4"
 TEST_NAMESPACE = heapster-e2e-tests
 
 deps:
