@@ -30,12 +30,17 @@ import (
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/heapster/common/flags"
+	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/processors"
 	"k8s.io/heapster/metrics/sinks"
 	"k8s.io/heapster/metrics/sources"
 	"k8s.io/heapster/version"
+	kube_api "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client/cache"
+	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/fields"
 )
 
 var (
@@ -113,22 +118,26 @@ func main() {
 		processors.NewRateCalculator(core.RateMetricsMapping),
 	}
 
-	// pod enricher goes next
-	if url, err := getKubernetesAddress(argSources); err == nil {
-		podBasedEnricher, err := processors.NewPodBasedEnricher(url)
-		if err != nil {
-			glog.Fatalf("Failed to create PodBasedEnricher: %v", err)
-		} else {
-			dataProcessors = append(dataProcessors, podBasedEnricher)
-		}
-
-		namespaceBasedEnricher, err := processors.NewNamespaceBasedEnricher(url)
-		if err != nil {
-			glog.Fatalf("Failed to create NamespaceBasedEnricher: %v", err)
-		} else {
-			dataProcessors = append(dataProcessors, namespaceBasedEnricher)
-		}
+	kubernetesUrl, err := getKubernetesAddress(argSources)
+	if err != nil {
+		glog.Fatalf("Failed to get kubernetes address: %v", err)
 	}
+	podLister, err := getPodLister(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to create podLister: %v", err)
+	}
+
+	podBasedEnricher, err := processors.NewPodBasedEnricher(podLister)
+	if err != nil {
+		glog.Fatalf("Failed to create PodBasedEnricher: %v", err)
+	}
+	dataProcessors = append(dataProcessors, podBasedEnricher)
+
+	namespaceBasedEnricher, err := processors.NewNamespaceBasedEnricher(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to create NamespaceBasedEnricher: %v", err)
+	}
+	dataProcessors = append(dataProcessors, namespaceBasedEnricher)
 
 	// then aggregators
 	dataProcessors = append(dataProcessors,
@@ -143,15 +152,11 @@ func main() {
 			MetricsToAggregate: metricsToAggregate,
 		})
 
-	// pod enricher goes first
-	if url, err := getKubernetesAddress(argSources); err == nil {
-		nodeAutoscalingEnricher, err := processors.NewNodeAutoscalingEnricher(url)
-		if err != nil {
-			glog.Fatalf("Failed to create NodeAutoscalingEnricher: %v", err)
-		} else {
-			dataProcessors = append(dataProcessors, nodeAutoscalingEnricher)
-		}
+	nodeAutoscalingEnricher, err := processors.NewNodeAutoscalingEnricher(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to create NodeAutoscalingEnricher: %v", err)
 	}
+	dataProcessors = append(dataProcessors, nodeAutoscalingEnricher)
 
 	// main manager
 	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, *argMetricResolution,
@@ -161,7 +166,7 @@ func main() {
 	}
 	manager.Start()
 
-	handler := setupHandlers(metricSink)
+	handler := setupHandlers(metricSink, podLister)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
 
@@ -212,6 +217,22 @@ func getKubernetesAddress(args flags.Uris) (*url.URL, error) {
 		}
 	}
 	return nil, fmt.Errorf("No kubernetes source found.")
+}
+
+func getPodLister(url *url.URL) (*cache.StoreToPodLister, error) {
+	kubeConfig, err := kube_config.GetKubeClientConfig(url)
+	if err != nil {
+		return nil, err
+	}
+	kubeClient := kube_client.NewOrDie(kubeConfig)
+
+	lw := cache.NewListWatchFromClient(kubeClient, "pods", kube_api.NamespaceAll, fields.Everything())
+	store := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	podLister := &cache.StoreToPodLister{Indexer: store}
+	reflector := cache.NewReflector(lw, &kube_api.Pod{}, store, time.Hour)
+	reflector.Run()
+
+	return podLister, nil
 }
 
 func validateFlags() error {
