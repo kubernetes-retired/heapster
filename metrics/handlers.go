@@ -24,11 +24,13 @@ import (
 	metricsApi "k8s.io/heapster/metrics/apis/metrics"
 	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/util/metrics"
+
+	"k8s.io/kubernetes/pkg/client/cache"
 )
 
 const pprofBasePath = "/debug/pprof/"
 
-func setupHandlers(metricSink *metricsink.MetricSink) http.Handler {
+func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister) http.Handler {
 
 	runningInKubernetes := true
 
@@ -39,7 +41,7 @@ func setupHandlers(metricSink *metricsink.MetricSink) http.Handler {
 	a := v1.NewApi(runningInKubernetes, metricSink)
 	a.Register(wsContainer)
 	// Metrics API
-	m := metricsApi.NewApi(metricSink)
+	m := metricsApi.NewApi(metricSink, podLister)
 	m.Register(wsContainer)
 
 	handlePprofEndpoint := func(req *restful.Request, resp *restful.Response) {

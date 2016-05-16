@@ -20,29 +20,35 @@ package metrics
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	restful "github.com/emicklei/go-restful"
+	"github.com/golang/glog"
 
 	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/core"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
+	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	kube_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 	kube_v1 "k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/client/cache"
+	"k8s.io/kubernetes/pkg/labels"
 )
 
 type Api struct {
 	metricSink *metricsink.MetricSink
+	podLister  *cache.StoreToPodLister
 }
 
-func NewApi(metricSink *metricsink.MetricSink) *Api {
-	return &Api{metricSink: metricSink}
+func NewApi(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister) *Api {
+	return &Api{
+		metricSink: metricSink,
+		podLister:  podLister,
+	}
 }
 
-// TODO(piosz): add support for label selector
-// TODO(piosz): add support for all-namespaces
-// TODO(piosz): add error handling
 func (a *Api) Register(container *restful.Container) {
 	ws := new(restful.WebService)
 	ws.Path("/apis/metrics/v1alpha1").
@@ -64,7 +70,8 @@ func (a *Api) Register(container *restful.Container) {
 		To(a.podMetricsList).
 		Doc("Get a list of metrics for all available pods in the specified namespace.").
 		Operation("podMetricsList").
-		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
+		Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string"))).
+		Param(ws.QueryParameter("labelSelector", "A selector to restrict the list of returned objects by their labels. Defaults to everything.").DataType("string"))
 
 	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/").
 		To(a.podMetrics).
@@ -140,10 +147,30 @@ func parseResourceList(ms *core.MetricSet) (kube_v1.ResourceList, error) {
 
 func (a *Api) podMetricsList(request *restful.Request, response *restful.Response) {
 	ns := request.PathParameter("namespace-name")
+	selector := request.QueryParameter("labelSelector")
+
+	labelSelector, err := labels.Parse(selector)
+	if err != nil {
+		errMsg := fmt.Errorf("Error while parsing selector %v: %v", selector, err)
+		glog.Error(errMsg)
+		response.WriteError(http.StatusBadRequest, errMsg)
+		return
+	}
+
+	pods, err := a.podLister.Pods(ns).List(labelSelector)
+	if err != nil {
+		errMsg := fmt.Errorf("Error while listing pods for selector %v: %v", selector, err)
+		glog.Error(errMsg)
+		response.WriteError(http.StatusInternalServerError, errMsg)
+		return
+	}
+
 	res := []*v1alpha1.PodMetrics{}
-	for _, pod := range a.metricSink.GetPodsFromNamespace(ns) {
-		if m := a.getPodMetrics(ns, pod); m != nil {
+	for _, pod := range pods.Items {
+		if m := a.getPodMetrics(&pod); m != nil {
 			res = append(res, m)
+		} else {
+			glog.Infof("No metrics for pod %s/%s", pod.Namespace, pod.Name)
 		}
 	}
 	response.WriteEntity(res)
@@ -151,12 +178,43 @@ func (a *Api) podMetricsList(request *restful.Request, response *restful.Respons
 
 func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 	ns := request.PathParameter("namespace-name")
-	pod := request.PathParameter("pod-name")
-	response.WriteEntity(a.getPodMetrics(ns, pod))
+	name := request.PathParameter("pod-name")
+
+	o, exists, err := a.podLister.Get(
+		&kube_api.Pod{
+			ObjectMeta: kube_api.ObjectMeta{
+				Namespace: ns,
+				Name:      name,
+			},
+		},
+	)
+	if err != nil {
+		errMsg := fmt.Errorf("Error while getting pod %v: %v", name, err)
+		glog.Error(errMsg)
+		response.WriteError(http.StatusInternalServerError, errMsg)
+		return
+	}
+	if !exists || o == nil {
+		response.WriteError(http.StatusNotFound, fmt.Errorf("Pod %v/%v not defined", ns, name))
+		return
+	}
+
+	pod, ok := o.(*kube_api.Pod)
+	if !ok {
+		errMsg := fmt.Errorf("Error while converting pod %v: %v", name, err)
+		glog.Error(errMsg)
+		response.WriteError(http.StatusInternalServerError, errMsg)
+		return
+	}
+
+	if m := a.getPodMetrics(pod); m != nil {
+		response.WriteEntity(m)
+	} else {
+		response.WriteError(http.StatusNotFound, fmt.Errorf("No metrics availalble for pod %v/%v", ns, name))
+	}
 }
 
-// TODO(piosz): the implementation is inefficient. Fix this once adding support for labelSelector.
-func (a *Api) getPodMetrics(ns, pod string) *v1alpha1.PodMetrics {
+func (a *Api) getPodMetrics(pod *kube_api.Pod) *v1alpha1.PodMetrics {
 	batch := a.metricSink.GetLatestDataBatch()
 	if batch == nil {
 		return nil
@@ -164,8 +222,8 @@ func (a *Api) getPodMetrics(ns, pod string) *v1alpha1.PodMetrics {
 
 	res := &v1alpha1.PodMetrics{
 		ObjectMeta: kube_v1.ObjectMeta{
-			Name:              pod,
-			Namespace:         ns,
+			Name:              pod.Name,
+			Namespace:         pod.Namespace,
 			CreationTimestamp: kube_unversioned.NewTime(time.Now()),
 		},
 		Timestamp:  kube_unversioned.NewTime(batch.Timestamp),
@@ -173,10 +231,11 @@ func (a *Api) getPodMetrics(ns, pod string) *v1alpha1.PodMetrics {
 		Containers: make([]v1alpha1.ContainerMetrics, 0),
 	}
 
-	for _, c := range a.metricSink.GetContainersForPodFromNamespace(ns, pod) {
-		ms, found := batch.MetricSets[core.PodContainerKey(ns, pod, c)]
+	for _, c := range pod.Spec.Containers {
+		ms, found := batch.MetricSets[core.PodContainerKey(pod.Namespace, pod.Name, c.Name)]
 		if !found {
-			continue
+			glog.Infof("No metrics for container %s in pod %s/%s", c.Name, pod.Namespace, pod.Name)
+			return nil
 		}
 
 		usage, err := parseResourceList(ms)
@@ -184,7 +243,7 @@ func (a *Api) getPodMetrics(ns, pod string) *v1alpha1.PodMetrics {
 			return nil
 		}
 
-		res.Containers = append(res.Containers, v1alpha1.ContainerMetrics{Name: c, Usage: usage})
+		res.Containers = append(res.Containers, v1alpha1.ContainerMetrics{Name: c.Name, Usage: usage})
 	}
 
 	return res
