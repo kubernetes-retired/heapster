@@ -211,8 +211,10 @@ func NewPodBasedEnricher(url *url.URL) (*PodBasedEnricher, error) {
 
 	// watch nodes
 	lw := cache.NewListWatchFromClient(kubeClient, "pods", kube_api.NamespaceAll, fields.Everything())
-	podLister := &cache.StoreToPodLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &kube_api.Pod{}, podLister.Store, time.Hour)
+
+	store := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	podLister := &cache.StoreToPodLister{Indexer: store}
+	reflector := cache.NewReflector(lw, &kube_api.Pod{}, store, time.Hour)
 	reflector.Run()
 
 	return &PodBasedEnricher{

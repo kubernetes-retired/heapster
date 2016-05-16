@@ -117,7 +117,8 @@ func TestPodEnricher(t *testing.T) {
 		},
 	}
 
-	podLister := &cache.StoreToPodLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
+	store := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	podLister := &cache.StoreToPodLister{Indexer: store}
 	podLister.Add(&pod)
 	podBasedEnricher := PodBasedEnricher{podLister: podLister}
 

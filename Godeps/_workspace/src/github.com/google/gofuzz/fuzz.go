@@ -361,7 +361,9 @@ func fuzzUint(v reflect.Value, r *rand.Rand) {
 
 func fuzzTime(t *time.Time, c Continue) {
 	var sec, nsec int64
-	c.Fuzz(&sec)
+	// Allow for about 1000 years of random time values, which keeps things
+	// like JSON parsing reasonably happy.
+	sec = c.Rand.Int63n(1000 * 365 * 24 * 60 * 60)
 	c.Fuzz(&nsec)
 	*t = time.Unix(sec, nsec)
 }

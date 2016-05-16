@@ -28,7 +28,7 @@ import (
 	"github.com/hawkular/hawkular-client-go/metrics"
 
 	"k8s.io/heapster/metrics/core"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	kube_client "k8s.io/kubernetes/pkg/client/restclient"
 	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 )
 
