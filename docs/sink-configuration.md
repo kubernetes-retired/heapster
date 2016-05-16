@@ -151,6 +151,33 @@ The following options are available:
 * `tags` - FIXME. Default. `none`
 * `storeEvents` - Control storage of events. Default: `true`
 
+### Elasticsearch
+This sink supports monitoring metrics and events.
+To use the Elasticsearch sink add the following flag:
+
+    --sink=elasticsearch:<ES_SERVER_URL>[?<OPTIONS>]
+
+Normally, elasticsearch cluster has multi nodes or a proxy, so nodes' list or proxy 
+server need be configured for elasticsearch sink.
+Thus, we can set `ES_SERVER_URL` to a dummy value, and provide nodes list or proxy server
+in url's query string.
+Besides, the following options can be set in query string:
+
+* `Index` - ES's index for metrics&events. Default: `heapster`
+
+  if the ES cluster needs authentication, we should provide the username and secret.
+
+* `esUserName`      - ES's user name
+* `esUserSecret`    - ES's user secret
+
+Like this:
+
+    --sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testMetric"
+	
+	or
+	
+	--sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testEvent"
+
 ## Using multiple sinks
 
 Heapster can be configured to send k8s metrics and events to multiple sinks by specifying the`--sink=...` flag multiple times.
