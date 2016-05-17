@@ -27,5 +27,5 @@ set -o pipefail
 # succeeds (produces no output) grep will fail.  Then we just look at
 # PIPESTATUS[0] which is go's exit code.
 rc=0
-go vet ./... 2>&1 | grep -v "^exit status " || rc=${PIPESTATUS[0]}
+go vet $(go list ./... | grep -v /vendor/) 2>&1 | grep -v "^exit status " || rc=${PIPESTATUS[0]}
 exit "${rc}"
