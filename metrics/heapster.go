@@ -44,7 +44,7 @@ import (
 )
 
 var (
-	argMetricResolution = flag.Duration("metric_resolution", 30*time.Second, "The resolution at which heapster will retain metrics.")
+	argMetricResolution = flag.Duration("metric_resolution", 60*time.Second, "The resolution at which heapster will retain metrics.")
 	argPort             = flag.Int("port", 8082, "port to listen to")
 	argIp               = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
 	argMaxProcs         = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
