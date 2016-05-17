@@ -95,7 +95,12 @@ func (a *Api) nodeMetricsList(request *restful.Request, response *restful.Respon
 
 func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) {
 	node := request.PathParameter("node-name")
-	response.WriteEntity(a.getNodeMetrics(node))
+	m := a.getNodeMetrics(node)
+	if m == nil {
+		response.WriteError(http.StatusNotFound, fmt.Errorf("No metrics for ode %v", node))
+		return
+	}
+	response.WriteEntity(m)
 }
 
 func (a *Api) getNodeMetrics(node string) *v1alpha1.NodeMetrics {
