@@ -27,10 +27,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 	api_v1 "k8s.io/heapster/metrics/api/v1/types"
+	metrics_api "k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	apiErrors "k8s.io/kubernetes/pkg/api/errors"
 	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
+	kube_v1 "k8s.io/kubernetes/pkg/api/v1"
 )
 
 const (
@@ -179,7 +181,6 @@ func buildAndPushDockerImages(fm kubeFramework, zone string) error {
 const (
 	metricsEndpoint       = "/api/v1/metric-export"
 	metricsSchemaEndpoint = "/api/v1/metric-export-schema"
-	sinksEndpoint         = "/api/v1/sinks"
 )
 
 func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*api_v1.Timeseries, error) {
@@ -233,7 +234,7 @@ func isContainerBaseImageExpected(ts *api_v1.Timeseries) bool {
 	return !exists
 }
 
-func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
+func runMetricExportTest(fm kubeFramework, svc *kube_api.Service) error {
 	expectedPods, err := fm.GetRunningPodNames()
 	if err != nil {
 		return err
@@ -335,9 +336,9 @@ func runHeapsterMetricsTest(fm kubeFramework, svc *kube_api.Service) error {
 
 		// Explicitely check for resource id
 		explicitRequirement := map[string][]string{
-			core.MetricFilesystemUsage.MetricDescriptor.Name: []string{core.LabelResourceID.Key},
-			core.MetricFilesystemLimit.MetricDescriptor.Name: []string{core.LabelResourceID.Key},
-			core.MetricFilesystemAvailable.Name:              []string{core.LabelResourceID.Key}}
+			core.MetricFilesystemUsage.MetricDescriptor.Name: {core.LabelResourceID.Key},
+			core.MetricFilesystemLimit.MetricDescriptor.Name: {core.LabelResourceID.Key},
+			core.MetricFilesystemAvailable.Name:              {core.LabelResourceID.Key}}
 
 		for metricName, points := range ts.Metrics {
 			md, exists := mdMap[metricName]
@@ -605,6 +606,106 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 	return nil
 }
 
+func checkUsage(res kube_v1.ResourceList) error {
+	if _, found := res[kube_v1.ResourceCPU]; !found {
+		return fmt.Errorf("Cpu not found")
+	}
+	if _, found := res[kube_v1.ResourceMemory]; !found {
+		return fmt.Errorf("Memory not found")
+	}
+	return nil
+}
+
+func getPodMetrics(fm kubeFramework, svc *kube_api.Service, pod kube_api.Pod) (*metrics_api.PodMetrics, error) {
+	url := "apis/metrics/v1alpha1/namespaces/" + pod.Namespace + "/pods/" + pod.Name
+	body, err := getDataFromProxy(fm, svc, url)
+	if err != nil {
+		return nil, err
+	}
+	var data metrics_api.PodMetrics
+	if err := json.Unmarshal(body, &data); err != nil {
+		glog.V(2).Infof("response body: %v", string(body))
+		return nil, err
+	}
+	return &data, nil
+}
+
+func checkPodsInMetricsApi(fm kubeFramework, svc *kube_api.Service, pods []kube_api.Pod) error {
+	for _, pod := range pods {
+		metrics, err := getPodMetrics(fm, svc, pod)
+		if err != nil {
+			return err
+		}
+		if metrics.Name != pod.Name {
+			return fmt.Errorf("Wrong pod name: expected %v, got %v", pod.Name, metrics.Name)
+		}
+		if metrics.Namespace != pod.Namespace {
+			return fmt.Errorf("Wrong pod namespace: expected %v, got %v", pod.Namespace, metrics.Namespace)
+		}
+		if len(pod.Spec.Containers) != len(metrics.Containers) {
+			return fmt.Errorf("Wrong number of containers in returned metrics: expected %v, got %v", len(pod.Spec.Containers), len(metrics.Containers))
+		}
+		for _, c := range metrics.Containers {
+			if err := checkUsage(c.Usage); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func getNodeMetrics(fm kubeFramework, svc *kube_api.Service, node string) (*metrics_api.NodeMetrics, error) {
+	url := "apis/metrics/v1alpha1/nodes/" + node
+	body, err := getDataFromProxy(fm, svc, url)
+	if err != nil {
+		return nil, err
+	}
+	var data metrics_api.NodeMetrics
+	if err := json.Unmarshal(body, &data); err != nil {
+		glog.V(2).Infof("response body: %v", string(body))
+		return nil, err
+	}
+	return &data, nil
+}
+
+func checkNodesInMetricsApi(fm kubeFramework, svc *kube_api.Service, nodes []string) error {
+	for _, node := range nodes {
+		metrics, err := getNodeMetrics(fm, svc, node)
+		if err != nil {
+			return err
+		}
+		if metrics.Name != node {
+			return fmt.Errorf("Wrong node name: expected %v, got %v", node, metrics.Name)
+		}
+		if err := checkUsage(metrics.Usage); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func runMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+	podList, err := fm.GetRunningPods()
+	if err != nil {
+		return err
+	}
+	if len(podList) == 0 {
+		return fmt.Errorf("empty pod list")
+	}
+	if err := checkPodsInMetricsApi(fm, svc, podList); err != nil {
+		return err
+	}
+
+	nodeList, err := fm.GetNodes()
+	if err != nil {
+		return err
+	}
+	if len(nodeList) == 0 {
+		return fmt.Errorf(("empty node list"))
+	}
+	return checkNodesInMetricsApi(fm, svc, nodeList)
+}
+
 func apiTest(kubeVersion string, zone string) error {
 	fm, err := newKubeFramework(kubeVersion)
 	if err != nil {
@@ -633,27 +734,15 @@ func apiTest(kubeVersion string, zone string) error {
 	}
 	testFuncs := []func() error{
 		func() error {
-			glog.V(2).Infof("Heapster metrics test...")
-			err := runHeapsterMetricsTest(fm, svc)
+			glog.V(2).Infof("Heapster metric export test...")
+			err := runMetricExportTest(fm, svc)
 			if err == nil {
-				glog.V(2).Infof("Heapster metrics test: OK")
+				glog.V(2).Infof("Heapster metric export test: OK")
 			} else {
-				glog.V(2).Infof("Heapster metrics test error: %v", err)
+				glog.V(2).Infof("Heapster metric export test error: %v", err)
 			}
 			return err
 		},
-		/*
-				TODO(mwielgus): Enable once dynamic sink setting is enabled.
-			func() error {
-				glog.V(2).Infof("Sinks test...")
-				err := runSinksTest(fm, svc)
-				if err == nil {
-					glog.V(2).Infof("Sinks test: OK")
-				} else {
-					glog.V(2).Infof("Sinks test error: %v", err)
-				}
-				return err
-			}, */
 		func() error {
 			glog.V(2).Infof("Model test")
 			err := runModelTest(fm, svc)
@@ -661,6 +750,16 @@ func apiTest(kubeVersion string, zone string) error {
 				glog.V(2).Infof("Model test: OK")
 			} else {
 				glog.V(2).Infof("Model test error: %v", err)
+			}
+			return err
+		},
+		func() error {
+			glog.V(2).Infof("Metrics API test")
+			err := runMetricsApiTest(fm, svc)
+			if err == nil {
+				glog.V(2).Infof("Metrics API test: OK")
+			} else {
+				glog.V(2).Infof("Metrics API test error: %v", err)
 			}
 			return err
 		},
