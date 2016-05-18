@@ -34,11 +34,11 @@
 		},
 		{
 			"ImportPath": "github.com/bluebreezecf/opentsdb-goclient/client",
-			"Rev": "2ddb54cc73419e58d20e917a60bb902349fae4cf"
+			"Rev": "539764bd9a9cae6632dea52b5a587451728a3983"
 		},
 		{
 			"ImportPath": "github.com/bluebreezecf/opentsdb-goclient/config",
-			"Rev": "2ddb54cc73419e58d20e917a60bb902349fae4cf"
+			"Rev": "539764bd9a9cae6632dea52b5a587451728a3983"
 		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
