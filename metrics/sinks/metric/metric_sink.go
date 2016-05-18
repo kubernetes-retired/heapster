@@ -51,11 +51,6 @@ type multimetricStore struct {
 	store map[string]int64Store
 }
 
-type TimestampedMetricValue struct {
-	core.MetricValue
-	Timestamp time.Time
-}
-
 func buildMultimetricStore(metrics []string, batch *core.DataBatch) *multimetricStore {
 	store := multimetricStore{
 		timestamp: batch.Timestamp,
@@ -115,7 +110,7 @@ func (this *MetricSink) GetShortStore() []*core.DataBatch {
 	return result
 }
 
-func (this *MetricSink) GetMetric(metricName string, keys []string, start, end time.Time) map[string][]TimestampedMetricValue {
+func (this *MetricSink) GetMetric(metricName string, keys []string, start, end time.Time) map[string][]core.TimestampedMetricValue {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
@@ -126,7 +121,7 @@ func (this *MetricSink) GetMetric(metricName string, keys []string, start, end t
 		}
 	}
 
-	result := make(map[string][]TimestampedMetricValue)
+	result := make(map[string][]core.TimestampedMetricValue)
 	if useLongStore {
 		for _, store := range this.longStore {
 			// Inclusive start and end.
@@ -134,7 +129,7 @@ func (this *MetricSink) GetMetric(metricName string, keys []string, start, end t
 				substore := store.store[metricName]
 				for _, key := range keys {
 					if val, found := substore[key]; found {
-						result[key] = append(result[key], TimestampedMetricValue{
+						result[key] = append(result[key], core.TimestampedMetricValue{
 							Timestamp: store.timestamp,
 							MetricValue: core.MetricValue{
 								IntValue:   val,
@@ -161,9 +156,9 @@ func (this *MetricSink) GetMetric(metricName string, keys []string, start, end t
 					}
 					keyResult, found := result[key]
 					if !found {
-						keyResult = make([]TimestampedMetricValue, 0)
+						keyResult = make([]core.TimestampedMetricValue, 0)
 					}
-					keyResult = append(keyResult, TimestampedMetricValue{
+					keyResult = append(keyResult, core.TimestampedMetricValue{
 						Timestamp:   batch.Timestamp,
 						MetricValue: metricValue,
 					})

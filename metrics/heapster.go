@@ -54,6 +54,7 @@ var (
 	argAllowedUsers     = flag.String("allowed_users", "", "comma-separated list of allowed users")
 	argSources          flags.Uris
 	argSinks            flags.Uris
+	argHistoricalSource = flag.String("historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
 )
 
 func main() {
@@ -84,9 +85,12 @@ func main() {
 
 	// sinks
 	sinksFactory := sinks.NewSinkFactory()
-	metricSink, sinkList := sinksFactory.BuildAll(argSinks)
+	metricSink, sinkList, historicalSource := sinksFactory.BuildAll(argSinks, *argHistoricalSource)
 	if metricSink == nil {
 		glog.Fatal("Failed to create metric sink")
+	}
+	if historicalSource == nil && len(*argHistoricalSource) > 0 {
+		glog.Fatal("Failed to use a sink as a historical metrics source")
 	}
 	for _, sink := range sinkList {
 		glog.Infof("Starting with %s", sink.Name())
@@ -166,7 +170,7 @@ func main() {
 	}
 	manager.Start()
 
-	handler := setupHandlers(metricSink, podLister)
+	handler := setupHandlers(metricSink, podLister, historicalSource)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
 
