@@ -259,6 +259,8 @@ func isValidDataPoint(data *DataPoint) bool {
 		return true
 	case float64:
 		return true
+	case float32:
+		return true
 	case string:
 		return true
 	default:

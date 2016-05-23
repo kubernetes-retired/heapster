@@ -48,7 +48,8 @@ const (
 	PutRespWithSummary = "summary"
 	PutRespWithDetails = "details"
 
-	QueryPath = "/api/query"
+	QueryPath     = "/api/query"
+	QueryLastPath = "/api/query/last"
 	// The three keys in the rateOption parameter of the QueryParam
 	QueryRateOptionCounter    = "counter"    // The corresponding value type is bool
 	QueryRateOptionCounterMax = "counterMax" // The corresponding value type is int,int64
@@ -126,6 +127,17 @@ type Client interface {
 	// status code and response info. Otherwise, an error instance will be returned, when the given parameter
 	// is invalid, it failed to parese the response, or OpenTSDB is un-connectable right now.
 	Query(param QueryParam) (*QueryResponse, error)
+
+	// QueryLast is the implementation of 'GET /api/query/last' endpoint.
+	// It is introduced firstly in v2.1, and fully supported in v2.2. So it should be aware that this api works
+	// well since v2.2 of opentsdb.
+	//
+	// param is a instance of QueryLastParam holding current query parameters.
+	//
+	// When query operation is successful, a pointer of QueryLastResponse will be returned with the corresponding
+	// status code and response info. Otherwise, an error instance will be returned, when the given parameter
+	// is invalid, it failed to parese the response, or OpenTSDB is un-connectable right now.
+	QueryLast(param QueryLastParam) (*QueryLastResponse, error)
 
 	// Aggregators is the implementation of 'GET /api/aggregators' endpoint.
 	// It simply lists the names of implemented aggregation functions used in timeseries queries.
