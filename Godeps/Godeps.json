@@ -1,7 +1,7 @@
 {
 	"ImportPath": "k8s.io/heapster",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v67",
+	"GodepVersion": "v71",
 	"Packages": [
 		"./..."
 	],
@@ -399,6 +399,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/inf.v0",
+			"Comment": "v0.9.0",
 			"Rev": "3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4"
 		},
 		{
