@@ -22,6 +22,7 @@ import (
 	"k8s.io/heapster/metrics/api/v1/types"
 	"k8s.io/heapster/metrics/core"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/heapster/metrics/sources/push"
 )
 
 type Api struct {
@@ -94,6 +95,23 @@ func (a *Api) Register(container *restful.Container) {
 	if a.historicalSource != nil {
 		a.RegisterHistorical(container)
 	}
+}
+
+type PushApi struct {
+	pushSource push.PushSource
+}
+
+// Create a new PushApi to serve from the specified cache.
+func NewPushApi(pushSource push.PushSource) *PushApi {
+	return &PushApi{
+		pushSource: pushSource,
+	}
+}
+
+// Register the mainApi on the specified endpoint.
+func (a *PushApi) Register(container *restful.Container) {
+	// Register the available push metric formats
+	a.RegisterFormatHandlers(container)
 }
 
 func convertLabelDescriptor(ld core.LabelDescriptor) types.LabelDescriptor {

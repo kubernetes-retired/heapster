@@ -72,6 +72,7 @@ func NewDummySink(name string, latency time.Duration) *DummySink {
 type DummyMetricsSource struct {
 	latency   time.Duration
 	metricSet core.MetricSet
+	canonical bool
 }
 
 func (this *DummyMetricsSource) Name() string {
@@ -88,6 +89,10 @@ func (this *DummyMetricsSource) ScrapeMetrics(start, end time.Time) *core.DataBa
 	}
 }
 
+func (this *DummyMetricsSource) IsCanonical() bool {
+	return this.canonical
+}
+
 func newDummyMetricSet(name string) core.MetricSet {
 	return core.MetricSet{
 		MetricValues: map[string]core.MetricValue{},
@@ -101,6 +106,7 @@ func NewDummyMetricsSource(name string, latency time.Duration) *DummyMetricsSour
 	return &DummyMetricsSource{
 		latency:   latency,
 		metricSet: newDummyMetricSet(name),
+		canonical: true,
 	}
 }
 

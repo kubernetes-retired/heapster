@@ -85,6 +85,10 @@ func (this *kubeletMetricsSource) String() string {
 	return fmt.Sprintf("kubelet:%s:%d", this.host.IP, this.host.Port)
 }
 
+func (this *kubeletMetricsSource) IsCanonical() bool {
+	return true
+}
+
 func (this *kubeletMetricsSource) handleSystemContainer(c *cadvisor.ContainerInfo, cMetrics *MetricSet) string {
 	glog.V(8).Infof("Found system container %v with labels: %+v", c.Name, c.Spec.Labels)
 	cName := c.Name

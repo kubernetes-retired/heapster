@@ -89,6 +89,10 @@ func (this *summaryMetricsSource) String() string {
 	return fmt.Sprintf("kubelet_summary:%s:%d", this.node.IP, this.node.Port)
 }
 
+func (this *summaryMetricsSource) IsCanonical() bool {
+	return true
+}
+
 func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
 	if this.useFallback {
 		return this.fallback.ScrapeMetrics(start, end)
