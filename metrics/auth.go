@@ -21,46 +21,85 @@ import (
 	"net/http"
 	"strings"
 
+	restful "github.com/emicklei/go-restful"
+
+	"k8s.io/heapster/metrics/util"
 	"k8s.io/kubernetes/pkg/auth/authenticator"
 	"k8s.io/kubernetes/pkg/auth/user"
 	x509request "k8s.io/kubernetes/plugin/pkg/auth/authenticator/request/x509"
 )
 
-func newAuthHandler(handler http.Handler) (http.Handler, error) {
+// authRequest attempts to authenticate and authorize a request against
+// the given authenticator and authorizer.  If succesfull, it returns the
+// user information from the authentication step.  A bool is returned indicating
+// whether authentication and authorization were successful.
+func authRequest(authn authenticator.Request, authz Authorizer, req *http.Request, resp http.ResponseWriter) (user.Info, bool) {
+	// Check authn
+	user, ok, err := authn.AuthenticateRequest(req)
+	if err != nil {
+		http.Error(resp, err.Error(), http.StatusInternalServerError)
+		return nil, false
+	}
+	if !ok {
+		http.Error(resp, "Unauthorized", http.StatusUnauthorized)
+		return nil, false
+	}
+
+	// Check authz
+	allowed, err := authz.AuthorizeRequest(req, user)
+	if err != nil {
+		http.Error(resp, err.Error(), http.StatusInternalServerError)
+		return nil, false
+	}
+	if !allowed {
+		http.Error(resp, "Forbidden", http.StatusForbidden)
+		return nil, false
+	}
+
+	return user, true
+}
+
+func newAuthFilter(caFile string, allowedUsers string) (restful.FilterFunction, error) {
 	// Authn/Authz setup
-	authn, err := newAuthenticatorFromClientCAFile(*argTLSClientCAFile)
+	authn, err := newAuthenticatorFromClientCAFile(caFile)
 	if err != nil {
 		return nil, err
 	}
 
-	authz, err := newAuthorizerFromUserList(strings.Split(*argAllowedUsers, ",")...)
+	authz, err := newAuthorizerFromUserList(strings.Split(allowedUsers, ",")...)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(req *restful.Request, resp *restful.Response, filters *restful.FilterChain) {
+		user, allowed := authRequest(authn, authz, req.Request, resp)
+		if !allowed {
+			return
+		}
+
+		// set the user info attribute for use later
+		req.SetAttribute(util.UserAttributeName, user)
+		filters.ProcessFilter(req, resp)
+	}, nil
+}
+
+func newAuthHandler(handler http.Handler, caFile string, allowedUsers string) (http.Handler, error) {
+	// Authn/Authz setup
+	authn, err := newAuthenticatorFromClientCAFile(caFile)
+	if err != nil {
+		return nil, err
+	}
+
+	authz, err := newAuthorizerFromUserList(strings.Split(allowedUsers, ",")...)
 	if err != nil {
 		return nil, err
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		// Check authn
-		user, ok, err := authn.AuthenticateRequest(req)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if !ok {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Check authz
-		allowed, err := authz.AuthorizeRequest(req, user)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		_, allowed := authRequest(authn, authz, req, w)
 		if !allowed {
-			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-
 		handler.ServeHTTP(w, req)
 	}), nil
 }
