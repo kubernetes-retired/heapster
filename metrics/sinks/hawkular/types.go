@@ -71,3 +71,14 @@ func heapsterTypeToHawkularType(t core.MetricType) metrics.MetricType {
 		return metrics.Gauge
 	}
 }
+
+func hawkularTypeToHeapsterType(t metrics.MetricType) core.MetricType {
+	switch t {
+	case metrics.Gauge:
+		return core.MetricGauge
+	case metrics.Counter:
+		return core.MetricCumulative
+	default:
+		return core.MetricGauge
+	}
+}
