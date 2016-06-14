@@ -55,10 +55,11 @@ func (a *PushApi) RegisterFormatHandlers(container *restful.Container) {
 	container.Add(ws)
 }
 
-// ingestPrometheusMetrics takes a set of headers and body content (plus a source name), and
-// extract and processes the body, converting it from a Prometheus metrics format (specified
-// in the headers) into a Heapster DataBatch.
-func ingestPrometheusMetrics(user string, headers http.Header, body io.Reader) (*core.DataBatch, int, error) {
+// ingestPrometheusMetrics takes a set of headers and body content (plus a source name), and extracts and processes
+// the body, converting it from a Prometheus metrics format (specified in the headers) into a Heapster DataBatch.
+// It also keeps track of the names of metrics extracted, and, if provided a metrics limit over zero, will error on
+// receiving too many different metrics.
+func ingestPrometheusMetrics(user string, metricNames map[string]struct{}, headers http.Header, body io.Reader) (*core.DataBatch, int, error) {
 	metricsFormat := promfmt.ResponseFormat(headers)
 	if metricsFormat == promfmt.FmtUnknown {
 		return nil, http.StatusUnsupportedMediaType, fmt.Errorf("Unable to determine format of submitted Prometheus metrics")
@@ -72,6 +73,7 @@ func ingestPrometheusMetrics(user string, headers http.Header, body io.Reader) (
 			MetricSets: map[string]*core.MetricSet{},
 		},
 		defaultTimestamp: nowFunc(),
+		metricNames:      metricNames,
 	}
 
 	if err := ingester.IngestAll(decoder); err != nil {
@@ -98,7 +100,9 @@ func (a *PushApi) prometheusPushRequest(req *restful.Request, resp *restful.Resp
 		resp.WriteError(http.StatusUnauthorized, fmt.Errorf("Metrics must be submitted as the authenticated user"))
 	}
 
-	batch, errStatus, err := ingestPrometheusMetrics(userName, req.Request.Header, req.Request.Body)
+	metricNames := make(map[string]struct{})
+
+	batch, errStatus, err := ingestPrometheusMetrics(userName, metricNames, req.Request.Header, req.Request.Body)
 	if err != nil {
 		resp.WriteError(errStatus, err)
 		return
@@ -107,7 +111,10 @@ func (a *PushApi) prometheusPushRequest(req *restful.Request, resp *restful.Resp
 	// TODO: do we need to do this ourselves?
 	req.Request.Body.Close()
 
-	a.pushSource.PushMetrics(batch, userName)
+	if err := a.pushSource.PushMetrics(batch, userName, metricNames); err != nil {
+		resp.WriteError(http.StatusRequestEntityTooLarge, err)
+		return
+	}
 
 	resp.WriteHeader(http.StatusAccepted)
 }
@@ -118,6 +125,7 @@ type dataBatchIngester struct {
 	batch            *core.DataBatch
 	nameFormat       string
 	defaultTimestamp time.Time
+	metricNames      map[string]struct{}
 }
 
 func (ing *dataBatchIngester) ingestNormalMetricEntry(metricType core.MetricType, familyName string, metric *prompb.Metric, value float64) error {
@@ -152,6 +160,8 @@ func (ing *dataBatchIngester) ingestNormalMetricEntry(metricType core.MetricType
 	}
 
 	metricName := fmt.Sprintf(ing.nameFormat, familyName)
+
+	ing.metricNames[metricName] = struct{}{}
 
 	// check to see if this metric needs to be added as a labeled metric
 	if len(normalLabels) != 0 {

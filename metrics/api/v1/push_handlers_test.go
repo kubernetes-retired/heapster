@@ -26,6 +26,25 @@ import (
 	"k8s.io/heapster/metrics/core"
 )
 
+var testPrometheusTextMetrics = `
+# This is a pod-level metric (it might be used for autoscaling)
+# TYPE http_requests_per_minute gauge
+http_requests_per_minute{namespace="webapp",pod="frontend-server-a-1"} 20
+http_requests_per_minute{namespace="webapp",pod="frontend-server-a-2"} 5
+http_requests_per_minute{namespace="webapp",pod="frontend-server-b-1"} 25
+
+# This is a service-level metric, which will be stored as frontend_hits_total
+# and restapi_hits_total (these might be used for auto-idling)
+# TYPE frontend_hits_total counter
+frontend_hits_total{namespace="webapp"} 5000
+# TYPE restapi_hits_total counter
+restapi_hits_total{namespace="webapp"} 6000
+
+# this is a labeled metric
+restapi_hits{namespace="webapp",endpoint="/cheeses/pepper-jack"} 2000
+restapi_hits{namespace="webapp",endpoint="/cheeses/cheddar"} 4000
+`
+
 func makePodMetrics(ns, name string, time time.Time, metricName string, metricVal float32) *core.MetricSet {
 	return &core.MetricSet{
 		ScrapeTime: time,
@@ -52,25 +71,6 @@ func TestPrometheusTextIngest(t *testing.T) {
 
 	nowTime := time.Now().Truncate(time.Millisecond)
 	nowFunc = func() time.Time { return nowTime }
-
-	testPrometheusTextMetrics := `
-# This is a pod-level metric (it might be used for autoscaling)
-# TYPE http_requests_per_minute gauge
-http_requests_per_minute{namespace="webapp",pod="frontend-server-a-1"} 20
-http_requests_per_minute{namespace="webapp",pod="frontend-server-a-2"} 5
-http_requests_per_minute{namespace="webapp",pod="frontend-server-b-1"} 25
-
-# This is a service-level metric, which will be stored as frontend_hits_total
-# and restapi_hits_total (these might be used for auto-idling)
-# TYPE frontend_hits_total counter
-frontend_hits_total{namespace="webapp"} 5000
-# TYPE restapi_hits_total counter
-restapi_hits_total{namespace="webapp"} 6000
-
-# this is a labeled metric
-restapi_hits{namespace="webapp",endpoint="/cheeses/pepper-jack"} 2000
-restapi_hits{namespace="webapp",endpoint="/cheeses/cheddar"} 4000
-`
 
 	expectedResultBatch := &core.DataBatch{
 		Timestamp: nowTime,
@@ -118,9 +118,32 @@ restapi_hits{namespace="webapp",endpoint="/cheeses/cheddar"} 4000
 		},
 	}
 
-	batch, _, err := ingestPrometheusMetrics("routermetrics", http.Header{
+	metricNames := make(map[string]struct{})
+	batch, _, err := ingestPrometheusMetrics("routermetrics", metricNames, http.Header{
 		"Content-Type": []string{"text/plain; version=0.0.4"},
 	}, strings.NewReader(testPrometheusTextMetrics))
 	require.NoError(err, "should have been able to process the metrics without error")
 	assert.Equal(expectedResultBatch, batch, "ingested data batch should have been as expected")
+}
+
+func TestMetricNamesPopulation(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	nowTime := time.Now()
+	nowFunc = func() time.Time { return nowTime }
+
+	expectedMetricNames := map[string]struct{}{
+		"custom/routermetrics/http_requests_per_minute": struct{}{},
+		"custom/routermetrics/frontend_hits_total":      struct{}{},
+		"custom/routermetrics/restapi_hits_total":       struct{}{},
+		"custom/routermetrics/restapi_hits":             struct{}{},
+	}
+
+	metricNames := make(map[string]struct{})
+	_, _, err := ingestPrometheusMetrics("routermetrics", metricNames, http.Header{
+		"Content-Type": []string{"text/plain; version=0.0.4"},
+	}, strings.NewReader(testPrometheusTextMetrics))
+	require.NoError(err, "should have been able to process the metrics without error")
+	assert.Equal(expectedMetricNames, metricNames, "should have recorded the metrics added")
 }

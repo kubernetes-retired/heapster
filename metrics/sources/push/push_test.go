@@ -40,75 +40,105 @@ func makeGaugeMetricValue(val float32) MetricValue {
 	}
 }
 
-func makeBaseBatch1(nowTime time.Time) DataBatch {
+func makeBaseBatch1(nowTime time.Time) (DataBatch, map[string]struct{}) {
 	return DataBatch{
-		Timestamp: nowTime.Add(-5 * time.Second),
-		MetricSets: map[string]*MetricSet{
-			PodKey("somens", "somepod"): {
-				ScrapeTime: nowTime.Add(-10 * time.Second),
-				MetricValues: map[string]MetricValue{
-					"custom/adminmetrics/mtn_dew_consumption": makeGaugeMetricValue(12.0),
-				},
-				Labels: map[string]string{
-					LabelNamespaceName.Key: "somens",
-					LabelPodName.Key:       "somepod",
-				},
-				LabeledMetrics: []LabeledMetric{
-					{
-						Name:        "custom/adminmetrics/doritos_eaten",
-						Labels:      map[string]string{"flavor": "original"},
-						MetricValue: makeGaugeMetricValue(10.0),
+			Timestamp: nowTime.Add(-5 * time.Second),
+			MetricSets: map[string]*MetricSet{
+				PodKey("somens", "somepod"): {
+					ScrapeTime: nowTime.Add(-10 * time.Second),
+					MetricValues: map[string]MetricValue{
+						"custom/adminmetrics/mtn_dew_consumption": makeGaugeMetricValue(12.0),
 					},
-					{
-						Name:        "custom/adminmetrics/doritos_eaten",
-						Labels:      map[string]string{"flavor": "cool_ranch"},
-						MetricValue: makeGaugeMetricValue(10.0),
+					Labels: map[string]string{
+						LabelNamespaceName.Key: "somens",
+						LabelPodName.Key:       "somepod",
+					},
+					LabeledMetrics: []LabeledMetric{
+						{
+							Name:        "custom/adminmetrics/doritos_eaten",
+							Labels:      map[string]string{"flavor": "original"},
+							MetricValue: makeGaugeMetricValue(10.0),
+						},
+						{
+							Name:        "custom/adminmetrics/doritos_eaten",
+							Labels:      map[string]string{"flavor": "cool_ranch"},
+							MetricValue: makeGaugeMetricValue(10.0),
+						},
 					},
 				},
-			},
 
-			NamespaceKey("somens"): {
-				ScrapeTime: nowTime.Add(-10 * time.Second),
-				MetricValues: map[string]MetricValue{
-					"custom/adminmetrics/cans_collected": makeCntMetricValue(48),
+				NamespaceKey("somens"): {
+					ScrapeTime: nowTime.Add(-10 * time.Second),
+					MetricValues: map[string]MetricValue{
+						"custom/adminmetrics/cans_collected": makeCntMetricValue(48),
+					},
+					Labels: map[string]string{
+						LabelNamespaceName.Key: "somens",
+					},
+					LabeledMetrics: nil,
 				},
-				Labels: map[string]string{
-					LabelNamespaceName.Key: "somens",
-				},
-				LabeledMetrics: nil,
 			},
-		},
-	}
+		}, map[string]struct{}{
+			"custom/adminmetrics/mtn_dew_consumption": {},
+			"custom/adminmetrics/doritos_eaten":       {},
+			"custom/adminmetrics/cans_collected":      {},
+		}
 }
 
-func makeBaseBatch2(nowTime time.Time) DataBatch {
+func makeBaseBatch2(nowTime time.Time) (DataBatch, map[string]struct{}) {
 	return DataBatch{
-		Timestamp: nowTime.Add(-5 * time.Second),
-		MetricSets: map[string]*MetricSet{
-			NamespaceKey("somens"): {
-				ScrapeTime: nowTime.Add(-10 * time.Second),
-				MetricValues: map[string]MetricValue{
-					"custom/routermetrics/frontend_http_hits": makeGaugeMetricValue(20000.0),
-					"custom/routermetrics/proxy_http_hits":    makeGaugeMetricValue(500000.0),
+			Timestamp: nowTime.Add(-5 * time.Second),
+			MetricSets: map[string]*MetricSet{
+				NamespaceKey("somens"): {
+					ScrapeTime: nowTime.Add(-10 * time.Second),
+					MetricValues: map[string]MetricValue{
+						"custom/routermetrics/frontend_http_hits": makeGaugeMetricValue(20000.0),
+						"custom/routermetrics/proxy_http_hits":    makeGaugeMetricValue(500000.0),
+					},
+					Labels: map[string]string{
+						LabelNamespaceName.Key: "somens",
+					},
+					LabeledMetrics: nil,
 				},
-				Labels: map[string]string{
-					LabelNamespaceName.Key: "somens",
+				NamespaceKey("somens2"): {
+					ScrapeTime: nowTime.Add(-10 * time.Second),
+					MetricValues: map[string]MetricValue{
+						"custom/routermetrics/frontend_http_hits": makeGaugeMetricValue(20.0),
+						"custom/routermetrics/proxy_http_hits":    makeGaugeMetricValue(500.0),
+					},
+					Labels: map[string]string{
+						LabelNamespaceName.Key: "somens2",
+					},
+					LabeledMetrics: nil,
 				},
-				LabeledMetrics: nil,
 			},
-			NamespaceKey("somens2"): {
-				ScrapeTime: nowTime.Add(-10 * time.Second),
-				MetricValues: map[string]MetricValue{
-					"custom/routermetrics/frontend_http_hits": makeGaugeMetricValue(20.0),
-					"custom/routermetrics/proxy_http_hits":    makeGaugeMetricValue(500.0),
-				},
-				Labels: map[string]string{
-					LabelNamespaceName.Key: "somens2",
-				},
-				LabeledMetrics: nil,
+		}, map[string]struct{}{
+			"custom/routermetrics/frontend_http_hits": {},
+			"custom/routermetrics/proxy_http_hits":    {},
+		}
+}
+
+func TestPushMetricsOverLimit(t *testing.T) {
+	assert := assert.New(t)
+	src := memoryPushSource{
+		dataBatches:  nil,
+		metricsLimit: 3,
+		metricNames: map[string]map[string]struct{}{
+			"somesource": {
+				"m1": {},
+				"m2": {},
 			},
 		},
 	}
+
+	// batch is irrelevant here
+	err := src.PushMetrics(nil, "somesource", map[string]struct{}{"m3": {}, "m4": {}})
+
+	assert.Error(err, "should have thrown an error indicating the metrics limit was reach")
+	outputBatch := src.ScrapeMetrics(time.Time{}, time.Time{})
+
+	assert.Empty(outputBatch.MetricSets)
+
 }
 
 func TestPushMetricsIntoPushSource(t *testing.T) {
@@ -116,18 +146,18 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 	nowTime := time.Now()
 	nowFunc = func() time.Time { return nowTime }
 
-	batch1 := makeBaseBatch1(nowTime)
-	batchBefore := makeBaseBatch1(nowTime.Add(-2 * time.Minute))
-	batchAfter := makeBaseBatch2(nowTime.Add(2 * time.Minute))
+	batch1, batch1Names := makeBaseBatch1(nowTime)
+	batchBefore, batchBeforeNames := makeBaseBatch1(nowTime.Add(-2 * time.Minute))
+	batchAfter, batchAfterNames := makeBaseBatch2(nowTime.Add(2 * time.Minute))
 
-	batch1Multi := makeBaseBatch1(nowTime)
+	batch1Multi, _ := makeBaseBatch1(nowTime)
 	batch1Multi.MetricSets[PodKey("somens", "somepod")].MetricValues["custom/adminmetrics/cheese_sticks_eaten"] = makeGaugeMetricValue(6.5)
 	avgedMetric := makeGaugeMetricValue(11.0)
 	avgedMetric.IntValue = 2
 	batch1Multi.MetricSets[PodKey("somens", "somepod")].MetricValues["custom/adminmetrics/mtn_dew_consumption"] = avgedMetric
 	batch1Multi.Timestamp = nowTime
 
-	batch1Multi2 := makeBaseBatch1(nowTime)
+	batch1Multi2, _ := makeBaseBatch1(nowTime)
 	avgedMetric2 := makeGaugeMetricValue(10.0)
 	avgedMetric2.IntValue = 2
 	avgedMetric2New := makeGaugeMetricValue(32.0 / 3.0)
@@ -135,9 +165,9 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 	batch1Multi2.MetricSets[PodKey("somens", "somepod")].MetricValues["custom/adminmetrics/mtn_dew_consumption"] = avgedMetric2New
 	batch1Multi2.Timestamp = nowTime
 
-	batch2 := makeBaseBatch2(nowTime)
+	batch2, batch2Names := makeBaseBatch2(nowTime)
 
-	mergedBatch := makeBaseBatch1(nowTime)
+	mergedBatch, _ := makeBaseBatch1(nowTime)
 	mergedBatch.Timestamp = nowTime
 	mergedBatch.MetricSets[NamespaceKey("somens2")] = batch2.MetricSets[NamespaceKey("somens2")]
 
@@ -146,18 +176,20 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 	}
 
 	tests := []struct {
-		test           string
-		inputBatch     *DataBatch
-		inputName      string
-		presentBatches map[string]DataBatch
-		expectedBatch  *DataBatch
-		start          time.Time
-		end            time.Time
+		test             string
+		inputBatch       *DataBatch
+		inputMetricNames map[string]struct{}
+		inputName        string
+		presentBatches   map[string]DataBatch
+		expectedBatch    *DataBatch
+		start            time.Time
+		end              time.Time
 	}{
 		{
-			test:       "new batch with the same name merges with older batch, overwrites when necessary",
-			inputBatch: &batch1,
-			inputName:  "adminmetrics",
+			test:             "new batch with the same name merges with older batch, overwrites when necessary",
+			inputBatch:       &batch1,
+			inputName:        "adminmetrics",
+			inputMetricNames: batch1Names,
 			presentBatches: map[string]DataBatch{
 				"adminmetrics": {
 					Timestamp: nowTime.Add(-10 * time.Second),
@@ -212,20 +244,22 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 			expectedBatch: &batch1Multi2,
 		},
 		{
-			test:       "batch before start is ignored",
-			inputBatch: &batchBefore,
-			inputName:  "adminmetrics",
-			start:      nowTime.Add(-1 * time.Minute),
+			test:             "batch before start is ignored",
+			inputBatch:       &batchBefore,
+			inputMetricNames: batchBeforeNames,
+			inputName:        "adminmetrics",
+			start:            nowTime.Add(-1 * time.Minute),
 			expectedBatch: &DataBatch{
 				Timestamp:  nowTime,
 				MetricSets: make(map[string]*MetricSet),
 			},
 		},
 		{
-			test:       "batch after end is ignored",
-			inputBatch: &batchAfter,
-			inputName:  "adminmetrics",
-			end:        nowTime.Add(1 * time.Minute),
+			test:             "batch after end is ignored",
+			inputBatch:       &batchAfter,
+			inputMetricNames: batchAfterNames,
+			inputName:        "adminmetrics",
+			end:              nowTime.Add(1 * time.Minute),
 			expectedBatch: &DataBatch{
 				Timestamp:  nowTime,
 				MetricSets: make(map[string]*MetricSet),
@@ -233,9 +267,10 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 		},
 		{
 			// This test is dependent on the behavior of MergeMetricSet
-			test:       "two different sources' batches merge properly",
-			inputBatch: &batch2,
-			inputName:  "routermetrics",
+			test:             "two different sources' batches merge properly",
+			inputBatch:       &batch2,
+			inputMetricNames: batch2Names,
+			inputName:        "routermetrics",
 			presentBatches: map[string]DataBatch{
 				"adminmetrics": batch1,
 			},
@@ -252,7 +287,7 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 			dataBatches: test.presentBatches,
 		}
 
-		src.PushMetrics(test.inputBatch, test.inputName)
+		src.PushMetrics(test.inputBatch, test.inputName, test.inputMetricNames)
 		outputBatch := src.ScrapeMetrics(test.start, test.end)
 		if !assert.Equal(test.expectedBatch, outputBatch, fmt.Sprintf("%s: scraped batch was not as expected", test.test)) {
 			for k, v := range test.expectedBatch.MetricSets {

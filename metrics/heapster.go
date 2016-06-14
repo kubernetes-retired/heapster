@@ -57,6 +57,7 @@ var (
 	argHistoricalSource    = flag.String("historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
 	argTLSPushClientCAFile = flag.String("tls_push_client_ca", "", "file containing TLS client CA for client cert validation for push metrics")
 	argAllowedPushUsers    = flag.String("allowed_push_users", "", "comma-separated list of allowed users for push metrics")
+	argMaxPushMetrics      = flag.Int("max_push_metrics", 0, "maximum number of unique metrics per push source (defaults to 0 for unlimitted")
 )
 
 func main() {
@@ -76,7 +77,7 @@ func main() {
 		glog.Fatal("Wrong number of sources specified")
 	}
 	sourceFactory := sources.NewSourceFactory()
-	sourceProvider, pushSource, err := sourceFactory.BuildAll(argSources)
+	sourceProvider, pushSource, err := sourceFactory.BuildAll(argSources, *argMaxPushMetrics)
 	if err != nil {
 		glog.Fatalf("Failed to create source provide: %v", err)
 	}
