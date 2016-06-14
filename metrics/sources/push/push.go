@@ -15,6 +15,7 @@
 package push
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -33,8 +34,12 @@ type PushSource interface {
 	MetricsSource
 
 	// PushMetrics stores a batch of metrics to be retrived by the next call to ScrapeMetrics.
-	// The metrics should already be prefixed/namespaced by sourceName as appropriate.
-	PushMetrics(batch *DataBatch, sourceName string)
+	// The metrics should already be prefixed/namespaced by sourceName as appropriate.  It
+	// returns an error if the push would have violated the metric name limit
+	// (based on the set of names added).  It is expected that the set of names passed
+	// matches the set of names present in the input batch, but this is not enforced
+	// by the method.
+	PushMetrics(batch *DataBatch, sourceName string, names map[string]struct{}) error
 }
 
 // pushProvider is a MetricsSourceProvider which returns both some sources from a base
@@ -58,10 +63,13 @@ func (p *pushProvider) GetMetricsSources() []MetricsSource {
 }
 
 // NewPushProvider returns a new MetricsSourceProvider which provides sources from the given
-// MetricsSourceProvider (if any), as well as providing a PushSource.
-func NewPushProvider(baseProvider MetricsSourceProvider) (MetricsSourceProvider, PushSource, error) {
+// MetricsSourceProvider (if any), as well as providing a PushSource.  If metricsLimit is non-zero,
+// source will be limitted to that many metric names per scrape.
+func NewPushProvider(baseProvider MetricsSourceProvider, metricsLimit int) (MetricsSourceProvider, PushSource, error) {
 	pushSource := &memoryPushSource{
-		dataBatches: make(map[string]DataBatch),
+		dataBatches:  make(map[string]DataBatch),
+		metricNames:  make(map[string]map[string]struct{}),
+		metricsLimit: metricsLimit,
 	}
 
 	provider := &pushProvider{
@@ -73,7 +81,9 @@ func NewPushProvider(baseProvider MetricsSourceProvider) (MetricsSourceProvider,
 }
 
 type memoryPushSource struct {
-	dataBatches map[string]DataBatch
+	dataBatches  map[string]DataBatch
+	metricNames  map[string]map[string]struct{}
+	metricsLimit int
 	sync.Mutex
 }
 
@@ -109,6 +119,7 @@ func (src *memoryPushSource) ScrapeMetrics(start, end time.Time) *DataBatch {
 
 		mergeMetricSets(resBatch.MetricSets, batch.MetricSets, false)
 		delete(src.dataBatches, sourceName)
+		delete(src.metricNames, sourceName)
 	}
 
 	glog.V(5).Infof("Scraped batch from push source: %#v", resBatch)
@@ -179,17 +190,44 @@ func mergeMetricSets(dest map[string]*MetricSet, src map[string]*MetricSet, over
 }
 
 // PushMetrics stores a batch of metrics to be retrived by the next call to ScrapeMetrics
-func (src *memoryPushSource) PushMetrics(batch *DataBatch, sourceName string) {
+func (src *memoryPushSource) PushMetrics(batch *DataBatch, sourceName string, newMetricNames map[string]struct{}) error {
 	src.Lock()
 	defer src.Unlock()
+
+	// make sure this wouldn't violate the limit
+	if src.metricsLimit > 0 {
+		sourceMetricNames, ok := src.metricNames[sourceName]
+		if !ok {
+			sourceMetricNames := make(map[string]struct{})
+			src.metricNames[sourceName] = sourceMetricNames
+		}
+
+		metricsCount := len(src.metricNames[sourceName])
+		for name := range newMetricNames {
+			if _, ok := sourceMetricNames[name]; !ok {
+				metricsCount++
+			}
+		}
+
+		if metricsCount > src.metricsLimit {
+			return fmt.Errorf("only %v distinctly-named metrics may be added per batch, but %v would have been pushed", src.metricsLimit, metricsCount)
+		}
+
+		// actually record the metrics for future use
+		for name := range newMetricNames {
+			sourceMetricNames[name] = struct{}{}
+		}
+	}
 
 	// if an entry already exists, merge it with the existing set
 	// (overwriting duplicate entries), since we could have multiple
 	// producers with the same name (e.g. the same daemon on each node)
 	if oldBatch, ok := src.dataBatches[sourceName]; ok {
 		mergeMetricSets(oldBatch.MetricSets, batch.MetricSets, true)
-		return
+		return nil
 	}
 
 	src.dataBatches[sourceName] = *batch
+
+	return nil
 }

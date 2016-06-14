@@ -40,7 +40,7 @@ func (this *SourceFactory) Build(uri flags.Uri) (core.MetricsSourceProvider, err
 	}
 }
 
-func (this *SourceFactory) BuildAll(uris flags.Uris) (core.MetricsSourceProvider, push.PushSource, error) {
+func (this *SourceFactory) BuildAll(uris flags.Uris, maxPushMetrics int) (core.MetricsSourceProvider, push.PushSource, error) {
 	// We can have 2 sources, if one is a push source
 	if len(uris) == 2 {
 		// we can't have two push sources
@@ -66,7 +66,7 @@ func (this *SourceFactory) BuildAll(uris flags.Uris) (core.MetricsSourceProvider
 			return nil, nil, err
 		}
 
-		return push.NewPushProvider(provider)
+		return push.NewPushProvider(provider, maxPushMetrics)
 	}
 
 	if len(uris) != 1 {
@@ -74,7 +74,7 @@ func (this *SourceFactory) BuildAll(uris flags.Uris) (core.MetricsSourceProvider
 	}
 
 	if uris[0].Key == "push" {
-		return push.NewPushProvider(nil)
+		return push.NewPushProvider(nil, maxPushMetrics)
 	}
 
 	provider, err := this.Build(uris[0])
