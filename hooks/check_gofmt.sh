@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FILES=$(gofmt -l `find . -type f -name "*.go" | grep -v Godeps`)
+FILES=$(gofmt -l `find . -type f -name "*.go" | grep -v vendor`)
 if [[ ! -z "$FILES" ]]; then
   echo Run gofmt on the following files:$'\n' $FILES
   exit 1
