@@ -137,6 +137,7 @@ var gcmLabels = []LabelDescriptor{
 	LabelContainerName,
 	LabelContainerBaseImage,
 	LabelCustomMetricName,
+	LabelResourceID,
 }
 
 var gcmNodeAutoscalingLabels = []LabelDescriptor{
