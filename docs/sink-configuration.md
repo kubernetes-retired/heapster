@@ -13,7 +13,7 @@ heapster can store data into multiple sinks at once.
 ### Log
 
 This sinks writes all data to the standard output which is particularly useful for debugging.
-  
+
    --sink=log
 
 ### InfluxDB
@@ -51,7 +51,7 @@ To use the InfluxDB sink add the following flag:
 
 	--sink=gcl
 
-*Notes:* 
+*Notes:*
  * This sink works only on a Google Compute Enginer VM as of now
  * GCE instance must have “https://www.googleapis.com/auth/logging.write” auth scope
  * GCE instance must have Logging API enabled for the project in Google Developer Console
@@ -130,11 +130,11 @@ Normally, kafka server has multi brokers, so brokers' list need be configured fo
 So, we provide kafka brokers' list and topics about timeseries & topic in url's query string.
 Options can be set in query string, like this:
 
-* `brokers` - Kafka's brokers' list. 
+* `brokers` - Kafka's brokers' list.
 * `timeseriestopic` - Kafka's topic for timeseries. Default value : `heapster-metrics`
 * `eventstopic` - Kafka's topic for events.Default value : `heapster-events`
 
-For example, 
+For example,
 
     --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&timeseriestopic=testseries&eventstopic=testtopic"
 
@@ -152,30 +152,40 @@ The following options are available:
 * `storeEvents` - Control storage of events. Default: `true`
 
 ### Elasticsearch
-This sink supports monitoring metrics and events.
-To use the Elasticsearch sink add the following flag:
+This sink supports monitoring metrics and events. To use the ElasticSearch
+sink add the following flag:
 
     --sink=elasticsearch:<ES_SERVER_URL>[?<OPTIONS>]
 
-Normally, elasticsearch cluster has multi nodes or a proxy, so nodes' list or proxy 
-server need be configured for elasticsearch sink.
-Thus, we can set `ES_SERVER_URL` to a dummy value, and provide nodes list or proxy server
-in url's query string.
-Besides, the following options can be set in query string:
+Normally an ElasticSearch cluster has multiple nodes or a proxy, so these need
+to be configured for the ElasticSearch sink. To do this, you can set
+`ES_SERVER_URL` to a dummy value, and use the `?nodes=` query value for each
+additional node in the cluster. For example:
 
-* `Index` - ES's index for metrics&events. Default: `heapster`
+  --sink=elasticsearch:?nodes=foo.com:9200&nodes=bar.com:9200
 
-  if the ES cluster needs authentication, we should provide the username and secret.
+Besides this, the following options can be set in query string:
 
-* `esUserName`      - ES's user name
-* `esUserSecret`    - ES's user secret
+* `Index` - the index for metrics and events. The default is `heapster`
+* `esUserName` - the username if authentication is enabled
+* `esUserSecret` - the password if authentication is enabled
+* `maxRetries` - the number of retries that the Elastic client will perform
+  for a single request after before giving up and return an error. It is `0`
+  by default, so retry is disabled by default.
+* `healthCheck` - specifies if healthchecks are enabled by default. It is enabled
+  by default. To disable, provide a negative boolean value like `0` or `false`.
+* `sniff` - specifies if the sniffer is enabled by default. It is enabled
+  by default. To disable, provide a negative boolean value like `0` or `false`.
+* `startupHealthcheckTimeout` - the time in seconds the healthcheck waits for
+  a response from Elasticsearch on startup, i.e. when creating a client. The
+  default value is `1`.
 
 Like this:
 
     --sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testMetric"
-	
+
 	or
-	
+
 	--sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testEvent"
 
 ## Using multiple sinks
