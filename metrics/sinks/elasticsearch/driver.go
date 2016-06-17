@@ -33,7 +33,6 @@ const (
 type SaveDataFunc func(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error
 
 type elasticSearchSink struct {
-	esClient     *elastic.Client
 	saveDataFunc SaveDataFunc
 	esConfig     esCommon.ElasticSearchConfig
 	sync.RWMutex
@@ -59,7 +58,7 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 				},
 				MetricsTimestamp: dataBatch.Timestamp.UTC(),
 			}
-			sink.saveDataFunc(sink.esClient, sink.esConfig.Index, typeName, point)
+			sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
 		}
 		for _, metric := range metricSet.LabeledMetrics {
 			labels := make(map[string]string)
@@ -77,7 +76,7 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 				},
 				MetricsTimestamp: dataBatch.Timestamp.UTC(),
 			}
-			sink.saveDataFunc(sink.esClient, sink.esConfig.Index, typeName, point)
+			sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
 		}
 	}
 }
@@ -96,8 +95,8 @@ func NewElasticSearchSink(uri *url.URL) (core.DataSink, error) {
 	if err != nil {
 		glog.V(2).Infof("failed to config elasticsearch")
 		return nil, err
-
 	}
+
 	esSink.esConfig = *elasticsearchConfig
 	esSink.saveDataFunc = esCommon.SaveDataIntoES
 	glog.V(2).Infof("elasticsearch sink setup successfully")
