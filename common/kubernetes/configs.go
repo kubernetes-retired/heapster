@@ -120,9 +120,6 @@ func GetKubeClientConfig(uri *url.URL) (*kube_client.Config, error) {
 	if len(kubeConfig.Host) == 0 {
 		return nil, fmt.Errorf("invalid kubernetes master url specified")
 	}
-	if len(kubeConfig.GroupVersion.Version) == 0 {
-		return nil, fmt.Errorf("invalid kubernetes API version specified")
-	}
 
 	useServiceAccount := defaultUseServiceAccount
 	if len(opts["useServiceAccount"]) >= 1 {
