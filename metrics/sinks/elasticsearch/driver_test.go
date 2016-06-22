@@ -48,19 +48,13 @@ func SaveDataIntoES_Stub(esClient *elastic.Client, indexName string, typeName st
 
 // Returns a fake ES sink.
 func NewFakeSink() fakeESSink {
-	var ESClient elastic.Client
-	fakeSinkESNodes := make([]string, 2)
 	savedData := make([]dataSavedToES, 0)
 	return fakeESSink{
 		&elasticSearchSink{
-			esClient:     &ESClient,
 			saveDataFunc: SaveDataIntoES_Stub,
 			esConfig: esCommon.ElasticSearchConfig{
-				Index:        "heapster-metric-index",
-				NeedAuthen:   false,
-				EsUserName:   "admin",
-				EsUserSecret: "admin",
-				EsNodes:      fakeSinkESNodes,
+				Index:    "heapster-metric-index",
+				EsClient: &elastic.Client{},
 			},
 		},
 		savedData,

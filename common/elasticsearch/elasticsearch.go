@@ -16,6 +16,8 @@ package elasticsearch
 import (
 	"fmt"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/olivere/elastic"
@@ -30,12 +32,8 @@ const (
 type SaveDataFunc func(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error
 
 type ElasticSearchConfig struct {
-	EsClient     *elastic.Client
-	Index        string
-	NeedAuthen   bool
-	EsUserName   string
-	EsUserSecret string
-	EsNodes      []string
+	EsClient *elastic.Client
+	Index    string
 }
 
 // SaveDataIntoES save metrics and events to ES by using ES client
@@ -71,6 +69,8 @@ func SaveDataIntoES(esClient *elastic.Client, indexName string, typeName string,
 	return nil
 }
 
+// CreateElasticSearchConfig creates an ElasticSearch configuration struct
+// which contains an ElasticSearch client for later use
 func CreateElasticSearchConfig(uri *url.URL) (*ElasticSearchConfig, error) {
 
 	var esConfig ElasticSearchConfig
@@ -85,34 +85,58 @@ func CreateElasticSearchConfig(uri *url.URL) (*ElasticSearchConfig, error) {
 		esConfig.Index = opts["index"][0]
 	}
 
-	// If the ES cluster needs authentication, the username and secret
-	// should be set in sink config.Else, set the Authenticate flag to false
-	esConfig.NeedAuthen = false
-	if len(opts["esUserName"]) > 0 && len(opts["esUserSecret"]) > 0 {
-		esConfig.EsUserName = opts["esUserName"][0]
-		esConfig.NeedAuthen = true
-	}
-
-	// set the URL endpoints of the ES's nodes. Notice that
-	// when sniffing is enabled, these URLs are used to initially sniff the
-	// cluster on startup.
+	// Set the URL endpoints of the ES's nodes. Notice that when sniffing is
+	// enabled, these URLs are used to initially sniff the cluster on startup.
 	if len(opts["nodes"]) < 1 {
 		return nil, fmt.Errorf("There is no node assigned for connecting ES cluster")
 	}
-	esConfig.EsNodes = append(esConfig.EsNodes, opts["nodes"]...)
-	glog.V(2).Infof("configing elasticsearch sink with ES's nodes - %v", esConfig.EsNodes)
 
-	var client *(elastic.Client)
-	if esConfig.NeedAuthen == false {
-		client, err = elastic.NewClient(elastic.SetURL(esConfig.EsNodes...))
-	} else {
-		client, err = elastic.NewClient(elastic.SetBasicAuth(esConfig.EsUserName, esConfig.EsUserSecret), elastic.SetURL(esConfig.EsNodes...))
+	startupFns := []elastic.ClientOptionFunc{elastic.SetURL(opts["nodes"]...)}
+
+	// If the ES cluster needs authentication, the username and secret
+	// should be set in sink config.Else, set the Authenticate flag to false
+	if len(opts["esUserName"]) > 0 && len(opts["esUserSecret"]) > 0 {
+		startupFns = append(startupFns, elastic.SetBasicAuth(opts["esUserName"][0], opts["esUserSecret"][0]))
 	}
 
+	if len(opts["maxRetries"]) > 0 {
+		maxRetries, err := strconv.Atoi(opts["maxRetries"][0])
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse URL's maxRetries value into an int")
+		}
+		startupFns = append(startupFns, elastic.SetMaxRetries(maxRetries))
+	}
+
+	if len(opts["healthCheck"]) > 0 {
+		healthCheck, err := strconv.ParseBool(opts["healthCheck"][0])
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse URL's healthCheck value into a bool")
+		}
+		startupFns = append(startupFns, elastic.SetHealthcheck(healthCheck))
+	}
+
+	if len(opts["sniff"]) > 0 {
+		sniff, err := strconv.ParseBool(opts["sniff"][0])
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse URL's sniff value into a bool")
+		}
+		startupFns = append(startupFns, elastic.SetSniff(sniff))
+	}
+
+	if len(opts["startupHealthcheckTimeout"]) > 0 {
+		timeout, err := time.ParseDuration(opts["startupHealthcheckTimeout"][0] + "s")
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse URL's startupHealthcheckTimeout: %s", err.Error())
+		}
+		startupFns = append(startupFns, elastic.SetHealthcheckTimeoutStartup(timeout))
+	}
+
+	esConfig.EsClient, err = elastic.NewClient(startupFns...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ElasticSearch client: %v", err)
 	}
-	esConfig.EsClient = client
+
 	glog.V(2).Infof("elasticsearch sink configure successfully")
+
 	return &esConfig, nil
 }

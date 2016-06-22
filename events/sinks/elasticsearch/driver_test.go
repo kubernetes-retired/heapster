@@ -17,14 +17,15 @@ package elasticsearch
 import (
 	"encoding/json"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/olivere/elastic"
 	"github.com/stretchr/testify/assert"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	"k8s.io/heapster/events/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	kube_api_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
-	"testing"
-	"time"
 )
 
 type dataSavedToES struct {
@@ -38,7 +39,7 @@ type fakeESSink struct {
 
 var FakeESSink fakeESSink
 
-func SaveDataIntoES_Stub(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error {
+func SaveDataIntoESStub(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error {
 	jsonItems, err := json.Marshal(sinkData)
 	if err != nil {
 		return fmt.Errorf("failed to transform the items to json : %s", err)
@@ -49,19 +50,13 @@ func SaveDataIntoES_Stub(esClient *elastic.Client, indexName string, typeName st
 
 // Returns a fake ES sink.
 func NewFakeSink() fakeESSink {
-	var ESClient elastic.Client
-	fakeSinkESNodes := make([]string, 2)
 	savedData := make([]dataSavedToES, 0)
 	return fakeESSink{
 		&elasticSearchSink{
-			esClient:     &ESClient,
-			saveDataFunc: SaveDataIntoES_Stub,
+			saveDataFunc: SaveDataIntoESStub,
 			esConfig: esCommon.ElasticSearchConfig{
-				Index:        "heapster-metric-index",
-				NeedAuthen:   false,
-				EsUserName:   "admin",
-				EsUserSecret: "admin",
-				EsNodes:      fakeSinkESNodes,
+				Index:    "heapster-metric-index",
+				EsClient: &elastic.Client{},
 			},
 		},
 		savedData,

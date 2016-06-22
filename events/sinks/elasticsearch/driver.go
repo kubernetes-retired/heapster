@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"encoding/json"
+
 	"github.com/golang/glog"
 	"github.com/olivere/elastic"
 	esCommon "k8s.io/heapster/common/elasticsearch"
@@ -36,7 +37,6 @@ const (
 type SaveDataFunc func(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error
 
 type elasticSearchSink struct {
-	esClient     *elastic.Client
 	saveDataFunc SaveDataFunc
 	esConfig     esCommon.ElasticSearchConfig
 	sync.RWMutex
@@ -86,7 +86,7 @@ func (sink *elasticSearchSink) ExportEvents(eventBatch *event_core.EventBatch) {
 		if err != nil {
 			glog.Warningf("Failed to convert event to point: %v", err)
 		}
-		sink.saveDataFunc(sink.esClient, sink.esConfig.Index, typeName, point)
+		sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
 	}
 }
 
@@ -104,8 +104,8 @@ func NewElasticSearchSink(uri *url.URL) (event_core.EventSink, error) {
 	if err != nil {
 		glog.V(2).Infof("failed to config elasticsearch")
 		return nil, err
-
 	}
+
 	esSink.esConfig = *elasticsearchConfig
 	esSink.saveDataFunc = esCommon.SaveDataIntoES
 	glog.V(2).Infof("elasticsearch sink setup successfully")
