@@ -6,9 +6,10 @@ package elastic
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 // IndicesExistsTemplateService checks if a given template exists.
@@ -94,14 +95,18 @@ func (s *IndicesExistsTemplateService) Do() (bool, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("HEAD", path, params, nil)
+	res, err := s.client.PerformRequest("HEAD", path, params, nil, 404)
 	if err != nil {
 		return false, err
 	}
-	if res.StatusCode == 200 {
+
+	// Return operation response
+	switch res.StatusCode {
+	case http.StatusOK:
 		return true, nil
-	} else if res.StatusCode == 404 {
+	case http.StatusNotFound:
 		return false, nil
+	default:
+		return false, fmt.Errorf("elastic: got HTTP code %d when it should have been either 200 or 404", res.StatusCode)
 	}
-	return false, fmt.Errorf("elastic: got HTTP code %d when it should have been either 200 or 404", res.StatusCode)
 }

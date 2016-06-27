@@ -5,13 +5,12 @@
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
 	"strings"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 var (
@@ -87,7 +86,6 @@ func (s *ExplainService) Source(source string) *ExplainService {
 
 // XSourceExclude is a list of fields to exclude from the returned _source field.
 func (s *ExplainService) XSourceExclude(xSourceExclude ...string) *ExplainService {
-	s.xSourceExclude = make([]string, 0)
 	s.xSourceExclude = append(s.xSourceExclude, xSourceExclude...)
 	return s
 }
@@ -132,7 +130,6 @@ func (s *ExplainService) Df(df string) *ExplainService {
 
 // Fields is a list of fields to return in the response.
 func (s *ExplainService) Fields(fields ...string) *ExplainService {
-	s.fields = make([]string, 0)
 	s.fields = append(s.fields, fields...)
 	return s
 }
@@ -145,7 +142,6 @@ func (s *ExplainService) LowercaseExpandedTerms(lowercaseExpandedTerms bool) *Ex
 
 // XSourceInclude is a list of fields to extract and return from the _source field.
 func (s *ExplainService) XSourceInclude(xSourceInclude ...string) *ExplainService {
-	s.xSourceInclude = make([]string, 0)
 	s.xSourceInclude = append(s.xSourceInclude, xSourceInclude...)
 	return s
 }
@@ -170,7 +166,6 @@ func (s *ExplainService) Preference(preference string) *ExplainService {
 
 // XSource is true or false to return the _source field or not, or a list of fields to return.
 func (s *ExplainService) XSource(xSource ...string) *ExplainService {
-	s.xSource = make([]string, 0)
 	s.xSource = append(s.xSource, xSource...)
 	return s
 }
@@ -183,8 +178,13 @@ func (s *ExplainService) Pretty(pretty bool) *ExplainService {
 
 // Query sets a query definition using the Query DSL.
 func (s *ExplainService) Query(query Query) *ExplainService {
+	src, err := query.Source()
+	if err != nil {
+		// Do nothing in case of an error
+		return s
+	}
 	body := make(map[string]interface{})
-	body["query"] = query.Source()
+	body["query"] = src
 	s.bodyJson = body
 	return s
 }
@@ -313,7 +313,7 @@ func (s *ExplainService) Do() (*ExplainResponse, error) {
 
 	// Return operation response
 	ret := new(ExplainResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

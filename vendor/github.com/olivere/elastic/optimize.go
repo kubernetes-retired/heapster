@@ -5,12 +5,11 @@
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 type OptimizeService struct {
@@ -32,12 +31,7 @@ func NewOptimizeService(client *Client) *OptimizeService {
 	return builder
 }
 
-func (s *OptimizeService) Index(index string) *OptimizeService {
-	s.indices = append(s.indices, index)
-	return s
-}
-
-func (s *OptimizeService) Indices(indices ...string) *OptimizeService {
+func (s *OptimizeService) Index(indices ...string) *OptimizeService {
 	s.indices = append(s.indices, indices...)
 	return s
 }
@@ -122,7 +116,7 @@ func (s *OptimizeService) Do() (*OptimizeResult, error) {
 
 	// Return result
 	ret := new(OptimizeResult)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

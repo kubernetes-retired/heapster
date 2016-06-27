@@ -5,12 +5,11 @@
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 // DeleteByQueryService deletes documents that match a query.
@@ -44,18 +43,8 @@ func NewDeleteByQueryService(client *Client) *DeleteByQueryService {
 	return builder
 }
 
-// Index limits the delete-by-query to a single index.
-// You can use _all to perform the operation on all indices.
-func (s *DeleteByQueryService) Index(index string) *DeleteByQueryService {
-	if s.indices == nil {
-		s.indices = make([]string, 0)
-	}
-	s.indices = append(s.indices, index)
-	return s
-}
-
-// Indices sets the indices on which to perform the delete operation.
-func (s *DeleteByQueryService) Indices(indices ...string) *DeleteByQueryService {
+// Index sets the indices on which to perform the delete operation.
+func (s *DeleteByQueryService) Index(indices ...string) *DeleteByQueryService {
 	if s.indices == nil {
 		s.indices = make([]string, 0)
 	}
@@ -63,17 +52,8 @@ func (s *DeleteByQueryService) Indices(indices ...string) *DeleteByQueryService 
 	return s
 }
 
-// Type limits the delete operation to the given type.
-func (s *DeleteByQueryService) Type(typ string) *DeleteByQueryService {
-	if s.types == nil {
-		s.types = make([]string, 0)
-	}
-	s.types = append(s.types, typ)
-	return s
-}
-
-// Types limits the delete operation to the given types.
-func (s *DeleteByQueryService) Types(types ...string) *DeleteByQueryService {
+// Type limits the delete operation to the given types.
+func (s *DeleteByQueryService) Type(types ...string) *DeleteByQueryService {
 	if s.types == nil {
 		s.types = make([]string, 0)
 	}
@@ -261,8 +241,12 @@ func (s *DeleteByQueryService) Do() (*DeleteByQueryResult, error) {
 	// Set body if there is a query set
 	var body interface{}
 	if s.query != nil {
+		src, err := s.query.Source()
+		if err != nil {
+			return nil, err
+		}
 		query := make(map[string]interface{})
-		query["query"] = s.query.Source()
+		query["query"] = src
 		body = query
 	}
 
@@ -274,7 +258,7 @@ func (s *DeleteByQueryService) Do() (*DeleteByQueryResult, error) {
 
 	// Return result
 	ret := new(DeleteByQueryResult)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -282,11 +266,36 @@ func (s *DeleteByQueryService) Do() (*DeleteByQueryResult, error) {
 
 // DeleteByQueryResult is the outcome of executing Do with DeleteByQueryService.
 type DeleteByQueryResult struct {
-	Indices map[string]IndexDeleteByQueryResult `json:"_indices"`
+	Took     int64                               `json:"took"`
+	TimedOut bool                                `json:"timed_out"`
+	Indices  map[string]IndexDeleteByQueryResult `json:"_indices"`
+	Failures []shardOperationFailure             `json:"failures"`
+}
+
+// IndexNames returns the names of the indices the DeleteByQuery touched.
+func (res DeleteByQueryResult) IndexNames() []string {
+	var indices []string
+	for index, _ := range res.Indices {
+		indices = append(indices, index)
+	}
+	return indices
+}
+
+// All returns the index delete-by-query result of all indices.
+func (res DeleteByQueryResult) All() IndexDeleteByQueryResult {
+	all, _ := res.Indices["_all"]
+	return all
 }
 
 // IndexDeleteByQueryResult is the result of a delete-by-query for a specific
 // index.
 type IndexDeleteByQueryResult struct {
-	Shards shardsInfo `json:"_shards"`
+	// Found documents, matching the query.
+	Found int `json:"found"`
+	// Deleted documents, successfully, from the given index.
+	Deleted int `json:"deleted"`
+	// Missing documents when trying to delete them.
+	Missing int `json:"missing"`
+	// Failed documents to be deleted for the given index.
+	Failed int `json:"failed"`
 }

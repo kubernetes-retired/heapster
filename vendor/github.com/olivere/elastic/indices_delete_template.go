@@ -5,11 +5,10 @@
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 // IndicesDeleteTemplateService deletes index templates.
@@ -110,7 +109,7 @@ func (s *IndicesDeleteTemplateService) Do() (*IndicesDeleteTemplateResponse, err
 
 	// Return operation response
 	ret := new(IndicesDeleteTemplateResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

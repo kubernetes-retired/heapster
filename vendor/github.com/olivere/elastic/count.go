@@ -1,16 +1,15 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 // CountService is a convenient service for determining the
@@ -43,44 +42,24 @@ type CountService struct {
 func NewCountService(client *Client) *CountService {
 	return &CountService{
 		client: client,
-		index:  make([]string, 0),
-		typ:    make([]string, 0),
 	}
 }
 
-// Index sets the name of the index to use to restrict the results.
-func (s *CountService) Index(index string) *CountService {
+// Index sets the names of the indices to restrict the results.
+func (s *CountService) Index(index ...string) *CountService {
 	if s.index == nil {
 		s.index = make([]string, 0)
 	}
-	s.index = append(s.index, index)
+	s.index = append(s.index, index...)
 	return s
 }
 
-// Indices sets the names of the indices to restrict the results.
-func (s *CountService) Indices(indices ...string) *CountService {
-	if s.index == nil {
-		s.index = make([]string, 0)
-	}
-	s.index = append(s.index, indices...)
-	return s
-}
-
-// Type sets the type to use to restrict the results.
-func (s *CountService) Type(typ string) *CountService {
+// Type sets the types to use to restrict the results.
+func (s *CountService) Type(typ ...string) *CountService {
 	if s.typ == nil {
 		s.typ = make([]string, 0)
 	}
-	s.typ = append(s.typ, typ)
-	return s
-}
-
-// Types sets the types to use to restrict the results.
-func (s *CountService) Types(types ...string) *CountService {
-	if s.typ == nil {
-		s.typ = make([]string, 0)
-	}
-	s.typ = append(s.typ, types...)
+	s.typ = append(s.typ, typ...)
 	return s
 }
 
@@ -292,8 +271,12 @@ func (s *CountService) Do() (int64, error) {
 	// Setup HTTP request body
 	var body interface{}
 	if s.query != nil {
+		src, err := s.query.Source()
+		if err != nil {
+			return 0, err
+		}
 		query := make(map[string]interface{})
-		query["query"] = s.query.Source()
+		query["query"] = src
 		body = query
 	} else if s.bodyJson != nil {
 		body = s.bodyJson
@@ -309,7 +292,7 @@ func (s *CountService) Do() (int64, error) {
 
 	// Return result
 	ret := new(CountResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return 0, err
 	}
 	if ret != nil {

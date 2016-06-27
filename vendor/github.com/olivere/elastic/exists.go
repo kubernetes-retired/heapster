@@ -9,12 +9,12 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
-// ExistsService checks if a document exists.
+// ExistsService checks for the existence of a document using HEAD.
 //
-// See http://www.elastic.co/guide/en/elasticsearch/reference/current/docs-get.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-get.html
 // for details.
 type ExistsService struct {
 	client     *Client
@@ -22,11 +22,11 @@ type ExistsService struct {
 	id         string
 	index      string
 	typ        string
-	parent     string
 	preference string
 	realtime   *bool
 	refresh    *bool
 	routing    string
+	parent     string
 }
 
 // NewExistsService creates a new ExistsService.
@@ -48,21 +48,14 @@ func (s *ExistsService) Index(index string) *ExistsService {
 	return s
 }
 
-// Type is the type of the document (use `_all` to fetch the first
-// document matching the ID across all types).
+// Type is the type of the document (use `_all` to fetch the first document
+// matching the ID across all types).
 func (s *ExistsService) Type(typ string) *ExistsService {
 	s.typ = typ
 	return s
 }
 
-// Parent is the ID of the parent document.
-func (s *ExistsService) Parent(parent string) *ExistsService {
-	s.parent = parent
-	return s
-}
-
-// Preference specifies the node or shard the operation should be
-// performed on (default: random).
+// Preference specifies the node or shard the operation should be performed on (default: random).
 func (s *ExistsService) Preference(preference string) *ExistsService {
 	s.preference = preference
 	return s
@@ -80,9 +73,15 @@ func (s *ExistsService) Refresh(refresh bool) *ExistsService {
 	return s
 }
 
-// Routing is the specific routing value.
+// Routing is a specific routing value.
 func (s *ExistsService) Routing(routing string) *ExistsService {
 	s.routing = routing
+	return s
+}
+
+// Parent is the ID of the parent document.
+func (s *ExistsService) Parent(parent string) *ExistsService {
+	s.parent = parent
 	return s
 }
 
@@ -109,12 +108,6 @@ func (s *ExistsService) buildURL() (string, url.Values, error) {
 	if s.pretty {
 		params.Set("pretty", "1")
 	}
-	if s.parent != "" {
-		params.Set("parent", s.parent)
-	}
-	if s.preference != "" {
-		params.Set("preference", s.preference)
-	}
 	if s.realtime != nil {
 		params.Set("realtime", fmt.Sprintf("%v", *s.realtime))
 	}
@@ -123,6 +116,12 @@ func (s *ExistsService) buildURL() (string, url.Values, error) {
 	}
 	if s.routing != "" {
 		params.Set("routing", s.routing)
+	}
+	if s.parent != "" {
+		params.Set("parent", s.parent)
+	}
+	if s.preference != "" {
+		params.Set("preference", s.preference)
 	}
 	return path, params, nil
 }
@@ -159,12 +158,12 @@ func (s *ExistsService) Do() (bool, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("HEAD", path, params, nil)
+	res, err := s.client.PerformRequest("HEAD", path, params, nil, 404)
 	if err != nil {
 		return false, err
 	}
 
-	// Evaluate operation response
+	// Return operation response
 	switch res.StatusCode {
 	case http.StatusOK:
 		return true, nil

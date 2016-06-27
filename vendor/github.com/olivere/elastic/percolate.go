@@ -5,12 +5,11 @@
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 // PercolateService is documented at http://www.elasticsearch.org/guide/en/elasticsearch/reference/1.4/search-percolate.html.
@@ -287,7 +286,7 @@ func (s *PercolateService) Do() (*PercolateResponse, error) {
 
 	// Return operation response
 	ret := new(PercolateResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -298,7 +297,6 @@ type PercolateResponse struct {
 	TookInMillis int64             `json:"took"`  // search time in milliseconds
 	Total        int64             `json:"total"` // total matches
 	Matches      []*PercolateMatch `json:"matches,omitempty"`
-	Facets       SearchFacets      `json:"facets,omitempty"`       // results from facets
 	Aggregations Aggregations      `json:"aggregations,omitempty"` // results from aggregations
 }
 

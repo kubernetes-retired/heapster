@@ -1,15 +1,17 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
+
+import "errors"
 
 // -- Sorter --
 
 // Sorter is an interface for sorting strategies, e.g. ScoreSort or FieldSort.
 // See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-request-sort.html.
 type Sorter interface {
-	Source() interface{}
+	Source() (interface{}, error)
 }
 
 // -- SortInfo --
@@ -22,11 +24,11 @@ type SortInfo struct {
 	Missing        interface{}
 	IgnoreUnmapped *bool
 	SortMode       string
-	NestedFilter   Filter
+	NestedFilter   Query
 	NestedPath     string
 }
 
-func (info SortInfo) Source() interface{} {
+func (info SortInfo) Source() (interface{}, error) {
 	prop := make(map[string]interface{})
 	if info.Ascending {
 		prop["order"] = "asc"
@@ -40,17 +42,21 @@ func (info SortInfo) Source() interface{} {
 		prop["ignore_unmapped"] = *info.IgnoreUnmapped
 	}
 	if info.SortMode != "" {
-		prop["sort_mode"] = info.SortMode
+		prop["mode"] = info.SortMode
 	}
 	if info.NestedFilter != nil {
-		prop["nested_filter"] = info.NestedFilter
+		src, err := info.NestedFilter.Source()
+		if err != nil {
+			return nil, err
+		}
+		prop["nested_filter"] = src
 	}
 	if info.NestedPath != "" {
 		prop["nested_path"] = info.NestedPath
 	}
 	source := make(map[string]interface{})
 	source[info.Field] = prop
-	return source
+	return source, nil
 }
 
 // -- ScoreSort --
@@ -85,14 +91,14 @@ func (s ScoreSort) Desc() ScoreSort {
 }
 
 // Source returns the JSON-serializable data.
-func (s ScoreSort) Source() interface{} {
+func (s ScoreSort) Source() (interface{}, error) {
 	source := make(map[string]interface{})
 	x := make(map[string]interface{})
 	source["_score"] = x
 	if s.ascending {
 		x["reverse"] = true
 	}
-	return source
+	return source, nil
 }
 
 // -- FieldSort --
@@ -106,7 +112,7 @@ type FieldSort struct {
 	ignoreUnmapped *bool
 	unmappedType   *string
 	sortMode       *string
-	nestedFilter   Filter
+	nestedFilter   Query
 	nestedPath     *string
 }
 
@@ -174,7 +180,7 @@ func (s FieldSort) SortMode(sortMode string) FieldSort {
 
 // NestedFilter sets a filter that nested objects should match with
 // in order to be taken into account for sorting.
-func (s FieldSort) NestedFilter(nestedFilter Filter) FieldSort {
+func (s FieldSort) NestedFilter(nestedFilter Query) FieldSort {
 	s.nestedFilter = nestedFilter
 	return s
 }
@@ -187,7 +193,7 @@ func (s FieldSort) NestedPath(nestedPath string) FieldSort {
 }
 
 // Source returns the JSON-serializable data.
-func (s FieldSort) Source() interface{} {
+func (s FieldSort) Source() (interface{}, error) {
 	source := make(map[string]interface{})
 	x := make(map[string]interface{})
 	source[s.fieldName] = x
@@ -209,12 +215,16 @@ func (s FieldSort) Source() interface{} {
 		x["mode"] = *s.sortMode
 	}
 	if s.nestedFilter != nil {
-		x["nested_filter"] = s.nestedFilter.Source()
+		src, err := s.nestedFilter.Source()
+		if err != nil {
+			return nil, err
+		}
+		x["nested_filter"] = src
 	}
 	if s.nestedPath != nil {
 		x["nested_path"] = *s.nestedPath
 	}
-	return source
+	return source, nil
 }
 
 // -- GeoDistanceSort --
@@ -230,7 +240,7 @@ type GeoDistanceSort struct {
 	unit         string
 	ascending    bool
 	sortMode     *string
-	nestedFilter Filter
+	nestedFilter Query
 	nestedPath   *string
 }
 
@@ -268,19 +278,19 @@ func (s GeoDistanceSort) Desc() GeoDistanceSort {
 	return s
 }
 
-// Point specifies a point to create the range distance facets from.
+// Point specifies a point to create the range distance aggregations from.
 func (s GeoDistanceSort) Point(lat, lon float64) GeoDistanceSort {
 	s.points = append(s.points, GeoPointFromLatLon(lat, lon))
 	return s
 }
 
-// Points specifies the geo point(s) to create the range distance facets from.
+// Points specifies the geo point(s) to create the range distance aggregations from.
 func (s GeoDistanceSort) Points(points ...*GeoPoint) GeoDistanceSort {
 	s.points = append(s.points, points...)
 	return s
 }
 
-// GeoHashes specifies the geo point to create the range distance facets from.
+// GeoHashes specifies the geo point to create the range distance aggregations from.
 func (s GeoDistanceSort) GeoHashes(geohashes ...string) GeoDistanceSort {
 	s.geohashes = append(s.geohashes, geohashes...)
 	return s
@@ -312,7 +322,7 @@ func (s GeoDistanceSort) SortMode(sortMode string) GeoDistanceSort {
 
 // NestedFilter sets a filter that nested objects should match with
 // in order to be taken into account for sorting.
-func (s GeoDistanceSort) NestedFilter(nestedFilter Filter) GeoDistanceSort {
+func (s GeoDistanceSort) NestedFilter(nestedFilter Query) GeoDistanceSort {
 	s.nestedFilter = nestedFilter
 	return s
 }
@@ -325,7 +335,7 @@ func (s GeoDistanceSort) NestedPath(nestedPath string) GeoDistanceSort {
 }
 
 // Source returns the JSON-serializable data.
-func (s GeoDistanceSort) Source() interface{} {
+func (s GeoDistanceSort) Source() (interface{}, error) {
 	source := make(map[string]interface{})
 	x := make(map[string]interface{})
 	source["_geo_distance"] = x
@@ -354,12 +364,16 @@ func (s GeoDistanceSort) Source() interface{} {
 		x["mode"] = *s.sortMode
 	}
 	if s.nestedFilter != nil {
-		x["nested_filter"] = s.nestedFilter.Source()
+		src, err := s.nestedFilter.Source()
+		if err != nil {
+			return nil, err
+		}
+		x["nested_filter"] = src
 	}
 	if s.nestedPath != nil {
 		x["nested_path"] = *s.nestedPath
 	}
-	return source
+	return source, nil
 }
 
 // -- ScriptSort --
@@ -369,51 +383,27 @@ func (s GeoDistanceSort) Source() interface{} {
 // for details about scripting.
 type ScriptSort struct {
 	Sorter
-	lang         string
-	script       string
+	script       *Script
 	typ          string
-	params       map[string]interface{}
 	ascending    bool
 	sortMode     *string
-	nestedFilter Filter
+	nestedFilter Query
 	nestedPath   *string
 }
 
-// NewScriptSort creates a new ScriptSort.
-func NewScriptSort(script, typ string) ScriptSort {
+// NewScriptSort creates and initializes a new ScriptSort.
+// You must provide a script and a type, e.g. "string" or "number".
+func NewScriptSort(script *Script, typ string) ScriptSort {
 	return ScriptSort{
 		script:    script,
 		typ:       typ,
 		ascending: true,
-		params:    make(map[string]interface{}),
 	}
 }
 
-// Lang specifies the script language to use. It can be one of:
-// groovy (the default for ES >= 1.4), mvel (default for ES < 1.4),
-// js, python, expression, or native. See
-// http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/modules-scripting.html#modules-scripting
-// for details.
-func (s ScriptSort) Lang(lang string) ScriptSort {
-	s.lang = lang
-	return s
-}
-
-// Type sets the script type, which can be either string or number.
+// Type sets the script type, which can be either "string" or "number".
 func (s ScriptSort) Type(typ string) ScriptSort {
 	s.typ = typ
-	return s
-}
-
-// Param adds a parameter to the script.
-func (s ScriptSort) Param(name string, value interface{}) ScriptSort {
-	s.params[name] = value
-	return s
-}
-
-// Params sets the parameters of the script.
-func (s ScriptSort) Params(params map[string]interface{}) ScriptSort {
-	s.params = params
 	return s
 }
 
@@ -445,7 +435,7 @@ func (s ScriptSort) SortMode(sortMode string) ScriptSort {
 
 // NestedFilter sets a filter that nested objects should match with
 // in order to be taken into account for sorting.
-func (s ScriptSort) NestedFilter(nestedFilter Filter) ScriptSort {
+func (s ScriptSort) NestedFilter(nestedFilter Query) ScriptSort {
 	s.nestedFilter = nestedFilter
 	return s
 }
@@ -458,30 +448,37 @@ func (s ScriptSort) NestedPath(nestedPath string) ScriptSort {
 }
 
 // Source returns the JSON-serializable data.
-func (s ScriptSort) Source() interface{} {
+func (s ScriptSort) Source() (interface{}, error) {
+	if s.script == nil {
+		return nil, errors.New("ScriptSort expected a script")
+	}
 	source := make(map[string]interface{})
 	x := make(map[string]interface{})
 	source["_script"] = x
 
-	x["script"] = s.script
+	src, err := s.script.Source()
+	if err != nil {
+		return nil, err
+	}
+	x["script"] = src
+
 	x["type"] = s.typ
+
 	if !s.ascending {
 		x["reverse"] = true
-	}
-	if s.lang != "" {
-		x["lang"] = s.lang
-	}
-	if len(s.params) > 0 {
-		x["params"] = s.params
 	}
 	if s.sortMode != nil {
 		x["mode"] = *s.sortMode
 	}
 	if s.nestedFilter != nil {
-		x["nested_filter"] = s.nestedFilter.Source()
+		src, err := s.nestedFilter.Source()
+		if err != nil {
+			return nil, err
+		}
+		x["nested_filter"] = src
 	}
 	if s.nestedPath != nil {
 		x["nested_path"] = *s.nestedPath
 	}
-	return source
+	return source, nil
 }

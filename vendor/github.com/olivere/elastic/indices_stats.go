@@ -5,12 +5,11 @@
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 // IndicesStatsService provides stats on various metrics of one or more
@@ -53,20 +52,20 @@ func (s *IndicesStatsService) Metric(metric ...string) *IndicesStatsService {
 
 // Index is the list of index names; use `_all` or empty string to perform
 // the operation on all indices.
-func (s *IndicesStatsService) Index(index ...string) *IndicesStatsService {
-	s.index = append(s.index, index...)
+func (s *IndicesStatsService) Index(indices ...string) *IndicesStatsService {
+	s.index = append(s.index, indices...)
+	return s
+}
+
+// Type is a list of document types for the `indexing` index metric.
+func (s *IndicesStatsService) Type(types ...string) *IndicesStatsService {
+	s.types = append(s.types, types...)
 	return s
 }
 
 // Level returns stats aggregated at cluster, index or shard level.
 func (s *IndicesStatsService) Level(level string) *IndicesStatsService {
 	s.level = level
-	return s
-}
-
-// Types is a list of document types for the `indexing` index metric.
-func (s *IndicesStatsService) Types(types ...string) *IndicesStatsService {
-	s.types = append(s.types, types...)
 	return s
 }
 
@@ -187,7 +186,7 @@ func (s *IndicesStatsService) Do() (*IndicesStatsResponse, error) {
 
 	// Return operation response
 	ret := new(IndicesStatsResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

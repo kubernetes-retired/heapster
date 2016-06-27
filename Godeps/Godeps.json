@@ -1,7 +1,7 @@
 {
 	"ImportPath": "k8s.io/heapster",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v71",
+	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
 	],
@@ -190,13 +190,8 @@
 		},
 		{
 			"ImportPath": "github.com/olivere/elastic",
-			"Comment": "v2.0.20-25-g758ce50",
-			"Rev": "758ce508aa9f5ed43b19c7a8f2705f5a0605e0f4"
-		},
-		{
-			"ImportPath": "github.com/olivere/elastic/uritemplates",
-			"Comment": "v2.0.20-25-g758ce50",
-			"Rev": "758ce508aa9f5ed43b19c7a8f2705f5a0605e0f4"
+			"Comment": "v3.0.41",
+			"Rev": "de60371c6ac39d035d1db8d64e6ae66552536950"
 		},
 		{
 			"ImportPath": "github.com/opencontainers/runc/libcontainer/cgroups",
@@ -401,6 +396,16 @@
 			"ImportPath": "gopkg.in/inf.v0",
 			"Comment": "v0.9.0",
 			"Rev": "3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4"
+		},
+		{
+			"ImportPath": "gopkg.in/olivere/elastic.v3/backoff",
+			"Comment": "v3.0.41",
+			"Rev": "de60371c6ac39d035d1db8d64e6ae66552536950"
+		},
+		{
+			"ImportPath": "gopkg.in/olivere/elastic.v3/uritemplates",
+			"Comment": "v3.0.41",
+			"Rev": "de60371c6ac39d035d1db8d64e6ae66552536950"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",

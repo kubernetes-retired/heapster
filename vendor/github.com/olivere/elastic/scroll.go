@@ -5,12 +5,11 @@
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 // ScrollService manages a cursor through documents in Elasticsearch.
@@ -33,15 +32,7 @@ func NewScrollService(client *Client) *ScrollService {
 	return builder
 }
 
-func (s *ScrollService) Index(index string) *ScrollService {
-	if s.indices == nil {
-		s.indices = make([]string, 0)
-	}
-	s.indices = append(s.indices, index)
-	return s
-}
-
-func (s *ScrollService) Indices(indices ...string) *ScrollService {
+func (s *ScrollService) Index(indices ...string) *ScrollService {
 	if s.indices == nil {
 		s.indices = make([]string, 0)
 	}
@@ -49,15 +40,7 @@ func (s *ScrollService) Indices(indices ...string) *ScrollService {
 	return s
 }
 
-func (s *ScrollService) Type(typ string) *ScrollService {
-	if s.types == nil {
-		s.types = make([]string, 0)
-	}
-	s.types = append(s.types, typ)
-	return s
-}
-
-func (s *ScrollService) Types(types ...string) *ScrollService {
+func (s *ScrollService) Type(types ...string) *ScrollService {
 	if s.types == nil {
 		s.types = make([]string, 0)
 	}
@@ -145,7 +128,6 @@ func (s *ScrollService) GetFirstPage() (*SearchResult, error) {
 
 	// Parameters
 	params := make(url.Values)
-	params.Set("search_type", "scan")
 	if s.pretty {
 		params.Set("pretty", fmt.Sprintf("%v", s.pretty))
 	}
@@ -161,7 +143,11 @@ func (s *ScrollService) GetFirstPage() (*SearchResult, error) {
 	// Set body
 	body := make(map[string]interface{})
 	if s.query != nil {
-		body["query"] = s.query.Source()
+		src, err := s.query.Source()
+		if err != nil {
+			return nil, err
+		}
+		body["query"] = src
 	}
 
 	// Get response
@@ -172,7 +158,7 @@ func (s *ScrollService) GetFirstPage() (*SearchResult, error) {
 
 	// Return result
 	searchResult := new(SearchResult)
-	if err := json.Unmarshal(res.Body, searchResult); err != nil {
+	if err := s.client.decoder.Decode(res.Body, searchResult); err != nil {
 		return nil, err
 	}
 
@@ -206,7 +192,7 @@ func (s *ScrollService) GetNextPage() (*SearchResult, error) {
 
 	// Return result
 	searchResult := new(SearchResult)
-	if err := json.Unmarshal(res.Body, searchResult); err != nil {
+	if err := s.client.decoder.Decode(res.Body, searchResult); err != nil {
 		return nil, err
 	}
 
