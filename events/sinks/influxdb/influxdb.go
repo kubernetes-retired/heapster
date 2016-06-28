@@ -28,7 +28,7 @@ import (
 	kube_api "k8s.io/kubernetes/pkg/api"
 
 	"github.com/golang/glog"
-	influxdb "github.com/influxdb/influxdb/client"
+	influxdb "github.com/influxdata/influxdb/client"
 )
 
 type influxdbSink struct {

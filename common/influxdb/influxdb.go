@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/heapster/version"
 
-	influxdb "github.com/influxdb/influxdb/client"
+	influxdb "github.com/influxdata/influxdb/client"
 )
 
 type InfluxdbClient interface {
