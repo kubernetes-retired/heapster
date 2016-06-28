@@ -4,6 +4,8 @@
 
 package elastic
 
+import "fmt"
+
 // A bool query matches documents matching boolean
 // combinations of other queries.
 // For more details, see:
@@ -11,9 +13,10 @@ package elastic
 type BoolQuery struct {
 	Query
 	mustClauses        []Query
-	shouldClauses      []Query
 	mustNotClauses     []Query
-	boost              *float32
+	filterClauses      []Query
+	shouldClauses      []Query
+	boost              *float64
 	disableCoord       *bool
 	minimumShouldMatch string
 	adjustPureNegative *bool
@@ -21,57 +24,67 @@ type BoolQuery struct {
 }
 
 // Creates a new bool query.
-func NewBoolQuery() BoolQuery {
-	q := BoolQuery{
+func NewBoolQuery() *BoolQuery {
+	return &BoolQuery{
 		mustClauses:    make([]Query, 0),
-		shouldClauses:  make([]Query, 0),
 		mustNotClauses: make([]Query, 0),
+		filterClauses:  make([]Query, 0),
+		shouldClauses:  make([]Query, 0),
 	}
-	return q
 }
 
-func (q BoolQuery) Must(queries ...Query) BoolQuery {
+func (q *BoolQuery) Must(queries ...Query) *BoolQuery {
 	q.mustClauses = append(q.mustClauses, queries...)
 	return q
 }
 
-func (q BoolQuery) MustNot(queries ...Query) BoolQuery {
+func (q *BoolQuery) MustNot(queries ...Query) *BoolQuery {
 	q.mustNotClauses = append(q.mustNotClauses, queries...)
 	return q
 }
 
-func (q BoolQuery) Should(queries ...Query) BoolQuery {
+func (q *BoolQuery) Filter(filters ...Query) *BoolQuery {
+	q.filterClauses = append(q.filterClauses, filters...)
+	return q
+}
+
+func (q *BoolQuery) Should(queries ...Query) *BoolQuery {
 	q.shouldClauses = append(q.shouldClauses, queries...)
 	return q
 }
 
-func (q BoolQuery) Boost(boost float32) BoolQuery {
+func (q *BoolQuery) Boost(boost float64) *BoolQuery {
 	q.boost = &boost
 	return q
 }
 
-func (q BoolQuery) DisableCoord(disableCoord bool) BoolQuery {
+func (q *BoolQuery) DisableCoord(disableCoord bool) *BoolQuery {
 	q.disableCoord = &disableCoord
 	return q
 }
 
-func (q BoolQuery) MinimumShouldMatch(minimumShouldMatch string) BoolQuery {
+func (q *BoolQuery) MinimumShouldMatch(minimumShouldMatch string) *BoolQuery {
 	q.minimumShouldMatch = minimumShouldMatch
 	return q
 }
 
-func (q BoolQuery) AdjustPureNegative(adjustPureNegative bool) BoolQuery {
+func (q *BoolQuery) MinimumNumberShouldMatch(minimumNumberShouldMatch int) *BoolQuery {
+	q.minimumShouldMatch = fmt.Sprintf("%d", minimumNumberShouldMatch)
+	return q
+}
+
+func (q *BoolQuery) AdjustPureNegative(adjustPureNegative bool) *BoolQuery {
 	q.adjustPureNegative = &adjustPureNegative
 	return q
 }
 
-func (q BoolQuery) QueryName(queryName string) BoolQuery {
+func (q *BoolQuery) QueryName(queryName string) *BoolQuery {
 	q.queryName = queryName
 	return q
 }
 
 // Creates the query source for the bool query.
-func (q BoolQuery) Source() interface{} {
+func (q *BoolQuery) Source() (interface{}, error) {
 	// {
 	//	"bool" : {
 	//		"must" : {
@@ -82,6 +95,9 @@ func (q BoolQuery) Source() interface{} {
 	//				"age" : { "from" : 10, "to" : 20 }
 	//			}
 	//		},
+	//    "filter" : [
+	//      ...
+	//    ]
 	//		"should" : [
 	//			{
 	//				"term" : { "tag" : "wow" }
@@ -102,33 +118,76 @@ func (q BoolQuery) Source() interface{} {
 
 	// must
 	if len(q.mustClauses) == 1 {
-		boolClause["must"] = q.mustClauses[0].Source()
+		src, err := q.mustClauses[0].Source()
+		if err != nil {
+			return nil, err
+		}
+		boolClause["must"] = src
 	} else if len(q.mustClauses) > 1 {
 		clauses := make([]interface{}, 0)
 		for _, subQuery := range q.mustClauses {
-			clauses = append(clauses, subQuery.Source())
+			src, err := subQuery.Source()
+			if err != nil {
+				return nil, err
+			}
+			clauses = append(clauses, src)
 		}
 		boolClause["must"] = clauses
 	}
 
 	// must_not
 	if len(q.mustNotClauses) == 1 {
-		boolClause["must_not"] = q.mustNotClauses[0].Source()
+		src, err := q.mustNotClauses[0].Source()
+		if err != nil {
+			return nil, err
+		}
+		boolClause["must_not"] = src
 	} else if len(q.mustNotClauses) > 1 {
 		clauses := make([]interface{}, 0)
 		for _, subQuery := range q.mustNotClauses {
-			clauses = append(clauses, subQuery.Source())
+			src, err := subQuery.Source()
+			if err != nil {
+				return nil, err
+			}
+			clauses = append(clauses, src)
 		}
 		boolClause["must_not"] = clauses
 	}
 
+	// filter
+	if len(q.filterClauses) == 1 {
+		src, err := q.filterClauses[0].Source()
+		if err != nil {
+			return nil, err
+		}
+		boolClause["filter"] = src
+	} else if len(q.filterClauses) > 1 {
+		clauses := make([]interface{}, 0)
+		for _, subQuery := range q.filterClauses {
+			src, err := subQuery.Source()
+			if err != nil {
+				return nil, err
+			}
+			clauses = append(clauses, src)
+		}
+		boolClause["filter"] = clauses
+	}
+
 	// should
 	if len(q.shouldClauses) == 1 {
-		boolClause["should"] = q.shouldClauses[0].Source()
+		src, err := q.shouldClauses[0].Source()
+		if err != nil {
+			return nil, err
+		}
+		boolClause["should"] = src
 	} else if len(q.shouldClauses) > 1 {
 		clauses := make([]interface{}, 0)
 		for _, subQuery := range q.shouldClauses {
-			clauses = append(clauses, subQuery.Source())
+			src, err := subQuery.Source()
+			if err != nil {
+				return nil, err
+			}
+			clauses = append(clauses, src)
 		}
 		boolClause["should"] = clauses
 	}
@@ -149,5 +208,5 @@ func (q BoolQuery) Source() interface{} {
 		boolClause["_name"] = q.queryName
 	}
 
-	return query
+	return query, nil
 }

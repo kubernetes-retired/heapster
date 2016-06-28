@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 // SuggestService returns suggestions for text.
@@ -32,12 +32,7 @@ func NewSuggestService(client *Client) *SuggestService {
 	return builder
 }
 
-func (s *SuggestService) Index(index string) *SuggestService {
-	s.indices = append(s.indices, index)
-	return s
-}
-
-func (s *SuggestService) Indices(indices ...string) *SuggestService {
+func (s *SuggestService) Index(indices ...string) *SuggestService {
 	s.indices = append(s.indices, indices...)
 	return s
 }
@@ -97,7 +92,11 @@ func (s *SuggestService) Do() (SuggestResult, error) {
 	// Set body
 	body := make(map[string]interface{})
 	for _, s := range s.suggesters {
-		body[s.Name()] = s.Source(false)
+		src, err := s.Source(false)
+		if err != nil {
+			return nil, err
+		}
+		body[s.Name()] = src
 	}
 
 	// Get response
@@ -109,18 +108,18 @@ func (s *SuggestService) Do() (SuggestResult, error) {
 	// There is a _shard object that cannot be deserialized.
 	// So we use json.RawMessage instead.
 	var suggestions map[string]*json.RawMessage
-	if err := json.Unmarshal(res.Body, &suggestions); err != nil {
+	if err := s.client.decoder.Decode(res.Body, &suggestions); err != nil {
 		return nil, err
 	}
 
 	ret := make(SuggestResult)
 	for name, result := range suggestions {
 		if name != "_shards" {
-			var s []Suggestion
-			if err := json.Unmarshal(*result, &s); err != nil {
+			var sug []Suggestion
+			if err := s.client.decoder.Decode(*result, &sug); err != nil {
 				return nil, err
 			}
-			ret[name] = s
+			ret[name] = sug
 		}
 	}
 
@@ -137,8 +136,9 @@ type Suggestion struct {
 }
 
 type suggestionOption struct {
-	Text    string      `json:"text"`
-	Score   float32     `json:"score"`
-	Freq    int         `json:"freq"`
-	Payload interface{} `json:"payload"`
+	Text         string      `json:"text"`
+	Score        float64     `json:"score"`
+	Freq         int         `json:"freq"`
+	Payload      interface{} `json:"payload"`
+	CollateMatch bool        `json:"collate_match"`
 }

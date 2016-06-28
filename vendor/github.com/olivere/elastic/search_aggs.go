@@ -15,7 +15,9 @@ import (
 // For more details about aggregations, visit:
 // http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-aggregations.html
 type Aggregation interface {
-	Source() interface{}
+	// Source returns a JSON-serializable aggregation that is a fragment
+	// of the request sent to Elasticsearch.
+	Source() (interface{}, error)
 }
 
 // Aggregations is a list of aggregations that are part of a search result.
@@ -321,6 +323,21 @@ func (a Aggregations) SignificantTerms(name string) (*AggregationBucketSignifica
 	return nil, false
 }
 
+// Sampler returns sampler aggregation results.
+// See: https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-sampler-aggregation.html
+func (a Aggregations) Sampler(name string) (*AggregationSingleBucket, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationSingleBucket)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
 // Range returns range aggregation results.
 // See: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-aggregations-bucket-range-aggregation.html
 func (a Aggregations) Range(name string) (*AggregationBucketRangeItems, bool) {
@@ -456,6 +473,141 @@ func (a Aggregations) GeoDistance(name string) (*AggregationBucketRangeItems, bo
 	return nil, false
 }
 
+// AvgBucket returns average bucket pipeline aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline-avg-bucket-aggregation.html
+func (a Aggregations) AvgBucket(name string) (*AggregationPipelineSimpleValue, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationPipelineSimpleValue)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
+// SumBucket returns sum bucket pipeline aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline-sum-bucket-aggregation.html
+func (a Aggregations) SumBucket(name string) (*AggregationPipelineSimpleValue, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationPipelineSimpleValue)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
+// MaxBucket returns maximum bucket pipeline aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline-max-bucket-aggregation.html
+func (a Aggregations) MaxBucket(name string) (*AggregationPipelineBucketMetricValue, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationPipelineBucketMetricValue)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
+// MinBucket returns minimum bucket pipeline aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline-min-bucket-aggregation.html
+func (a Aggregations) MinBucket(name string) (*AggregationPipelineBucketMetricValue, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationPipelineBucketMetricValue)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
+// MovAvg returns moving average pipeline aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline-movavg-aggregation.html
+func (a Aggregations) MovAvg(name string) (*AggregationPipelineSimpleValue, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationPipelineSimpleValue)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
+// Derivative returns derivative pipeline aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline-derivative-aggregation.html
+func (a Aggregations) Derivative(name string) (*AggregationPipelineDerivative, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationPipelineDerivative)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
+// CumulativeSum returns a cumulative sum pipeline aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline-cumulative-sum-aggregation.html
+func (a Aggregations) CumulativeSum(name string) (*AggregationPipelineSimpleValue, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationPipelineSimpleValue)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
+// BucketScript returns bucket script pipeline aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline-bucket-script-aggregation.html
+func (a Aggregations) BucketScript(name string) (*AggregationPipelineSimpleValue, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationPipelineSimpleValue)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
+// SerialDiff returns serial differencing pipeline aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline-serialdiff-aggregation.html
+func (a Aggregations) SerialDiff(name string) (*AggregationPipelineSimpleValue, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationPipelineSimpleValue)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(*raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
 // -- Single value metric --
 
 // AggregationValueMetric is a single-value metric, returned e.g. by a
@@ -463,7 +615,8 @@ func (a Aggregations) GeoDistance(name string) (*AggregationBucketRangeItems, bo
 type AggregationValueMetric struct {
 	Aggregations
 
-	Value *float64 //`json:"value"`
+	Value *float64               //`json:"value"`
+	Meta  map[string]interface{} // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationValueMetric structure.
@@ -475,6 +628,9 @@ func (a *AggregationValueMetric) UnmarshalJSON(data []byte) error {
 	if v, ok := aggs["value"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Value)
 	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
+	}
 	a.Aggregations = aggs
 	return nil
 }
@@ -485,11 +641,12 @@ func (a *AggregationValueMetric) UnmarshalJSON(data []byte) error {
 type AggregationStatsMetric struct {
 	Aggregations
 
-	Count int64    // `json:"count"`
-	Min   *float64 //`json:"min,omitempty"`
-	Max   *float64 //`json:"max,omitempty"`
-	Avg   *float64 //`json:"avg,omitempty"`
-	Sum   *float64 //`json:"sum,omitempty"`
+	Count int64                  // `json:"count"`
+	Min   *float64               //`json:"min,omitempty"`
+	Max   *float64               //`json:"max,omitempty"`
+	Avg   *float64               //`json:"avg,omitempty"`
+	Sum   *float64               //`json:"sum,omitempty"`
+	Meta  map[string]interface{} // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationStatsMetric structure.
@@ -513,6 +670,9 @@ func (a *AggregationStatsMetric) UnmarshalJSON(data []byte) error {
 	if v, ok := aggs["sum"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Sum)
 	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
+	}
 	a.Aggregations = aggs
 	return nil
 }
@@ -523,14 +683,15 @@ func (a *AggregationStatsMetric) UnmarshalJSON(data []byte) error {
 type AggregationExtendedStatsMetric struct {
 	Aggregations
 
-	Count        int64    // `json:"count"`
-	Min          *float64 //`json:"min,omitempty"`
-	Max          *float64 //`json:"max,omitempty"`
-	Avg          *float64 //`json:"avg,omitempty"`
-	Sum          *float64 //`json:"sum,omitempty"`
-	SumOfSquares *float64 //`json:"sum_of_squares,omitempty"`
-	Variance     *float64 //`json:"variance,omitempty"`
-	StdDeviation *float64 //`json:"std_deviation,omitempty"`
+	Count        int64                  // `json:"count"`
+	Min          *float64               //`json:"min,omitempty"`
+	Max          *float64               //`json:"max,omitempty"`
+	Avg          *float64               //`json:"avg,omitempty"`
+	Sum          *float64               //`json:"sum,omitempty"`
+	SumOfSquares *float64               //`json:"sum_of_squares,omitempty"`
+	Variance     *float64               //`json:"variance,omitempty"`
+	StdDeviation *float64               //`json:"std_deviation,omitempty"`
+	Meta         map[string]interface{} // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationExtendedStatsMetric structure.
@@ -563,6 +724,9 @@ func (a *AggregationExtendedStatsMetric) UnmarshalJSON(data []byte) error {
 	if v, ok := aggs["std_deviation"]; ok && v != nil {
 		json.Unmarshal(*v, &a.StdDeviation)
 	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
+	}
 	a.Aggregations = aggs
 	return nil
 }
@@ -573,7 +737,8 @@ func (a *AggregationExtendedStatsMetric) UnmarshalJSON(data []byte) error {
 type AggregationPercentilesMetric struct {
 	Aggregations
 
-	Values map[string]float64 // `json:"values"`
+	Values map[string]float64     // `json:"values"`
+	Meta   map[string]interface{} // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationPercentilesMetric structure.
@@ -585,6 +750,9 @@ func (a *AggregationPercentilesMetric) UnmarshalJSON(data []byte) error {
 	if v, ok := aggs["values"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Values)
 	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
+	}
 	a.Aggregations = aggs
 	return nil
 }
@@ -595,7 +763,8 @@ func (a *AggregationPercentilesMetric) UnmarshalJSON(data []byte) error {
 type AggregationTopHitsMetric struct {
 	Aggregations
 
-	Hits *SearchHits //`json:"hits"`
+	Hits *SearchHits            //`json:"hits"`
+	Meta map[string]interface{} // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationTopHitsMetric structure.
@@ -608,6 +777,9 @@ func (a *AggregationTopHitsMetric) UnmarshalJSON(data []byte) error {
 	a.Hits = new(SearchHits)
 	if v, ok := aggs["hits"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Hits)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
 	}
 	return nil
 }
@@ -628,6 +800,8 @@ type AggregationGeoBoundsMetric struct {
 			Longitude float64 `json:"lon"`
 		} `json:"bottom_right"`
 	} `json:"bounds"`
+
+	Meta map[string]interface{} // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationGeoBoundsMetric structure.
@@ -639,6 +813,9 @@ func (a *AggregationGeoBoundsMetric) UnmarshalJSON(data []byte) error {
 	if v, ok := aggs["bounds"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Bounds)
 	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
+	}
 	a.Aggregations = aggs
 	return nil
 }
@@ -649,7 +826,8 @@ func (a *AggregationGeoBoundsMetric) UnmarshalJSON(data []byte) error {
 type AggregationSingleBucket struct {
 	Aggregations
 
-	DocCount int64 // `json:"doc_count"`
+	DocCount int64                  // `json:"doc_count"`
+	Meta     map[string]interface{} // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationSingleBucket structure.
@@ -660,6 +838,9 @@ func (a *AggregationSingleBucket) UnmarshalJSON(data []byte) error {
 	}
 	if v, ok := aggs["doc_count"]; ok && v != nil {
 		json.Unmarshal(*v, &a.DocCount)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
 	}
 	a.Aggregations = aggs
 	return nil
@@ -675,6 +856,7 @@ type AggregationBucketRangeItems struct {
 	DocCountErrorUpperBound int64                         //`json:"doc_count_error_upper_bound"`
 	SumOfOtherDocCount      int64                         //`json:"sum_other_doc_count"`
 	Buckets                 []*AggregationBucketRangeItem //`json:"buckets"`
+	Meta                    map[string]interface{}        // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationBucketRangeItems structure.
@@ -692,6 +874,9 @@ func (a *AggregationBucketRangeItems) UnmarshalJSON(data []byte) error {
 	if v, ok := aggs["buckets"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Buckets)
 	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
+	}
 	a.Aggregations = aggs
 	return nil
 }
@@ -704,6 +889,7 @@ type AggregationBucketKeyedRangeItems struct {
 	DocCountErrorUpperBound int64                                  //`json:"doc_count_error_upper_bound"`
 	SumOfOtherDocCount      int64                                  //`json:"sum_other_doc_count"`
 	Buckets                 map[string]*AggregationBucketRangeItem //`json:"buckets"`
+	Meta                    map[string]interface{}                 // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationBucketRangeItems structure.
@@ -720,6 +906,9 @@ func (a *AggregationBucketKeyedRangeItems) UnmarshalJSON(data []byte) error {
 	}
 	if v, ok := aggs["buckets"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Buckets)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
 	}
 	a.Aggregations = aggs
 	return nil
@@ -775,6 +964,7 @@ type AggregationBucketKeyItems struct {
 	DocCountErrorUpperBound int64                       //`json:"doc_count_error_upper_bound"`
 	SumOfOtherDocCount      int64                       //`json:"sum_other_doc_count"`
 	Buckets                 []*AggregationBucketKeyItem //`json:"buckets"`
+	Meta                    map[string]interface{}      // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationBucketKeyItems structure.
@@ -792,6 +982,9 @@ func (a *AggregationBucketKeyItems) UnmarshalJSON(data []byte) error {
 	if v, ok := aggs["buckets"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Buckets)
 	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
+	}
 	a.Aggregations = aggs
 	return nil
 }
@@ -800,9 +993,10 @@ func (a *AggregationBucketKeyItems) UnmarshalJSON(data []byte) error {
 type AggregationBucketKeyItem struct {
 	Aggregations
 
-	Key       interface{} //`json:"key"`
-	KeyNumber json.Number
-	DocCount  int64 //`json:"doc_count"`
+	Key         interface{} //`json:"key"`
+	KeyAsString *string     //`json:"key_as_string"`
+	KeyNumber   json.Number
+	DocCount    int64 //`json:"doc_count"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationBucketKeyItem structure.
@@ -816,6 +1010,9 @@ func (a *AggregationBucketKeyItem) UnmarshalJSON(data []byte) error {
 	if v, ok := aggs["key"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Key)
 		json.Unmarshal(*v, &a.KeyNumber)
+	}
+	if v, ok := aggs["key_as_string"]; ok && v != nil {
+		json.Unmarshal(*v, &a.KeyAsString)
 	}
 	if v, ok := aggs["doc_count"]; ok && v != nil {
 		json.Unmarshal(*v, &a.DocCount)
@@ -833,6 +1030,7 @@ type AggregationBucketSignificantTerms struct {
 
 	DocCount int64                               //`json:"doc_count"`
 	Buckets  []*AggregationBucketSignificantTerm //`json:"buckets"`
+	Meta     map[string]interface{}              // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationBucketSignificantTerms structure.
@@ -846,6 +1044,9 @@ func (a *AggregationBucketSignificantTerms) UnmarshalJSON(data []byte) error {
 	}
 	if v, ok := aggs["buckets"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Buckets)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
 	}
 	a.Aggregations = aggs
 	return nil
@@ -892,6 +1093,7 @@ type AggregationBucketFilters struct {
 
 	Buckets      []*AggregationBucketKeyItem          //`json:"buckets"`
 	NamedBuckets map[string]*AggregationBucketKeyItem //`json:"buckets"`
+	Meta         map[string]interface{}               // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationBucketFilters structure.
@@ -903,6 +1105,9 @@ func (a *AggregationBucketFilters) UnmarshalJSON(data []byte) error {
 	if v, ok := aggs["buckets"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Buckets)
 		json.Unmarshal(*v, &a.NamedBuckets)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
 	}
 	a.Aggregations = aggs
 	return nil
@@ -916,6 +1121,7 @@ type AggregationBucketHistogramItems struct {
 	Aggregations
 
 	Buckets []*AggregationBucketHistogramItem //`json:"buckets"`
+	Meta    map[string]interface{}            // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationBucketHistogramItems structure.
@@ -926,6 +1132,9 @@ func (a *AggregationBucketHistogramItems) UnmarshalJSON(data []byte) error {
 	}
 	if v, ok := aggs["buckets"]; ok && v != nil {
 		json.Unmarshal(*v, &a.Buckets)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
 	}
 	a.Aggregations = aggs
 	return nil
@@ -954,6 +1163,111 @@ func (a *AggregationBucketHistogramItem) UnmarshalJSON(data []byte) error {
 	}
 	if v, ok := aggs["doc_count"]; ok && v != nil {
 		json.Unmarshal(*v, &a.DocCount)
+	}
+	a.Aggregations = aggs
+	return nil
+}
+
+// -- Pipeline simple value --
+
+// AggregationPipelineSimpleValue is a simple value, returned e.g. by a
+// MovAvg aggregation.
+type AggregationPipelineSimpleValue struct {
+	Aggregations
+
+	Value         *float64               // `json:"value"`
+	ValueAsString string                 // `json:"value_as_string"`
+	Meta          map[string]interface{} // `json:"meta,omitempty"`
+}
+
+// UnmarshalJSON decodes JSON data and initializes an AggregationPipelineSimpleValue structure.
+func (a *AggregationPipelineSimpleValue) UnmarshalJSON(data []byte) error {
+	var aggs map[string]*json.RawMessage
+	if err := json.Unmarshal(data, &aggs); err != nil {
+		return err
+	}
+	if v, ok := aggs["value"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Value)
+	}
+	if v, ok := aggs["value_as_string"]; ok && v != nil {
+		json.Unmarshal(*v, &a.ValueAsString)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
+	}
+	a.Aggregations = aggs
+	return nil
+}
+
+// -- Pipeline simple value --
+
+// AggregationPipelineBucketMetricValue is a value returned e.g. by a
+// MaxBucket aggregation.
+type AggregationPipelineBucketMetricValue struct {
+	Aggregations
+
+	Keys          []interface{}          // `json:"keys"`
+	Value         *float64               // `json:"value"`
+	ValueAsString string                 // `json:"value_as_string"`
+	Meta          map[string]interface{} // `json:"meta,omitempty"`
+}
+
+// UnmarshalJSON decodes JSON data and initializes an AggregationPipelineBucketMetricValue structure.
+func (a *AggregationPipelineBucketMetricValue) UnmarshalJSON(data []byte) error {
+	var aggs map[string]*json.RawMessage
+	if err := json.Unmarshal(data, &aggs); err != nil {
+		return err
+	}
+	if v, ok := aggs["keys"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Keys)
+	}
+	if v, ok := aggs["value"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Value)
+	}
+	if v, ok := aggs["value_as_string"]; ok && v != nil {
+		json.Unmarshal(*v, &a.ValueAsString)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
+	}
+	a.Aggregations = aggs
+	return nil
+}
+
+// -- Pipeline derivative --
+
+// AggregationPipelineDerivative is the value returned by a
+// Derivative aggregation.
+type AggregationPipelineDerivative struct {
+	Aggregations
+
+	Value                   *float64               // `json:"value"`
+	ValueAsString           string                 // `json:"value_as_string"`
+	NormalizedValue         *float64               // `json:"normalized_value"`
+	NormalizedValueAsString string                 // `json:"normalized_value_as_string"`
+	Meta                    map[string]interface{} // `json:"meta,omitempty"`
+}
+
+// UnmarshalJSON decodes JSON data and initializes an AggregationPipelineDerivative structure.
+func (a *AggregationPipelineDerivative) UnmarshalJSON(data []byte) error {
+	var aggs map[string]*json.RawMessage
+	if err := json.Unmarshal(data, &aggs); err != nil {
+		return err
+	}
+	if v, ok := aggs["value"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Value)
+	}
+	if v, ok := aggs["value_as_string"]; ok && v != nil {
+		json.Unmarshal(*v, &a.ValueAsString)
+	}
+	if v, ok := aggs["normalized_value"]; ok && v != nil {
+		json.Unmarshal(*v, &a.NormalizedValue)
+	}
+	if v, ok := aggs["normalized_value_as_string"]; ok && v != nil {
+		json.Unmarshal(*v, &a.NormalizedValueAsString)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(*v, &a.Meta)
 	}
 	a.Aggregations = aggs
 	return nil

@@ -79,11 +79,19 @@ func (f *SuggestField) MarshalJSON() ([]byte, error) {
 	switch len(f.contextQueries) {
 	case 0:
 	case 1:
-		source["context"] = f.contextQueries[0].Source()
+		src, err := f.contextQueries[0].Source()
+		if err != nil {
+			return nil, err
+		}
+		source["context"] = src
 	default:
 		var ctxq []interface{}
 		for _, query := range f.contextQueries {
-			ctxq = append(ctxq, query.Source())
+			src, err := query.Source()
+			if err != nil {
+				return nil, err
+			}
+			ctxq = append(ctxq, src)
 		}
 		source["context"] = ctxq
 	}

@@ -4,7 +4,7 @@ Elastic is an [Elasticsearch](http://www.elasticsearch.org/) client for the
 [Go](http://www.golang.org/) programming language.
 
 [![Build Status](https://travis-ci.org/olivere/elastic.svg?branch=release-branch.v3)](https://travis-ci.org/olivere/elastic)
-[![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/gopkg.in/olivere/elastic.v2)
+[![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](http://godoc.org/gopkg.in/olivere/elastic.v3)
 [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/olivere/elastic/master/LICENSE)
 
 See the [wiki](https://github.com/olivere/elastic/wiki) for additional information about Elastic.
@@ -12,7 +12,7 @@ See the [wiki](https://github.com/olivere/elastic/wiki) for additional informati
 
 ## Releases
 
-**Notice that the master branch always refers to the latest version of Elastic. If you want to use stable versions of Elastic, you should use the packages released via [gopkg.in](https://gopkg.in).**
+**The release branches (e.g. [`release-branch.v3`](https://github.com/olivere/elastic/tree/release-branch.v3)) are actively being worked on and can break at any time. If you want to use stable versions of Elastic, please use the packages released via [gopkg.in](https://gopkg.in).**
 
 Here's the version matrix:
 
@@ -24,16 +24,16 @@ Elasticsearch version | Elastic version -| Package URL
 
 **Example:**
 
-You have Elasticsearch 1.7.3 installed and want to use Elastic. As listed above, you should use Elastic 2.0. So you first install Elastic 2.0.
+You have installed Elasticsearch 2.1.1 and want to use Elastic. As listed above, you should use Elastic 3.0. So you first install the stable release of Elastic 3.0 from gopkg.in.
 
 ```sh
-$ go get gopkg.in/olivere/elastic.v2
+$ go get gopkg.in/olivere/elastic.v3
 ```
 
-Then you use it via the following import path:
+You then import it with this import path:
 
 ```go
-import "gopkg.in/olivere/elastic.v2"
+import "gopkg.in/olivere/elastic.v3"
 ```
 
 ### Elastic 3.0
@@ -44,7 +44,7 @@ Notice that there are a lot of [breaking changes in Elasticsearch 2.0](https://w
 
 ### Elastic 2.0
 
-Elastic 2.0 targets Elasticsearch 1.x and published via [`gopkg.in/olivere/elastic.v2`](https://gopkg.in/olivere/elastic.v2).
+Elastic 2.0 targets Elasticsearch 1.x and is published via [`gopkg.in/olivere/elastic.v2`](https://gopkg.in/olivere/elastic.v2).
 
 ### Elastic 1.0
 
@@ -58,15 +58,14 @@ as described above.
 
 ## Status
 
-We use Elastic in production since 2012. Although Elastic is quite stable
-from our experience, we don't have a stable API yet. The reason for this
-is that Elasticsearch changes quite often and at a fast pace.
-At this moment we focus on features, not on a stable API.
+We use Elastic in production since 2012. Elastic is stable but the API changes
+now and then. We strive for API compatibility.
+However, Elasticsearch sometimes introduces [breaking changes](https://www.elastic.co/guide/en/elasticsearch/reference/master/breaking-changes.html)
+and we sometimes have to adapt.
 
 Having said that, there have been no big API changes that required you
-to rewrite your application big time.
-More often than not it's renaming APIs and adding/removing features
-so that we are in sync with the Elasticsearch API.
+to rewrite your application big time. More often than not it's renaming APIs
+and adding/removing features so that Elastic is in sync with Elasticsearch.
 
 Elastic has been used in production with the following Elasticsearch versions:
 0.90, 1.0-1.7. Furthermore, we use [Travis CI](https://travis-ci.org/)
@@ -75,20 +74,19 @@ See the [.travis.yml](https://github.com/olivere/elastic/blob/master/.travis.yml
 file for the exact matrix and [Travis](https://travis-ci.org/olivere/elastic)
 for the results.
 
-Elasticsearch has quite a few features. A lot of them are
-not yet implemented in Elastic (see below for details).
-I add features and APIs as required. It's straightforward
+Elasticsearch has quite a few features. Most of them are implemented
+by Elastic. I add features and APIs as required. It's straightforward
 to implement missing pieces. I'm accepting pull requests :-)
 
 Having said that, I hope you find the project useful.
 
 
-## Usage
+## Getting Started
 
-The first thing you do is to create a Client. The client connects to
-Elasticsearch on http://127.0.0.1:9200 by default.
+The first thing you do is to create a [Client](https://github.com/olivere/elastic/blob/master/client.go). The client connects to Elasticsearch on `http://127.0.0.1:9200` by default.
 
-You typically create one client for your app. Here's a complete example.
+You typically create one client for your app. Here's a complete example of
+creating a client, creating an index, adding a document, executing a search etc.
 
 ```go
 // Create a client
@@ -111,6 +109,7 @@ _, err = client.Index().
     Type("tweet").
     Id("1").
     BodyJson(tweet).
+    Refresh(true).
     Do()
 if err != nil {
     // Handle error
@@ -121,7 +120,7 @@ if err != nil {
 termQuery := elastic.NewTermQuery("user", "olivere")
 searchResult, err := client.Search().
     Index("twitter").   // search in index "twitter"
-    Query(&termQuery).  // specify the query
+    Query(termQuery).   // specify the query
     Sort("user", true). // sort by "user" field, ascending
     From(0).Size(10).   // take documents 0-9
     Pretty(true).       // pretty print request and response JSON
@@ -149,7 +148,7 @@ for _, item := range searchResult.Each(reflect.TypeOf(ttyp)) {
 fmt.Printf("Found a total of %d tweets\n", searchResult.TotalHits())
 
 // Here's how you iterate through results with full control over each step.
-if searchResult.Hits != nil {
+if searchResult.Hits.TotalHits > 0 {
     fmt.Printf("Found a total of %d tweets\n", searchResult.Hits.TotalHits)
 
     // Iterate through results
@@ -179,214 +178,213 @@ if err != nil {
 }
 ```
 
+Here's a [link to a complete working example](https://gist.github.com/olivere/114347ff9d9cfdca7bdc0ecea8b82263).
+
 See the [wiki](https://github.com/olivere/elastic/wiki) for more details.
 
 
 ## API Status
 
-Here's the current API status.
+### Document APIs
 
-### APIs
+- [x] Index API
+- [x] Get API
+- [x] Delete API
+- [x] Delete By Query API
+- [x] Update API
+- [x] Update By Query API
+- [x] Multi Get API
+- [x] Bulk API
+- [x] Reindex API
+- [x] Term Vectors
+- [x] Multi termvectors API
 
-- [x] Search (most queries, filters, facets, aggregations etc. are implemented: see below)
-- [x] Index
-- [x] Get
-- [x] Delete
-- [x] Delete By Query
-- [x] Update
-- [x] Multi Get
-- [x] Bulk
-- [ ] Bulk UDP
-- [ ] Term vectors
-- [ ] Multi term vectors
-- [x] Count
-- [ ] Validate
-- [x] Explain
+### Search APIs
+
 - [x] Search
-- [ ] Search shards
-- [x] Search template
-- [x] Facets (most are implemented, see below)
-- [x] Aggregates (most are implemented, see below)
-- [x] Multi Search
-- [x] Percolate
-- [ ] More like this
-- [ ] Benchmark
-
-### Indices
-
-- [x] Create index
-- [x] Delete index
-- [x] Get index
-- [x] Indices exists
-- [x] Open/close index
-- [x] Put mapping
-- [x] Get mapping
-- [ ] Get field mapping
-- [x] Types exist
-- [x] Delete mapping
-- [x] Index aliases
-- [ ] Update indices settings
-- [x] Get settings
-- [ ] Analyze
-- [x] Index templates
-- [ ] Warmers
-- [ ] Status
-- [x] Indices stats
-- [ ] Indices segments
-- [ ] Indices recovery
-- [ ] Clear cache
-- [x] Flush
-- [x] Refresh
-- [x] Optimize
-- [ ] Upgrade
-
-### Snapshot and Restore
-
-- [ ] Snapshot
-- [ ] Restore
-- [ ] Snapshot status
-- [ ] Monitoring snapshot/restore progress
-- [ ] Partial restore
-
-### Cat APIs
-
-Not implemented. Those are better suited for operating with Elasticsearch
-on the command line.
-
-### Cluster
-
-- [x] Health
-- [x] State
-- [x] Stats
-- [ ] Pending cluster tasks
-- [ ] Cluster reroute
-- [ ] Cluster update settings
-- [ ] Nodes stats
-- [x] Nodes info
-- [ ] Nodes hot_threads
-- [ ] Nodes shutdown
-
-### Search
-
-- [x] Inner hits (for ES >= 1.5.0; see [docs](www.elastic.co/guide/en/elasticsearch/reference/1.5/search-request-inner-hits.html))
-
-### Query DSL
-
-#### Queries
-
-- [x] `match`
-- [x] `multi_match`
-- [x] `bool`
-- [x] `boosting`
-- [ ] `common_terms`
-- [ ] `constant_score`
-- [x] `dis_max`
-- [x] `filtered`
-- [x] `fuzzy_like_this_query` (`flt`)
-- [x] `fuzzy_like_this_field_query` (`flt_field`)
-- [x] `function_score`
-- [x] `fuzzy`
-- [ ] `geo_shape`
-- [x] `has_child`
-- [x] `has_parent`
-- [x] `ids`
-- [ ] `indices`
-- [x] `match_all`
-- [x] `mlt`
-- [x] `mlt_field`
-- [x] `nested`
-- [x] `prefix`
-- [x] `query_string`
-- [x] `simple_query_string`
-- [x] `range`
-- [x] `regexp`
-- [ ] `span_first`
-- [ ] `span_multi_term`
-- [ ] `span_near`
-- [ ] `span_not`
-- [ ] `span_or`
-- [ ] `span_term`
-- [x] `term`
-- [x] `terms`
-- [ ] `top_children`
-- [x] `wildcard`
-- [x] `minimum_should_match`
-- [ ] `multi_term_query_rewrite`
-- [x] `template_query`
-
-#### Filters
-
-- [x] `and`
-- [x] `bool`
-- [x] `exists`
-- [ ] `geo_bounding_box`
-- [x] `geo_distance`
-- [ ] `geo_distance_range`
-- [x] `geo_polygon`
-- [ ] `geoshape`
-- [ ] `geohash`
-- [x] `has_child`
-- [x] `has_parent`
-- [x] `ids`
-- [ ] `indices`
-- [x] `limit`
-- [x] `match_all`
-- [x] `missing`
-- [x] `nested`
-- [x] `not`
-- [x] `or`
-- [x] `prefix`
-- [x] `query`
-- [x] `range`
-- [x] `regexp`
-- [ ] `script`
-- [x] `term`
-- [x] `terms`
-- [x] `type`
-
-### Facets
-
-- [x] Terms
-- [x] Range
-- [x] Histogram
-- [x] Date Histogram
-- [x] Filter
-- [x] Query
-- [x] Statistical
-- [x] Terms Stats
-- [x] Geo Distance
+- [x] Search Template
+- [ ] Search Shards API
+- [x] Suggesters
+  - [x] Term Suggester
+  - [x] Phrase Suggester
+  - [x] Completion Suggester
+  - [x] Context Suggester
+- [x] Multi Search API
+- [x] Count API
+- [ ] Search Exists API
+- [ ] Validate API
+- [x] Explain API
+- [x] Percolator API
+- [x] Field Stats API
 
 ### Aggregations
 
-- [x] min
-- [x] max
-- [x] sum
-- [x] avg
-- [x] stats
-- [x] extended stats
-- [x] value count
-- [x] percentiles
-- [x] percentile ranks
-- [x] cardinality
-- [x] geo bounds
-- [x] top hits
-- [ ] scripted metric
-- [x] global
-- [x] filter
-- [x] filters
-- [x] missing
-- [x] nested
-- [x] reverse nested
-- [x] children
-- [x] terms
-- [x] significant terms
-- [x] range
-- [x] date range
-- [x] ipv4 range
-- [x] histogram
-- [x] date histogram
-- [x] geo distance
-- [x] geohash grid
+- Metrics Aggregations
+  - [x] Avg
+  - [x] Cardinality
+  - [x] Extended Stats
+  - [x] Geo Bounds
+  - [x] Max
+  - [x] Min
+  - [x] Percentiles
+  - [x] Percentile Ranks
+  - [ ] Scripted Metric
+  - [x] Stats
+  - [x] Sum
+  - [x] Top Hits
+  - [x] Value Count
+- Bucket Aggregations
+  - [x] Children
+  - [x] Date Histogram
+  - [x] Date Range
+  - [x] Filter
+  - [x] Filters
+  - [x] Geo Distance
+  - [ ] GeoHash Grid
+  - [x] Global
+  - [x] Histogram
+  - [x] IPv4 Range
+  - [x] Missing
+  - [x] Nested
+  - [x] Range
+  - [x] Reverse Nested
+  - [x] Sampler
+  - [x] Significant Terms
+  - [x] Terms
+- Pipeline Aggregations
+  - [x] Avg Bucket
+  - [x] Derivative
+  - [x] Max Bucket
+  - [x] Min Bucket
+  - [x] Sum Bucket
+  - [x] Moving Average
+  - [x] Cumulative Sum
+  - [x] Bucket Script
+  - [x] Bucket Selector
+  - [x] Serial Differencing
+- [x] Aggregation Metadata
+
+### Indices APIs
+
+- [x] Create Index
+- [x] Delete Index
+- [x] Get Index
+- [x] Indices Exists
+- [x] Open / Close Index
+- [x] Put Mapping
+- [x] Get Mapping
+- [ ] Get Field Mapping
+- [ ] Types Exists
+- [x] Index Aliases
+- [x] Update Indices Settings
+- [x] Get Settings
+- [ ] Analyze
+- [x] Index Templates
+- [x] Warmers
+- [x] Indices Stats
+- [ ] Indices Segments
+- [ ] Indices Recovery
+- [ ] Clear Cache
+- [x] Flush
+- [x] Refresh
+- [x] Optimize
+- [ ] Shadow Replica Indices
+- [ ] Upgrade
+
+### cat APIs
+
+The cat APIs are not implemented as of now. We think they are better suited for operating with Elasticsearch on the command line.
+
+- [ ] cat aliases
+- [ ] cat allocation
+- [ ] cat count
+- [ ] cat fielddata
+- [ ] cat health
+- [ ] cat indices
+- [ ] cat master
+- [ ] cat nodes
+- [ ] cat pending tasks
+- [ ] cat plugins
+- [ ] cat recovery
+- [ ] cat thread pool
+- [ ] cat shards
+- [ ] cat segments
+
+### Cluster APIs
+
+- [x] Cluster Health
+- [x] Cluster State
+- [x] Cluster Stats
+- [ ] Pending Cluster Tasks
+- [ ] Cluster Reroute
+- [ ] Cluster Update Settings
+- [ ] Nodes Stats
+- [x] Nodes Info
+- [x] Task Management API
+- [ ] Nodes hot_threads
+
+### Query DSL
+
+- [x] Match All Query
+- [x] Inner hits
+- Full text queries
+  - [x] Match Query
+  - [x] Multi Match Query
+  - [x] Common Terms Query
+  - [x] Query String Query
+  - [x] Simple Query String Query
+- Term level queries
+  - [x] Term Query
+  - [x] Terms Query
+  - [x] Range Query
+  - [x] Exists Query
+  - [x] Missing Query
+  - [x] Prefix Query
+  - [x] Wildcard Query
+  - [x] Regexp Query
+  - [x] Fuzzy Query
+  - [x] Type Query
+  - [x] Ids Query
+- Compound queries
+  - [x] Constant Score Query
+  - [x] Bool Query
+  - [x] Dis Max Query
+  - [x] Function Score Query
+  - [x] Boosting Query
+  - [x] Indices Query
+  - [x] And Query (deprecated)
+  - [x] Not Query
+  - [x] Or Query (deprecated)
+  - [ ] Filtered Query (deprecated)
+  - [ ] Limit Query (deprecated)
+- Joining queries
+  - [x] Nested Query
+  - [x] Has Child Query
+  - [x] Has Parent Query
+- Geo queries
+  - [ ] GeoShape Query
+  - [x] Geo Bounding Box Query
+  - [x] Geo Distance Query
+  - [ ] Geo Distance Range Query
+  - [x] Geo Polygon Query
+  - [ ] Geohash Cell Query
+- Specialized queries
+  - [x] More Like This Query
+  - [x] Template Query
+  - [x] Script Query
+- Span queries
+  - [ ] Span Term Query
+  - [ ] Span Multi Term Query
+  - [ ] Span First Query
+  - [ ] Span Near Query
+  - [ ] Span Or Query
+  - [ ] Span Not Query
+  - [ ] Span Containing Query
+  - [ ] Span Within Query
+
+### Modules
+
+- [ ] Snapshot and Restore
 
 ### Sorting
 
@@ -400,6 +398,7 @@ on the command line.
 Scrolling through documents (e.g. `search_type=scan`) are implemented via
 the `Scroll` and `Scan` services. The `ClearScroll` API is implemented as well.
 
+
 ## How to contribute
 
 Read [the contribution guidelines](https://github.com/olivere/elastic/blob/master/CONTRIBUTING.md).
@@ -411,8 +410,12 @@ Thanks a lot for the great folks working hard on
 and
 [Go](http://www.golang.org/).
 
+Elastic uses portions of the
+[uritemplates](https://github.com/jtacoma/uritemplates) library
+by Joshua Tacoma and
+[backoff](https://github.com/cenkalti/backoff) by Cenk Altı.
+
 ## LICENSE
 
 MIT-LICENSE. See [LICENSE](http://olivere.mit-license.org/)
 or the LICENSE file provided in the repository for details.
-

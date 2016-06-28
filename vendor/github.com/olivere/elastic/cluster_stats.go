@@ -1,16 +1,15 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 // ClusterStatsService is documented at http://www.elasticsearch.org/guide/en/elasticsearch/reference/1.4/cluster-stats.html.
@@ -114,7 +113,7 @@ func (s *ClusterStatsService) Do() (*ClusterStatsResponse, error) {
 
 	// Return operation response
 	ret := new(ClusterStatsResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -238,7 +237,7 @@ type ClusterStatsIndicesPercolate struct {
 // ---
 
 type ClusterStatsNodes struct {
-	Count    *ClusterStatsNodesCounts       `json:"counts"`
+	Count    *ClusterStatsNodesCount        `json:"count"`
 	Versions []string                       `json:"versions"`
 	OS       *ClusterStatsNodesOsStats      `json:"os"`
 	Process  *ClusterStatsNodesProcessStats `json:"process"`
@@ -247,7 +246,7 @@ type ClusterStatsNodes struct {
 	Plugins  []*ClusterStatsNodesPlugin     `json:"plugins"`
 }
 
-type ClusterStatsNodesCounts struct {
+type ClusterStatsNodesCount struct {
 	Total      int `json:"total"`
 	MasterOnly int `json:"master_only"`
 	DataOnly   int `json:"data_only"`

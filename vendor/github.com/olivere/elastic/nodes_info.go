@@ -5,14 +5,13 @@
 package elastic
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/olivere/elastic/uritemplates"
+	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
 var (
@@ -48,7 +47,6 @@ func NewNodesInfoService(client *Client) *NodesInfoService {
 // Use "_local" to return information from the node you're connecting to,
 // leave empty to get information from all nodes.
 func (s *NodesInfoService) NodeId(nodeId ...string) *NodesInfoService {
-	s.nodeId = make([]string, 0)
 	s.nodeId = append(s.nodeId, nodeId...)
 	return s
 }
@@ -57,7 +55,6 @@ func (s *NodesInfoService) NodeId(nodeId ...string) *NodesInfoService {
 // Valid metrics are: settings, os, process, jvm, thread_pool, network,
 // transport, http, and plugins.
 func (s *NodesInfoService) Metric(metric ...string) *NodesInfoService {
-	s.metric = make([]string, 0)
 	s.metric = append(s.metric, metric...)
 	return s
 }
@@ -131,7 +128,7 @@ func (s *NodesInfoService) Do() (*NodesInfoResponse, error) {
 
 	// Return operation response
 	ret := new(NodesInfoResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -146,7 +143,7 @@ type NodesInfoResponse struct {
 type NodesInfoNode struct {
 	// Name of the node, e.g. "Mister Fear"
 	Name string `json:"name"`
-	// TransportAddress, e.g. "inet[/127.0.0.1:9300]"
+	// TransportAddress, e.g. "127.0.0.1:9300"
 	TransportAddress string `json:"transport_address"`
 	// Host is the host name, e.g. "macbookair"
 	Host string `json:"host"`
@@ -156,10 +153,13 @@ type NodesInfoNode struct {
 	Version string `json:"version"`
 	// Build is the Elasticsearch build, e.g. "36a29a7"
 	Build string `json:"build"`
-	// HTTPAddress, e.g. "inet[/127.0.0.1:9200]"
+	// HTTPAddress, e.g. "127.0.0.1:9200"
 	HTTPAddress string `json:"http_address"`
-	// HTTPSAddress, e.g. "inet[/127.0.0.1:9200]"
+	// HTTPSAddress, e.g. "127.0.0.1:9200"
 	HTTPSAddress string `json:"https_address"`
+
+	// Attributes of the node.
+	Attributes map[string]interface{} `json:"attributes"`
 
 	// Settings of the node, e.g. paths and pidfile.
 	Settings map[string]interface{} `json:"settings"`
@@ -291,15 +291,21 @@ type NodesInfoNodeNetwork struct {
 }
 
 type NodesInfoNodeTransport struct {
-	BoundAddress   string `json:"bound_address"`   // e.g. inet[/127.0.0.1:9300]
-	PublishAddress string `json:"publish_address"` // e.g. inet[/127.0.0.1:9300]
+	BoundAddress   []string                                  `json:"bound_address"`
+	PublishAddress string                                    `json:"publish_address"`
+	Profiles       map[string]*NodesInfoNodeTransportProfile `json:"profiles"`
+}
+
+type NodesInfoNodeTransportProfile struct {
+	BoundAddress   []string `json:"bound_address"`
+	PublishAddress string   `json:"publish_address"`
 }
 
 type NodesInfoNodeHTTP struct {
-	BoundAddress            string `json:"bound_address"`      // e.g. inet[/127.0.0.1:9300]
-	PublishAddress          string `json:"publish_address"`    // e.g. inet[/127.0.0.1:9300]
-	MaxContentLength        string `json:"max_content_length"` // e.g. "100mb"
-	MaxContentLengthInBytes int64  `json:"max_content_length_in_bytes"`
+	BoundAddress            []string `json:"bound_address"`      // e.g. ["127.0.0.1:9200", "[fe80::1]:9200", "[::1]:9200"]
+	PublishAddress          string   `json:"publish_address"`    // e.g. "127.0.0.1:9300"
+	MaxContentLength        string   `json:"max_content_length"` // e.g. "100mb"
+	MaxContentLengthInBytes int64    `json:"max_content_length_in_bytes"`
 }
 
 type NodesInfoNodePlugin struct {
