@@ -25,4 +25,4 @@ spec:
         command:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
-        - --sink="kafka:?brokers=monitoring-kafka:9092&timeseriestopic=timeseries&eventstopic=events"
+        - --sink=kafka:?brokers=monitoring-kafka:9092&timeseriestopic=timeseries&eventstopic=events
