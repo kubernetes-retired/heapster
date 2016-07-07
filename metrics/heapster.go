@@ -31,7 +31,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/heapster/common/flags"
 	kube_config "k8s.io/heapster/common/kubernetes"
-	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/processors"
 	"k8s.io/heapster/metrics/sinks"
@@ -54,6 +53,7 @@ var (
 	argAllowedUsers     = flag.String("allowed_users", "", "comma-separated list of allowed users")
 	argSources          flags.Uris
 	argSinks            flags.Uris
+	argProcessors       = flag.String("processors", "kubernetes", "processors for heapster")
 )
 
 func main() {
@@ -96,67 +96,18 @@ func main() {
 		glog.Fatalf("Failed to created sink manager: %v", err)
 	}
 
-	// data processors
-	metricsToAggregate := []string{
-		core.MetricCpuUsageRate.Name,
-		core.MetricMemoryUsage.Name,
-		core.MetricCpuRequest.Name,
-		core.MetricCpuLimit.Name,
-		core.MetricMemoryRequest.Name,
-		core.MetricMemoryLimit.Name,
-	}
-
-	metricsToAggregateForNode := []string{
-		core.MetricCpuRequest.Name,
-		core.MetricCpuLimit.Name,
-		core.MetricMemoryRequest.Name,
-		core.MetricMemoryLimit.Name,
-	}
-
-	dataProcessors := []core.DataProcessor{
-		// Convert cumulaties to rate
-		processors.NewRateCalculator(core.RateMetricsMapping),
-	}
-
 	kubernetesUrl, err := getKubernetesAddress(argSources)
 	if err != nil {
 		glog.Fatalf("Failed to get kubernetes address: %v", err)
 	}
-	podLister, err := getPodLister(kubernetesUrl)
-	if err != nil {
-		glog.Fatalf("Failed to create podLister: %v", err)
-	}
-
-	podBasedEnricher, err := processors.NewPodBasedEnricher(podLister)
-	if err != nil {
-		glog.Fatalf("Failed to create PodBasedEnricher: %v", err)
-	}
-	dataProcessors = append(dataProcessors, podBasedEnricher)
-
-	namespaceBasedEnricher, err := processors.NewNamespaceBasedEnricher(kubernetesUrl)
-	if err != nil {
-		glog.Fatalf("Failed to create NamespaceBasedEnricher: %v", err)
-	}
-	dataProcessors = append(dataProcessors, namespaceBasedEnricher)
-
-	// then aggregators
-	dataProcessors = append(dataProcessors,
-		processors.NewPodAggregator(),
-		&processors.NamespaceAggregator{
-			MetricsToAggregate: metricsToAggregate,
+	// data processors
+	processorsFactory := processors.NewProcessorFactory()
+	dataProcessors, err := processorsFactory.Build(
+		flags.Uri{
+			Key: *argProcessors,
+			Val: *kubernetesUrl,
 		},
-		&processors.NodeAggregator{
-			MetricsToAggregate: metricsToAggregateForNode,
-		},
-		&processors.ClusterAggregator{
-			MetricsToAggregate: metricsToAggregate,
-		})
-
-	nodeAutoscalingEnricher, err := processors.NewNodeAutoscalingEnricher(kubernetesUrl)
-	if err != nil {
-		glog.Fatalf("Failed to create NodeAutoscalingEnricher: %v", err)
-	}
-	dataProcessors = append(dataProcessors, nodeAutoscalingEnricher)
+	)
 
 	// main manager
 	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, *argMetricResolution,
@@ -165,6 +116,11 @@ func main() {
 		glog.Fatalf("Failed to create main manager: %v", err)
 	}
 	manager.Start()
+
+	podLister, err := getPodLister(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to create podLister: %v", err)
+	}
 
 	handler := setupHandlers(metricSink, podLister)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)

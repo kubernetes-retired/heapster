@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package processors
+package kubeprocessors
 
 import (
 	"testing"
@@ -23,14 +23,15 @@ import (
 	"k8s.io/heapster/metrics/core"
 )
 
-func TestClusterAggregate(t *testing.T) {
+func TestNodeAggregate(t *testing.T) {
 	batch := core.DataBatch{
 		Timestamp: time.Now(),
 		MetricSets: map[string]*core.MetricSet{
 			core.PodKey("ns1", "pod1"): {
 				Labels: map[string]string{
-					core.LabelMetricSetType.Key: core.MetricSetTypeNamespace,
+					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelNamespaceName.Key: "ns1",
+					core.LabelNodename.Key:      "h1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -48,8 +49,9 @@ func TestClusterAggregate(t *testing.T) {
 
 			core.PodKey("ns1", "pod2"): {
 				Labels: map[string]string{
-					core.LabelMetricSetType.Key: core.MetricSetTypeNamespace,
+					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelNamespaceName.Key: "ns1",
+					core.LabelNodename.Key:      "h1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -64,21 +66,29 @@ func TestClusterAggregate(t *testing.T) {
 					},
 				},
 			},
+
+			core.NodeKey("h1"): {
+				Labels: map[string]string{
+					core.LabelMetricSetType.Key: core.MetricSetTypeNode,
+					core.LabelNodename.Key:      "h1",
+				},
+				MetricValues: map[string]core.MetricValue{},
+			},
 		},
 	}
-	processor := ClusterAggregator{
+	processor := NodeAggregator{
 		MetricsToAggregate: []string{"m1", "m3"},
 	}
 	result, err := processor.Process(&batch)
 	assert.NoError(t, err)
-	cluster, found := result.MetricSets[core.ClusterKey()]
+	node, found := result.MetricSets[core.NodeKey("h1")]
 	assert.True(t, found)
 
-	m1, found := cluster.MetricValues["m1"]
+	m1, found := node.MetricValues["m1"]
 	assert.True(t, found)
 	assert.Equal(t, 110, m1.IntValue)
 
-	m3, found := cluster.MetricValues["m3"]
+	m3, found := node.MetricValues["m3"]
 	assert.True(t, found)
 	assert.Equal(t, 30, m3.IntValue)
 }

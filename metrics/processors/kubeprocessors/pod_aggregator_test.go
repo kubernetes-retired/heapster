@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package processors
+package kubeprocessors
 
 import (
 	"testing"
@@ -23,15 +23,15 @@ import (
 	"k8s.io/heapster/metrics/core"
 )
 
-func TestNodeAggregate(t *testing.T) {
+func TestPodAggregator(t *testing.T) {
 	batch := core.DataBatch{
 		Timestamp: time.Now(),
 		MetricSets: map[string]*core.MetricSet{
-			core.PodKey("ns1", "pod1"): {
+			core.PodContainerKey("ns1", "pod1", "c1"): {
 				Labels: map[string]string{
-					core.LabelMetricSetType.Key: core.MetricSetTypePod,
+					core.LabelMetricSetType.Key: core.MetricSetTypePodContainer,
+					core.LabelPodName.Key:       "pod1",
 					core.LabelNamespaceName.Key: "ns1",
-					core.LabelNodename.Key:      "h1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -47,11 +47,11 @@ func TestNodeAggregate(t *testing.T) {
 				},
 			},
 
-			core.PodKey("ns1", "pod2"): {
+			core.PodContainerKey("ns1", "pod1", "c2"): {
 				Labels: map[string]string{
-					core.LabelMetricSetType.Key: core.MetricSetTypePod,
+					core.LabelMetricSetType.Key: core.MetricSetTypePodContainer,
+					core.LabelPodName.Key:       "pod1",
 					core.LabelNamespaceName.Key: "ns1",
-					core.LabelNodename.Key:      "h1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -66,29 +66,31 @@ func TestNodeAggregate(t *testing.T) {
 					},
 				},
 			},
-
-			core.NodeKey("h1"): {
-				Labels: map[string]string{
-					core.LabelMetricSetType.Key: core.MetricSetTypeNode,
-					core.LabelNodename.Key:      "h1",
-				},
-				MetricValues: map[string]core.MetricValue{},
-			},
 		},
 	}
-	processor := NodeAggregator{
-		MetricsToAggregate: []string{"m1", "m3"},
-	}
+	processor := PodAggregator{}
 	result, err := processor.Process(&batch)
 	assert.NoError(t, err)
-	node, found := result.MetricSets[core.NodeKey("h1")]
+	pod, found := result.MetricSets[core.PodKey("ns1", "pod1")]
 	assert.True(t, found)
 
-	m1, found := node.MetricValues["m1"]
+	m1, found := pod.MetricValues["m1"]
 	assert.True(t, found)
 	assert.Equal(t, 110, m1.IntValue)
 
-	m3, found := node.MetricValues["m3"]
+	m2, found := pod.MetricValues["m2"]
+	assert.True(t, found)
+	assert.Equal(t, 222, m2.IntValue)
+
+	m3, found := pod.MetricValues["m3"]
 	assert.True(t, found)
 	assert.Equal(t, 30, m3.IntValue)
+
+	labelPodName, found := pod.Labels[core.LabelPodName.Key]
+	assert.True(t, found)
+	assert.Equal(t, "pod1", labelPodName)
+
+	labelNsName, found := pod.Labels[core.LabelNamespaceName.Key]
+	assert.True(t, found)
+	assert.Equal(t, "ns1", labelNsName)
 }
