@@ -12,18 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package processors
+package kubeprocessors
 
 import (
 	"fmt"
+	"net/url"
+	"time"
 
 	"github.com/golang/glog"
 
 	"k8s.io/heapster/metrics/util"
 
+	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
+	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/fields"
 )
 
 type PodBasedEnricher struct {
@@ -196,7 +201,19 @@ func intValue(value int64) core.MetricValue {
 	}
 }
 
-func NewPodBasedEnricher(podLister *cache.StoreToPodLister) (*PodBasedEnricher, error) {
+func NewPodBasedEnricher(url *url.URL) (*PodBasedEnricher, error) {
+	kubeConfig, err := kube_config.GetKubeClientConfig(url)
+	if err != nil {
+		return nil, err
+	}
+	kubeClient := kube_client.NewOrDie(kubeConfig)
+
+	lw := cache.NewListWatchFromClient(kubeClient, "pods", kube_api.NamespaceAll, fields.Everything())
+	store := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	podLister := &cache.StoreToPodLister{Indexer: store}
+	reflector := cache.NewReflector(lw, &kube_api.Pod{}, store, time.Hour)
+	reflector.Run()
+
 	return &PodBasedEnricher{
 		podLister: podLister,
 	}, nil
