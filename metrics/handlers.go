@@ -22,6 +22,7 @@ import (
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/heapster/metrics/api/v1"
 	metricsApi "k8s.io/heapster/metrics/apis/metrics"
+	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/util/metrics"
 
@@ -30,7 +31,7 @@ import (
 
 const pprofBasePath = "/debug/pprof/"
 
-func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister) http.Handler {
+func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, historicalSource core.HistoricalSource) http.Handler {
 
 	runningInKubernetes := true
 
@@ -38,7 +39,7 @@ func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPo
 	wsContainer := restful.NewContainer()
 	wsContainer.EnableContentEncoding(true)
 	wsContainer.Router(restful.CurlyRouter{})
-	a := v1.NewApi(runningInKubernetes, metricSink)
+	a := v1.NewApi(runningInKubernetes, metricSink, historicalSource)
 	a.Register(wsContainer)
 	// Metrics API
 	m := metricsApi.NewApi(metricSink, podLister)

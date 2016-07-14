@@ -27,12 +27,13 @@ import (
 type Api struct {
 	runningInKubernetes bool
 	metricSink          *metricsink.MetricSink
+	historicalSource    core.HistoricalSource
 	gkeMetrics          map[string]core.MetricDescriptor
 	gkeLabels           map[string]core.LabelDescriptor
 }
 
 // Create a new Api to serve from the specified cache.
-func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink) *Api {
+func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink, historicalSource core.HistoricalSource) *Api {
 	gkeMetrics := make(map[string]core.MetricDescriptor)
 	gkeLabels := make(map[string]core.LabelDescriptor)
 	for _, val := range core.StandardMetrics {
@@ -57,6 +58,7 @@ func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink) *Api {
 	return &Api{
 		runningInKubernetes: runningInKubernetes,
 		metricSink:          metricSink,
+		historicalSource:    historicalSource,
 		gkeMetrics:          gkeMetrics,
 		gkeLabels:           gkeLabels,
 	}
@@ -87,6 +89,10 @@ func (a *Api) Register(container *restful.Container) {
 
 	if a.metricSink != nil {
 		a.RegisterModel(container)
+	}
+
+	if a.historicalSource != nil {
+		a.RegisterHistorical(container)
 	}
 }
 

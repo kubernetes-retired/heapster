@@ -25,9 +25,11 @@ import (
 
 	"k8s.io/heapster/metrics/api/v1/types"
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/util/metrics"
 )
+
+// for testing
+var nowFunc = time.Now
 
 // errModelNotActivated is the error that is returned by the API handlers
 // when manager.model has not been initialized.
@@ -42,16 +44,37 @@ var deprecatedMetricNamesConversion = map[string]string{
 	"memory-working": "memory/working_set",
 }
 
-// RegisterModel registers the Model API endpoints.
-// All endpoints that end with a {metric-name} also receive a start time query parameter.
-// The start and end times should be specified as a string, formatted according to RFC 3339.
-func (a *Api) RegisterModel(container *restful.Container) {
-	ws := new(restful.WebService)
-	ws.Path("/api/v1/model").
-		Doc("Root endpoint of the stats model").
-		Consumes("*/*").
-		Produces(restful.MIME_JSON)
+type clusterMetricsFetcher interface {
+	availableClusterMetrics(request *restful.Request, response *restful.Response)
+	clusterMetrics(request *restful.Request, response *restful.Response)
 
+	nodeList(request *restful.Request, response *restful.Response)
+	availableNodeMetrics(request *restful.Request, response *restful.Response)
+	nodeMetrics(request *restful.Request, response *restful.Response)
+
+	namespaceList(request *restful.Request, response *restful.Response)
+	availableNamespaceMetrics(request *restful.Request, response *restful.Response)
+	namespaceMetrics(request *restful.Request, response *restful.Response)
+
+	namespacePodList(request *restful.Request, response *restful.Response)
+	availablePodMetrics(request *restful.Request, response *restful.Response)
+	podMetrics(request *restful.Request, response *restful.Response)
+
+	availablePodContainerMetrics(request *restful.Request, response *restful.Response)
+	podContainerMetrics(request *restful.Request, response *restful.Response)
+
+	nodeSystemContainerList(request *restful.Request, response *restful.Response)
+	availableFreeContainerMetrics(request *restful.Request, response *restful.Response)
+	freeContainerMetrics(request *restful.Request, response *restful.Response)
+
+	podListMetrics(request *restful.Request, response *restful.Response)
+
+	isRunningInKubernetes() bool
+}
+
+// addClusterMetricsRoutes adds all the standard model routes to a WebService.
+// It should already have a base path registered.
+func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 	// The /metrics/ endpoint returns a list of all available metrics for the Cluster entity of the model.
 	ws.Route(ws.GET("/metrics/").
 		To(metrics.InstrumentRouteFunc("availableClusterMetrics", a.availableClusterMetrics)).
@@ -93,7 +116,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
-	if a.runningInKubernetes {
+	if a.isRunningInKubernetes() {
 
 		ws.Route(ws.GET("/namespaces/").
 			To(metrics.InstrumentRouteFunc("namespaceList", a.namespaceList)).
@@ -199,7 +222,7 @@ func (a *Api) RegisterModel(container *restful.Container) {
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
-	if a.runningInKubernetes {
+	if a.isRunningInKubernetes() {
 		// The /namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name} endpoint exposes
 		// metrics for a list od pods of the model.
 		ws.Route(ws.GET("/namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name:*}").
@@ -213,12 +236,28 @@ func (a *Api) RegisterModel(container *restful.Container) {
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 			Writes(types.MetricResult{}))
 	}
+}
+
+func (a *Api) isRunningInKubernetes() bool {
+	return a.runningInKubernetes
+}
+
+// RegisterModel registers the Model API endpoints.
+// All endpoints that end with a {metric-name} also receive a start time query parameter.
+// The start and end times should be specified as a string, formatted according to RFC 3339.
+func (a *Api) RegisterModel(container *restful.Container) {
+	ws := new(restful.WebService)
+	ws.Path("/api/v1/model").
+		Doc("Root endpoint of the stats model").
+		Consumes("*/*").
+		Produces(restful.MIME_JSON)
+
+	addClusterMetricsRoutes(a, ws)
 
 	ws.Route(ws.GET("/debug/allkeys").
 		To(metrics.InstrumentRouteFunc("debugAllKeys", a.allKeys)).
 		Doc("Get keys of all metric sets available").
 		Operation("debugAllKeys"))
-
 	container.Add(ws)
 }
 
@@ -393,14 +432,14 @@ func getStartEndTime(request *restful.Request) (time.Time, time.Time, error) {
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
-	end, err := parseTimeParam(request.QueryParameter("end"), time.Now())
+	end, err := parseTimeParam(request.QueryParameter("end"), nowFunc())
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
 	return start, end, nil
 }
 
-func exportTimestampedMetricValue(values []metricsink.TimestampedMetricValue) types.MetricResult {
+func exportTimestampedMetricValue(values []core.TimestampedMetricValue) types.MetricResult {
 	result := types.MetricResult{
 		Metrics: make([]types.MetricPoint, 0, len(values)),
 	}
