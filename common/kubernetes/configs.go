@@ -42,8 +42,10 @@ func getConfigOverrides(uri *url.URL) (*kubeClientCmd.ConfigOverrides, error) {
 			APIVersion: APIVersion,
 		},
 	}
-	if len(uri.Scheme) != 0 && len(uri.Host) != 0 {
+	if len(uri.Scheme) != 0 && len(uri.Host) != 0 && len(uri.User) != 0 {
 		kubeConfigOverride.ClusterInfo.Server = fmt.Sprintf("%s://%s@%s", uri.Scheme, uri.User, uri.Host)
+	} else if len(uri.Scheme) != 0 && len(uri.Host) != 0 {
+		kubeConfigOverride.ClusterInfo.Server = fmt.Sprintf("%s://%s", uri.Scheme, uri.Host)
 	}
 
 	opts := uri.Query()
