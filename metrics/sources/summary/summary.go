@@ -111,7 +111,7 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 			this.useFallback = true
 			return this.fallback.ScrapeMetrics(start, end)
 		}
-		glog.Errorf("error while getting metrics summary from Kubelet: %v", err)
+		glog.Errorf("error while getting metrics summary from Kubelet %s(%s:%d): %v", this.node.NodeName, this.node.IP, this.node.Port, err)
 		return result
 	}
 
