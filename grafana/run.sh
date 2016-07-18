@@ -19,6 +19,8 @@ DASHBOARD_LOCATION=${DASHBOARD_LOCATION:-"/dashboards"}
 export GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED:-true}
 export GF_SERVER_HTTP_PORT=${GRAFANA_PORT}
 
+GF_SERVER_PROTOCOL=${GF_SERVER_PROTOCOL:-http}
+
 BACKEND_ACCESS_MODE=${BACKEND_ACCESS_MODE:-proxy}
 INFLUXDB_SERVICE_URL=${INFLUXDB_SERVICE_URL}
 if [ -n "$INFLUXDB_SERVICE_URL" ]; then
@@ -35,13 +37,13 @@ echo "Starting Grafana in the background"
 exec /usr/sbin/grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini cfg:default.paths.data=/var/lib/grafana cfg:default.paths.logs=/var/log/grafana &
 
 echo "Waiting for Grafana to come up..."
-until $(curl --fail --output /dev/null --silent http://${GRAFANA_USER}:${GRAFANA_PASSWD}@localhost:${GRAFANA_PORT}/api/org); do
+until $(curl -k --fail --output /dev/null --silent ${GF_SERVER_PROTOCOL}://${GRAFANA_USER}:${GRAFANA_PASSWD}@localhost:${GRAFANA_PORT}/api/org); do
   printf "."
   sleep 2
 done
 echo "Grafana is up and running."
 echo "Creating default influxdb datasource..."
-curl -i -XPOST -H "${HEADER_ACCEPT}" -H "${HEADER_CONTENT_TYPE}" "http://${GRAFANA_USER}:${GRAFANA_PASSWD}@localhost:${GRAFANA_PORT}/api/datasources" -d '
+curl -k -i -XPOST -H "${HEADER_ACCEPT}" -H "${HEADER_CONTENT_TYPE}" "${GF_SERVER_PROTOCOL}://${GRAFANA_USER}:${GRAFANA_PASSWD}@localhost:${GRAFANA_PORT}/api/datasources" -d '
 {
   "name": "influxdb-datasource",
   "type": "influxdb",
@@ -57,7 +59,7 @@ echo ""
 echo "Importing default dashboards..."
 for filename in ${DASHBOARD_LOCATION}/*.json; do
   echo "Importing ${filename} ..."
-  curl -i -XPOST --data "@${filename}" -H "${HEADER_ACCEPT}" -H "${HEADER_CONTENT_TYPE}" "http://${GRAFANA_USER}:${GRAFANA_PASSWD}@localhost:${GRAFANA_PORT}/api/dashboards/db"
+  curl -k -i -XPOST --data "@${filename}" -H "${HEADER_ACCEPT}" -H "${HEADER_CONTENT_TYPE}" "${GF_SERVER_PROTOCOL}://${GRAFANA_USER}:${GRAFANA_PASSWD}@localhost:${GRAFANA_PORT}/api/dashboards/db"
   echo ""
   echo "Done importing ${filename}"
 done
