@@ -1,5 +1,5 @@
-Configuring sources
-===================
+Configuring sinks
+=================
 
 Heapster can store data into different backends (sinks). These are specified on the command line
 via the `--sink` flag. The flag takes an argument of the form `PREFIX:CONFIG[?OPTIONS]`.
