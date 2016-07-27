@@ -70,8 +70,11 @@ type kubeFramework interface {
 	// TODO: Remove, or mix with namespace
 	GetRunningPodNames() ([]string, error)
 
+	// Returns pods in the cluster running outside kubernetes-master.
+	GetPodsRunningOnNodes() ([]api.Pod, error)
+
 	// Returns pods in the cluster.
-	GetRunningPods() ([]api.Pod, error)
+	GetAllRunningPods() ([]api.Pod, error)
 
 	WaitUntilPodRunning(ns string, podLabels map[string]string, timeout time.Duration) error
 	WaitUntilServiceActive(svc *api.Service, timeout time.Duration) error
@@ -423,9 +426,17 @@ func (self *realKubeFramework) GetNodes() ([]string, error) {
 	return nodes, nil
 }
 
-func (self *realKubeFramework) GetRunningPods() ([]api.Pod, error) {
+func (self *realKubeFramework) GetAllRunningPods() ([]api.Pod, error) {
+	return getRunningPods(true, self.kubeClient)
+}
+
+func (self *realKubeFramework) GetPodsRunningOnNodes() ([]api.Pod, error) {
+	return getRunningPods(false, self.kubeClient)
+}
+
+func getRunningPods(includeMaster bool, kubeClient *kclient.Client) ([]api.Pod, error) {
 	glog.V(0).Infof("Getting running pods")
-	podList, err := self.kubeClient.Pods(api.NamespaceAll).List(api.ListOptions{
+	podList, err := kubeClient.Pods(api.NamespaceAll).List(api.ListOptions{
 		LabelSelector: labels.Everything(),
 		FieldSelector: fields.Everything(),
 	})
@@ -434,16 +445,22 @@ func (self *realKubeFramework) GetRunningPods() ([]api.Pod, error) {
 	}
 	pods := []api.Pod{}
 	for _, pod := range podList.Items {
-		if pod.Status.Phase == api.PodRunning && !strings.Contains(pod.Spec.NodeName, "kubernetes-master") {
-			pods = append(pods, pod)
+		if pod.Status.Phase == api.PodRunning {
+			if includeMaster || !isMasterNode(pod.Spec.NodeName) {
+				pods = append(pods, pod)
+			}
 		}
 	}
 	return pods, nil
 }
 
+func isMasterNode(nodeName string) bool {
+	return strings.Contains(nodeName, "kubernetes-master")
+}
+
 func (self *realKubeFramework) GetRunningPodNames() ([]string, error) {
 	var pods []string
-	podList, err := self.GetRunningPods()
+	podList, err := self.GetAllRunningPods()
 	if err != nil {
 		return pods, err
 	}
