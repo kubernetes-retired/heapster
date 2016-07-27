@@ -102,6 +102,8 @@ func TestMonascaHealthy(t *testing.T) {
 }
 
 func TestMonascaUnhealthy(t *testing.T) {
+	// TODO: reenable once #1232 is fixed
+	t.Skip("skipping test due to #1232")
 	// setup
 	ksClientMock := new(keystoneClientMock)
 	monURL, _ := url.Parse("http://unexisting.monasca.com")
