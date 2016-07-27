@@ -58,6 +58,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metric").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+		Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 		Writes(types.MetricAggregationResult{}))
 
 	// The /nodes/{node-name}/metrics-aggregated/{aggregations}/{metric-name} endpoint exposes some aggregations for a Node entity of the historical API.
@@ -71,6 +72,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metric").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+		Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 		Writes(types.MetricAggregationResult{}))
 
 	if a.isRunningInKubernetes() {
@@ -85,6 +87,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricAggregationResult{}))
 
 		// The /namespaces/{namespace-name}/pods/{pod-name}/metrics-aggregated/{aggregations}/{metric-name} endpoint exposes
@@ -99,6 +102,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricAggregationResult{}))
 
 		// The /namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics-aggregated/{aggregations}/{metric-name} endpoint exposes
@@ -114,6 +118,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricAggregationResult{}))
 
 		// The /pod-id/{pod-id}/metrics-aggregated/{aggregations}/{metric-name} endpoint exposes
@@ -127,6 +132,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricAggregationResult{}))
 
 		// The /pod-id/{pod-id}/containers/{container-name}/metrics-aggregated/{aggregations}/{metric-name} endpoint exposes
@@ -141,6 +147,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricAggregationResult{}))
 	}
 
@@ -156,6 +163,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+		Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 		Writes(types.MetricAggregationResult{}))
 
 	if a.isRunningInKubernetes() {
@@ -171,6 +179,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricAggregationResultList{}))
 
 		// The /pod-id-list/{pod-id-list}/metrics-aggregated/{aggregations}/{metric-name} endpoint exposes
@@ -184,6 +193,7 @@ func addAggregationRoutes(a metricsAggregationFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricAggregationResultList{}))
 	}
 }
@@ -416,9 +426,23 @@ func (a *HistoricalApi) podListMetrics(request *restful.Request, response *restf
 			keys = append(keys, key)
 		}
 	}
+
+	labels, err := getLabels(request)
+	if err != nil {
+		response.WriteError(http.StatusBadRequest, err)
+		return
+	}
+
 	metricName := request.PathParameter("metric-name")
 	convertedMetricName := convertMetricName(metricName)
-	metrics, err := a.historicalSource.GetMetric(convertedMetricName, keys, start, end)
+
+	var metrics map[core.HistoricalKey][]core.TimestampedMetricValue
+	if labels != nil {
+		metrics, err = a.historicalSource.GetLabeledMetric(convertedMetricName, labels, keys, start, end)
+	} else {
+		metrics, err = a.historicalSource.GetMetric(convertedMetricName, keys, start, end)
+	}
+
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 		return
@@ -543,6 +567,11 @@ func (a *HistoricalApi) podListAggregations(request *restful.Request, response *
 	if err != nil {
 		response.WriteError(http.StatusBadRequest, err)
 	}
+	labels, err := getLabels(request)
+	if err != nil {
+		response.WriteError(http.StatusBadRequest, err)
+		return
+	}
 	keys := []core.HistoricalKey{}
 	if request.PathParameter("pod-id-list") != "" {
 		for _, podId := range strings.Split(request.PathParameter("pod-id-list"), ",") {
@@ -564,7 +593,12 @@ func (a *HistoricalApi) podListAggregations(request *restful.Request, response *
 	}
 	metricName := request.PathParameter("metric-name")
 	convertedMetricName := convertMetricName(metricName)
-	metrics, err := a.historicalSource.GetAggregation(convertedMetricName, aggregations, keys, start, end, bucketSize)
+	var metrics map[core.HistoricalKey][]core.TimestampedAggregationValue
+	if labels != nil {
+		metrics, err = a.historicalSource.GetLabeledAggregation(convertedMetricName, labels, aggregations, keys, start, end, bucketSize)
+	} else {
+		metrics, err = a.historicalSource.GetAggregation(convertedMetricName, aggregations, keys, start, end, bucketSize)
+	}
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 	}
@@ -586,9 +620,20 @@ func (a *HistoricalApi) processMetricRequest(key core.HistoricalKey, request *re
 		response.WriteError(http.StatusBadRequest, err)
 		return
 	}
+	labels, err := getLabels(request)
+	if err != nil {
+		response.WriteError(http.StatusBadRequest, err)
+		return
+	}
 	metricName := request.PathParameter("metric-name")
 	convertedMetricName := convertMetricName(metricName)
-	metrics, err := a.historicalSource.GetMetric(convertedMetricName, []core.HistoricalKey{key}, start, end)
+
+	var metrics map[core.HistoricalKey][]core.TimestampedMetricValue
+	if labels != nil {
+		metrics, err = a.historicalSource.GetLabeledMetric(convertedMetricName, labels, []core.HistoricalKey{key}, start, end)
+	} else {
+		metrics, err = a.historicalSource.GetMetric(convertedMetricName, []core.HistoricalKey{key}, start, end)
+	}
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 		return
@@ -623,10 +668,20 @@ func (a *HistoricalApi) processAggregationRequest(key core.HistoricalKey, reques
 	if err != nil {
 		response.WriteError(http.StatusBadRequest, err)
 	}
+	labels, err := getLabels(request)
+	if err != nil {
+		response.WriteError(http.StatusBadRequest, err)
+		return
+	}
 
 	metricName := request.PathParameter("metric-name")
 	convertedMetricName := convertMetricName(metricName)
-	metrics, err := a.historicalSource.GetAggregation(convertedMetricName, aggregations, []core.HistoricalKey{key}, start, end, bucketSize)
+	var metrics map[core.HistoricalKey][]core.TimestampedAggregationValue
+	if labels != nil {
+		metrics, err = a.historicalSource.GetLabeledAggregation(convertedMetricName, labels, aggregations, []core.HistoricalKey{key}, start, end, bucketSize)
+	} else {
+		metrics, err = a.historicalSource.GetAggregation(convertedMetricName, aggregations, []core.HistoricalKey{key}, start, end, bucketSize)
+	}
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
 		return

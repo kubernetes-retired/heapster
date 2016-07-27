@@ -170,6 +170,49 @@ func (this *MetricSink) GetMetric(metricName string, keys []string, start, end t
 	return result
 }
 
+func (this *MetricSink) GetLabeledMetric(metricName string, labels map[string]string, keys []string, start, end time.Time) map[string][]core.TimestampedMetricValue {
+	// NB: the long store doesn't store labeled metrics, so it's not relevant here
+	result := make(map[string][]core.TimestampedMetricValue)
+	for _, batch := range this.shortStore {
+		// Inclusive start and end
+		if !batch.Timestamp.Before(start) && !batch.Timestamp.After(end) {
+			for _, key := range keys {
+				metricSet, found := batch.MetricSets[key]
+				if !found {
+					continue
+				}
+
+				for _, labeledMetric := range metricSet.LabeledMetrics {
+					if labeledMetric.Name != metricName {
+						continue
+					}
+
+					if len(labeledMetric.Labels) != len(labels) {
+						continue
+					}
+
+					labelsMatch := true
+					for k, v := range labels {
+						if lblMetricVal, ok := labeledMetric.Labels[k]; !ok || lblMetricVal != v {
+							labelsMatch = false
+							break
+						}
+					}
+
+					if labelsMatch {
+						result[key] = append(result[key], core.TimestampedMetricValue{
+							Timestamp:   batch.Timestamp,
+							MetricValue: labeledMetric.MetricValue,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	return result
+}
+
 func (this *MetricSink) GetMetricNames(key string) []string {
 	this.lock.Lock()
 	defer this.lock.Unlock()
