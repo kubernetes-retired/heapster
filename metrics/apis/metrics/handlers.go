@@ -84,13 +84,13 @@ func (a *Api) Register(container *restful.Container) {
 }
 
 func (a *Api) nodeMetricsList(request *restful.Request, response *restful.Response) {
-	res := []*v1alpha1.NodeMetrics{}
+	res := v1alpha1.NodeMetricsList{}
 	for _, node := range a.metricSink.GetNodes() {
 		if m := a.getNodeMetrics(node); m != nil {
-			res = append(res, m)
+			res.Items = append(res.Items, *m)
 		}
 	}
-	response.WriteEntity(res)
+	response.WriteEntity(&res)
 }
 
 func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) {
@@ -170,15 +170,15 @@ func (a *Api) podMetricsList(request *restful.Request, response *restful.Respons
 		return
 	}
 
-	res := []*v1alpha1.PodMetrics{}
+	res := v1alpha1.PodMetricsList{}
 	for _, pod := range pods.Items {
 		if m := a.getPodMetrics(&pod); m != nil {
-			res = append(res, m)
+			res.Items = append(res.Items, *m)
 		} else {
 			glog.Infof("No metrics for pod %s/%s", pod.Namespace, pod.Name)
 		}
 	}
-	response.WriteEntity(res)
+	response.WriteEntity(&res)
 }
 
 func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
