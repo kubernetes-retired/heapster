@@ -21,7 +21,7 @@ spec:
         imagePullPolicy: Always
         command:
         - /heapster
-        - --source=kubernetes:https://kubernetes.default
+        - --source=kubernetes.compare:https://kubernetes.default
         - --sink=log
         volumeMounts:
         - name: ssl-certs

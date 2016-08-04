@@ -17,6 +17,8 @@ package sources
 import (
 	"fmt"
 
+	"github.com/golang/glog"
+
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sources/kubelet"
@@ -33,6 +35,10 @@ func (this *SourceFactory) Build(uri flags.Uri) (core.MetricsSourceProvider, err
 		return provider, err
 	case "kubernetes.summary_api":
 		provider, err := summary.NewSummaryProvider(&uri.Val)
+		return provider, err
+	case "kubernetes.compare":
+		glog.Warningf("Running in test-only comparison mode")
+		provider, err := summary.NewCompareProvider(&uri.Val)
 		return provider, err
 	default:
 		return nil, fmt.Errorf("Source not recognized: %s", uri.Key)
