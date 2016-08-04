@@ -2,8 +2,17 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/kube-config/influxdb"
 
+if [[ $(which kubectl.sh) ]]; then
+  KUBECTL='kubectl.sh'
+elif [[ $(which kubectl) ]]; then
+  KUBECTL="kubectl"
+else
+  echo "This script requires kubectl or kubectl.sh"
+  exit 1
+fi
+
 start() {
-  if kubectl.sh create -f "$DIR/" &> /dev/null; then
+  if ${KUBECTL} create -f "$DIR/" &> /dev/null; then
     echo "heapster pods have been setup"
   else 
     echo "failed to setup heapster pods"
@@ -11,14 +20,14 @@ start() {
 }
 
 stop() {
-  kubectl.sh stop replicationController monitoring-influx-grafana-controller &> /dev/null
-  kubectl.sh stop replicationController monitoring-heapster-controller &> /dev/null
+  ${KUBECTL} stop replicationController monitoring-influx-grafana-controller &> /dev/null
+  ${KUBECTL} stop replicationController monitoring-heapster-controller &> /dev/null
   # wait for the pods to disappear.
-  while kubectl.sh get pods -l "name=influxGrafana" -o template -t {{range.items}}{{.id}}:{{end}} | grep -c . &> /dev/null \
-    || kubectl.sh get pods -l "name=heapster" -o template -t {{range.items}}{{.id}}:{{end}} | grep -c . &> /dev/null; do
+  while ${KUBECTL} get pods -l "name=influxGrafana" -o template --template {{range.items}}{{.id}}:{{end}} | grep -c . &> /dev/null \
+    || ${KUBECTL} get pods -l "name=heapster" -o template --template {{range.items}}{{.id}}:{{end}} | grep -c . &> /dev/null; do
     sleep 2
   done
-  kubectl.sh delete -f "$DIR/" &> /dev/null || true
+  ${KUBECTL} delete -f "$DIR/" &> /dev/null || true
   echo "heapster pods have been removed."
 }
 
