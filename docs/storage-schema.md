@@ -68,7 +68,7 @@ The metric name is not modified.
 
 ##### Using fields
 
-If you want to use InfluxDB fields, you have to add `with_fields=true` as parameter in InfluxDB sink URL.
+If you want to use InfluxDB fields, you have to add `withfields=true` as parameter in InfluxDB sink URL.
 (More information here: https://docs.influxdata.com/influxdb/v0.9/concepts/key_concepts/)
 
 In that case, each metric translates to a separate in 'series' in InfluxDB. This means that some metrics are grouped in the same 'measurement'.
