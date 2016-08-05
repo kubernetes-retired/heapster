@@ -23,11 +23,7 @@ import (
 	"k8s.io/heapster/metrics/core"
 )
 
-func TestGetMetrics(t *testing.T) {
-	now := time.Now()
-	key := core.PodKey("ns1", "pod1")
-	otherKey := core.PodKey("ns1", "other")
-
+func makeBatches(now time.Time, key, otherKey string) (core.DataBatch, core.DataBatch, core.DataBatch) {
 	batch1 := core.DataBatch{
 		Timestamp: now.Add(-180 * time.Second),
 		MetricSets: map[string]*core.MetricSet{
@@ -72,6 +68,26 @@ func TestGetMetrics(t *testing.T) {
 						IntValue:   444,
 					},
 				},
+				LabeledMetrics: []core.LabeledMetric{
+					{
+						Name:   "somelblmetric",
+						Labels: map[string]string{"lbl1": "val1.1", "lbl2": "val2.1"},
+						MetricValue: core.MetricValue{
+							ValueType:  core.ValueInt64,
+							MetricType: core.MetricGauge,
+							IntValue:   8675,
+						},
+					},
+					{
+						Name:   "otherlblmetric",
+						Labels: map[string]string{"lbl1": "val1.1", "lbl2": "val2.1"},
+						MetricValue: core.MetricValue{
+							ValueType:  core.ValueInt64,
+							MetricType: core.MetricGauge,
+							IntValue:   1234,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -96,6 +112,26 @@ func TestGetMetrics(t *testing.T) {
 						IntValue:   222,
 					},
 				},
+				LabeledMetrics: []core.LabeledMetric{
+					{
+						Name:   "somelblmetric",
+						Labels: map[string]string{"lbl1": "val1.1", "lbl2": "val2.1"},
+						MetricValue: core.MetricValue{
+							ValueType:  core.ValueInt64,
+							MetricType: core.MetricGauge,
+							IntValue:   309,
+						},
+					},
+					{
+						Name:   "somelblmetric",
+						Labels: map[string]string{"lbl1": "val1.2", "lbl2": "val2.1"},
+						MetricValue: core.MetricValue{
+							ValueType:  core.ValueInt64,
+							MetricType: core.MetricGauge,
+							IntValue:   5678,
+						},
+					},
+				},
 			},
 			otherKey: {
 				Labels: map[string]string{
@@ -112,6 +148,16 @@ func TestGetMetrics(t *testing.T) {
 			},
 		},
 	}
+
+	return batch1, batch2, batch3
+}
+
+func TestGetMetrics(t *testing.T) {
+	now := time.Now()
+	key := core.PodKey("ns1", "pod1")
+	otherKey := core.PodKey("ns1", "other")
+
+	batch1, batch2, batch3 := makeBatches(now, key, otherKey)
 
 	metrics := NewMetricSink(45*time.Second, 120*time.Second, []string{"m1"})
 	metrics.ExportData(&batch1)
@@ -138,6 +184,32 @@ func TestGetMetrics(t *testing.T) {
 	assert.Equal(t, 2, len(metricNames))
 	assert.Contains(t, metricNames, "m1")
 	assert.Contains(t, metricNames, "m2")
+}
+
+func TestGetLabeledMetrics(t *testing.T) {
+	now := time.Now().UTC()
+	key := core.PodKey("ns1", "pod1")
+	otherKey := core.PodKey("ns1", "other")
+
+	batch1, batch2, batch3 := makeBatches(now, key, otherKey)
+
+	metrics := NewMetricSink(45*time.Second, 120*time.Second, []string{"m1"})
+	metrics.ExportData(&batch1)
+	metrics.ExportData(&batch2)
+	metrics.ExportData(&batch3)
+
+	result := metrics.GetLabeledMetric("somelblmetric", map[string]string{"lbl1": "val1.1", "lbl2": "val2.1"}, []string{key}, now.Add(-120*time.Second), now)
+
+	assert.Equal(t, []core.TimestampedMetricValue{
+		{
+			Timestamp: now.Add(-20 * time.Second),
+			MetricValue: core.MetricValue{
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricGauge,
+				IntValue:   309,
+			},
+		},
+	}, result[key])
 }
 
 func TestGetNames(t *testing.T) {

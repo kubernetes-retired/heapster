@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"k8s.io/heapster/metrics/core"
 
@@ -82,6 +83,32 @@ func (sink *influxdbSink) checkSanitizedMetricName(name string) error {
 	return nil
 }
 
+// checkSanitizedMetricLabels errors out if invalid characters are found in the label name or label value, since
+// InfluxDb does not widely support bound parameters yet, and we need to sanitize our inputs.
+func (sink *influxdbSink) checkSanitizedMetricLabels(labels map[string]string) error {
+	// label names have the same restrictions as metric names, here
+	for k, v := range labels {
+		if !metricAllowedChars.MatchString(k) {
+			return fmt.Errorf("Invalid label name %q", k)
+		}
+
+		// for metric values, we're somewhat more permissive.  We allow any
+		// Printable unicode character, except quotation marks, which are used
+		// to delimit things.
+		if strings.ContainsRune(v, '"') || strings.ContainsRune(v, '\'') {
+			return fmt.Errorf("Invalid label value %q", v)
+		}
+
+		for _, runeVal := range v {
+			if !unicode.IsPrint(runeVal) {
+				return fmt.Errorf("Invalid label value %q", v)
+			}
+		}
+	}
+
+	return nil
+}
+
 // aggregationFunc converts an aggregation name into the equivalent call to an InfluxQL
 // aggregation function
 func (sink *influxdbSink) aggregationFunc(aggregationName core.AggregationType, fieldName string) string {
@@ -138,6 +165,20 @@ func (sink *influxdbSink) keyToSelector(key core.HistoricalKey) string {
 	panic(fmt.Sprintf("Unknown metric type %q", key.ObjectType))
 }
 
+// labelsToPredicate composes an InfluxQL predicate based on the given map of labels
+func (sink *influxdbSink) labelsToPredicate(labels map[string]string) string {
+	if len(labels) == 0 {
+		return ""
+	}
+
+	parts := make([]string, 0, len(labels))
+	for k, v := range labels {
+		parts = append(parts, fmt.Sprintf("%q = '%s'", k, v))
+	}
+
+	return strings.Join(parts, " AND ")
+}
+
 // metricToSeriesAndField retrieves the appropriate field name and series name for a given metric
 // (this varies depending on whether or not WithFields is enabled)
 func (sink *influxdbSink) metricToSeriesAndField(metricName string) (string, string) {
@@ -154,12 +195,15 @@ func (sink *influxdbSink) metricToSeriesAndField(metricName string) (string, str
 }
 
 // composeRawQuery creates the InfluxQL query to fetch the given metric values
-func (sink *influxdbSink) composeRawQuery(metricName string, metricKeys []core.HistoricalKey, start, end time.Time) string {
+func (sink *influxdbSink) composeRawQuery(metricName string, labels map[string]string, metricKeys []core.HistoricalKey, start, end time.Time) string {
 	seriesName, fieldName := sink.metricToSeriesAndField(metricName)
 
 	queries := make([]string, len(metricKeys))
 	for i, key := range metricKeys {
 		pred := sink.keyToSelector(key)
+		if labels != nil {
+			pred += fmt.Sprintf(" AND %s", sink.labelsToPredicate(labels))
+		}
 		if !start.IsZero() {
 			pred += fmt.Sprintf(" AND time > '%s'", start.Format(time.RFC3339))
 		}
@@ -220,7 +264,7 @@ func (sink *influxdbSink) GetMetric(metricName string, metricKeys []core.Histori
 		return nil, err
 	}
 
-	query := sink.composeRawQuery(metricName, metricKeys, start, end)
+	query := sink.composeRawQuery(metricName, nil, metricKeys, start, end)
 
 	sink.RLock()
 	defer sink.RUnlock()
@@ -246,8 +290,51 @@ func (sink *influxdbSink) GetMetric(metricName string, metricKeys []core.Histori
 	return res, nil
 }
 
-// composeRawQuery creates the InfluxQL query to fetch the given aggregation values
-func (sink *influxdbSink) composeAggregateQuery(metricName string, aggregations []core.AggregationType, metricKeys []core.HistoricalKey, start, end time.Time, bucketSize time.Duration) string {
+// GetLabeledMetric retrieves the given labeled metric for one or more objects (specified by metricKeys) of
+// the same type, within the given time interval
+func (sink *influxdbSink) GetLabeledMetric(metricName string, labels map[string]string, metricKeys []core.HistoricalKey, start, end time.Time) (map[core.HistoricalKey][]core.TimestampedMetricValue, error) {
+	for _, key := range metricKeys {
+		if err := sink.checkSanitizedKey(&key); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := sink.checkSanitizedMetricName(metricName); err != nil {
+		return nil, err
+	}
+
+	if err := sink.checkSanitizedMetricLabels(labels); err != nil {
+		return nil, err
+	}
+
+	query := sink.composeRawQuery(metricName, labels, metricKeys, start, end)
+
+	sink.RLock()
+	defer sink.RUnlock()
+
+	resp, err := sink.runQuery(query)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make(map[core.HistoricalKey][]core.TimestampedMetricValue, len(metricKeys))
+	for i, key := range metricKeys {
+		if len(resp[i].Series) < 1 {
+			return nil, fmt.Errorf("No results for metric %q describing %q", metricName, key.String())
+		}
+
+		vals, err := sink.parseRawQueryRow(resp[i].Series[0])
+		if err != nil {
+			return nil, err
+		}
+		res[key] = vals
+	}
+
+	return res, nil
+}
+
+// composeAggregateQuery creates the InfluxQL query to fetch the given aggregation values
+func (sink *influxdbSink) composeAggregateQuery(metricName string, labels map[string]string, aggregations []core.AggregationType, metricKeys []core.HistoricalKey, start, end time.Time, bucketSize time.Duration) string {
 	seriesName, fieldName := sink.metricToSeriesAndField(metricName)
 
 	var bucketSizeNanoSeconds int64 = 0
@@ -258,6 +345,9 @@ func (sink *influxdbSink) composeAggregateQuery(metricName string, aggregations 
 	queries := make([]string, len(metricKeys))
 	for i, key := range metricKeys {
 		pred := sink.keyToSelector(key)
+		if labels != nil {
+			pred += fmt.Sprintf(" AND %s", sink.labelsToPredicate(labels))
+		}
 		if !start.IsZero() {
 			pred += fmt.Sprintf(" AND time > '%s'", start.Format(time.RFC3339))
 		}
@@ -350,7 +440,54 @@ func (sink *influxdbSink) GetAggregation(metricName string, aggregations []core.
 		aggregationLookup[agg] = i + 1
 	}
 
-	query := sink.composeAggregateQuery(metricName, aggregations, metricKeys, start, end, bucketSize)
+	query := sink.composeAggregateQuery(metricName, nil, aggregations, metricKeys, start, end, bucketSize)
+
+	sink.RLock()
+	defer sink.RUnlock()
+
+	resp, err := sink.runQuery(query)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: when there are too many points (e.g. certain times when a start time is not specified), Influx will sometimes return only a single bucket
+	//       instead of returning an error.  We should detect this case and return an error ourselves (or maybe just require a start time at the API level)
+	res := make(map[core.HistoricalKey][]core.TimestampedAggregationValue, len(metricKeys))
+	for i, key := range metricKeys {
+		vals, err := sink.parseAggregateQueryRow(resp[i].Series[0], aggregationLookup, bucketSize)
+		if err != nil {
+			return nil, err
+		}
+		res[key] = vals
+	}
+
+	return res, nil
+}
+
+// GetLabeledAggregation fetches the given aggregations (on labeled metrics) for one or more objects
+// (specified by metricKeys) of the same type, within the given time interval, calculated over a series of buckets
+func (sink *influxdbSink) GetLabeledAggregation(metricName string, labels map[string]string, aggregations []core.AggregationType, metricKeys []core.HistoricalKey, start, end time.Time, bucketSize time.Duration) (map[core.HistoricalKey][]core.TimestampedAggregationValue, error) {
+	for _, key := range metricKeys {
+		if err := sink.checkSanitizedKey(&key); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := sink.checkSanitizedMetricName(metricName); err != nil {
+		return nil, err
+	}
+
+	if err := sink.checkSanitizedMetricLabels(labels); err != nil {
+		return nil, err
+	}
+
+	// make it easy to look up where the different aggregations are in the list
+	aggregationLookup := make(map[core.AggregationType]int, len(aggregations))
+	for i, agg := range aggregations {
+		aggregationLookup[agg] = i + 1
+	}
+
+	query := sink.composeAggregateQuery(metricName, labels, aggregations, metricKeys, start, end, bucketSize)
 
 	sink.RLock()
 	defer sink.RUnlock()

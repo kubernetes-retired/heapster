@@ -32,10 +32,11 @@ import (
 )
 
 type metricReq struct {
-	name  string
-	keys  []core.HistoricalKey
-	start time.Time
-	end   time.Time
+	name   string
+	keys   []core.HistoricalKey
+	start  time.Time
+	end    time.Time
+	labels map[string]string
 
 	aggregations []core.AggregationType
 	bucketSize   time.Duration
@@ -56,15 +57,20 @@ type fakeHistoricalSource struct {
 }
 
 func (src *fakeHistoricalSource) GetMetric(metricName string, metricKeys []core.HistoricalKey, start, end time.Time) (map[core.HistoricalKey][]core.TimestampedMetricValue, error) {
+	return src.GetLabeledMetric(metricName, nil, metricKeys, start, end)
+}
+
+func (src *fakeHistoricalSource) GetLabeledMetric(metricName string, labels map[string]string, metricKeys []core.HistoricalKey, start, end time.Time) (map[core.HistoricalKey][]core.TimestampedMetricValue, error) {
 	if metricName == "invalid" {
 		return nil, fmt.Errorf("fake error fetching metrics")
 	}
 
 	src.metricRequests = append(src.metricRequests, metricReq{
-		name:  metricName,
-		keys:  metricKeys,
-		start: start,
-		end:   end,
+		name:   metricName,
+		keys:   metricKeys,
+		labels: labels,
+		start:  start,
+		end:    end,
 	})
 
 	res := make(map[core.HistoricalKey][]core.TimestampedMetricValue, len(metricKeys))
@@ -85,15 +91,20 @@ func (src *fakeHistoricalSource) GetMetric(metricName string, metricKeys []core.
 }
 
 func (src *fakeHistoricalSource) GetAggregation(metricName string, aggregations []core.AggregationType, metricKeys []core.HistoricalKey, start, end time.Time, bucketSize time.Duration) (map[core.HistoricalKey][]core.TimestampedAggregationValue, error) {
+	return src.GetLabeledAggregation(metricName, nil, aggregations, metricKeys, start, end, bucketSize)
+}
+
+func (src *fakeHistoricalSource) GetLabeledAggregation(metricName string, labels map[string]string, aggregations []core.AggregationType, metricKeys []core.HistoricalKey, start, end time.Time, bucketSize time.Duration) (map[core.HistoricalKey][]core.TimestampedAggregationValue, error) {
 	if metricName == "invalid" {
 		return nil, fmt.Errorf("fake error fetching metrics")
 	}
 
 	src.metricRequests = append(src.aggregationRequests, metricReq{
-		name:  metricName,
-		keys:  metricKeys,
-		start: start,
-		end:   end,
+		name:   metricName,
+		keys:   metricKeys,
+		start:  start,
+		end:    end,
+		labels: labels,
 
 		aggregations: aggregations,
 		bucketSize:   bucketSize,
@@ -423,6 +434,7 @@ func TestFetchMetrics(t *testing.T) {
 		test              string
 		start             string
 		end               string
+		labels            string
 		fun               func(*restful.Request, *restful.Response)
 		pathParams        map[string]string
 		expectedMetricReq metricReq
@@ -578,6 +590,23 @@ func TestFetchMetrics(t *testing.T) {
 			},
 		},
 		{
+			test: "query with labels",
+			fun:  api.clusterMetrics,
+			pathParams: map[string]string{
+				"metric-name": "some-metric",
+			},
+			start:  nowTime.Add(-10 * time.Second).Format(time.RFC3339),
+			labels: "somelbl:v1,otherlbl:v2.3:4",
+			expectedMetricReq: metricReq{
+				name: "some-metric",
+				keys: []core.HistoricalKey{
+					{ObjectType: core.MetricSetTypeCluster},
+				},
+				labels: map[string]string{"somelbl": "v1", "otherlbl": "v2.3:4"},
+				start:  nowTime.Add(-10 * time.Second),
+			},
+		},
+		{
 			test:           "query with bad start",
 			fun:            api.clusterMetrics,
 			start:          "afdsfd",
@@ -596,6 +625,13 @@ func TestFetchMetrics(t *testing.T) {
 				"metric-name": "invalid",
 			},
 			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			test:           "query with bad labels",
+			fun:            api.clusterMetrics,
+			start:          nowTime.Add(-10 * time.Second).Format(time.RFC3339),
+			labels:         "abc:",
+			expectedStatus: http.StatusBadRequest,
 		},
 	}
 
@@ -618,6 +654,7 @@ func TestFetchMetrics(t *testing.T) {
 		queryParams := make(url.Values)
 		queryParams.Add("start", test.start)
 		queryParams.Add("end", test.end)
+		queryParams.Add("labels", test.labels)
 		u := &url.URL{RawQuery: queryParams.Encode()}
 		req := restful.NewRequest(&http.Request{URL: u})
 		pathParams := req.PathParameters()
@@ -658,6 +695,7 @@ func TestFetchMetrics(t *testing.T) {
 		test              string
 		start             string
 		end               string
+		labels            string
 		fun               func(*restful.Request, *restful.Response)
 		pathParams        map[string]string
 		expectedMetricReq metricReq
@@ -701,6 +739,26 @@ func TestFetchMetrics(t *testing.T) {
 			},
 		},
 		{
+			test: "pod list with labels",
+			fun:  api.podListMetrics,
+			pathParams: map[string]string{
+				"metric-name": "some-metric",
+				"pod-id-list": "pod-id-1,pod-id-2,pod-id-3",
+			},
+			start:  nowTime.Add(-10 * time.Second).Format(time.RFC3339),
+			labels: "somelbl:v1,otherlbl:v2.3:4",
+			expectedMetricReq: metricReq{
+				name: "some-metric",
+				keys: []core.HistoricalKey{
+					{ObjectType: core.MetricSetTypePod, PodId: "pod-id-1"},
+					{ObjectType: core.MetricSetTypePod, PodId: "pod-id-2"},
+					{ObjectType: core.MetricSetTypePod, PodId: "pod-id-3"},
+				},
+				labels: map[string]string{"somelbl": "v1", "otherlbl": "v2.3:4"},
+				start:  nowTime.Add(-10 * time.Second),
+			},
+		},
+		{
 			test:           "pod list with bad start time",
 			fun:            api.podListMetrics,
 			start:          "afdsfd",
@@ -720,6 +778,13 @@ func TestFetchMetrics(t *testing.T) {
 			fun:            api.podListMetrics,
 			expectedStatus: http.StatusBadRequest,
 		},
+		{
+			test:           "query with bad labels",
+			fun:            api.clusterMetrics,
+			start:          nowTime.Add(-10 * time.Second).Format(time.RFC3339),
+			labels:         "abc:",
+			expectedStatus: http.StatusBadRequest,
+		},
 	}
 
 	expectedListVals := types.MetricResultList{
@@ -734,6 +799,7 @@ func TestFetchMetrics(t *testing.T) {
 		queryParams := make(url.Values)
 		queryParams.Add("start", test.start)
 		queryParams.Add("end", test.end)
+		queryParams.Add("labels", test.labels)
 		u := &url.URL{RawQuery: queryParams.Encode()}
 		req := restful.NewRequest(&http.Request{URL: u})
 		pathParams := req.PathParameters()
@@ -783,6 +849,7 @@ func TestFetchAggregations(t *testing.T) {
 		bucketSize        string
 		start             string
 		end               string
+		labels            string
 		fun               func(*restful.Request, *restful.Response)
 		pathParams        map[string]string
 		expectedMetricReq metricReq
@@ -949,6 +1016,24 @@ func TestFetchAggregations(t *testing.T) {
 			},
 		},
 		{
+			test: "aggregations with labels",
+			fun:  api.clusterAggregations,
+			pathParams: map[string]string{
+				"metric-name":  "some-metric",
+				"aggregations": "count,average",
+			},
+			labels: "somelbl:v1,otherlbl:v2.3:4",
+			start:  nowTime.Add(-10 * time.Second).Format(time.RFC3339),
+			expectedMetricReq: metricReq{
+				name: "some-metric",
+				keys: []core.HistoricalKey{
+					{ObjectType: core.MetricSetTypeCluster},
+				},
+				start:  nowTime.Add(-10 * time.Second),
+				labels: map[string]string{"somelbl": "v1", "otherlbl": "v2.3:4"},
+			},
+		},
+		{
 			test:           "aggregations with bad start time",
 			fun:            api.clusterAggregations,
 			start:          "afdsfd",
@@ -997,6 +1082,7 @@ func TestFetchAggregations(t *testing.T) {
 		queryParams.Add("start", test.start)
 		queryParams.Add("end", test.end)
 		queryParams.Add("bucket", test.bucketSize)
+		queryParams.Add("labels", test.labels)
 		u := &url.URL{RawQuery: queryParams.Encode()}
 		req := restful.NewRequest(&http.Request{URL: u})
 		pathParams := req.PathParameters()
@@ -1038,6 +1124,7 @@ func TestFetchAggregations(t *testing.T) {
 	listTests := []struct {
 		test              string
 		start             string
+		labels            string
 		end               string
 		fun               func(*restful.Request, *restful.Response)
 		pathParams        map[string]string
@@ -1084,6 +1171,28 @@ func TestFetchAggregations(t *testing.T) {
 			},
 		},
 		{
+			test:   "pod list aggregations with labels",
+			fun:    api.podListAggregations,
+			start:  nowTime.Add(-10 * time.Second).Format(time.RFC3339),
+			labels: "somelbl:v1,otherlbl:v2.3:4",
+			pathParams: map[string]string{
+				"metric-name":    "some-metric",
+				"namespace-name": "ns1",
+				"pod-list":       "pod1,pod2,pod3",
+				"aggregations":   "count,average",
+			},
+			expectedMetricReq: metricReq{
+				name: "some-metric",
+				keys: []core.HistoricalKey{
+					{ObjectType: core.MetricSetTypePod, NamespaceName: "ns1", PodName: "pod1"},
+					{ObjectType: core.MetricSetTypePod, NamespaceName: "ns1", PodName: "pod2"},
+					{ObjectType: core.MetricSetTypePod, NamespaceName: "ns1", PodName: "pod3"},
+				},
+				start:  nowTime.Add(-10 * time.Second),
+				labels: map[string]string{"somelbl": "v1", "otherlbl": "v2.3:4"},
+			},
+		},
+		{
 			test:           "pod list aggregations with bad start time",
 			fun:            api.podListAggregations,
 			start:          "afdsfd",
@@ -1118,6 +1227,7 @@ func TestFetchAggregations(t *testing.T) {
 		queryParams := make(url.Values)
 		queryParams.Add("start", test.start)
 		queryParams.Add("end", test.end)
+		queryParams.Add("labels", test.labels)
 		u := &url.URL{RawQuery: queryParams.Encode()}
 		req := restful.NewRequest(&http.Request{URL: u})
 		pathParams := req.PathParameters()
@@ -1354,5 +1464,57 @@ func TestExportTimestampedAggregationValue(t *testing.T) {
 			metricVal := inputVal.Aggregations[core.AggregationTypePercentile50]
 			assert.Equal(exportMetricValue(&metricVal), &percVal, "the output bucket should have a 50th-percentile value equal to that of the input value")
 		}
+	}
+}
+
+func TestGetLabels(t *testing.T) {
+	assert := assert.New(t)
+
+	tests := []struct {
+		test        string
+		input       string
+		outputVal   map[string]string
+		outputError bool
+	}{
+		{
+			test:      "working labels",
+			input:     "k1:v1,k2:v2.3:4+5",
+			outputVal: map[string]string{"k1": "v1", "k2": "v2.3:4+5"},
+		},
+		{
+			test:        "bad label (no separator)",
+			input:       "k1,k2:v2",
+			outputError: true,
+		},
+		{
+			test:        "bad label (no key)",
+			input:       "k1:v1,:v2",
+			outputError: true,
+		},
+		{
+			test:        "bad label (no value)",
+			input:       "k1:v1,k1:",
+			outputError: true,
+		},
+		{
+			test:      "empty",
+			input:     "",
+			outputVal: nil,
+		},
+	}
+
+	for _, test := range tests {
+		queryParams := make(url.Values)
+		queryParams.Add("labels", test.input)
+		u := &url.URL{RawQuery: queryParams.Encode()}
+		req := restful.NewRequest(&http.Request{URL: u})
+		res, err := getLabels(req)
+		if test.outputError && !assert.Error(err, "test %q should have yielded an error", test.test) {
+			continue
+		} else if !test.outputError && !assert.NoError(err, "test %q should not have yielded an error", test.test) {
+			continue
+		}
+
+		assert.Equal(test.outputVal, res, "test %q should have output the correct label map", test.test)
 	}
 }

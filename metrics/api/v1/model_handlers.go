@@ -89,6 +89,7 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metric").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+		Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
 	// The /nodes/{node-name}/metrics endpoint returns a list of all nodes with some metrics.
@@ -114,6 +115,7 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metric").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+		Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
 	if a.isRunningInKubernetes() {
@@ -140,6 +142,7 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricResult{}))
 
 		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/").
@@ -167,6 +170,7 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricResult{}))
 
 		// The /namespaces/{namespace-name}/pods/{pod-name}/containers/metrics/{container-name}/metrics endpoint
@@ -191,6 +195,7 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricResult{}))
 	}
 
@@ -220,6 +225,7 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 		Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 		Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 		Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+		Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 		Writes(types.MetricResult{}))
 
 	if a.isRunningInKubernetes() {
@@ -234,6 +240,7 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
 			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricResult{}))
 	}
 }
@@ -358,7 +365,20 @@ func (a *Api) podListMetrics(request *restful.Request, response *restful.Respons
 	for _, podName := range strings.Split(request.PathParameter("pod-list"), ",") {
 		keys = append(keys, core.PodKey(ns, podName))
 	}
-	metrics := a.metricSink.GetMetric(convertedMetricName, keys, start, end)
+
+	labels, err := getLabels(request)
+	if err != nil {
+		response.WriteError(http.StatusBadRequest, err)
+		return
+	}
+
+	var metrics map[string][]core.TimestampedMetricValue
+	if labels != nil {
+		metrics = a.metricSink.GetLabeledMetric(convertedMetricName, labels, keys, start, end)
+	} else {
+		metrics = a.metricSink.GetMetric(convertedMetricName, keys, start, end)
+	}
+
 	result := types.MetricResultList{
 		Items: make([]types.MetricResult, 0, len(keys)),
 	}
@@ -410,7 +430,18 @@ func (a *Api) processMetricRequest(key string, request *restful.Request, respons
 	}
 	metricName := request.PathParameter("metric-name")
 	convertedMetricName := convertMetricName(metricName)
-	metrics := a.metricSink.GetMetric(convertedMetricName, []string{key}, start, end)
+	labels, err := getLabels(request)
+	if err != nil {
+		response.WriteError(http.StatusBadRequest, err)
+		return
+	}
+
+	var metrics map[string][]core.TimestampedMetricValue
+	if labels != nil {
+		metrics = a.metricSink.GetLabeledMetric(convertedMetricName, labels, []string{key}, start, end)
+	} else {
+		metrics = a.metricSink.GetMetric(convertedMetricName, []string{key}, start, end)
+	}
 	converted := exportTimestampedMetricValue(metrics[key])
 	response.WriteEntity(converted)
 }
@@ -461,4 +492,23 @@ func exportTimestampedMetricValue(values []core.TimestampedMetricValue) types.Me
 		})
 	}
 	return result
+}
+
+func getLabels(request *restful.Request) (map[string]string, error) {
+	labelsRaw := request.QueryParameter("labels")
+	if labelsRaw == "" {
+		return nil, nil
+	}
+
+	kvPairs := strings.Split(labelsRaw, ",")
+	labels := make(map[string]string, len(kvPairs))
+	for _, kvPair := range kvPairs {
+		kvSplit := strings.SplitN(kvPair, ":", 2)
+		if len(kvSplit) != 2 || kvSplit[0] == "" || kvSplit[1] == "" {
+			return nil, fmt.Errorf("invalid label pair %q", kvPair)
+		}
+		labels[kvSplit[0]] = kvSplit[1]
+	}
+
+	return labels, nil
 }

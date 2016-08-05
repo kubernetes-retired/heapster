@@ -136,6 +136,9 @@ type HistoricalSource interface {
 	// while an end time of zero indicates no ending bound.
 	GetMetric(metricName string, metricKeys []HistoricalKey, start, end time.Time) (map[HistoricalKey][]TimestampedMetricValue, error)
 
+	// GetLabeledMetric retrieves the given labeled metric.  Otherwise, it functions identically to GetMetric.
+	GetLabeledMetric(metricName string, labels map[string]string, metricKeys []HistoricalKey, start, end time.Time) (map[HistoricalKey][]TimestampedMetricValue, error)
+
 	// GetAggregation fetches the given aggregations for one or more objects (specified by metricKeys) of
 	// the same type, within the given time interval, calculated over a series of buckets.  The start time,
 	// end time, and bucket size may be zero.  A start time of zero indicates no starting bound, while and
@@ -143,6 +146,10 @@ type HistoricalSource interface {
 	// from the future).  A bucket size of zero indicates that only a single bucket spanning the entire specified
 	// time range should be returned.
 	GetAggregation(metricName string, aggregations []AggregationType, metricKeys []HistoricalKey, start, end time.Time, bucketSize time.Duration) (map[HistoricalKey][]TimestampedAggregationValue, error)
+
+	// GetLabeledAggregation fetches a the given aggregations for a labeled metric instead of a normal metric.
+	// Otherwise, it functions identically to GetAggregation.
+	GetLabeledAggregation(metricName string, labels map[string]string, aggregations []AggregationType, metricKeys []HistoricalKey, start, end time.Time, bucketSize time.Duration) (map[HistoricalKey][]TimestampedAggregationValue, error)
 
 	// GetMetricNames retrieves the available metric names for the given object
 	GetMetricNames(metricKey HistoricalKey) ([]string, error)
