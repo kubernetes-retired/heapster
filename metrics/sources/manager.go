@@ -76,7 +76,7 @@ func (this *sourceManager) Name() string {
 }
 
 func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
-	glog.Infof("Scraping metrics start: %s, end: %s", start, end)
+	glog.V(1).Infof("Scraping metrics start: %s, end: %s", start, end)
 	sources := this.metricsSourceProvider.GetMetricsSources()
 
 	responseChannel := make(chan *DataBatch)
@@ -149,7 +149,7 @@ responseloop:
 		}
 	}
 
-	glog.Infof("ScrapeMetrics: time: %s size: %d", time.Since(startTime), len(response.MetricSets))
+	glog.V(1).Infof("ScrapeMetrics: time: %s size: %d", time.Since(startTime), len(response.MetricSets))
 	for i, value := range latencies {
 		glog.V(1).Infof("   scrape  bucket %d: %d", i, value)
 	}
