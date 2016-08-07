@@ -53,11 +53,13 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 			if availableCpu.MilliValue() != 0 {
 				setFloat(metricSet, &core.MetricNodeCpuUtilization, float32(cpuUsed)/float32(availableCpu.MilliValue()))
 				setFloat(metricSet, &core.MetricNodeCpuReservation, float32(cpuRequested)/float32(availableCpu.MilliValue()))
+				setFloat(metricSet, &core.MetricNodeCpuCapacity, float32(availableCpu.MilliValue()))
 			}
 
 			if availableMem.Value() != 0 {
 				setFloat(metricSet, &core.MetricNodeMemoryUtilization, float32(memUsed)/float32(availableMem.Value()))
 				setFloat(metricSet, &core.MetricNodeMemoryReservation, float32(memRequested)/float32(availableMem.Value()))
+				setFloat(metricSet, &core.MetricNodeMemoryCapacity, float32(availableMem.Value()))
 			}
 		}
 	}
