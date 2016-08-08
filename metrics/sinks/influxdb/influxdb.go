@@ -177,13 +177,21 @@ func (sink *influxdbSink) Stop() {
 	// nothing needs to be done.
 }
 
-func (sink *influxdbSink) createDatabase() error {
+func (sink *influxdbSink) ensureClient() error {
 	if sink.client == nil {
 		client, err := influxdb_common.NewClient(sink.c)
 		if err != nil {
 			return err
 		}
 		sink.client = client
+	}
+
+	return nil
+}
+
+func (sink *influxdbSink) createDatabase() error {
+	if err := sink.ensureClient(); err != nil {
+		return err
 	}
 
 	if sink.dbExists {
