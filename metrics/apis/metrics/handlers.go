@@ -66,6 +66,11 @@ func (a *Api) Register(container *restful.Container) {
 		Operation("nodeMetrics").
 		Param(ws.PathParameter("node-name", "The name of the node to lookup").DataType("string")))
 
+	ws.Route(ws.GET("/pods/").
+		To(a.allPodMetricsList).
+		Doc("Get metrics for all available pods.").
+		Operation("allPodMetricsList"))
+
 	ws.Route(ws.GET("/namespaces/{namespace-name}/pods/").
 		To(a.podMetricsList).
 		Doc("Get a list of metrics for all available pods in the specified namespace.").
@@ -150,8 +155,15 @@ func parseResourceList(ms *core.MetricSet) (kube_v1.ResourceList, error) {
 	}, nil
 }
 
+func (a *Api) allPodMetricsList(request *restful.Request, response *restful.Response) {
+	podMetricsInNamespaceList(a, request, response, kube_api.NamespaceAll)
+}
+
 func (a *Api) podMetricsList(request *restful.Request, response *restful.Response) {
-	ns := request.PathParameter("namespace-name")
+	podMetricsInNamespaceList(a, request, response, request.PathParameter("namespace-name"))
+}
+
+func podMetricsInNamespaceList(a *Api, request *restful.Request, response *restful.Response, namespace string) {
 	selector := request.QueryParameter("labelSelector")
 
 	labelSelector, err := labels.Parse(selector)
@@ -162,7 +174,7 @@ func (a *Api) podMetricsList(request *restful.Request, response *restful.Respons
 		return
 	}
 
-	pods, err := a.podLister.Pods(ns).List(labelSelector)
+	pods, err := a.podLister.Pods(namespace).List(labelSelector)
 	if err != nil {
 		errMsg := fmt.Errorf("Error while listing pods for selector %v: %v", selector, err)
 		glog.Error(errMsg)

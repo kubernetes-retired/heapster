@@ -417,7 +417,13 @@ var labelSelectorEverything = labels.Everything()
 
 func getDataFromProxy(fm kubeFramework, svc *kube_api.Service, url string) ([]byte, error) {
 	glog.V(2).Infof("Querying heapster: %s", url)
-	return getDataFromProxyWithSelector(fm, svc, url, &labelSelectorEverything)
+	return fm.Client().Get().
+		Namespace(svc.Namespace).
+		Prefix("proxy").
+		Resource("services").
+		Name(svc.Name).
+		Suffix(url).
+		Do().Raw()
 }
 
 func getDataFromProxyWithSelector(fm kubeFramework, svc *kube_api.Service, url string, labelSelector *labels.Selector) ([]byte, error) {
@@ -642,9 +648,15 @@ func getPodMetrics(fm kubeFramework, svc *kube_api.Service, pod kube_api.Pod) (*
 	return &data, nil
 }
 
-func getAllPodsMetrics(fm kubeFramework, svc *kube_api.Service, namespace string) (metrics_api.PodMetricsList, error) {
+func getAllPodsInNamespaceMetrics(fm kubeFramework, svc *kube_api.Service, namespace string) (metrics_api.PodMetricsList, error) {
 	url := fmt.Sprintf("apis/metrics/v1alpha1/namespaces/%s/pods/", namespace)
 	return getPodMetricsList(fm, svc, url, &labelSelectorEverything)
+}
+
+func getAllPodsMetrics(fm kubeFramework, svc *kube_api.Service) (metrics_api.PodMetricsList, error) {
+	url := "apis/metrics/v1alpha1/pods/"
+	selector := labels.Everything()
+	return getPodMetricsList(fm, svc, url, &selector)
 }
 
 func getLabelSelectedPodsMetrics(fm kubeFramework, svc *kube_api.Service, namespace string, labelSelector *labels.Selector) (metrics_api.PodMetricsList, error) {
@@ -789,7 +801,7 @@ func runSinglePodMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	return nil
 }
 
-func runAllPodsMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runAllPodsInNamespaceMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	podList, err := fm.GetAllRunningPods()
 	if err != nil {
 		return err
@@ -806,13 +818,13 @@ func runAllPodsMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	}
 
 	for ns, podMap := range nsToPods {
-		metrics, err := getAllPodsMetrics(fm, svc, ns)
+		metrics, err := getAllPodsInNamespaceMetrics(fm, svc, ns)
 		if err != nil {
 			return err
 		}
 
 		if len(metrics.Items) != len(nsToPods[ns]) {
-			return fmt.Errorf("Wrong number of all pod metrics: expected %v, got %v", len(nsToPods[ns]), len(metrics.Items))
+			return fmt.Errorf("Wrong number of metrics of all pods in a namespace: expected %v, got %v", len(nsToPods[ns]), len(metrics.Items))
 		}
 		for _, podMetric := range metrics.Items {
 			pod := podMap[podMetric.Name]
@@ -820,6 +832,37 @@ func runAllPodsMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+func runAllPodsMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+	podList, err := fm.GetAllRunningPods()
+	if err != nil {
+		return err
+	}
+	if len(podList) == 0 {
+		return fmt.Errorf("empty pod list")
+	}
+	pods := make(map[string]kube_api.Pod)
+	for _, p := range podList {
+		pods[p.Namespace+"/"+p.Name] = p
+	}
+
+	metrics, err := getAllPodsMetrics(fm, svc)
+	if err != nil {
+		return err
+	}
+
+	if len(metrics.Items) != len(podList) {
+		return fmt.Errorf("Wrong number of all pod metrics: expected %v, got %v", len(podList), len(metrics.Items))
+	}
+	for _, podMetric := range metrics.Items {
+		pod := pods[podMetric.Namespace+"/"+podMetric.Name]
+		err := checkSinglePodMetrics(&podMetric, &pod)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -906,7 +949,7 @@ func apiTest(kubeVersion string, zone string) error {
 			if err == nil {
 				glog.V(2).Infof("Heapster metric export test: OK")
 			} else {
-				glog.V(2).Infof("Heapster metric export test error: %v", err)
+				glog.V(2).Infof("Heapster metric export test: error: %v", err)
 			}
 			return err
 		},
@@ -916,7 +959,7 @@ func apiTest(kubeVersion string, zone string) error {
 			if err == nil {
 				glog.V(2).Infof("Model test: OK")
 			} else {
-				glog.V(2).Infof("Model test error: %v", err)
+				glog.V(2).Infof("Model test: error: %v", err)
 			}
 			return err
 		},
@@ -927,6 +970,16 @@ func apiTest(kubeVersion string, zone string) error {
 				glog.V(2).Infof("Metrics API test - single pod: OK")
 			} else {
 				glog.V(2).Infof("Metrics API test - single pod: error: %v", err)
+			}
+			return err
+		},
+		func() error {
+			glog.V(2).Infof("Metrics API test - All pods in a namespace")
+			err := runAllPodsInNamespaceMetricsApiTest(fm, svc)
+			if err == nil {
+				glog.V(2).Infof("Metrics API test - All pods in a namespace: OK")
+			} else {
+				glog.V(2).Infof("Metrics API test - All pods in a namespace: error: %v", err)
 			}
 			return err
 		},
