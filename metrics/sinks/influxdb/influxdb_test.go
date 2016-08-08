@@ -16,6 +16,7 @@ package influxdb
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -206,6 +207,30 @@ func checkMetricVal(expected, actual core.MetricValue) bool {
 	default:
 		return expected == actual
 	}
+}
+
+func TestHistoricalMissingResponses(t *testing.T) {
+	sink := newRawInfluxSink()
+
+	podKeys := []core.HistoricalKey{
+		{ObjectType: core.MetricSetTypePod, NamespaceName: "cheese", PodName: "cheddar"},
+		{ObjectType: core.MetricSetTypePod, NamespaceName: "cheese", PodName: "swiss"},
+	}
+	labels := map[string]string{"crackers": "ritz"}
+
+	errStr := fmt.Sprintf("No results for metric %q describing %q", "cpu/usage_rate", podKeys[0].String())
+
+	_, err := sink.GetMetric("cpu/usage_rate", podKeys, time.Now().Add(-5*time.Minute), time.Now())
+	assert.EqualError(t, err, errStr)
+
+	_, err = sink.GetLabeledMetric("cpu/usage_rate", labels, podKeys, time.Now().Add(-5*time.Minute), time.Now())
+	assert.EqualError(t, err, errStr)
+
+	_, err = sink.GetAggregation("cpu/usage_rate", []core.AggregationType{core.AggregationTypeAverage}, podKeys, time.Now().Add(-5*time.Minute), time.Now(), 5*time.Minute)
+	assert.EqualError(t, err, errStr)
+
+	_, err = sink.GetLabeledAggregation("cpu/usage_rate", labels, []core.AggregationType{core.AggregationTypeAverage}, podKeys, time.Now().Add(-5*time.Minute), time.Now(), 5*time.Minute)
+	assert.EqualError(t, err, errStr)
 }
 
 func TestHistoricalInfluxRawMetricsParsing(t *testing.T) {

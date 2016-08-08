@@ -15,6 +15,7 @@
 package influxdb
 
 import (
+	"strings"
 	"time"
 
 	influxdb "github.com/influxdata/influxdb/client"
@@ -39,8 +40,13 @@ func (client *FakeInfluxDBClient) Write(bps influxdb.BatchPoints) (*influxdb.Res
 	return nil, nil
 }
 
-func (client *FakeInfluxDBClient) Query(influxdb.Query) (*influxdb.Response, error) {
-	return nil, nil
+func (client *FakeInfluxDBClient) Query(q influxdb.Query) (*influxdb.Response, error) {
+	numQueries := strings.Count(q.Command, ";")
+
+	// return an empty result for each separate query
+	return &influxdb.Response{
+		Results: make([]influxdb.Result, numQueries),
+	}, nil
 }
 
 func (client *FakeInfluxDBClient) Ping() (time.Duration, string, error) {

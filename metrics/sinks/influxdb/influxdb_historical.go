@@ -454,6 +454,10 @@ func (sink *influxdbSink) GetAggregation(metricName string, aggregations []core.
 	//       instead of returning an error.  We should detect this case and return an error ourselves (or maybe just require a start time at the API level)
 	res := make(map[core.HistoricalKey][]core.TimestampedAggregationValue, len(metricKeys))
 	for i, key := range metricKeys {
+		if len(resp[i].Series) < 1 {
+			return nil, fmt.Errorf("No results for metric %q describing %q", metricName, key.String())
+		}
+
 		vals, err := sink.parseAggregateQueryRow(resp[i].Series[0], aggregationLookup, bucketSize)
 		if err != nil {
 			return nil, err
@@ -501,6 +505,10 @@ func (sink *influxdbSink) GetLabeledAggregation(metricName string, labels map[st
 	//       instead of returning an error.  We should detect this case and return an error ourselves (or maybe just require a start time at the API level)
 	res := make(map[core.HistoricalKey][]core.TimestampedAggregationValue, len(metricKeys))
 	for i, key := range metricKeys {
+		if len(resp[i].Series) < 1 {
+			return nil, fmt.Errorf("No results for metric %q describing %q", metricName, key.String())
+		}
+
 		vals, err := sink.parseAggregateQueryRow(resp[i].Series[0], aggregationLookup, bucketSize)
 		if err != nil {
 			return nil, err
