@@ -31,6 +31,11 @@ func (h *hawkularSink) Historical() core.HistoricalSource {
 // GetMetric retrieves the given metric for one or more objects (specified by metricKeys) of
 // the same type, within the given time interval
 func (h *hawkularSink) GetMetric(metricName string, metricKeys []core.HistoricalKey, start, end time.Time) (map[core.HistoricalKey][]core.TimestampedMetricValue, error) {
+	return h.GetLabeledMetric(metricName, nil, metricKeys, start, end)
+}
+
+// GetLabeledMetric retrieves the given labeled metric.  Otherwise, it functions identically to GetMetric.
+func (h *hawkularSink) GetLabeledMetric(metricName string, labels map[string]string, metricKeys []core.HistoricalKey, start, end time.Time) (map[core.HistoricalKey][]core.TimestampedMetricValue, error) {
 	typ := h.metricNameToHawkularType(metricName)
 
 	resLock := &sync.Mutex{}
@@ -45,6 +50,12 @@ func (h *hawkularSink) GetMetric(metricName string, metricKeys []core.Historical
 			defer wg.Done()
 			tags := h.keyToTags(&key)
 			tags[descriptorTag] = metricName
+
+			if labels != nil && len(labels) > 0 {
+				for k, v := range labels {
+					tags[k] = v
+				}
+			}
 
 			o := []metrics.Modifier{metrics.Filters(metrics.TagsFilter(tags), metrics.TypeFilter(typ))}
 			if h.isNamespaceTenant() && key.NamespaceName != "" && key.ObjectType != core.MetricSetTypeCluster {
@@ -116,6 +127,12 @@ func (h *hawkularSink) GetMetric(metricName string, metricKeys []core.Historical
 // GetAggregation fetches the given aggregations for one or more objects (specified by metricKeys) of
 // the same type, within the given time interval, calculated over a series of buckets
 func (h *hawkularSink) GetAggregation(metricName string, aggregations []core.AggregationType, metricKeys []core.HistoricalKey, start, end time.Time, bucketSize time.Duration) (map[core.HistoricalKey][]core.TimestampedAggregationValue, error) {
+	return h.GetLabeledAggregation(metricName, nil, aggregations, metricKeys, start, end, bucketSize)
+}
+
+// GetLabeledAggregation fetches a the given aggregations for a labeled metric instead of a normal metric.
+// Otherwise, it functions identically to GetAggregation.
+func (h *hawkularSink) GetLabeledAggregation(metricName string, labels map[string]string, aggregations []core.AggregationType, metricKeys []core.HistoricalKey, start, end time.Time, bucketSize time.Duration) (map[core.HistoricalKey][]core.TimestampedAggregationValue, error) {
 	typ := h.metricNameToHawkularType(metricName)
 
 	resLock := &sync.Mutex{}
@@ -131,6 +148,12 @@ func (h *hawkularSink) GetAggregation(metricName string, aggregations []core.Agg
 			defer wg.Done()
 			tags := h.keyToTags(&key)
 			tags[descriptorTag] = metricName
+
+			if labels != nil && len(labels) > 0 {
+				for k, v := range labels {
+					tags[k] = v
+				}
+			}
 
 			o := make([]metrics.Modifier, 0, 2)
 			if h.isNamespaceTenant() && key.NamespaceName != "" && key.ObjectType != core.MetricSetTypeCluster {
