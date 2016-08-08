@@ -454,6 +454,10 @@ func (sink *influxdbSink) GetAggregation(metricName string, aggregations []core.
 	//       instead of returning an error.  We should detect this case and return an error ourselves (or maybe just require a start time at the API level)
 	res := make(map[core.HistoricalKey][]core.TimestampedAggregationValue, len(metricKeys))
 	for i, key := range metricKeys {
+		if len(resp[i].Series) < 1 {
+			return nil, fmt.Errorf("No results for metric %q describing %q", metricName, key.String())
+		}
+
 		vals, err := sink.parseAggregateQueryRow(resp[i].Series[0], aggregationLookup, bucketSize)
 		if err != nil {
 			return nil, err
@@ -501,6 +505,10 @@ func (sink *influxdbSink) GetLabeledAggregation(metricName string, labels map[st
 	//       instead of returning an error.  We should detect this case and return an error ourselves (or maybe just require a start time at the API level)
 	res := make(map[core.HistoricalKey][]core.TimestampedAggregationValue, len(metricKeys))
 	for i, key := range metricKeys {
+		if len(resp[i].Series) < 1 {
+			return nil, fmt.Errorf("No results for metric %q describing %q", metricName, key.String())
+		}
+
 		vals, err := sink.parseAggregateQueryRow(resp[i].Series[0], aggregationLookup, bucketSize)
 		if err != nil {
 			return nil, err
@@ -602,6 +610,9 @@ func (sink *influxdbSink) GetSystemContainersFromNode(node string) ([]string, er
 
 // stringListQueryCol runs the given query, and returns all results from the given column as a string list
 func (sink *influxdbSink) stringListQueryCol(q, colName string, errStr string) ([]string, error) {
+	sink.RLock()
+	defer sink.RUnlock()
+
 	resp, err := sink.runQuery(q)
 	if err != nil {
 		return nil, fmt.Errorf(errStr)
@@ -633,6 +644,9 @@ func (sink *influxdbSink) stringListQueryCol(q, colName string, errStr string) (
 
 // stringListQuery runs the given query, and returns all results from the first column as a string list
 func (sink *influxdbSink) stringListQuery(q string, errStr string) ([]string, error) {
+	sink.RLock()
+	defer sink.RUnlock()
+
 	resp, err := sink.runQuery(q)
 	if err != nil {
 		return nil, fmt.Errorf(errStr)
@@ -650,7 +664,14 @@ func (sink *influxdbSink) stringListQuery(q string, errStr string) ([]string, er
 }
 
 // runQuery executes the given query against InfluxDB (using the default database for this sink)
+// The caller is responsible for locking the sink before use.
 func (sink *influxdbSink) runQuery(queryStr string) ([]influxdb.Result, error) {
+	// ensure we have a valid client handle before attempting to use it
+	if err := sink.ensureClient(); err != nil {
+		glog.Errorf("Unable to ensure InfluxDB client is present: %v", err)
+		return nil, fmt.Errorf("unable to run query: unable to connect to database")
+	}
+
 	q := influxdb.Query{
 		Command:  queryStr,
 		Database: sink.c.DbName,
