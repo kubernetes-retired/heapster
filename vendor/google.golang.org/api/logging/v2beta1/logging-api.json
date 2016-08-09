@@ -1,13 +1,13 @@
 {
  "kind": "discovery#restDescription",
- "etag": "\"ye6orv2F-1npMW3u9suM3a7C5Bo/nsrqaI4lgGEWT1svBQ_EafFnOIk\"",
+ "etag": "\"jQLIOHBVnDZie4rQHGH1WJF-INE/AGY2FGWaHRZwgyAazem2sSX20dM\"",
  "discoveryVersion": "v1",
  "id": "logging:v2beta1",
  "name": "logging",
  "version": "v2beta1",
- "revision": "20150610",
+ "revision": "20160322",
  "title": "Google Cloud Logging API",
- "description": "The Google Cloud Logging API lets you write log entries and manage your logs, log sinks and logs-based metrics.",
+ "description": "Writes log entries and manages your logs, log sinks, and logs-based metrics.",
  "ownerDomain": "google.com",
  "ownerName": "Google",
  "icons": {
@@ -17,10 +17,11 @@
  "documentationLink": "https://cloud.google.com/logging/docs/",
  "protocol": "rest",
  "baseUrl": "https://logging.googleapis.com/",
- "basePath": "/",
+ "basePath": "",
  "rootUrl": "https://logging.googleapis.com/",
  "servicePath": "",
  "batchPath": "batch",
+ "version_module": true,
  "parameters": {
   "access_token": {
    "type": "string",
@@ -142,7 +143,7 @@
     },
     "labels": {
      "type": "object",
-     "description": "Optional. User-defined `key:value` items that are added to the `labels` field of each log entry in `entries`, except when a log entry specifies its own 'key:value' item with the same key. Example: `{ \"size\": \"large\", \"color\":\"red\" }`",
+     "description": "Optional. User-defined `key:value` items that are added to the `labels` field of each log entry in `entries`, except when a log entry specifies its own `key:value` item with the same key. Example: `{ \"size\": \"large\", \"color\":\"red\" }`",
      "additionalProperties": {
       "type": "string"
      }
@@ -153,21 +154,25 @@
      "items": {
       "$ref": "LogEntry"
      }
+    },
+    "partialSuccess": {
+     "type": "boolean",
+     "description": "Optional. Whether valid entries should be written even if some other entries fail due to INVALID_ARGUMENT or PERMISSION_DENIED errors. If any entry is not written, the response status will be the error associated with one of the failed entries and include error details in the form of WriteLogEntriesPartialErrors."
     }
    }
   },
   "MonitoredResource": {
    "id": "MonitoredResource",
    "type": "object",
-   "description": "A specific monitored resource or a group of monitored resources.",
+   "description": "An object representing a resource that can be used for monitoring, logging, billing, or other purposes. Examples include virtual machine instances, databases, and storage devices such as disks. The `type` field identifies a MonitoredResourceDescriptor object that describes the resource's schema. Information in the `labels` field identifies the actual resource and its attributes according to the schema. For example, a particular Compute Engine VM instance could be represented by the following object, because the MonitoredResourceDescriptor for `\"gce_instance\"` has labels `\"instance_id\"` and `\"zone\"`: { \"type\": \"gce_instance\", \"labels\": { \"instance_id\": \"my-instance\", \"zone\": \"us-central1-a\" }}",
    "properties": {
     "type": {
      "type": "string",
-     "description": "The type of monitored resource. This field must match the value of the `type` field in a MonitoredResourceDescriptor object. For example, `\"cloudsql_database\"` represents Cloud SQL databases."
+     "description": "Required. The monitored resource type. This field must match the `type` field of a MonitoredResourceDescriptor object. For example, the type of a Cloud SQL database is `\"cloudsql_database\"`."
     },
     "labels": {
      "type": "object",
-     "description": "Values for some or all of the labels listed in the associated monitored resource descriptor. For example, specify a specific Cloud SQL database by supplying values for both the `\"database_id\"` and `\"zone\"` labels. Specify the set of all Cloud SQL databases in a particular location by supplying a value for only the `\"zone\"` label.",
+     "description": "Required. Values for all of the labels listed in the associated monitored resource descriptor. For example, Cloud SQL databases use the labels `\"database_id\"` and `\"zone\"`.",
      "additionalProperties": {
       "type": "string"
      }
@@ -181,7 +186,7 @@
    "properties": {
     "logName": {
      "type": "string",
-     "description": "Required. The resource name of the log to which this log entry belongs. The format of the name is `projects/\u003cproject-id\u003e/logs/\u003clog-id%gt;`. Examples: `\"projects/my-projectid/logs/syslog\"`, `\"projects/1234567890/logs/library.googleapis.com%2Fbook_log\"`. The log ID part of resource name must be less than 512 characters long and can only include the following characters: upper and lower case alphanumeric characters: [A-Za-z0-9]; and punctuation characters: forward-slash, underscore, hyphen, and period. Forward-slash (`/`) characters in the log ID must be URL-encoded."
+     "description": "Required. The resource name of the log to which this log entry belongs. The format of the name is `\"projects/\n/logs/\"`. Examples: `\"projects/my-projectid/logs/syslog\"`, `\"projects/1234567890/logs/library.googleapis.com%2Fbook_log\"`. The log ID part of resource name must be less than 512 characters long and can only include the following characters: upper and lower case alphanumeric characters: [A-Za-z0-9]; and punctuation characters: forward-slash, underscore, hyphen, and period. Forward-slash (`/`) characters in the log ID must be URL-encoded."
     },
     "resource": {
      "$ref": "MonitoredResource",
@@ -285,15 +290,24 @@
     },
     "referer": {
      "type": "string",
-     "description": "The referer(sic) URL of the request, as defined in [HTTP/1.1 Header Field Definitions](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)."
+     "description": "The referer URL of the request, as defined in [HTTP/1.1 Header Field Definitions](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)."
+    },
+    "cacheLookup": {
+     "type": "boolean",
+     "description": "Whether or not a cache lookup was attempted."
     },
     "cacheHit": {
      "type": "boolean",
      "description": "Whether or not an entity was served from cache (with or without validation)."
     },
-    "validatedWithOriginServer": {
+    "cacheValidatedWithOriginServer": {
      "type": "boolean",
-     "description": "Whether or not the response was validated with the origin server before being served from cache. This field is only meaningful if cache_hit is True."
+     "description": "Whether or not the response was validated with the origin server before being served from cache. This field is only meaningful if `cache_hit` is True."
+    },
+    "cacheFillBytes": {
+     "type": "string",
+     "description": "The number of HTTP response bytes inserted into cache. Set only when a cache fill was attempted.",
+     "format": "int64"
     }
    }
   },
@@ -308,7 +322,7 @@
     },
     "producer": {
      "type": "string",
-     "description": "Required. A arbitrary producer identifier. The combination of `id` and `producer` must be globally unique. Examples for `producer`: `\"MyDivision.MyBigCompany.com\"`, \"github.com/MyProject/MyApplication\"`."
+     "description": "Required. An arbitrary producer identifier. The combination of `id` and `producer` must be globally unique. Examples for `producer`: `\"MyDivision.MyBigCompany.com\"`, \"github.com/MyProject/MyApplication\"`."
     },
     "first": {
      "type": "boolean",
@@ -343,16 +357,20 @@
     },
     "orderBy": {
      "type": "string",
-     "description": "Optional. How the results should be sorted. Presently, the only permitted values are `\"timestamp\"` (default) and `\"timestamp desc\"`. The first option returns entries in order of increasing values of `LogEntry.timestamp` (oldest first), and the second option returns entries in order of decreasing timestamps (newest first). Entries with equal timestamps are returned in order of `LogEntry.insertId`."
+     "description": "Optional. How the results should be sorted. Presently, the only permitted values are `\"timestamp asc\"` (default) and `\"timestamp desc\"`. The first option returns entries in order of increasing values of `LogEntry.timestamp` (oldest first), and the second option returns entries in order of decreasing timestamps (newest first). Entries with equal timestamps are returned in order of `LogEntry.insertId`."
     },
     "pageSize": {
      "type": "integer",
-     "description": "Optional. The maximum number of results to return from this request. Fewer results might be returned. You must check for the 'nextPageToken` result to determine if additional results are available, which you can retrieve by passing the `nextPageToken` value in the `pageToken` parameter to the next request.",
+     "description": "Optional. The maximum number of results to return from this request. You must check for presence of `nextPageToken` to determine if additional results are available, which you can retrieve by passing the `nextPageToken` value as the `pageToken` parameter in the next request.",
      "format": "int32"
     },
     "pageToken": {
      "type": "string",
-     "description": "Optional. If the `pageToken` request parameter is supplied, then the next page of results in the set are retrieved. The `pageToken` parameter must be set with the value of the `nextPageToken` result parameter from the previous request. The values of `projectIds`, `filter`, and `orderBy` must be the same as in the previous request."
+     "description": "Optional. If the `pageToken` parameter is supplied, then the next page of results is retrieved. The `pageToken` parameter must be set to the value of the `nextPageToken` from the previous response. The values of `projectIds`, `filter`, and `orderBy` must be the same as in the previous request."
+    },
+    "partialSuccess": {
+     "type": "boolean",
+     "description": "Optional. If true, read access to all projects is not required and results will be returned for the subset of projects for which read access is permitted (empty subset is permitted)."
     }
    }
   },
@@ -370,7 +388,41 @@
     },
     "nextPageToken": {
      "type": "string",
-     "description": "If there are more results than were returned, then `nextPageToken` is given a value in the response. To get the next batch of results, call this method again using the value of `nextPageToken` as `pageToken`."
+     "description": "If there are more results than were returned, then `nextPageToken` is included in the response. To get the next set of results, call this method again using the value of `nextPageToken` as `pageToken`."
+    },
+    "projectIdErrors": {
+     "type": "object",
+     "description": "If partial_success is true, contains the project ids that had errors and the associated errors.",
+     "additionalProperties": {
+      "$ref": "Status"
+     }
+    }
+   }
+  },
+  "Status": {
+   "id": "Status",
+   "type": "object",
+   "description": "The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). The error model is designed to be: - Simple to use and understand for most users - Flexible enough to meet unexpected needs # Overview The `Status` message contains three pieces of data: error code, error message, and error details. The error code should be an enum value of google.rpc.Code, but it may accept additional error codes if needed. The error message should be a developer-facing English message that helps developers *understand* and *resolve* the error. If a localized user-facing error message is needed, put the localized message in the error details or localize it in the client. The optional error details may contain arbitrary information about the error. There is a predefined set of error detail types in the package `google.rpc` which can be used for common error conditions. # Language mapping The `Status` message is the logical representation of the error model, but it is not necessarily the actual wire format. When the `Status` message is exposed in different client libraries and different wire protocols, it can be mapped differently. For example, it will likely be mapped to some exceptions in Java, but more likely mapped to some error codes in C. # Other uses The error model and the `Status` message can be used in a variety of environments, either with or without APIs, to provide a consistent developer experience across different environments. Example uses of this error model include: - Partial errors. If a service needs to return partial errors to the client, it may embed the `Status` in the normal response to indicate the partial errors. - Workflow errors. A typical workflow has multiple steps. Each step may have a `Status` message for error reporting purpose. - Batch operations. If a client uses batch request and batch response, the `Status` message should be used directly inside batch response, one for each error sub-response. - Asynchronous operations. If an API call embeds asynchronous operation results in its response, the status of those operations should be represented directly using the `Status` message. - Logging. If some API errors are stored in logs, the message `Status` could be used directly after any stripping needed for security/privacy reasons.",
+   "properties": {
+    "code": {
+     "type": "integer",
+     "description": "The status code, which should be an enum value of google.rpc.Code.",
+     "format": "int32"
+    },
+    "message": {
+     "type": "string",
+     "description": "A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the google.rpc.Status.details field, or localized by the client."
+    },
+    "details": {
+     "type": "array",
+     "description": "A list of messages that carry the error details. There will be a common set of message types for APIs to use.",
+     "items": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "any",
+       "description": "Properties of the object. Contains field @ype with type URL."
+      }
+     }
     }
    }
   },
@@ -388,30 +440,34 @@
     },
     "nextPageToken": {
      "type": "string",
-     "description": "If there are more results than were returned, then `nextPageToken` is returned in the response. To get the next batch of results, call this method again using the value of `nextPageToken` as `pageToken`."
+     "description": "If there are more results than were returned, then `nextPageToken` is included in the response. To get the next set of results, call this method again using the value of `nextPageToken` as `pageToken`."
     }
    }
   },
   "MonitoredResourceDescriptor": {
    "id": "MonitoredResourceDescriptor",
    "type": "object",
-   "description": "A description of a type of monitored resource.",
+   "description": "An object that describes the schema of a MonitoredResource object using a type name and a set of labels. For example, the monitored resource descriptor for Google Compute Engine VM instances has a type of `\"gce_instance\"` and specifies the use of the labels `\"instance_id\"` and `\"zone\"` to identify particular VM instances. Different APIs can support different monitored resource types. APIs generally provide a `list` method that returns the monitored resource descriptors used by the API.",
    "properties": {
+    "name": {
+     "type": "string",
+     "description": "Optional. The resource name of the monitored resource descriptor: `\"projects/{project_id}/monitoredResourceDescriptors/{type}\"` where {type} is the value of the `type` field in this object and {project_id} is a project ID that provides API-specific context for accessing the type. APIs that do not use project information can use the resource name format `\"monitoredResourceDescriptors/{type}\"`."
+    },
     "type": {
      "type": "string",
-     "description": "The monitored resource type. For example, the type `\"cloudsql_database\"` represents databases in Google Cloud SQL."
+     "description": "Required. The monitored resource type. For example, the type `\"cloudsql_database\"` represents databases in Google Cloud SQL."
     },
     "displayName": {
      "type": "string",
-     "description": "A concise name for the monitored resource type, which is displayed in user interfaces. For example, `\"Cloud SQL Database\"`."
+     "description": "Optional. A concise name for the monitored resource type that might be displayed in user interfaces. For example, `\"Google Cloud SQL Database\"`."
     },
     "description": {
      "type": "string",
-     "description": "A detailed description of the monitored resource type, which is used in documentation."
+     "description": "Optional. A detailed description of the monitored resource type that might be used in documentation."
     },
     "labels": {
      "type": "array",
-     "description": "A set of labels that can be used to describe instances of this monitored resource type. For example, Cloud SQL databases can be labeled with their `\"database_id\"` and their `\"zone\"`.",
+     "description": "Required. A set of labels used to describe instances of this monitored resource type. For example, an individual Google Cloud SQL database is identified by values for the labels `\"database_id\"` and `\"zone\"`.",
      "items": {
       "$ref": "LabelDescriptor"
      }
@@ -456,7 +512,7 @@
     },
     "nextPageToken": {
      "type": "string",
-     "description": "If there are more results than were returned, then `nextPageToken` is given a value in the response. To get the next batch of results, call this method again using the value of `nextPageToken` as `pageToken`."
+     "description": "If there are more results than were returned, then `nextPageToken` is included in the response. To get the next set of results, call this method again using the value of `nextPageToken` as `pageToken`."
     }
    }
   },
@@ -475,11 +531,11 @@
     },
     "filter": {
      "type": "string",
-     "description": "An [advanced logs filter](/logging/docs/view/advanced_filters) that defines the log entries to be exported. The filter must be consistent with the log entry format designed by the `outputVersionFormat` parameter, regardless of the format of the log entry that was originally written to Cloud Logging. Example: `\"logName:syslog AND severity\u003e=ERROR\"`."
+     "description": "An [advanced logs filter](/logging/docs/view/advanced_filters). Only log entries matching that filter are exported. The filter must be consistent with the log entry format specified by the `outputVersionFormat` parameter, regardless of the format of the log entry that was originally written to Cloud Logging. Example (V2 format): `\"logName=projects/my-projectid/logs/syslog AND severity\u003e=ERROR\"`."
     },
     "outputVersionFormat": {
      "type": "string",
-     "description": "The log entry version used when exporting log entries from this sink. This version does not have to correspond to the version of the log entry when it was written to Cloud Logging.",
+     "description": "The log entry version to use for this sink's exported log entries. This version does not have to correspond to the version of the log entry when it was written to Cloud Logging.",
      "enum": [
       "VERSION_FORMAT_UNSPECIFIED",
       "V2",
@@ -502,7 +558,7 @@
     },
     "nextPageToken": {
      "type": "string",
-     "description": "If there are more results than were returned, then `nextPageToken` is given a value in the response. To get the next batch of results, call this method again using the value of `nextPageToken` as `pageToken`."
+     "description": "If there are more results than were returned, then `nextPageToken` is included in the response. To get the next set of results, call this method again using the value of `nextPageToken` as `pageToken`."
     }
    }
   },
@@ -528,15 +584,15 @@
   "RequestLog": {
    "id": "RequestLog",
    "type": "object",
-   "description": "Complete log information about a single request to an application.",
+   "description": "Complete log information about a single HTTP request to an App Engine application.",
    "properties": {
     "appId": {
      "type": "string",
-     "description": "Identifies the application that handled this request."
+     "description": "Application that handled this request."
     },
     "moduleId": {
      "type": "string",
-     "description": "Identifies the module of the application that handled this request."
+     "description": "Module of the application that handled this request."
     },
     "versionId": {
      "type": "string",
@@ -544,7 +600,7 @@
     },
     "requestId": {
      "type": "string",
-     "description": "Globally unique identifier for a request, based on request start time. Request IDs for requests which started later will compare greater as strings than those for requests which started earlier."
+     "description": "Globally unique identifier for a request, which is based on the request start time. Request IDs for requests which started later will compare greater as strings than those for requests which started earlier."
     },
     "ip": {
      "type": "string",
@@ -552,11 +608,11 @@
     },
     "startTime": {
      "type": "string",
-     "description": "Time at which request was known to have begun processing."
+     "description": "Time when the request started."
     },
     "endTime": {
      "type": "string",
-     "description": "Time at which request was known to end processing."
+     "description": "Time when the request finished."
     },
     "latency": {
      "type": "string",
@@ -569,19 +625,19 @@
     },
     "method": {
      "type": "string",
-     "description": "Request method, such as `GET`, `HEAD`, `PUT`, `POST`, or `DELETE`."
+     "description": "Request method. Example: `\"GET\"`, `\"HEAD\"`, `\"PUT\"`, `\"POST\"`, `\"DELETE\"`."
     },
     "resource": {
      "type": "string",
-     "description": "Contains the path and query portion of the URL that was requested. For example, if the URL was \"http://example.com/app?name=val\", the resource would be \"/app?name=val\". Any trailing fragment (separated by a '#' character) will not be included."
+     "description": "Contains the path and query portion of the URL that was requested. For example, if the URL was \"http://example.com/app?name=val\", the resource would be \"/app?name=val\". The fragment identifier, which is identified by the `#` character, is not included."
     },
     "httpVersion": {
      "type": "string",
-     "description": "HTTP version of request."
+     "description": "HTTP version of request. Example: `\"HTTP/1.1\"`."
     },
     "status": {
      "type": "integer",
-     "description": "Response status of request.",
+     "description": "HTTP response status code. Example: 200, 404.",
      "format": "int32"
     },
     "responseSize": {
@@ -595,19 +651,19 @@
     },
     "userAgent": {
      "type": "string",
-     "description": "User agent used for making request."
+     "description": "User agent that made the request."
     },
     "nickname": {
      "type": "string",
-     "description": "A string that identifies a logged-in user who made this request, or empty if the user is not logged in. Most likely, this is the part of the user's email before the '@' sign. The field value is the same for different requests from the same user, but different users may have a similar name. This information is also available to the application via Users API. This field will be populated starting with App Engine 1.9.21."
+     "description": "The logged-in user who made the request. Most likely, this is the part of the user's email before the `@` sign. The field value is the same for different requests from the same user, but different users can have similar names. This information is also available to the application via the App Engine Users API. This field will be populated starting with App Engine 1.9.21."
     },
     "urlMapEntry": {
      "type": "string",
-     "description": "File or class within URL mapping used for request. Useful for tracking down the source code which was responsible for managing request. Especially for multiply mapped handlers."
+     "description": "File or class that handled the request."
     },
     "host": {
      "type": "string",
-     "description": "The Internet host and port number of the resource being requested."
+     "description": "Internet host and port number of the resource being requested."
     },
     "cost": {
      "type": "number",
@@ -616,47 +672,51 @@
     },
     "taskQueueName": {
      "type": "string",
-     "description": "Queue name of the request (for an offline request)."
+     "description": "Queue name of the request, in the case of an offline request."
     },
     "taskName": {
      "type": "string",
-     "description": "Task name of the request (for an offline request)."
+     "description": "Task name of the request, in the case of an offline request."
     },
     "wasLoadingRequest": {
      "type": "boolean",
-     "description": "Was this request a loading request for this instance?"
+     "description": "Whether this was a loading request for the instance."
     },
     "pendingTime": {
      "type": "string",
-     "description": "Time this request spent in the pending request queue, if it was pending at all."
+     "description": "Time this request spent in the pending request queue."
     },
     "instanceIndex": {
      "type": "integer",
-     "description": "If the instance that processed this request was individually addressable (i.e. belongs to a manually scaled module), this is the 0 based index of the instance, otherwise this value is -1.",
+     "description": "If the instance processing this request belongs to a manually scaled module, then this is the 0-based index of the instance. Otherwise, this value is -1.",
      "format": "int32"
     },
     "finished": {
      "type": "boolean",
-     "description": "If true, represents a finished request. Otherwise, the request is active."
+     "description": "Whether this request is finished or active."
+    },
+    "first": {
+     "type": "boolean",
+     "description": "Whether this is the first RequestLog entry for this request. If an active request has several RequestLog entries written to Cloud Logging, this field will be set for one of them."
     },
     "instanceId": {
      "type": "string",
-     "description": "An opaque identifier for the instance that handled the request."
+     "description": "An identifier for the instance that handled the request."
     },
     "line": {
      "type": "array",
-     "description": "List of log lines emitted by the application while serving this request, if requested.",
+     "description": "A list of log lines emitted by the application while serving this request.",
      "items": {
       "$ref": "LogLine"
      }
     },
     "appEngineRelease": {
      "type": "string",
-     "description": "App Engine release version string."
+     "description": "App Engine release version."
     },
     "traceId": {
      "type": "string",
-     "description": "Cloud Trace identifier of the trace for this request."
+     "description": "Cloud Trace identifier for this request."
     },
     "sourceReference": {
      "type": "array",
@@ -674,11 +734,11 @@
    "properties": {
     "time": {
      "type": "string",
-     "description": "Time when log entry was made. May be inaccurate."
+     "description": "Approximate time when this log entry was made."
     },
     "severity": {
      "type": "string",
-     "description": "Severity of log.",
+     "description": "Severity of this log entry.",
      "enum": [
       "DEFAULT",
       "DEBUG",
@@ -693,22 +753,22 @@
     },
     "logMessage": {
      "type": "string",
-     "description": "App provided log message."
+     "description": "App-provided log message."
     },
     "sourceLocation": {
      "$ref": "SourceLocation",
-     "description": "Line of code that generated this log message."
+     "description": "Where in the source code this log message was written."
     }
    }
   },
   "SourceLocation": {
    "id": "SourceLocation",
    "type": "object",
-   "description": "Specifies a location in a source file.",
+   "description": "Specifies a location in a source code file.",
    "properties": {
     "file": {
      "type": "string",
-     "description": "Source file name. May or may not be a fully qualified name, depending on the runtime environment."
+     "description": "Source file name. Depending on the runtime environment, this might be a simple name or a fully-qualified name."
     },
     "line": {
      "type": "string",
@@ -717,7 +777,7 @@
     },
     "functionName": {
      "type": "string",
-     "description": "Human-readable name of the function or method being invoked, with optional context such as the class or package name, for use in contexts such as the logs viewer where file:line number is less meaningful. This may vary by language, for example: in Java: qual.if.ied.Class.method in Go: dir/package.func in Python: function ..."
+     "description": "Human-readable name of the function or method being invoked, with optional context such as the class or package name. This information is used in contexts such as the logs viewer, where a file and line number are less meaningful. The format can vary by language. For example: `qual.if.ied.Class.method` (Java), `dir/package.func` (Go), `function` (Python)."
     }
    }
   },
@@ -732,7 +792,7 @@
     },
     "revisionId": {
      "type": "string",
-     "description": "The canonical (and persistent) identifier of the deployed revision. Example (git): \"0035781c50ec7aa23385dc841529ce8a4b70db1b\""
+     "description": "The canonical and persistent identifier of the deployed revision. Example (git): \"0035781c50ec7aa23385dc841529ce8a4b70db1b\""
     }
    }
   }
@@ -779,19 +839,19 @@
        "parameters": {
         "projectName": {
          "type": "string",
-         "description": "Required. The resource name of the project owning the sinks. Example: `\"projects/my-logging-project\"`, `\"projects/01234567890\"`.",
+         "description": "Required. The resource name of the project containing the sinks. Example: `\"projects/my-logging-project\"`.",
          "required": true,
          "pattern": "^projects/[^/]*$",
          "location": "path"
         },
         "pageToken": {
          "type": "string",
-         "description": "Optional. If the `pageToken` request parameter is supplied, then the next page of results in the set are retrieved. The `pageToken` parameter must be set with the value of the `nextPageToken` result parameter from the previous request. The value of `projectName` must be the same as in the previous request.",
+         "description": "Optional. If the `pageToken` parameter is supplied, then the next page of results is retrieved. The `pageToken` parameter must be set to the value of the `nextPageToken` from the previous response. The value of `projectName` must be the same as in the previous request.",
          "location": "query"
         },
         "pageSize": {
          "type": "integer",
-         "description": "Optional. The maximum number of results to return from this request. Fewer results might be returned. You must check for the 'nextPageToken` result to determine if additional results are available, which you can retrieve by passing the `nextPageToken` value in the `pageToken` parameter to the next request.",
+         "description": "Optional. The maximum number of results to return from this request. You must check for presence of `nextPageToken` to determine if additional results are available, which you can retrieve by passing the `nextPageToken` value as the `pageToken` parameter in the next request.",
          "format": "int32",
          "location": "query"
         }
@@ -929,19 +989,19 @@
        "parameters": {
         "projectName": {
          "type": "string",
-         "description": "Required. The resource name for the project whose metrics are wanted. Example: `\"projects/my-project-id\"`.",
+         "description": "Required. The resource name of the project containing the metrics. Example: `\"projects/my-project-id\"`.",
          "required": true,
          "pattern": "^projects/[^/]*$",
          "location": "path"
         },
         "pageToken": {
          "type": "string",
-         "description": "Optional. If the `pageToken` request parameter is supplied, then the next page of results in the set are retrieved. The `pageToken` parameter must be set with the value of the `nextPageToken` result parameter from the previous request. The value of `projectName` must be the same as in the previous request.",
+         "description": "Optional. If the `pageToken` parameter is supplied, then the next page of results is retrieved. The `pageToken` parameter must be set to the value of the `nextPageToken` from the previous response. The value of `projectName` must be the same as in the previous request.",
          "location": "query"
         },
         "pageSize": {
          "type": "integer",
-         "description": "Optional. The maximum number of results to return from this request. Fewer results might be returned. You must check for the 'nextPageToken` result to determine if additional results are available, which you can retrieve by passing the `nextPageToken` value in the `pageToken` parameter to the next request.",
+         "description": "Optional. The maximum number of results to return from this request. You must check for presence of `nextPageToken` to determine if additional results are available, which you can retrieve by passing the `nextPageToken` value as the `pageToken` parameter in the next request.",
          "format": "int32",
          "location": "query"
         }
@@ -1097,7 +1157,7 @@
      "id": "logging.entries.list",
      "path": "v2beta1/entries:list",
      "httpMethod": "POST",
-     "description": "Lists log entries. Use this method to examine log entries from Cloud Logging. See [Exporting Logs](/logging/docs/export) for other ways to copy log entries out of Cloud Logging.",
+     "description": "Lists log entries. Use this method to retrieve log entries from Cloud Logging. For ways to export log entries, see [Exporting Logs](/logging/docs/export).",
      "request": {
       "$ref": "ListLogEntriesRequest"
      },
@@ -1123,13 +1183,13 @@
      "parameters": {
       "pageSize": {
        "type": "integer",
-       "description": "Optional. The maximum number of results to return from this request. Fewer results might be returned. You must check for the 'nextPageToken` result to determine if additional results are available, which you can retrieve by passing the `nextPageToken` value in the `pageToken` parameter to the next request.",
+       "description": "Optional. The maximum number of results to return from this request. You must check for presence of `nextPageToken` to determine if additional results are available, which you can retrieve by passing the `nextPageToken` value as the `pageToken` parameter in the next request.",
        "format": "int32",
        "location": "query"
       },
       "pageToken": {
        "type": "string",
-       "description": "Optional. If the `pageToken` request parameter is supplied, then the next page of results in the set are retrieved. The `pageToken` parameter must be set with the value of the `nextPageToken` result parameter from the previous request.",
+       "description": "Optional. If the `pageToken` parameter is supplied, then the next page of results is retrieved. The `pageToken` parameter must be set to the value of the `nextPageToken` from the previous response.",
        "location": "query"
       }
      },

@@ -1,5 +1,5 @@
 /*
-Copyright 2015 The Kubernetes Authors All rights reserved.
+Copyright 2015 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/emicklei/go-restful/swagger"
 
@@ -30,6 +31,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/runtime/serializer"
+	utilerrors "k8s.io/kubernetes/pkg/util/errors"
 	"k8s.io/kubernetes/pkg/version"
 )
 
@@ -55,6 +57,12 @@ type ServerResourcesInterface interface {
 	ServerResourcesForGroupVersion(groupVersion string) (*unversioned.APIResourceList, error)
 	// ServerResources returns the supported resources for all groups and versions.
 	ServerResources() (map[string]*unversioned.APIResourceList, error)
+	// ServerPreferredResources returns the supported resources with the version preferred by the
+	// server.
+	ServerPreferredResources() ([]unversioned.GroupVersionResource, error)
+	// ServerPreferredNamespacedResources returns the supported namespaced resources with the
+	// version preferred by the server.
+	ServerPreferredNamespacedResources() ([]unversioned.GroupVersionResource, error)
 }
 
 // ServerVersionInterface has a method for retrieving the server's version.
@@ -73,6 +81,8 @@ type SwaggerSchemaInterface interface {
 // versions and resources.
 type DiscoveryClient struct {
 	*restclient.RESTClient
+
+	LegacyPrefix string
 }
 
 // Convert unversioned.APIVersions to unversioned.APIGroup. APIVersions is used by legacy v1, so
@@ -97,7 +107,7 @@ func apiVersionsToAPIGroup(apiVersions *unversioned.APIVersions) (apiGroup unver
 func (d *DiscoveryClient) ServerGroups() (apiGroupList *unversioned.APIGroupList, err error) {
 	// Get the groupVersions exposed at /api
 	v := &unversioned.APIVersions{}
-	err = d.Get().AbsPath("/api").Do().Into(v)
+	err = d.Get().AbsPath(d.LegacyPrefix).Do().Into(v)
 	apiGroup := unversioned.APIGroup{}
 	if err == nil {
 		apiGroup = apiVersionsToAPIGroup(v)
@@ -127,8 +137,9 @@ func (d *DiscoveryClient) ServerResourcesForGroupVersion(groupVersion string) (r
 	url := url.URL{}
 	if len(groupVersion) == 0 {
 		return nil, fmt.Errorf("groupVersion shouldn't be empty")
-	} else if groupVersion == "v1" {
-		url.Path = "/api/" + groupVersion
+	}
+	if len(d.LegacyPrefix) > 0 && groupVersion == "v1" {
+		url.Path = d.LegacyPrefix + "/" + groupVersion
 	} else {
 		url.Path = "/apis/" + groupVersion
 	}
@@ -163,6 +174,50 @@ func (d *DiscoveryClient) ServerResources() (map[string]*unversioned.APIResource
 	return result, nil
 }
 
+// serverPreferredResources returns the supported resources with the version preferred by the
+// server. If namespaced is true, only namespaced resources will be returned.
+func (d *DiscoveryClient) serverPreferredResources(namespaced bool) ([]unversioned.GroupVersionResource, error) {
+	results := []unversioned.GroupVersionResource{}
+	serverGroupList, err := d.ServerGroups()
+	if err != nil {
+		return results, err
+	}
+
+	allErrs := []error{}
+	for _, apiGroup := range serverGroupList.Groups {
+		preferredVersion := apiGroup.PreferredVersion
+		apiResourceList, err := d.ServerResourcesForGroupVersion(preferredVersion.GroupVersion)
+		if err != nil {
+			allErrs = append(allErrs, err)
+			continue
+		}
+		groupVersion := unversioned.GroupVersion{Group: apiGroup.Name, Version: preferredVersion.Version}
+		for _, apiResource := range apiResourceList.APIResources {
+			// ignore the root scoped resources if "namespaced" is true.
+			if namespaced && !apiResource.Namespaced {
+				continue
+			}
+			if strings.Contains(apiResource.Name, "/") {
+				continue
+			}
+			results = append(results, groupVersion.WithResource(apiResource.Name))
+		}
+	}
+	return results, utilerrors.NewAggregate(allErrs)
+}
+
+// ServerPreferredResources returns the supported resources with the version preferred by the
+// server.
+func (d *DiscoveryClient) ServerPreferredResources() ([]unversioned.GroupVersionResource, error) {
+	return d.serverPreferredResources(false)
+}
+
+// ServerPreferredNamespacedResources returns the supported namespaced resources with the
+// version preferred by the server.
+func (d *DiscoveryClient) ServerPreferredNamespacedResources() ([]unversioned.GroupVersionResource, error) {
+	return d.serverPreferredResources(true)
+}
+
 // ServerVersion retrieves and parses the server's version (git version).
 func (d *DiscoveryClient) ServerVersion() (*version.Info, error) {
 	body, err := d.Get().AbsPath("/version").Do().Raw()
@@ -193,8 +248,8 @@ func (d *DiscoveryClient) SwaggerSchema(version unversioned.GroupVersion) (*swag
 		return nil, fmt.Errorf("API version: %v is not supported by the server. Use one of: %v", version, groupVersions)
 	}
 	var path string
-	if version == v1.SchemeGroupVersion {
-		path = "/swaggerapi/api/" + version.Version
+	if len(d.LegacyPrefix) > 0 && version == v1.SchemeGroupVersion {
+		path = "/swaggerapi" + d.LegacyPrefix + "/" + version.Version
 	} else {
 		path = "/swaggerapi/apis/" + version.Group + "/" + version.Version
 	}
@@ -233,7 +288,7 @@ func NewDiscoveryClientForConfig(c *restclient.Config) (*DiscoveryClient, error)
 		return nil, err
 	}
 	client, err := restclient.UnversionedRESTClientFor(&config)
-	return &DiscoveryClient{client}, err
+	return &DiscoveryClient{RESTClient: client, LegacyPrefix: "/api"}, err
 }
 
 // NewDiscoveryClientForConfig creates a new DiscoveryClient for the given config. If
@@ -249,7 +304,7 @@ func NewDiscoveryClientForConfigOrDie(c *restclient.Config) *DiscoveryClient {
 
 // New creates a new DiscoveryClient for the given RESTClient.
 func NewDiscoveryClient(c *restclient.RESTClient) *DiscoveryClient {
-	return &DiscoveryClient{c}
+	return &DiscoveryClient{RESTClient: c, LegacyPrefix: "/api"}
 }
 
 func stringDoesntExistIn(str string, slice []string) bool {

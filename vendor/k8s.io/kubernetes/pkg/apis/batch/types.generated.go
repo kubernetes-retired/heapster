@@ -1,5 +1,5 @@
 /*
-Copyright 2015 The Kubernetes Authors All rights reserved.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,12 +25,11 @@ import (
 	"errors"
 	"fmt"
 	codec1978 "github.com/ugorji/go/codec"
-	pkg5_inf_v0 "gopkg.in/inf.v0"
 	pkg2_api "k8s.io/kubernetes/pkg/api"
 	pkg4_resource "k8s.io/kubernetes/pkg/api/resource"
 	pkg1_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 	pkg3_types "k8s.io/kubernetes/pkg/types"
-	pkg6_intstr "k8s.io/kubernetes/pkg/util/intstr"
+	pkg5_intstr "k8s.io/kubernetes/pkg/util/intstr"
 	"reflect"
 	"runtime"
 	time "time"
@@ -66,14 +65,13 @@ func init() {
 		panic(err)
 	}
 	if false { // reference the types, but skip this branch at build/run time
-		var v0 pkg5_inf_v0.Dec
-		var v1 pkg2_api.ObjectMeta
-		var v2 pkg4_resource.Quantity
-		var v3 pkg1_unversioned.TypeMeta
-		var v4 pkg3_types.UID
-		var v5 pkg6_intstr.IntOrString
-		var v6 time.Time
-		_, _, _, _, _, _, _ = v0, v1, v2, v3, v4, v5, v6
+		var v0 pkg2_api.ObjectMeta
+		var v1 pkg4_resource.Quantity
+		var v2 pkg1_unversioned.TypeMeta
+		var v3 pkg3_types.UID
+		var v4 pkg5_intstr.IntOrString
+		var v5 time.Time
+		_, _, _, _, _, _ = v0, v1, v2, v3, v4, v5
 	}
 }
 
@@ -3520,11 +3518,12 @@ func (x *ScheduledJobSpec) CodecEncodeSelf(e *codec1978.Encoder) {
 			const yyr2 bool = false
 			yyq2[1] = x.StartingDeadlineSeconds != nil
 			yyq2[2] = x.ConcurrencyPolicy != ""
+			yyq2[3] = x.Suspend != nil
 			var yynn2 int
 			if yyr2 || yy2arr2 {
 				r.EncodeArrayStart(5)
 			} else {
-				yynn2 = 3
+				yynn2 = 2
 				for _, b := range yyq2 {
 					if b {
 						yynn2++
@@ -3604,33 +3603,49 @@ func (x *ScheduledJobSpec) CodecEncodeSelf(e *codec1978.Encoder) {
 			}
 			if yyr2 || yy2arr2 {
 				z.EncSendContainerState(codecSelfer_containerArrayElem1234)
-				yym15 := z.EncBinary()
-				_ = yym15
-				if false {
+				if yyq2[3] {
+					if x.Suspend == nil {
+						r.EncodeNil()
+					} else {
+						yy15 := *x.Suspend
+						yym16 := z.EncBinary()
+						_ = yym16
+						if false {
+						} else {
+							r.EncodeBool(bool(yy15))
+						}
+					}
 				} else {
-					r.EncodeBool(bool(x.Suspend))
+					r.EncodeNil()
 				}
 			} else {
-				z.EncSendContainerState(codecSelfer_containerMapKey1234)
-				r.EncodeString(codecSelferC_UTF81234, string("suspend"))
-				z.EncSendContainerState(codecSelfer_containerMapValue1234)
-				yym16 := z.EncBinary()
-				_ = yym16
-				if false {
-				} else {
-					r.EncodeBool(bool(x.Suspend))
+				if yyq2[3] {
+					z.EncSendContainerState(codecSelfer_containerMapKey1234)
+					r.EncodeString(codecSelferC_UTF81234, string("suspend"))
+					z.EncSendContainerState(codecSelfer_containerMapValue1234)
+					if x.Suspend == nil {
+						r.EncodeNil()
+					} else {
+						yy17 := *x.Suspend
+						yym18 := z.EncBinary()
+						_ = yym18
+						if false {
+						} else {
+							r.EncodeBool(bool(yy17))
+						}
+					}
 				}
 			}
 			if yyr2 || yy2arr2 {
 				z.EncSendContainerState(codecSelfer_containerArrayElem1234)
-				yy18 := &x.JobTemplate
-				yy18.CodecEncodeSelf(e)
+				yy20 := &x.JobTemplate
+				yy20.CodecEncodeSelf(e)
 			} else {
 				z.EncSendContainerState(codecSelfer_containerMapKey1234)
 				r.EncodeString(codecSelferC_UTF81234, string("jobTemplate"))
 				z.EncSendContainerState(codecSelfer_containerMapValue1234)
-				yy20 := &x.JobTemplate
-				yy20.CodecEncodeSelf(e)
+				yy22 := &x.JobTemplate
+				yy22.CodecEncodeSelf(e)
 			}
 			if yyr2 || yy2arr2 {
 				z.EncSendContainerState(codecSelfer_containerArrayEnd1234)
@@ -3723,16 +3738,26 @@ func (x *ScheduledJobSpec) codecDecodeSelfFromMap(l int, d *codec1978.Decoder) {
 			}
 		case "suspend":
 			if r.TryDecodeAsNil() {
-				x.Suspend = false
+				if x.Suspend != nil {
+					x.Suspend = nil
+				}
 			} else {
-				x.Suspend = bool(r.DecodeBool())
+				if x.Suspend == nil {
+					x.Suspend = new(bool)
+				}
+				yym9 := z.DecBinary()
+				_ = yym9
+				if false {
+				} else {
+					*((*bool)(x.Suspend)) = r.DecodeBool()
+				}
 			}
 		case "jobTemplate":
 			if r.TryDecodeAsNil() {
 				x.JobTemplate = JobTemplateSpec{}
 			} else {
-				yyv9 := &x.JobTemplate
-				yyv9.CodecDecodeSelf(d)
+				yyv10 := &x.JobTemplate
+				yyv10.CodecDecodeSelf(d)
 			}
 		default:
 			z.DecStructFieldNotFound(-1, yys3)
@@ -3745,16 +3770,16 @@ func (x *ScheduledJobSpec) codecDecodeSelfFromArray(l int, d *codec1978.Decoder)
 	var h codecSelfer1234
 	z, r := codec1978.GenHelperDecoder(d)
 	_, _, _ = h, z, r
-	var yyj10 int
-	var yyb10 bool
-	var yyhl10 bool = l >= 0
-	yyj10++
-	if yyhl10 {
-		yyb10 = yyj10 > l
+	var yyj11 int
+	var yyb11 bool
+	var yyhl11 bool = l >= 0
+	yyj11++
+	if yyhl11 {
+		yyb11 = yyj11 > l
 	} else {
-		yyb10 = r.CheckBreak()
+		yyb11 = r.CheckBreak()
 	}
-	if yyb10 {
+	if yyb11 {
 		z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 		return
 	}
@@ -3764,13 +3789,13 @@ func (x *ScheduledJobSpec) codecDecodeSelfFromArray(l int, d *codec1978.Decoder)
 	} else {
 		x.Schedule = string(r.DecodeString())
 	}
-	yyj10++
-	if yyhl10 {
-		yyb10 = yyj10 > l
+	yyj11++
+	if yyhl11 {
+		yyb11 = yyj11 > l
 	} else {
-		yyb10 = r.CheckBreak()
+		yyb11 = r.CheckBreak()
 	}
-	if yyb10 {
+	if yyb11 {
 		z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 		return
 	}
@@ -3783,20 +3808,20 @@ func (x *ScheduledJobSpec) codecDecodeSelfFromArray(l int, d *codec1978.Decoder)
 		if x.StartingDeadlineSeconds == nil {
 			x.StartingDeadlineSeconds = new(int64)
 		}
-		yym13 := z.DecBinary()
-		_ = yym13
+		yym14 := z.DecBinary()
+		_ = yym14
 		if false {
 		} else {
 			*((*int64)(x.StartingDeadlineSeconds)) = int64(r.DecodeInt(64))
 		}
 	}
-	yyj10++
-	if yyhl10 {
-		yyb10 = yyj10 > l
+	yyj11++
+	if yyhl11 {
+		yyb11 = yyj11 > l
 	} else {
-		yyb10 = r.CheckBreak()
+		yyb11 = r.CheckBreak()
 	}
-	if yyb10 {
+	if yyb11 {
 		z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 		return
 	}
@@ -3806,29 +3831,39 @@ func (x *ScheduledJobSpec) codecDecodeSelfFromArray(l int, d *codec1978.Decoder)
 	} else {
 		x.ConcurrencyPolicy = ConcurrencyPolicy(r.DecodeString())
 	}
-	yyj10++
-	if yyhl10 {
-		yyb10 = yyj10 > l
+	yyj11++
+	if yyhl11 {
+		yyb11 = yyj11 > l
 	} else {
-		yyb10 = r.CheckBreak()
+		yyb11 = r.CheckBreak()
 	}
-	if yyb10 {
+	if yyb11 {
 		z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 		return
 	}
 	z.DecSendContainerState(codecSelfer_containerArrayElem1234)
 	if r.TryDecodeAsNil() {
-		x.Suspend = false
+		if x.Suspend != nil {
+			x.Suspend = nil
+		}
 	} else {
-		x.Suspend = bool(r.DecodeBool())
+		if x.Suspend == nil {
+			x.Suspend = new(bool)
+		}
+		yym17 := z.DecBinary()
+		_ = yym17
+		if false {
+		} else {
+			*((*bool)(x.Suspend)) = r.DecodeBool()
+		}
 	}
-	yyj10++
-	if yyhl10 {
-		yyb10 = yyj10 > l
+	yyj11++
+	if yyhl11 {
+		yyb11 = yyj11 > l
 	} else {
-		yyb10 = r.CheckBreak()
+		yyb11 = r.CheckBreak()
 	}
-	if yyb10 {
+	if yyb11 {
 		z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 		return
 	}
@@ -3836,21 +3871,21 @@ func (x *ScheduledJobSpec) codecDecodeSelfFromArray(l int, d *codec1978.Decoder)
 	if r.TryDecodeAsNil() {
 		x.JobTemplate = JobTemplateSpec{}
 	} else {
-		yyv16 := &x.JobTemplate
-		yyv16.CodecDecodeSelf(d)
+		yyv18 := &x.JobTemplate
+		yyv18.CodecDecodeSelf(d)
 	}
 	for {
-		yyj10++
-		if yyhl10 {
-			yyb10 = yyj10 > l
+		yyj11++
+		if yyhl11 {
+			yyb11 = yyj11 > l
 		} else {
-			yyb10 = r.CheckBreak()
+			yyb11 = r.CheckBreak()
 		}
-		if yyb10 {
+		if yyb11 {
 			break
 		}
 		z.DecSendContainerState(codecSelfer_containerArrayElem1234)
-		z.DecStructFieldNotFound(yyj10-1, "")
+		z.DecStructFieldNotFound(yyj11-1, "")
 	}
 	z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 }
@@ -4205,7 +4240,7 @@ func (x codecSelfer1234) decSliceJob(v *[]Job, d *codec1978.Decoder) {
 
 			yyrg1 := len(yyv1) > 0
 			yyv21 := yyv1
-			yyrl1, yyrt1 = z.DecInferLen(yyl1, z.DecBasicHandle().MaxInitLen, 744)
+			yyrl1, yyrt1 = z.DecInferLen(yyl1, z.DecBasicHandle().MaxInitLen, 768)
 			if yyrt1 {
 				if yyrl1 <= cap(yyv1) {
 					yyv1 = yyv1[:yyrl1]
@@ -4443,7 +4478,7 @@ func (x codecSelfer1234) decSliceScheduledJob(v *[]ScheduledJob, d *codec1978.De
 
 			yyrg1 := len(yyv1) > 0
 			yyv21 := yyv1
-			yyrl1, yyrt1 = z.DecInferLen(yyl1, z.DecBasicHandle().MaxInitLen, 976)
+			yyrl1, yyrt1 = z.DecInferLen(yyl1, z.DecBasicHandle().MaxInitLen, 1000)
 			if yyrt1 {
 				if yyrl1 <= cap(yyv1) {
 					yyv1 = yyv1[:yyrl1]

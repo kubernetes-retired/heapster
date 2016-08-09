@@ -1,5 +1,5 @@
 /*
-Copyright 2014 The Kubernetes Authors All rights reserved.
+Copyright 2014 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,16 +58,7 @@ var Semantic = conversion.EqualitiesOrDie(
 		// TODO: if we decide it's important, it should be safe to start comparing the format.
 		//
 		// Uninitialized quantities are equivalent to 0 quantities.
-		if a.Amount == nil && b.MilliValue() == 0 {
-			return true
-		}
-		if b.Amount == nil && a.MilliValue() == 0 {
-			return true
-		}
-		if a.Amount == nil || b.Amount == nil {
-			return false
-		}
-		return a.Amount.Cmp(b.Amount) == 0
+		return a.Cmp(b) == 0
 	},
 	func(a, b unversioned.Time) bool {
 		return a.UTC() == b.UTC()
@@ -143,6 +134,7 @@ var standardQuotaResources = sets.NewString(
 	string(ResourceMemory),
 	string(ResourceRequestsCPU),
 	string(ResourceRequestsMemory),
+	string(ResourceRequestsStorage),
 	string(ResourceLimitsCPU),
 	string(ResourceLimitsMemory),
 	string(ResourcePods),
@@ -234,7 +226,9 @@ func IsServiceIPRequested(service *Service) bool {
 }
 
 var standardFinalizers = sets.NewString(
-	string(FinalizerKubernetes))
+	string(FinalizerKubernetes),
+	FinalizerOrphan,
+)
 
 func IsStandardFinalizerName(str string) bool {
 	return standardFinalizers.Has(str)
@@ -411,19 +405,115 @@ func NodeSelectorRequirementsAsSelector(nsm []NodeSelectorRequirement) (labels.S
 	return selector, nil
 }
 
-// AffinityAnnotationKey represents the key of affinity data (json serialized)
-// in the Annotations of a Pod.
-const AffinityAnnotationKey string = "scheduler.alpha.kubernetes.io/affinity"
+const (
+	// AffinityAnnotationKey represents the key of affinity data (json serialized)
+	// in the Annotations of a Pod.
+	AffinityAnnotationKey string = "scheduler.alpha.kubernetes.io/affinity"
+
+	// TolerationsAnnotationKey represents the key of tolerations data (json serialized)
+	// in the Annotations of a Pod.
+	TolerationsAnnotationKey string = "scheduler.alpha.kubernetes.io/tolerations"
+
+	// TaintsAnnotationKey represents the key of taints data (json serialized)
+	// in the Annotations of a Node.
+	TaintsAnnotationKey string = "scheduler.alpha.kubernetes.io/taints"
+
+	// SeccompPodAnnotationKey represents the key of a seccomp profile applied
+	// to all containers of a pod.
+	SeccompPodAnnotationKey string = "seccomp.security.alpha.kubernetes.io/pod"
+
+	// SeccompContainerAnnotationKeyPrefix represents the key of a seccomp profile applied
+	// to one container of a pod.
+	SeccompContainerAnnotationKeyPrefix string = "container.seccomp.security.alpha.kubernetes.io/"
+
+	// CreatedByAnnotation represents the key used to store the spec(json)
+	// used to create the resource.
+	CreatedByAnnotation = "kubernetes.io/created-by"
+
+	// PreferAvoidPodsAnnotationKey represents the key of preferAvoidPods data (json serialized)
+	// in the Annotations of a Node.
+	PreferAvoidPodsAnnotationKey string = "scheduler.alpha.kubernetes.io/preferAvoidPods"
+)
 
 // GetAffinityFromPod gets the json serialized affinity data from Pod.Annotations
 // and converts it to the Affinity type in api.
-func GetAffinityFromPodAnnotations(annotations map[string]string) (Affinity, error) {
-	var affinity Affinity
+func GetAffinityFromPodAnnotations(annotations map[string]string) (*Affinity, error) {
 	if len(annotations) > 0 && annotations[AffinityAnnotationKey] != "" {
+		var affinity Affinity
 		err := json.Unmarshal([]byte(annotations[AffinityAnnotationKey]), &affinity)
 		if err != nil {
-			return affinity, err
+			return nil, err
+		}
+		return &affinity, nil
+	}
+	return nil, nil
+}
+
+// GetTolerationsFromPodAnnotations gets the json serialized tolerations data from Pod.Annotations
+// and converts it to the []Toleration type in api.
+func GetTolerationsFromPodAnnotations(annotations map[string]string) ([]Toleration, error) {
+	var tolerations []Toleration
+	if len(annotations) > 0 && annotations[TolerationsAnnotationKey] != "" {
+		err := json.Unmarshal([]byte(annotations[TolerationsAnnotationKey]), &tolerations)
+		if err != nil {
+			return tolerations, err
 		}
 	}
-	return affinity, nil
+	return tolerations, nil
+}
+
+// GetTaintsFromNodeAnnotations gets the json serialized taints data from Pod.Annotations
+// and converts it to the []Taint type in api.
+func GetTaintsFromNodeAnnotations(annotations map[string]string) ([]Taint, error) {
+	var taints []Taint
+	if len(annotations) > 0 && annotations[TaintsAnnotationKey] != "" {
+		err := json.Unmarshal([]byte(annotations[TaintsAnnotationKey]), &taints)
+		if err != nil {
+			return []Taint{}, err
+		}
+	}
+	return taints, nil
+}
+
+// TolerationToleratesTaint checks if the toleration tolerates the taint.
+func TolerationToleratesTaint(toleration *Toleration, taint *Taint) bool {
+	if len(toleration.Effect) != 0 && toleration.Effect != taint.Effect {
+		return false
+	}
+
+	if toleration.Key != taint.Key {
+		return false
+	}
+	// TODO: Use proper defaulting when Toleration becomes a field of PodSpec
+	if (len(toleration.Operator) == 0 || toleration.Operator == TolerationOpEqual) && toleration.Value == taint.Value {
+		return true
+	}
+	if toleration.Operator == TolerationOpExists {
+		return true
+	}
+	return false
+
+}
+
+// TaintToleratedByTolerations checks if taint is tolerated by any of the tolerations.
+func TaintToleratedByTolerations(taint *Taint, tolerations []Toleration) bool {
+	tolerated := false
+	for i := range tolerations {
+		if TolerationToleratesTaint(&tolerations[i], taint) {
+			tolerated = true
+			break
+		}
+	}
+	return tolerated
+}
+
+func GetAvoidPodsFromNodeAnnotations(annotations map[string]string) (AvoidPods, error) {
+	var avoidPods AvoidPods
+	if len(annotations) > 0 && annotations[PreferAvoidPodsAnnotationKey] != "" {
+		err := json.Unmarshal([]byte(annotations[PreferAvoidPodsAnnotationKey]), &avoidPods)
+		if err != nil {
+			return avoidPods, err
+		}
+	}
+	return avoidPods, nil
 }

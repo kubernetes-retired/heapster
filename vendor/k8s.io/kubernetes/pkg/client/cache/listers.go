@@ -1,5 +1,5 @@
 /*
-Copyright 2014 The Kubernetes Authors All rights reserved.
+Copyright 2014 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	"k8s.io/kubernetes/pkg/apis/certificates"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/labels"
 )
@@ -76,38 +77,39 @@ type storePodsNamespacer struct {
 // Please note that selector is filtering among the pods that have gotten into
 // the store; there may have been some filtering that already happened before
 // that.
-func (s storePodsNamespacer) List(selector labels.Selector) (pods api.PodList, err error) {
-	list := api.PodList{}
+func (s storePodsNamespacer) List(selector labels.Selector) (api.PodList, error) {
+	pods := api.PodList{}
+
 	if s.namespace == api.NamespaceAll {
 		for _, m := range s.indexer.List() {
 			pod := m.(*api.Pod)
 			if selector.Matches(labels.Set(pod.Labels)) {
-				list.Items = append(list.Items, *pod)
+				pods.Items = append(pods.Items, *pod)
 			}
 		}
-		return list, nil
+		return pods, nil
 	}
 
 	key := &api.Pod{ObjectMeta: api.ObjectMeta{Namespace: s.namespace}}
 	items, err := s.indexer.Index(NamespaceIndex, key)
 	if err != nil {
+		// Ignore error; do slow search without index.
 		glog.Warningf("can not retrieve list of objects using index : %v", err)
 		for _, m := range s.indexer.List() {
 			pod := m.(*api.Pod)
 			if s.namespace == pod.Namespace && selector.Matches(labels.Set(pod.Labels)) {
-				list.Items = append(list.Items, *pod)
+				pods.Items = append(pods.Items, *pod)
 			}
 		}
-		return list, err
+		return pods, nil
 	}
-
 	for _, m := range items {
 		pod := m.(*api.Pod)
 		if selector.Matches(labels.Set(pod.Labels)) {
-			list.Items = append(list.Items, *pod)
+			pods.Items = append(pods.Items, *pod)
 		}
 	}
-	return list, nil
+	return pods, nil
 }
 
 // Exists returns true if a pod matching the namespace/name of the given pod exists in the store.
@@ -121,7 +123,7 @@ func (s *StoreToPodLister) Exists(pod *api.Pod) (bool, error) {
 
 // NodeConditionPredicate is a function that indicates whether the given node's conditions meet
 // some set of criteria defined by the function.
-type NodeConditionPredicate func(node api.Node) bool
+type NodeConditionPredicate func(node *api.Node) bool
 
 // StoreToNodeLister makes a Store have the List method of the client.NodeInterface
 // The Store must contain (only) Nodes.
@@ -150,11 +152,11 @@ type storeToNodeConditionLister struct {
 }
 
 // List returns a list of nodes that match the conditions defined by the predicate functions in the storeToNodeConditionLister.
-func (s storeToNodeConditionLister) List() (nodes api.NodeList, err error) {
+func (s storeToNodeConditionLister) List() (nodes []*api.Node, err error) {
 	for _, m := range s.store.List() {
-		node := *m.(*api.Node)
+		node := m.(*api.Node)
 		if s.predicate(node) {
-			nodes.Items = append(nodes.Items, node)
+			nodes = append(nodes, node)
 		} else {
 			glog.V(5).Infof("Node %s matches none of the conditions", node.Name)
 		}
@@ -194,7 +196,9 @@ type storeReplicationControllersNamespacer struct {
 	namespace string
 }
 
-func (s storeReplicationControllersNamespacer) List(selector labels.Selector) (controllers []api.ReplicationController, err error) {
+func (s storeReplicationControllersNamespacer) List(selector labels.Selector) ([]api.ReplicationController, error) {
+	controllers := []api.ReplicationController{}
+
 	if s.namespace == api.NamespaceAll {
 		for _, m := range s.indexer.List() {
 			rc := *(m.(*api.ReplicationController))
@@ -202,12 +206,13 @@ func (s storeReplicationControllersNamespacer) List(selector labels.Selector) (c
 				controllers = append(controllers, rc)
 			}
 		}
-		return
+		return controllers, nil
 	}
 
 	key := &api.ReplicationController{ObjectMeta: api.ObjectMeta{Namespace: s.namespace}}
 	items, err := s.indexer.Index(NamespaceIndex, key)
 	if err != nil {
+		// Ignore error; do slow search without index.
 		glog.Warningf("can not retrieve list of objects using index : %v", err)
 		for _, m := range s.indexer.List() {
 			rc := *(m.(*api.ReplicationController))
@@ -215,7 +220,7 @@ func (s storeReplicationControllersNamespacer) List(selector labels.Selector) (c
 				controllers = append(controllers, rc)
 			}
 		}
-		return
+		return controllers, nil
 	}
 	for _, m := range items {
 		rc := *(m.(*api.ReplicationController))
@@ -223,7 +228,7 @@ func (s storeReplicationControllersNamespacer) List(selector labels.Selector) (c
 			controllers = append(controllers, rc)
 		}
 	}
-	return
+	return controllers, nil
 }
 
 // GetPodControllers returns a list of replication controllers managing a pod. Returns an error only if no matching controllers are found.
@@ -578,7 +583,7 @@ func (s *StoreToPVFetcher) GetPersistentVolumeInfo(id string) (*api.PersistentVo
 	}
 
 	if !exists {
-		return nil, fmt.Errorf("PersistentVolume '%v' is not in cache", id)
+		return nil, fmt.Errorf("PersistentVolume '%v' not found", id)
 	}
 
 	return o.(*api.PersistentVolume), nil
@@ -597,7 +602,7 @@ func (s *StoreToPVCFetcher) GetPersistentVolumeClaimInfo(namespace string, id st
 	}
 
 	if !exists {
-		return nil, fmt.Errorf("PersistentVolumeClaim '%s/%s' is not in cache", namespace, id)
+		return nil, fmt.Errorf("PersistentVolumeClaim '%s/%s' not found", namespace, id)
 	}
 
 	return o.(*api.PersistentVolumeClaim), nil
@@ -665,4 +670,43 @@ func (s *StoreToPetSetLister) GetPodPetSets(pod *api.Pod) (psList []apps.PetSet,
 		err = fmt.Errorf("could not find PetSet for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
 	}
 	return
+}
+
+// StoreToCertificateRequestLister gives a store List and Exists methods. The store must contain only CertificateRequests.
+type StoreToCertificateRequestLister struct {
+	Store
+}
+
+// Exists checks if the given csr exists in the store.
+func (s *StoreToCertificateRequestLister) Exists(csr *certificates.CertificateSigningRequest) (bool, error) {
+	_, exists, err := s.Store.Get(csr)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+// StoreToCertificateRequestLister lists all csrs in the store.
+func (s *StoreToCertificateRequestLister) List() (csrs certificates.CertificateSigningRequestList, err error) {
+	for _, c := range s.Store.List() {
+		csrs.Items = append(csrs.Items, *(c.(*certificates.CertificateSigningRequest)))
+	}
+	return csrs, nil
+}
+
+// IndexerToNamespaceLister gives an Indexer List method
+type IndexerToNamespaceLister struct {
+	Indexer
+}
+
+// List returns a list of namespaces
+func (i *IndexerToNamespaceLister) List(selector labels.Selector) (namespaces []*api.Namespace, err error) {
+	for _, m := range i.Indexer.List() {
+		namespace := m.(*api.Namespace)
+		if selector.Matches(labels.Set(namespace.Labels)) {
+			namespaces = append(namespaces, namespace)
+		}
+	}
+
+	return namespaces, nil
 }
