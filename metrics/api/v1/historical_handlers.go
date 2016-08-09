@@ -566,6 +566,7 @@ func (a *HistoricalApi) podListAggregations(request *restful.Request, response *
 	aggregations, err := getAggregations(request)
 	if err != nil {
 		response.WriteError(http.StatusBadRequest, err)
+		return
 	}
 	labels, err := getLabels(request)
 	if err != nil {
@@ -601,6 +602,7 @@ func (a *HistoricalApi) podListAggregations(request *restful.Request, response *
 	}
 	if err != nil {
 		response.WriteError(http.StatusInternalServerError, err)
+		return
 	}
 
 	result := types.MetricAggregationResultList{
@@ -667,6 +669,7 @@ func (a *HistoricalApi) processAggregationRequest(key core.HistoricalKey, reques
 	aggregations, err := getAggregations(request)
 	if err != nil {
 		response.WriteError(http.StatusBadRequest, err)
+		return
 	}
 	labels, err := getLabels(request)
 	if err != nil {
