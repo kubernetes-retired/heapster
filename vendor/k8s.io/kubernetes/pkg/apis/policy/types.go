@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ type PodDisruptionBudgetSpec struct {
 	// can be either an integer or a string specifying a percentage, e.g. "28%".
 	MinAvailable intstr.IntOrString `json:"minAvailable,omitempty"`
 
-	// Selector is a label query over pods whose evictions are managed by the
-	// disruption budget.
+	// Label query over pods whose evictions are managed by the disruption
+	// budget.
 	Selector *unversioned.LabelSelector `json:"selector,omitempty"`
 }
 
@@ -49,7 +49,8 @@ type PodDisruptionBudgetStatus struct {
 	ExpectedPods int32 `json:"expectedPods"`
 }
 
-// +genclient=true,noMethods=true
+// +genclient=true
+// +noMethods=true
 
 // PodDisruptionBudget is an object to define the max disruption that can be caused to a collection of pods
 type PodDisruptionBudget struct {
@@ -60,4 +61,11 @@ type PodDisruptionBudget struct {
 	Spec PodDisruptionBudgetSpec `json:"spec,omitempty"`
 	// Most recently observed status of the PodDisruptionBudget.
 	Status PodDisruptionBudgetStatus `json:"status,omitempty"`
+}
+
+// PodDisruptionBudgetList is a collection of PodDisruptionBudgets.
+type PodDisruptionBudgetList struct {
+	unversioned.TypeMeta `json:",inline"`
+	unversioned.ListMeta `json:"metadata,omitempty"`
+	Items                []PodDisruptionBudget `json:"items"`
 }

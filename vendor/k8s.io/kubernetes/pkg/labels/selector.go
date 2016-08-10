@@ -1,5 +1,5 @@
 /*
-Copyright 2014 The Kubernetes Authors All rights reserved.
+Copyright 2014 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -108,7 +108,7 @@ type Requirement struct {
 // (2) If the operator is In or NotIn, the values set must be non-empty.
 // (3) If the operator is Equals, DoubleEquals, or NotEquals, the values set must contain one value.
 // (4) If the operator is Exists or DoesNotExist, the value set must be empty.
-// (5) If the operator is Gt or Lt, the values set must contain only one value.
+// (5) If the operator is Gt or Lt, the values set must contain only one value, which will be interpreted as an integer.
 // (6) The key is invalid due to its length, or sequence
 //     of characters. See validateLabelKey for more details.
 //
@@ -135,8 +135,8 @@ func NewRequirement(key string, op Operator, vals sets.String) (*Requirement, er
 			return nil, fmt.Errorf("for 'Gt', 'Lt' operators, exactly one value is required")
 		}
 		for val := range vals {
-			if _, err := strconv.ParseFloat(val, 64); err != nil {
-				return nil, fmt.Errorf("for 'Gt', 'Lt' operators, the value must be a number")
+			if _, err := strconv.ParseInt(val, 10, 64); err != nil {
+				return nil, fmt.Errorf("for 'Gt', 'Lt' operators, the value must be an integer")
 			}
 		}
 	default:
@@ -160,6 +160,8 @@ func NewRequirement(key string, op Operator, vals sets.String) (*Requirement, er
 //     Labels' value for that key is not in Requirement's value set.
 // (4) The operator is DoesNotExist or NotIn and Labels does not have the
 //     Requirement's key.
+// (5) The operator is GreaterThanOperator or LessThanOperator, and Labels has
+//     the Requirement's key and the corresponding value satisfies mathematical inequality.
 func (r *Requirement) Matches(ls Labels) bool {
 	switch r.operator {
 	case InOperator, EqualsOperator, DoubleEqualsOperator:
@@ -180,23 +182,23 @@ func (r *Requirement) Matches(ls Labels) bool {
 		if !ls.Has(r.key) {
 			return false
 		}
-		lsValue, err := strconv.ParseFloat(ls.Get(r.key), 64)
+		lsValue, err := strconv.ParseInt(ls.Get(r.key), 10, 64)
 		if err != nil {
-			glog.V(10).Infof("Parse float failed for value %+v in label %+v, %+v", ls.Get(r.key), ls, err)
+			glog.V(10).Infof("ParseInt failed for value %+v in label %+v, %+v", ls.Get(r.key), ls, err)
 			return false
 		}
 
-		// There should be only one strValue in r.strValues, and can be converted to a float number.
+		// There should be only one strValue in r.strValues, and can be converted to a integer.
 		if len(r.strValues) != 1 {
-			glog.V(10).Infof("Invalid values count %+v of requirement %+v, for 'Gt', 'Lt' operators, exactly one value is required", len(r.strValues), r)
+			glog.V(10).Infof("Invalid values count %+v of requirement %#v, for 'Gt', 'Lt' operators, exactly one value is required", len(r.strValues), r)
 			return false
 		}
 
-		var rValue float64
+		var rValue int64
 		for strValue := range r.strValues {
-			rValue, err = strconv.ParseFloat(strValue, 64)
+			rValue, err = strconv.ParseInt(strValue, 10, 64)
 			if err != nil {
-				glog.V(10).Infof("Parse float failed for value %+v in requirement %+v, for 'Gt', 'Lt' operators, the value must be a number", strValue, r)
+				glog.V(10).Infof("ParseInt failed for value %+v in requirement %#v, for 'Gt', 'Lt' operators, the value must be an integer", strValue, r)
 				return false
 			}
 		}
@@ -467,7 +469,7 @@ func (l *Lexer) Lex() (tok Token, lit string) {
 	}
 }
 
-// Parser data structure contains the label selector parser data strucutre
+// Parser data structure contains the label selector parser data structure
 type Parser struct {
 	l            *Lexer
 	scannedItems []ScannedItem
@@ -764,19 +766,16 @@ func parse(selector string) (internalSelector, error) {
 	return internalSelector(items), err
 }
 
-var qualifiedNameErrorMsg string = fmt.Sprintf(`must be a qualified name (at most %d characters, matching regex %s), with an optional DNS subdomain prefix (at most %d characters, matching regex %s) and slash (/): e.g. "MyName" or "example.com/MyName"`, validation.QualifiedNameMaxLength, validation.QualifiedNameFmt, validation.DNS1123SubdomainMaxLength, validation.DNS1123SubdomainFmt)
-var labelValueErrorMsg string = fmt.Sprintf(`must have at most %d characters, matching regex %s: e.g. "MyValue" or ""`, validation.LabelValueMaxLength, validation.LabelValueFmt)
-
 func validateLabelKey(k string) error {
-	if !validation.IsQualifiedName(k) {
-		return fmt.Errorf("invalid label key: %s", qualifiedNameErrorMsg)
+	if errs := validation.IsQualifiedName(k); len(errs) != 0 {
+		return fmt.Errorf("invalid label key %q: %s", k, strings.Join(errs, "; "))
 	}
 	return nil
 }
 
 func validateLabelValue(v string) error {
-	if !validation.IsValidLabelValue(v) {
-		return fmt.Errorf("invalid label value: %s", labelValueErrorMsg)
+	if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
+		return fmt.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
 	}
 	return nil
 }

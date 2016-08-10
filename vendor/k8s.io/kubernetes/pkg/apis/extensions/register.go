@@ -1,5 +1,5 @@
 /*
-Copyright 2015 The Kubernetes Authors All rights reserved.
+Copyright 2015 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,23 +73,9 @@ func addKnownTypes(scheme *runtime.Scheme) {
 		&api.ExportOptions{},
 		&PodSecurityPolicy{},
 		&PodSecurityPolicyList{},
+		&NetworkPolicy{},
+		&NetworkPolicyList{},
+		&StorageClass{},
+		&StorageClassList{},
 	)
 }
-
-func (obj *Deployment) GetObjectKind() unversioned.ObjectKind                 { return &obj.TypeMeta }
-func (obj *DeploymentList) GetObjectKind() unversioned.ObjectKind             { return &obj.TypeMeta }
-func (obj *DeploymentRollback) GetObjectKind() unversioned.ObjectKind         { return &obj.TypeMeta }
-func (obj *ReplicationControllerDummy) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }
-func (obj *Scale) GetObjectKind() unversioned.ObjectKind                      { return &obj.TypeMeta }
-func (obj *ThirdPartyResource) GetObjectKind() unversioned.ObjectKind         { return &obj.TypeMeta }
-func (obj *ThirdPartyResourceList) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
-func (obj *DaemonSet) GetObjectKind() unversioned.ObjectKind                  { return &obj.TypeMeta }
-func (obj *DaemonSetList) GetObjectKind() unversioned.ObjectKind              { return &obj.TypeMeta }
-func (obj *ThirdPartyResourceData) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
-func (obj *ThirdPartyResourceDataList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }
-func (obj *Ingress) GetObjectKind() unversioned.ObjectKind                    { return &obj.TypeMeta }
-func (obj *IngressList) GetObjectKind() unversioned.ObjectKind                { return &obj.TypeMeta }
-func (obj *ReplicaSet) GetObjectKind() unversioned.ObjectKind                 { return &obj.TypeMeta }
-func (obj *ReplicaSetList) GetObjectKind() unversioned.ObjectKind             { return &obj.TypeMeta }
-func (obj *PodSecurityPolicy) GetObjectKind() unversioned.ObjectKind          { return &obj.TypeMeta }
-func (obj *PodSecurityPolicyList) GetObjectKind() unversioned.ObjectKind      { return &obj.TypeMeta }

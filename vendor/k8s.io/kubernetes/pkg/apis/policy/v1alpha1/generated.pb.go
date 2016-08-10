@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ limitations under the License.
 
 	It has these top-level messages:
 		PodDisruptionBudget
+		PodDisruptionBudgetList
 		PodDisruptionBudgetSpec
 		PodDisruptionBudgetStatus
 */
@@ -37,6 +38,9 @@ import math "math"
 
 import k8s_io_kubernetes_pkg_api_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 
+import strings "strings"
+import reflect "reflect"
+
 import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -44,20 +48,21 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-func (m *PodDisruptionBudget) Reset()         { *m = PodDisruptionBudget{} }
-func (m *PodDisruptionBudget) String() string { return proto.CompactTextString(m) }
-func (*PodDisruptionBudget) ProtoMessage()    {}
+func (m *PodDisruptionBudget) Reset()      { *m = PodDisruptionBudget{} }
+func (*PodDisruptionBudget) ProtoMessage() {}
 
-func (m *PodDisruptionBudgetSpec) Reset()         { *m = PodDisruptionBudgetSpec{} }
-func (m *PodDisruptionBudgetSpec) String() string { return proto.CompactTextString(m) }
-func (*PodDisruptionBudgetSpec) ProtoMessage()    {}
+func (m *PodDisruptionBudgetList) Reset()      { *m = PodDisruptionBudgetList{} }
+func (*PodDisruptionBudgetList) ProtoMessage() {}
 
-func (m *PodDisruptionBudgetStatus) Reset()         { *m = PodDisruptionBudgetStatus{} }
-func (m *PodDisruptionBudgetStatus) String() string { return proto.CompactTextString(m) }
-func (*PodDisruptionBudgetStatus) ProtoMessage()    {}
+func (m *PodDisruptionBudgetSpec) Reset()      { *m = PodDisruptionBudgetSpec{} }
+func (*PodDisruptionBudgetSpec) ProtoMessage() {}
+
+func (m *PodDisruptionBudgetStatus) Reset()      { *m = PodDisruptionBudgetStatus{} }
+func (*PodDisruptionBudgetStatus) ProtoMessage() {}
 
 func init() {
 	proto.RegisterType((*PodDisruptionBudget)(nil), "k8s.io.kubernetes.pkg.apis.policy.v1alpha1.PodDisruptionBudget")
+	proto.RegisterType((*PodDisruptionBudgetList)(nil), "k8s.io.kubernetes.pkg.apis.policy.v1alpha1.PodDisruptionBudgetList")
 	proto.RegisterType((*PodDisruptionBudgetSpec)(nil), "k8s.io.kubernetes.pkg.apis.policy.v1alpha1.PodDisruptionBudgetSpec")
 	proto.RegisterType((*PodDisruptionBudgetStatus)(nil), "k8s.io.kubernetes.pkg.apis.policy.v1alpha1.PodDisruptionBudgetStatus")
 }
@@ -103,6 +108,44 @@ func (m *PodDisruptionBudget) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *PodDisruptionBudgetList) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *PodDisruptionBudgetList) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintGenerated(data, i, uint64(m.ListMeta.Size()))
+	n4, err := m.ListMeta.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n4
+	if len(m.Items) > 0 {
+		for _, msg := range m.Items {
+			data[i] = 0x12
+			i++
+			i = encodeVarintGenerated(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
 func (m *PodDisruptionBudgetSpec) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -121,20 +164,20 @@ func (m *PodDisruptionBudgetSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintGenerated(data, i, uint64(m.MinAvailable.Size()))
-	n4, err := m.MinAvailable.MarshalTo(data[i:])
+	n5, err := m.MinAvailable.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n4
+	i += n5
 	if m.Selector != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintGenerated(data, i, uint64(m.Selector.Size()))
-		n5, err := m.Selector.MarshalTo(data[i:])
+		n6, err := m.Selector.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n5
+		i += n6
 	}
 	return i, nil
 }
@@ -213,6 +256,20 @@ func (m *PodDisruptionBudget) Size() (n int) {
 	return n
 }
 
+func (m *PodDisruptionBudgetList) Size() (n int) {
+	var l int
+	_ = l
+	l = m.ListMeta.Size()
+	n += 1 + l + sovGenerated(uint64(l))
+	if len(m.Items) > 0 {
+		for _, e := range m.Items {
+			l = e.Size()
+			n += 1 + l + sovGenerated(uint64(l))
+		}
+	}
+	return n
+}
+
 func (m *PodDisruptionBudgetSpec) Size() (n int) {
 	var l int
 	_ = l
@@ -247,6 +304,61 @@ func sovGenerated(x uint64) (n int) {
 }
 func sozGenerated(x uint64) (n int) {
 	return sovGenerated(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *PodDisruptionBudget) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&PodDisruptionBudget{`,
+		`ObjectMeta:` + strings.Replace(strings.Replace(this.ObjectMeta.String(), "ObjectMeta", "k8s_io_kubernetes_pkg_api_v1.ObjectMeta", 1), `&`, ``, 1) + `,`,
+		`Spec:` + strings.Replace(strings.Replace(this.Spec.String(), "PodDisruptionBudgetSpec", "PodDisruptionBudgetSpec", 1), `&`, ``, 1) + `,`,
+		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "PodDisruptionBudgetStatus", "PodDisruptionBudgetStatus", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *PodDisruptionBudgetList) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&PodDisruptionBudgetList{`,
+		`ListMeta:` + strings.Replace(strings.Replace(this.ListMeta.String(), "ListMeta", "k8s_io_kubernetes_pkg_api_unversioned.ListMeta", 1), `&`, ``, 1) + `,`,
+		`Items:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Items), "PodDisruptionBudget", "PodDisruptionBudget", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *PodDisruptionBudgetSpec) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&PodDisruptionBudgetSpec{`,
+		`MinAvailable:` + strings.Replace(strings.Replace(this.MinAvailable.String(), "IntOrString", "k8s_io_kubernetes_pkg_util_intstr.IntOrString", 1), `&`, ``, 1) + `,`,
+		`Selector:` + strings.Replace(fmt.Sprintf("%v", this.Selector), "LabelSelector", "k8s_io_kubernetes_pkg_api_unversioned.LabelSelector", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *PodDisruptionBudgetStatus) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&PodDisruptionBudgetStatus{`,
+		`PodDisruptionAllowed:` + fmt.Sprintf("%v", this.PodDisruptionAllowed) + `,`,
+		`CurrentHealthy:` + fmt.Sprintf("%v", this.CurrentHealthy) + `,`,
+		`DesiredHealthy:` + fmt.Sprintf("%v", this.DesiredHealthy) + `,`,
+		`ExpectedPods:` + fmt.Sprintf("%v", this.ExpectedPods) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringGenerated(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
 }
 func (m *PodDisruptionBudget) Unmarshal(data []byte) error {
 	l := len(data)
@@ -364,6 +476,117 @@ func (m *PodDisruptionBudget) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenerated(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *PodDisruptionBudgetList) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenerated
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PodDisruptionBudgetList: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PodDisruptionBudgetList: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ListMeta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ListMeta.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Items", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Items = append(m.Items, PodDisruptionBudget{})
+			if err := m.Items[len(m.Items)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

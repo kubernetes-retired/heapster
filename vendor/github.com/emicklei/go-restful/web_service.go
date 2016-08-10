@@ -1,7 +1,9 @@
 package restful
 
 import (
+	"fmt"
 	"os"
+	"sync"
 
 	"github.com/emicklei/go-restful/log"
 )
@@ -21,13 +23,19 @@ type WebService struct {
 	filters        []FilterFunction
 	documentation  string
 	apiVersion     string
+
+	dynamicRoutes bool
+
+	// protects 'routes' if dynamic routes are enabled
+	routesLock sync.RWMutex
+}
+
+func (w *WebService) SetDynamicRoutes(enable bool) {
+	w.dynamicRoutes = enable
 }
 
 // compilePathExpression ensures that the path is compiled into a RegEx for those routers that need it.
 func (w *WebService) compilePathExpression() {
-	if len(w.rootPath) == 0 {
-		w.Path("/") // lazy initialize path
-	}
 	compiled, err := newPathExpression(w.rootPath)
 	if err != nil {
 		log.Printf("[restful] invalid path:%s because:%v", w.rootPath, err)
@@ -49,6 +57,9 @@ func (w WebService) Version() string { return w.apiVersion }
 // All Routes will be relative to this path.
 func (w *WebService) Path(root string) *WebService {
 	w.rootPath = root
+	if len(w.rootPath) == 0 {
+		w.rootPath = "/"
+	}
 	w.compilePathExpression()
 	return w
 }
@@ -134,9 +145,31 @@ func FormParameter(name, description string) *Parameter {
 
 // Route creates a new Route using the RouteBuilder and add to the ordered list of Routes.
 func (w *WebService) Route(builder *RouteBuilder) *WebService {
+	w.routesLock.Lock()
+	defer w.routesLock.Unlock()
 	builder.copyDefaults(w.produces, w.consumes)
 	w.routes = append(w.routes, builder.Build())
 	return w
+}
+
+// RemoveRoute removes the specified route, looks for something that matches 'path' and 'method'
+func (w *WebService) RemoveRoute(path, method string) error {
+	if !w.dynamicRoutes {
+		return fmt.Errorf("dynamic routes are not enabled.")
+	}
+	w.routesLock.Lock()
+	defer w.routesLock.Unlock()
+	newRoutes := make([]Route, (len(w.routes) - 1))
+	current := 0
+	for ix := range w.routes {
+		if w.routes[ix].Method == method && w.routes[ix].Path == path {
+			continue
+		}
+		newRoutes[current] = w.routes[ix]
+		current = current + 1
+	}
+	w.routes = newRoutes
+	return nil
 }
 
 // Method creates a new RouteBuilder and initialize its http method
@@ -160,7 +193,17 @@ func (w *WebService) Consumes(accepts ...string) *WebService {
 
 // Routes returns the Routes associated with this WebService
 func (w WebService) Routes() []Route {
-	return w.routes
+	if !w.dynamicRoutes {
+		return w.routes
+	}
+	// Make a copy of the array to prevent concurrency problems
+	w.routesLock.RLock()
+	defer w.routesLock.RUnlock()
+	result := make([]Route, len(w.routes))
+	for ix := range w.routes {
+		result[ix] = w.routes[ix]
+	}
+	return result
 }
 
 // RootPath returns the RootPath associated with this WebService. Default "/"
