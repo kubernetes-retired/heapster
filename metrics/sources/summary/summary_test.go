@@ -92,7 +92,8 @@ type fakeSource struct {
 	scraped bool
 }
 
-func (f *fakeSource) Name() string { return "fake" }
+func (f *fakeSource) Name() string      { return "fake" }
+func (f *fakeSource) IsCanonical() bool { return true }
 func (f *fakeSource) ScrapeMetrics(start, end time.Time) *core.DataBatch {
 	f.scraped = true
 	return nil

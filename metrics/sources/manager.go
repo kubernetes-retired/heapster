@@ -19,6 +19,7 @@ import (
 	"time"
 
 	. "k8s.io/heapster/metrics/core"
+	"k8s.io/heapster/metrics/util"
 
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
@@ -29,6 +30,13 @@ const (
 	MaxDelayMs                  = 4 * 1000
 	DelayPerSourceMs            = 8
 )
+
+// identifiedDataBatch is a DataBatch with an associated source
+type identifiedDataBatch struct {
+	*DataBatch
+
+	source MetricsSource
+}
 
 var (
 	// Last time Heapster performed a scrape since unix epoch in seconds.
@@ -75,11 +83,15 @@ func (this *sourceManager) Name() string {
 	return "source_manager"
 }
 
+func (this *sourceManager) IsCanonical() bool {
+	return true
+}
+
 func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 	glog.V(1).Infof("Scraping metrics start: %s, end: %s", start, end)
 	sources := this.metricsSourceProvider.GetMetricsSources()
 
-	responseChannel := make(chan *DataBatch)
+	responseChannel := make(chan *identifiedDataBatch)
 	startTime := time.Now()
 	timeoutTime := startTime.Add(this.metricsScrapeTimeout)
 
@@ -90,7 +102,7 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 
 	for _, source := range sources {
 
-		go func(source MetricsSource, channel chan *DataBatch, start, end, timeoutTime time.Time, delayInMs int) {
+		go func(source MetricsSource, channel chan *identifiedDataBatch, start, end, timeoutTime time.Time, delayInMs int) {
 
 			// Prevents network congestion.
 			time.Sleep(time.Duration(rand.Intn(delayMs)) * time.Millisecond)
@@ -104,8 +116,13 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 			}
 			timeForResponse := timeoutTime.Sub(now)
 
+			idMetrics := &identifiedDataBatch{
+				DataBatch: metrics,
+				source:    source,
+			}
+
 			select {
-			case channel <- metrics:
+			case channel <- idMetrics:
 				// passed the response correctly.
 				return
 			case <-time.After(timeForResponse):
@@ -130,9 +147,16 @@ responseloop:
 		}
 
 		select {
-		case dataBatch := <-responseChannel:
-			if dataBatch != nil {
-				for key, value := range dataBatch.MetricSets {
+		case idDataBatch := <-responseChannel:
+			sourceIsCanonical := idDataBatch.source.IsCanonical()
+			if idDataBatch.DataBatch != nil {
+				for key, value := range idDataBatch.MetricSets {
+					if existingVal, valExists := response.MetricSets[key]; valExists {
+						// merge the new data into the old data, allowing "canonical" sources
+						// (e.g. kubernetes) to overwrite custom sources (e.g. push metrics)
+						util.MergeMetricSet(existingVal, value, sourceIsCanonical)
+						continue
+					}
 					response.MetricSets[key] = value
 				}
 			}

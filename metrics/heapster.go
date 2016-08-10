@@ -44,17 +44,20 @@ import (
 )
 
 var (
-	argMetricResolution = flag.Duration("metric_resolution", 60*time.Second, "The resolution at which heapster will retain metrics.")
-	argPort             = flag.Int("port", 8082, "port to listen to")
-	argIp               = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
-	argMaxProcs         = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
-	argTLSCertFile      = flag.String("tls_cert", "", "file containing TLS certificate")
-	argTLSKeyFile       = flag.String("tls_key", "", "file containing TLS key")
-	argTLSClientCAFile  = flag.String("tls_client_ca", "", "file containing TLS client CA for client cert validation")
-	argAllowedUsers     = flag.String("allowed_users", "", "comma-separated list of allowed users")
-	argSources          flags.Uris
-	argSinks            flags.Uris
-	argHistoricalSource = flag.String("historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
+	argMetricResolution    = flag.Duration("metric_resolution", 60*time.Second, "The resolution at which heapster will retain metrics.")
+	argPort                = flag.Int("port", 8082, "port to listen to")
+	argIp                  = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
+	argMaxProcs            = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
+	argTLSCertFile         = flag.String("tls_cert", "", "file containing TLS certificate")
+	argTLSKeyFile          = flag.String("tls_key", "", "file containing TLS key")
+	argTLSClientCAFile     = flag.String("tls_client_ca", "", "file containing TLS client CA for client cert validation")
+	argAllowedUsers        = flag.String("allowed_users", "", "comma-separated list of allowed users")
+	argSources             flags.Uris
+	argSinks               flags.Uris
+	argHistoricalSource    = flag.String("historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
+	argTLSPushClientCAFile = flag.String("tls_push_client_ca", "", "file containing TLS client CA for client cert validation for push metrics")
+	argAllowedPushUsers    = flag.String("allowed_push_users", "", "comma-separated list of allowed users for push metrics")
+	argMaxPushMetrics      = flag.Int("max_push_metrics", 0, "maximum number of unique metrics per push source (defaults to 0 for unlimitted")
 )
 
 func main() {
@@ -70,11 +73,11 @@ func main() {
 	}
 
 	// sources
-	if len(argSources) != 1 {
+	if len(argSources) != 1 && len(argSources) != 2 {
 		glog.Fatal("Wrong number of sources specified")
 	}
 	sourceFactory := sources.NewSourceFactory()
-	sourceProvider, err := sourceFactory.BuildAll(argSources)
+	sourceProvider, pushSource, err := sourceFactory.BuildAll(argSources, *argMaxPushMetrics)
 	if err != nil {
 		glog.Fatalf("Failed to create source provide: %v", err)
 	}
@@ -178,20 +181,37 @@ func main() {
 	promHandler := prometheus.Handler()
 	if len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) > 0 {
 		if len(*argTLSClientCAFile) > 0 {
-			authPprofHandler, err := newAuthHandler(handler)
+			authPprofHandler, err := newAuthHandler(handler, *argTLSClientCAFile, *argAllowedUsers)
 			if err != nil {
 				glog.Fatalf("Failed to create authorized pprof handler: %v", err)
 			}
 			handler = authPprofHandler
 
-			authPromHandler, err := newAuthHandler(promHandler)
+			authPromHandler, err := newAuthHandler(promHandler, *argTLSClientCAFile, *argAllowedUsers)
 			if err != nil {
 				glog.Fatalf("Failed to create authorized prometheus handler: %v", err)
 			}
 			promHandler = authPromHandler
+
 		}
+
 		mux.Handle("/", handler)
 		mux.Handle("/metrics", promHandler)
+
+		if pushSource != nil {
+			if len(*argTLSPushClientCAFile) > 0 {
+				// enable push metrics as well
+				pushAuthFilter, err := newAuthFilter(*argTLSPushClientCAFile, *argAllowedPushUsers)
+				if err != nil {
+					glog.Fatalf("Failed to create authorized push metrics handler: %v", err)
+				}
+				pushHandler := setupPushHandler(pushSource, pushAuthFilter)
+
+				mux.Handle("/api/v1/push/", pushHandler)
+			} else {
+				glog.Fatal("Unable to use push metrics without a push metrics CA")
+			}
+		}
 
 		// If allowed users is set, then we need to enable Client Authentication
 		if len(*argAllowedUsers) > 0 {
@@ -206,6 +226,10 @@ func main() {
 		}
 
 	} else {
+		if pushSource != nil {
+			glog.Fatal("Unable to set up push metrics without TLS support")
+		}
+
 		mux.Handle("/", handler)
 		mux.Handle("/metrics", promHandler)
 		glog.Fatal(http.ListenAndServe(addr, mux))

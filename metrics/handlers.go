@@ -27,6 +27,8 @@ import (
 	"k8s.io/heapster/metrics/util/metrics"
 
 	"k8s.io/kubernetes/pkg/client/cache"
+
+	"k8s.io/heapster/metrics/sources/push"
 )
 
 const pprofBasePath = "/debug/pprof/"
@@ -63,6 +65,17 @@ func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPo
 	ws := new(restful.WebService).Path(pprofBasePath)
 	ws.Route(ws.GET("/{subpath:*}").To(metrics.InstrumentRouteFunc("pprof", handlePprofEndpoint))).Doc("pprof endpoint")
 	wsContainer.Add(ws)
+
+	return wsContainer
+}
+
+func setupPushHandler(pushSource push.PushSource, authFilter restful.FilterFunction) http.Handler {
+	wsContainer := restful.NewContainer()
+	wsContainer.EnableContentEncoding(true)
+	wsContainer.Router(restful.CurlyRouter{})
+	wsContainer.Filter(authFilter)
+	a := v1.NewPushApi(pushSource)
+	a.Register(wsContainer)
 
 	return wsContainer
 }

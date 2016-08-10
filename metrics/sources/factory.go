@@ -20,6 +20,7 @@ import (
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sources/kubelet"
+	"k8s.io/heapster/metrics/sources/push"
 	"k8s.io/heapster/metrics/sources/summary"
 )
 
@@ -39,11 +40,45 @@ func (this *SourceFactory) Build(uri flags.Uri) (core.MetricsSourceProvider, err
 	}
 }
 
-func (this *SourceFactory) BuildAll(uris flags.Uris) (core.MetricsSourceProvider, error) {
-	if len(uris) != 1 {
-		return nil, fmt.Errorf("Only one source is supported")
+func (this *SourceFactory) BuildAll(uris flags.Uris, maxPushMetrics int) (core.MetricsSourceProvider, push.PushSource, error) {
+	// We can have 2 sources, if one is a push source
+	if len(uris) == 2 {
+		// we can't have two push sources
+		if uris[0].Key == "push" && uris[1].Key == "push" {
+			return nil, nil, fmt.Errorf("Cannot have multiple push sources")
+		}
+
+		// if we have more than one source, we need at least one push source
+		if uris[0].Key != "push" && uris[1].Key != "push" {
+			return nil, nil, fmt.Errorf("Only one non-push source is supported")
+		}
+
+		// figure out which source is the "normal" one, and build it
+		var provider core.MetricsSourceProvider
+		var err error
+		if uris[0].Key == "push" {
+			provider, err = this.Build(uris[1])
+		} else {
+			provider, err = this.Build(uris[0])
+		}
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return push.NewPushProvider(provider, maxPushMetrics)
 	}
-	return this.Build(uris[0])
+
+	if len(uris) != 1 {
+		return nil, nil, fmt.Errorf("Only one non-push source is supported")
+	}
+
+	if uris[0].Key == "push" {
+		return push.NewPushProvider(nil, maxPushMetrics)
+	}
+
+	provider, err := this.Build(uris[0])
+	return provider, nil, err
 }
 
 func NewSourceFactory() *SourceFactory {

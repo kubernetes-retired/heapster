@@ -134,6 +134,9 @@ type DataBatch struct {
 // A place from where the metrics should be scraped.
 type MetricsSource interface {
 	Name() string
+	// IsCanonical returns whether or not this source should be treated as a canonical source of information
+	// (e.g. kubernetes is a canonical source, whereas push metrics is not)
+	IsCanonical() bool
 	ScrapeMetrics(start, end time.Time) *DataBatch
 }
 
