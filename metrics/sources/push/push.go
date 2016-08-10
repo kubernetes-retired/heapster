@@ -19,8 +19,7 @@ import (
 	"sync"
 	"time"
 
-	. "k8s.io/heapster/metrics/core"
-	"k8s.io/heapster/metrics/util"
+	"k8s.io/heapster/metrics/core"
 
 	"github.com/golang/glog"
 )
@@ -31,7 +30,7 @@ var nowFunc = time.Now
 // PushSource is a MetricsSource that stores pushed metrics until the next scrape
 // (instead of scraping from a remote location).
 type PushSource interface {
-	MetricsSource
+	core.MetricsSource
 
 	// PushMetrics stores a batch of metrics to be retrived by the next call to ScrapeMetrics.
 	// The metrics should already be prefixed/namespaced by sourceName as appropriate.  It
@@ -45,16 +44,16 @@ type PushSource interface {
 // pushProvider is a MetricsSourceProvider which returns both some sources from a base
 // MetricsSourceProvider, as well as a PushSource
 type pushProvider struct {
-	baseProvider MetricsSourceProvider
+	baseProvider core.MetricsSourceProvider
 	pushSource   PushSource
 }
 
-func (p *pushProvider) GetMetricsSources() []MetricsSource {
-	var sources []MetricsSource
+func (p *pushProvider) GetMetricsSources() []core.MetricsSource {
+	var sources []core.MetricsSource
 	if p.baseProvider != nil {
 		sources = p.baseProvider.GetMetricsSources()
 	} else {
-		sources = make([]MetricsSource, 0, 1)
+		sources = make([]core.MetricsSource, 0, 1)
 	}
 
 	sources = append(sources, p.pushSource)
@@ -65,7 +64,7 @@ func (p *pushProvider) GetMetricsSources() []MetricsSource {
 // NewPushProvider returns a new MetricsSourceProvider which provides sources from the given
 // MetricsSourceProvider (if any), as well as providing a PushSource.  If metricsLimit is non-zero,
 // source will be limitted to that many metric names per scrape.
-func NewPushProvider(baseProvider MetricsSourceProvider, metricsLimit int) (MetricsSourceProvider, PushSource, error) {
+func NewPushProvider(baseProvider core.MetricsSourceProvider, metricsLimit int) (core.MetricsSourceProvider, PushSource, error) {
 	pushSource := &memoryPushSource{
 		dataBatches:  make(map[string]DataBatch),
 		metricNames:  make(map[string]map[string]struct{}),
@@ -99,7 +98,7 @@ func (src *memoryPushSource) IsCanonical() bool {
 	return false
 }
 
-func (src *memoryPushSource) ScrapeMetrics(start, end time.Time) *DataBatch {
+func (src *memoryPushSource) ScrapeMetrics(start, end time.Time) *core.DataBatch {
 	src.Lock()
 	defer src.Unlock()
 
@@ -109,7 +108,6 @@ func (src *memoryPushSource) ScrapeMetrics(start, end time.Time) *DataBatch {
 	}
 
 	for sourceName, batch := range src.dataBatches {
-		// clear/free the dataBatch for when we "shorten" the slice later
 		if (!start.IsZero() && batch.Timestamp.Before(start)) || (!end.IsZero() && batch.Timestamp.After(end)) {
 			glog.V(2).Infof("Data batch from %q with invalid timestamp %s (not in [%s, %s])", "", batch.Timestamp, start, end)
 			continue
@@ -117,76 +115,16 @@ func (src *memoryPushSource) ScrapeMetrics(start, end time.Time) *DataBatch {
 
 		glog.V(5).Infof("Processing pushed batch from source %q: %#v", sourceName, batch)
 
-		mergeMetricSets(resBatch.MetricSets, batch.MetricSets, false)
+		batch.MergeInto(resBatch.MetricSets, false)
+
+		// clear/free the dataBatch for when we "shorten" the slice later
 		delete(src.dataBatches, sourceName)
 		delete(src.metricNames, sourceName)
 	}
 
 	glog.V(5).Infof("Scraped batch from push source: %#v", resBatch)
 
-	return resBatch
-}
-
-func mergeTyped(destValues map[string]MetricValue, newValues map[string]MetricValue, _ bool) {
-	for valKey, newVal := range newValues {
-		// for gauges, we should always average multiple pushes in a single
-		// scrape period so that we don't lose values
-		if newVal.MetricType == MetricGauge {
-			if oldVal, oldValPresent := destValues[valKey]; oldValPresent {
-				// we use the unused value to keep track of the count
-				// (this is fine because the exporter just uses the correct value according to the value type)
-				// This is a *bit* hacky, but it's easier than keeping track of the averages elsewhere and then
-				// having to do an extra pass at the end.
-
-				// TODO: can we just assume gauges are going to be float values?
-				if oldVal.ValueType == ValueInt64 {
-					if oldVal.FloatValue == 0 {
-						// start a new running average
-						newVal.FloatValue = 2.0
-						newVal.IntValue = (oldVal.IntValue + newVal.IntValue) / 2
-					} else {
-						newVal.IntValue = (oldVal.IntValue*int64(oldVal.FloatValue) + newVal.IntValue) / int64(oldVal.FloatValue+1)
-						newVal.FloatValue = oldVal.FloatValue + 1
-					}
-				} else {
-					if oldVal.IntValue == 0 {
-						// start a new running average
-						newVal.IntValue = 2
-						newVal.FloatValue = (oldVal.FloatValue + newVal.FloatValue) / 2
-					} else {
-						// continue the existing running average
-						newVal.FloatValue = (oldVal.FloatValue*float32(oldVal.IntValue) + newVal.FloatValue) / float32(oldVal.IntValue+1)
-						newVal.IntValue = oldVal.IntValue + 1
-
-					}
-				}
-			}
-		}
-
-		destValues[valKey] = newVal
-	}
-}
-
-func mergeMetricSets(dest map[string]*MetricSet, src map[string]*MetricSet, overwrite bool) {
-	for setKey, newSet := range src {
-		presentSet, wasPresent := dest[setKey]
-		if !wasPresent {
-			dest[setKey] = newSet
-			continue
-		}
-
-		// set the scrape time to be the newest time
-		if presentSet.ScrapeTime.Before(newSet.ScrapeTime) {
-			presentSet.ScrapeTime = newSet.ScrapeTime
-		}
-
-		// do the rest of the merging
-		if overwrite {
-			util.MergeMetricSetCustom(presentSet, newSet, overwrite, mergeTyped)
-		} else {
-			util.MergeMetricSet(presentSet, newSet, overwrite)
-		}
-	}
+	return resBatch.DataBatch()
 }
 
 // PushMetrics stores a batch of metrics to be retrived by the next call to ScrapeMetrics
@@ -223,7 +161,8 @@ func (src *memoryPushSource) PushMetrics(batch *DataBatch, sourceName string, ne
 	// (overwriting duplicate entries), since we could have multiple
 	// producers with the same name (e.g. the same daemon on each node)
 	if oldBatch, ok := src.dataBatches[sourceName]; ok {
-		mergeMetricSets(oldBatch.MetricSets, batch.MetricSets, true)
+		// MetricSets is a map, so we don't need a pointer
+		batch.MergeInto(oldBatch.MetricSets, true)
 		return nil
 	}
 

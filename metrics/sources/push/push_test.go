@@ -19,61 +19,72 @@ import (
 	"testing"
 	"time"
 
-	. "k8s.io/heapster/metrics/core"
+	"k8s.io/heapster/metrics/core"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func makeCntMetricValue(val int64) MetricValue {
 	return MetricValue{
-		IntValue:   val,
-		ValueType:  ValueInt64,
-		MetricType: MetricCumulative,
+		MetricValue: core.MetricValue{
+			IntValue:   val,
+			ValueType:  core.ValueInt64,
+			MetricType: core.MetricCumulative,
+		},
 	}
 }
 
 func makeGaugeMetricValue(val float32) MetricValue {
 	return MetricValue{
-		FloatValue: val,
-		ValueType:  ValueFloat,
-		MetricType: MetricGauge,
+		MetricValue: core.MetricValue{
+			FloatValue: val,
+			ValueType:  core.ValueFloat,
+			MetricType: core.MetricGauge,
+		},
 	}
+}
+
+func makeLabeledMetrics(metrics []LabeledMetric) map[LabeledMetricID]LabeledMetric {
+	res := make(map[LabeledMetricID]LabeledMetric, len(metrics))
+	for _, metric := range metrics {
+		res[metric.MakeID()] = metric
+	}
+
+	return res
 }
 
 func makeBaseBatch1(nowTime time.Time) (DataBatch, map[string]struct{}) {
 	return DataBatch{
 			Timestamp: nowTime.Add(-5 * time.Second),
 			MetricSets: map[string]*MetricSet{
-				PodKey("somens", "somepod"): {
-					ScrapeTime: nowTime.Add(-10 * time.Second),
+				core.PodKey("somens", "somepod"): {
 					MetricValues: map[string]MetricValue{
 						"custom/adminmetrics/mtn_dew_consumption": makeGaugeMetricValue(12.0),
 					},
 					Labels: map[string]string{
-						LabelNamespaceName.Key: "somens",
-						LabelPodName.Key:       "somepod",
+						core.LabelNamespaceName.Key: "somens",
+						core.LabelPodName.Key:       "somepod",
 					},
-					LabeledMetrics: []LabeledMetric{
+					LabeledMetrics: makeLabeledMetrics([]LabeledMetric{
 						{
 							Name:        "custom/adminmetrics/doritos_eaten",
-							Labels:      map[string]string{"flavor": "original"},
+							Labels:      []LabelPair{{"flavor", "original"}},
 							MetricValue: makeGaugeMetricValue(10.0),
 						},
 						{
 							Name:        "custom/adminmetrics/doritos_eaten",
-							Labels:      map[string]string{"flavor": "cool_ranch"},
+							Labels:      []LabelPair{{"flavor", "cool_ranch"}},
 							MetricValue: makeGaugeMetricValue(10.0),
 						},
-					},
+					}),
 				},
 
-				NamespaceKey("somens"): {
-					ScrapeTime: nowTime.Add(-10 * time.Second),
+				core.NamespaceKey("somens"): {
 					MetricValues: map[string]MetricValue{
 						"custom/adminmetrics/cans_collected": makeCntMetricValue(48),
 					},
 					Labels: map[string]string{
-						LabelNamespaceName.Key: "somens",
+						core.LabelNamespaceName.Key: "somens",
 					},
 					LabeledMetrics: nil,
 				},
@@ -89,25 +100,23 @@ func makeBaseBatch2(nowTime time.Time) (DataBatch, map[string]struct{}) {
 	return DataBatch{
 			Timestamp: nowTime.Add(-5 * time.Second),
 			MetricSets: map[string]*MetricSet{
-				NamespaceKey("somens"): {
-					ScrapeTime: nowTime.Add(-10 * time.Second),
+				core.NamespaceKey("somens"): {
 					MetricValues: map[string]MetricValue{
 						"custom/routermetrics/frontend_http_hits": makeGaugeMetricValue(20000.0),
 						"custom/routermetrics/proxy_http_hits":    makeGaugeMetricValue(500000.0),
 					},
 					Labels: map[string]string{
-						LabelNamespaceName.Key: "somens",
+						core.LabelNamespaceName.Key: "somens",
 					},
 					LabeledMetrics: nil,
 				},
-				NamespaceKey("somens2"): {
-					ScrapeTime: nowTime.Add(-10 * time.Second),
+				core.NamespaceKey("somens2"): {
 					MetricValues: map[string]MetricValue{
 						"custom/routermetrics/frontend_http_hits": makeGaugeMetricValue(20.0),
 						"custom/routermetrics/proxy_http_hits":    makeGaugeMetricValue(500.0),
 					},
 					Labels: map[string]string{
-						LabelNamespaceName.Key: "somens2",
+						core.LabelNamespaceName.Key: "somens2",
 					},
 					LabeledMetrics: nil,
 				},
@@ -142,7 +151,6 @@ func TestPushMetricsOverLimit(t *testing.T) {
 }
 
 func TestPushMetricsIntoPushSource(t *testing.T) {
-	assert := assert.New(t)
 	nowTime := time.Now()
 	nowFunc = func() time.Time { return nowTime }
 
@@ -151,28 +159,26 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 	batchAfter, batchAfterNames := makeBaseBatch2(nowTime.Add(2 * time.Minute))
 
 	batch1Multi, _ := makeBaseBatch1(nowTime)
-	batch1Multi.MetricSets[PodKey("somens", "somepod")].MetricValues["custom/adminmetrics/cheese_sticks_eaten"] = makeGaugeMetricValue(6.5)
+	batch1Multi.MetricSets[core.PodKey("somens", "somepod")].MetricValues["custom/adminmetrics/cheese_sticks_eaten"] = makeGaugeMetricValue(6.5)
 	avgedMetric := makeGaugeMetricValue(11.0)
-	avgedMetric.IntValue = 2
-	batch1Multi.MetricSets[PodKey("somens", "somepod")].MetricValues["custom/adminmetrics/mtn_dew_consumption"] = avgedMetric
+	batch1Multi.MetricSets[core.PodKey("somens", "somepod")].MetricValues["custom/adminmetrics/mtn_dew_consumption"] = avgedMetric
 	batch1Multi.Timestamp = nowTime
 
 	batch1Multi2, _ := makeBaseBatch1(nowTime)
-	avgedMetric2 := makeGaugeMetricValue(10.0)
-	avgedMetric2.IntValue = 2
+	avgedMetric2 := makeGaugeMetricValue(20.0)
+	avgedMetric2.StoredCount = 2
 	avgedMetric2New := makeGaugeMetricValue(32.0 / 3.0)
-	avgedMetric2New.IntValue = 3
-	batch1Multi2.MetricSets[PodKey("somens", "somepod")].MetricValues["custom/adminmetrics/mtn_dew_consumption"] = avgedMetric2New
+	batch1Multi2.MetricSets[core.PodKey("somens", "somepod")].MetricValues["custom/adminmetrics/mtn_dew_consumption"] = avgedMetric2New
 	batch1Multi2.Timestamp = nowTime
 
 	batch2, batch2Names := makeBaseBatch2(nowTime)
 
 	mergedBatch, _ := makeBaseBatch1(nowTime)
 	mergedBatch.Timestamp = nowTime
-	mergedBatch.MetricSets[NamespaceKey("somens2")] = batch2.MetricSets[NamespaceKey("somens2")]
+	mergedBatch.MetricSets[core.NamespaceKey("somens2")] = batch2.MetricSets[core.NamespaceKey("somens2")]
 
-	for k, v := range batch2.MetricSets[NamespaceKey("somens")].MetricValues {
-		mergedBatch.MetricSets[NamespaceKey("somens")].MetricValues[k] = v
+	for k, v := range batch2.MetricSets[core.NamespaceKey("somens")].MetricValues {
+		mergedBatch.MetricSets[core.NamespaceKey("somens")].MetricValues[k] = v
 	}
 
 	tests := []struct {
@@ -181,7 +187,7 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 		inputMetricNames map[string]struct{}
 		inputName        string
 		presentBatches   map[string]DataBatch
-		expectedBatch    *DataBatch
+		expectedBatch    *core.DataBatch
 		start            time.Time
 		end              time.Time
 	}{
@@ -194,31 +200,29 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 				"adminmetrics": {
 					Timestamp: nowTime.Add(-10 * time.Second),
 					MetricSets: map[string]*MetricSet{
-						PodKey("somens", "somepod"): {
-							ScrapeTime: nowTime.Add(-10 * time.Second),
+						core.PodKey("somens", "somepod"): {
 							MetricValues: map[string]MetricValue{
 								"custom/adminmetrics/mtn_dew_consumption": makeGaugeMetricValue(10.0),
 								"custom/adminmetrics/cheese_sticks_eaten": makeGaugeMetricValue(6.5),
 							},
 							Labels: map[string]string{
-								LabelNamespaceName.Key: "somens",
-								LabelPodName.Key:       "somepod",
+								core.LabelNamespaceName.Key: "somens",
+								core.LabelPodName.Key:       "somepod",
 							},
 						},
 
-						NamespaceKey("somens"): {
-							ScrapeTime: nowTime.Add(-10 * time.Second),
+						core.NamespaceKey("somens"): {
 							MetricValues: map[string]MetricValue{
 								"custom/adminmetrics/cans_collected": makeCntMetricValue(37),
 							},
 							Labels: map[string]string{
-								LabelNamespaceName.Key: "somens",
+								core.LabelNamespaceName.Key: "somens",
 							},
 						},
 					},
 				},
 			},
-			expectedBatch: &batch1Multi,
+			expectedBatch: batch1Multi.DataBatch(),
 		},
 		{
 			test:       "new batch with same name merges with older batch (averaging across multiple pushes)",
@@ -228,20 +232,19 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 				"adminmetrics": {
 					Timestamp: nowTime.Add(-10 * time.Second),
 					MetricSets: map[string]*MetricSet{
-						PodKey("somens", "somepod"): {
-							ScrapeTime: nowTime.Add(-10 * time.Second),
+						core.PodKey("somens", "somepod"): {
 							MetricValues: map[string]MetricValue{
 								"custom/adminmetrics/mtn_dew_consumption": avgedMetric2,
 							},
 							Labels: map[string]string{
-								LabelNamespaceName.Key: "somens",
-								LabelPodName.Key:       "somepod",
+								core.LabelNamespaceName.Key: "somens",
+								core.LabelPodName.Key:       "somepod",
 							},
 						},
 					},
 				},
 			},
-			expectedBatch: &batch1Multi2,
+			expectedBatch: batch1Multi2.DataBatch(),
 		},
 		{
 			test:             "batch before start is ignored",
@@ -249,9 +252,9 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 			inputMetricNames: batchBeforeNames,
 			inputName:        "adminmetrics",
 			start:            nowTime.Add(-1 * time.Minute),
-			expectedBatch: &DataBatch{
+			expectedBatch: &core.DataBatch{
 				Timestamp:  nowTime,
-				MetricSets: make(map[string]*MetricSet),
+				MetricSets: make(map[string]*core.MetricSet),
 			},
 		},
 		{
@@ -260,13 +263,12 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 			inputMetricNames: batchAfterNames,
 			inputName:        "adminmetrics",
 			end:              nowTime.Add(1 * time.Minute),
-			expectedBatch: &DataBatch{
+			expectedBatch: &core.DataBatch{
 				Timestamp:  nowTime,
-				MetricSets: make(map[string]*MetricSet),
+				MetricSets: make(map[string]*core.MetricSet),
 			},
 		},
 		{
-			// This test is dependent on the behavior of MergeMetricSet
 			test:             "two different sources' batches merge properly",
 			inputBatch:       &batch2,
 			inputMetricNames: batch2Names,
@@ -274,7 +276,7 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 			presentBatches: map[string]DataBatch{
 				"adminmetrics": batch1,
 			},
-			expectedBatch: &mergedBatch,
+			expectedBatch: mergedBatch.DataBatch(),
 		},
 	}
 
@@ -289,11 +291,91 @@ func TestPushMetricsIntoPushSource(t *testing.T) {
 
 		src.PushMetrics(test.inputBatch, test.inputName, test.inputMetricNames)
 		outputBatch := src.ScrapeMetrics(test.start, test.end)
-		if !assert.Equal(test.expectedBatch, outputBatch, fmt.Sprintf("%s: scraped batch was not as expected", test.test)) {
-			for k, v := range test.expectedBatch.MetricSets {
-				assert.Equal(v, outputBatch.MetricSets[k])
-			}
+
+		// there's no assigned iteration order for maps, so labeled-metric-map --> labeled-metric-slice can
+		// yield different results each time, so we need a custom helper here
+		if !assertBatchesEqual(t, test.expectedBatch, outputBatch, "%s: scraped batch was not as expected", test.test) {
 			continue
 		}
 	}
+}
+
+func metricSetEqual(expected, actual *core.MetricSet) bool {
+	if !expected.CreateTime.Equal(actual.CreateTime) {
+		return false
+	}
+
+	if !expected.ScrapeTime.Equal(actual.ScrapeTime) {
+		return false
+	}
+
+	if !assert.ObjectsAreEqual(expected.MetricValues, actual.MetricValues) {
+		return false
+	}
+
+	if !assert.ObjectsAreEqual(expected.Labels, actual.Labels) {
+		return false
+	}
+
+	// there's no assigned iteration order for maps, so labeled-metric-map --> labeled-metric-slice can
+	// yield different results each time, so just check that the contents are equal
+
+	if len(expected.LabeledMetrics) != len(actual.LabeledMetrics) {
+		return false
+	}
+
+	for _, expectedMetric := range expected.LabeledMetrics {
+		found := false
+
+		for _, actualMetric := range actual.LabeledMetrics {
+			if assert.ObjectsAreEqual(expectedMetric, actualMetric) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+func assertBatchesEqual(t *testing.T, expectedBatch, actualBatch *core.DataBatch, msgAndArgs ...interface{}) bool {
+	if !actualBatch.Timestamp.Equal(expectedBatch.Timestamp) {
+		assert.Fail(t, fmt.Sprintf("Not equal: %#v (expected)\n        != %#v (actual)", expectedBatch, actualBatch), msgAndArgs...)
+		return false
+	}
+
+	if expectedBatch.MetricSets == nil && actualBatch.MetricSets == nil {
+		return true
+	}
+
+	if len(expectedBatch.MetricSets) != len(actualBatch.MetricSets) {
+		assert.Fail(t, fmt.Sprintf("Not equal: %#v (expected)\n        != %#v (actual)", expectedBatch, actualBatch), msgAndArgs...)
+		return false
+	}
+
+	for setKey, expectedMetricSet := range expectedBatch.MetricSets {
+		actualMetricSet, setPresent := actualBatch.MetricSets[setKey]
+		if !setPresent {
+			assert.Fail(t, fmt.Sprintf("Not equal: %+v (expected)\n        != %+v (actual)", expectedBatch, actualBatch), msgAndArgs...)
+			return false
+		}
+
+		if expectedMetricSet == nil && actualMetricSet == nil {
+			continue
+		} else if expectedMetricSet == nil || actualMetricSet == nil {
+			assert.Fail(t, fmt.Sprintf("Not equal: %+v (expected)\n        != %+v (actual)", expectedBatch, actualBatch), msgAndArgs...)
+			return false
+		}
+
+		if !metricSetEqual(expectedMetricSet, actualMetricSet) {
+			assert.Fail(t, fmt.Sprintf("Not equal: %+v (expected)\n        != %+v (actual)", expectedBatch, actualBatch), msgAndArgs...)
+			return false
+		}
+	}
+
+	return true
 }

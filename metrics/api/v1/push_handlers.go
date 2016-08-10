@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"time"
 
 	restful "github.com/emicklei/go-restful"
@@ -26,6 +27,7 @@ import (
 	authinfo "k8s.io/kubernetes/pkg/auth/user"
 
 	"k8s.io/heapster/metrics/core"
+	"k8s.io/heapster/metrics/sources/push"
 	"k8s.io/heapster/metrics/util"
 	"k8s.io/heapster/metrics/util/metrics"
 )
@@ -59,7 +61,7 @@ func (a *PushApi) RegisterFormatHandlers(container *restful.Container) {
 // the body, converting it from a Prometheus metrics format (specified in the headers) into a Heapster DataBatch.
 // It also keeps track of the names of metrics extracted, and, if provided a metrics limit over zero, will error on
 // receiving too many different metrics.
-func ingestPrometheusMetrics(user string, metricNames map[string]struct{}, headers http.Header, body io.Reader) (*core.DataBatch, int, error) {
+func ingestPrometheusMetrics(user string, metricNames map[string]struct{}, headers http.Header, body io.Reader) (*push.DataBatch, int, error) {
 	metricsFormat := promfmt.ResponseFormat(headers)
 	if metricsFormat == promfmt.FmtUnknown {
 		return nil, http.StatusUnsupportedMediaType, fmt.Errorf("Unable to determine format of submitted Prometheus metrics")
@@ -68,9 +70,9 @@ func ingestPrometheusMetrics(user string, metricNames map[string]struct{}, heade
 	decoder := promfmt.NewDecoder(body, metricsFormat)
 	ingester := &dataBatchIngester{
 		nameFormat: fmt.Sprintf("custom/%s/%%s", user),
-		batch: &core.DataBatch{
+		batch: &push.DataBatch{
 			Timestamp:  nowFunc(),
-			MetricSets: map[string]*core.MetricSet{},
+			MetricSets: map[string]*push.MetricSet{},
 		},
 		defaultTimestamp: nowFunc(),
 		metricNames:      metricNames,
@@ -122,7 +124,7 @@ func (a *PushApi) prometheusPushRequest(req *restful.Request, resp *restful.Resp
 // dataBatchIngester is a Prometheus ingester for use with a processor which
 // ingests into a Heapster DataBatch
 type dataBatchIngester struct {
-	batch            *core.DataBatch
+	batch            *push.DataBatch
 	nameFormat       string
 	defaultTimestamp time.Time
 	metricNames      map[string]struct{}
@@ -136,27 +138,29 @@ func (ing *dataBatchIngester) ingestNormalMetricEntry(metricType core.MetricType
 
 	metricSet, wasPresent := ing.batch.MetricSets[key]
 	if !wasPresent {
-		metricSet = &core.MetricSet{
-			MetricValues:   make(map[string]core.MetricValue),
+		metricSet = &push.MetricSet{
+			MetricValues:   make(map[string]push.MetricValue),
 			Labels:         setLabels,
 			LabeledMetrics: nil,
 		}
 
-		if metric.TimestampMs != nil {
+		/*if metric.TimestampMs != nil {
 			metricSet.ScrapeTime = time.Unix(0, *metric.TimestampMs*1000000)
 		} else {
 			metricSet.ScrapeTime = ing.defaultTimestamp
-		}
+		}*/
 
 		ing.batch.MetricSets[key] = metricSet
 	}
 
 	// NB: all prometheus values are float64 values
-	val := core.MetricValue{
-		// WHY?  WHY ARE WE USING FLOAT32 BUT INT64?
-		FloatValue: float32(value),
-		ValueType:  core.ValueFloat,
-		MetricType: metricType,
+	val := push.MetricValue{
+		MetricValue: core.MetricValue{
+			// WHY?  WHY ARE WE USING FLOAT32 BUT INT64?
+			FloatValue: float32(value),
+			ValueType:  core.ValueFloat,
+			MetricType: metricType,
+		},
 	}
 
 	metricName := fmt.Sprintf(ing.nameFormat, familyName)
@@ -165,12 +169,15 @@ func (ing *dataBatchIngester) ingestNormalMetricEntry(metricType core.MetricType
 
 	// check to see if this metric needs to be added as a labeled metric
 	if len(normalLabels) != 0 {
-		labeledMetric := core.LabeledMetric{
+		if metricSet.LabeledMetrics == nil {
+			metricSet.LabeledMetrics = make(map[push.LabeledMetricID]push.LabeledMetric)
+		}
+		labeledMetric := push.LabeledMetric{
 			Name:        metricName,
 			Labels:      normalLabels,
 			MetricValue: val,
 		}
-		metricSet.LabeledMetrics = append(metricSet.LabeledMetrics, labeledMetric)
+		metricSet.LabeledMetrics[labeledMetric.MakeID()] = labeledMetric
 		return nil
 	}
 
@@ -268,9 +275,8 @@ func (ing *dataBatchIngester) IngestAll(decoder promfmt.Decoder) error {
 // extractKeyAndFilterLabels extracts a key (as defined in ms_keys.go) from the given
 // set of labels, and splits the remaining labels into those appropriate for a metric set
 // referred to by that key and any other normal labels.
-func extractKeyAndFilterLabels(labelPairs []*prompb.LabelPair) (key string, setLabels map[string]string, normalLabels map[string]string, err error) {
+func extractKeyAndFilterLabels(labelPairs []*prompb.LabelPair) (key string, setLabels map[string]string, normalLabels push.LabelPairs, err error) {
 	setLabels = make(map[string]string)
-	normalLabels = make(map[string]string)
 
 	var (
 		hasNS   = false
@@ -314,7 +320,7 @@ func extractKeyAndFilterLabels(labelPairs []*prompb.LabelPair) (key string, setL
 			continue
 		}
 
-		normalLabels[labelName] = labelPair.GetValue()
+		normalLabels = append(normalLabels, push.LabelPair{Key: labelName, Value: labelPair.GetValue()})
 	}
 
 	switch {
@@ -340,6 +346,9 @@ func extractKeyAndFilterLabels(labelPairs []*prompb.LabelPair) (key string, setL
 	default:
 		return "", nil, nil, fmt.Errorf("invalid label configuration for specifying metric key: must have labels namespace[+pod[+container]] or node[+container], or none of the above (for cluster metrics)")
 	}
+
+	// sort the labels so that we can easily compare later
+	sort.Sort(normalLabels)
 
 	return key, setLabels, normalLabels, nil
 }
