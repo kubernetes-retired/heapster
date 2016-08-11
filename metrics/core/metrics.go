@@ -70,6 +70,8 @@ var LabeledMetrics = []Metric{
 }
 
 var NodeAutoscalingMetrics = []Metric{
+	MetricNodeCpuCapacity,
+	MetricNodeMemoryCapacity,
 	MetricNodeCpuUtilization,
 	MetricNodeMemoryUtilization,
 	MetricNodeCpuReservation,
@@ -376,6 +378,26 @@ var MetricNetworkTxErrorsRate = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "network/tx_errors_rate",
 		Description: "Rate of errors transmitting over the network in errors per second",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNodeCpuCapacity = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/node_capacity",
+		Description: "Cpu capacity of a node",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNodeMemoryCapacity = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/node_capacity",
+		Description: "Memory capacity of a node",
 		Type:        MetricGauge,
 		ValueType:   ValueFloat,
 		Units:       UnitsCount,

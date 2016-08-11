@@ -5,6 +5,7 @@ Heapster exports the following metrics to its backends.
 | Metric Name | Description |
 |------------|-------------|
 | cpu/limit | CPU hard limit in millicores. |
+| cpu/node_capacity | Cpu capacity of a node. |
 | cpu/node_reservation | Share of cpu that is reserved on the node. |
 | cpu/node_utilization | CPU utilization as a share of node capacity. |
 | cpu/request | CPU request (the guaranteed amount of resources) in millicores. |
@@ -16,6 +17,7 @@ Heapster exports the following metrics to its backends.
 | memory/limit | Memory hard limit in bytes. |
 | memory/major_page_faults | Number of major page faults. |
 | memory/major_page_faults_rate | Number of major page faults per second. |
+| memory/node_capacity | Memory capacity of a node. |
 | memory/node_reservation | Share of memory that is reserved on the node. |
 | memory/node_utilization | Memory utilization as a share of memory capacity. |
 | memory/page_faults | Number of page faults. |
