@@ -20,6 +20,7 @@ import (
 
 	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/core"
+	"k8s.io/heapster/metrics/util"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
@@ -42,6 +43,7 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 	}
 	for _, node := range nodes.Items {
 		if metricSet, found := batch.MetricSets[core.NodeKey(node.Name)]; found {
+			metricSet.Labels[core.LabelLabels.Key] = util.LabelsToString(node.Labels, ",")
 			availableCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
 			availableMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
 
