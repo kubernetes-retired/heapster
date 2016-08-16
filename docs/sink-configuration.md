@@ -155,15 +155,18 @@ The following options are available:
 ### Elasticsearch
 This sink supports monitoring metrics and events. To use the ElasticSearch
 sink add the following flag:
-
+```
     --sink=elasticsearch:<ES_SERVER_URL>[?<OPTIONS>]
-
+```
 Normally an ElasticSearch cluster has multiple nodes or a proxy, so these need
 to be configured for the ElasticSearch sink. To do this, you can set
 `ES_SERVER_URL` to a dummy value, and use the `?nodes=` query value for each
 additional node in the cluster. For example:
-
+```
   --sink=elasticsearch:?nodes=foo.com:9200&nodes=bar.com:9200
+```
+(*) Notice that using the `?nodes` notation will override the `ES_SERVER_URL`
+
 
 Besides this, the following options can be set in query string:
 
@@ -188,6 +191,32 @@ Like this:
 	or
 
 	--sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testEvent"
+
+#### AWS Integration
+In order to use AWS Managed Elastic we need to use one of the following methods:
+
+1. Making sure the public IPs of the Heapster are allowed on the ElasticSearch's Access Policy
+
+-OR-
+
+2. Configuring an Access Policy with IAM
+	1. Configure the ElasticSearch cluster policy with IAM User
+	2. Create a secret that stores the IAM credentials
+	3. Expose the credentials to the environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+	
+	```
+	env:
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: aws-heapster
+            key: aws.id
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: aws-heapster
+            key: aws.secret
+	```
 
 ## Using multiple sinks
 

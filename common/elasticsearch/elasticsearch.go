@@ -20,8 +20,10 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/olivere/elastic"
 	"github.com/pborman/uuid"
+
+	"gopkg.in/olivere/elastic.v3"
+	"os"
 )
 
 const (
@@ -60,7 +62,7 @@ func SaveDataIntoES(esClient *elastic.Client, indexName string, typeName string,
 	_, err = esClient.Index().
 		Index(indexName).
 		Type(typeName).
-		Id(string(indexID)).
+		Id(indexID.String()).
 		BodyJson(sinkData).
 		Do()
 	if err != nil {
@@ -76,7 +78,7 @@ func CreateElasticSearchConfig(uri *url.URL) (*ElasticSearchConfig, error) {
 	var esConfig ElasticSearchConfig
 	opts, err := url.ParseQuery(uri.RawQuery)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parser url's query string: %s", err)
+		return nil, fmt.Errorf("fFailed to parser url's query string: %s", err)
 	}
 
 	// set the index for es,the default value is "heapster"
@@ -87,11 +89,14 @@ func CreateElasticSearchConfig(uri *url.URL) (*ElasticSearchConfig, error) {
 
 	// Set the URL endpoints of the ES's nodes. Notice that when sniffing is
 	// enabled, these URLs are used to initially sniff the cluster on startup.
-	if len(opts["nodes"]) < 1 {
+	var startupFns []elastic.ClientOptionFunc
+	if len(opts["nodes"]) > 0 {
+		startupFns = append(startupFns, elastic.SetURL(opts["nodes"]...))
+	} else if uri.Opaque != "" {
+		startupFns = append(startupFns, elastic.SetURL(uri.Opaque))
+	} else {
 		return nil, fmt.Errorf("There is no node assigned for connecting ES cluster")
 	}
-
-	startupFns := []elastic.ClientOptionFunc{elastic.SetURL(opts["nodes"]...)}
 
 	// If the ES cluster needs authentication, the username and secret
 	// should be set in sink config.Else, set the Authenticate flag to false
@@ -115,14 +120,6 @@ func CreateElasticSearchConfig(uri *url.URL) (*ElasticSearchConfig, error) {
 		startupFns = append(startupFns, elastic.SetHealthcheck(healthCheck))
 	}
 
-	if len(opts["sniff"]) > 0 {
-		sniff, err := strconv.ParseBool(opts["sniff"][0])
-		if err != nil {
-			return nil, fmt.Errorf("Failed to parse URL's sniff value into a bool")
-		}
-		startupFns = append(startupFns, elastic.SetSniff(sniff))
-	}
-
 	if len(opts["startupHealthcheckTimeout"]) > 0 {
 		timeout, err := time.ParseDuration(opts["startupHealthcheckTimeout"][0] + "s")
 		if err != nil {
@@ -131,12 +128,34 @@ func CreateElasticSearchConfig(uri *url.URL) (*ElasticSearchConfig, error) {
 		startupFns = append(startupFns, elastic.SetHealthcheckTimeoutStartup(timeout))
 	}
 
-	esConfig.EsClient, err = elastic.NewClient(startupFns...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ElasticSearch client: %v", err)
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" || os.Getenv("AWS_ACCESS_KEY") != "" ||
+		os.Getenv("AWS_SECRET_ACCESS_KEY") != "" || os.Getenv("AWS_SECRET_KEY") != "" {
+
+		glog.Info("Configuring with AWS credentials..")
+
+		awsClient, err := createAWSClient()
+		if err != nil {
+			return nil, err
+		}
+
+		startupFns = append(startupFns, elastic.SetHttpClient(awsClient))
+		startupFns = append(startupFns, elastic.SetSniff(false))
+	} else {
+		if len(opts["sniff"]) > 0 {
+			sniff, err := strconv.ParseBool(opts["sniff"][0])
+			if err != nil {
+				return nil, fmt.Errorf("Failed to parse URL's sniff value into a bool")
+			}
+			startupFns = append(startupFns, elastic.SetSniff(sniff))
+		}
 	}
 
-	glog.V(2).Infof("elasticsearch sink configure successfully")
+	esConfig.EsClient, err = elastic.NewClient(startupFns...)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create ElasticSearch client: %v", err)
+	}
+
+	glog.V(2).Infof("ElasticSearch sink configure successfully")
 
 	return &esConfig, nil
 }

@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/olivere/elastic"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/olivere/elastic.v3"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	"k8s.io/heapster/metrics/core"
 )
