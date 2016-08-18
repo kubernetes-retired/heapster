@@ -31,7 +31,7 @@ import (
 
 const pprofBasePath = "/debug/pprof/"
 
-func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, historicalSource core.HistoricalSource) http.Handler {
+func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, nodeLister *cache.StoreToNodeLister, historicalSource core.HistoricalSource) http.Handler {
 
 	runningInKubernetes := true
 
@@ -42,7 +42,7 @@ func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPo
 	a := v1.NewApi(runningInKubernetes, metricSink, historicalSource)
 	a.Register(wsContainer)
 	// Metrics API
-	m := metricsApi.NewApi(metricSink, podLister)
+	m := metricsApi.NewApi(metricSink, podLister, nodeLister)
 	m.Register(wsContainer)
 
 	handlePprofEndpoint := func(req *restful.Request, resp *restful.Response) {
