@@ -64,7 +64,10 @@ type kubeFramework interface {
 	GetProxyUrlForService(service *api.Service) string
 
 	// Returns the node hostnames.
-	GetNodes() ([]string, error)
+	GetNodeNames() ([]string, error)
+
+	// Returns the nodes.
+	GetNodes() (*api.NodeList, error)
 
 	// Returns pod names in the cluster.
 	// TODO: Remove, or mix with namespace
@@ -410,20 +413,23 @@ func (self *realKubeFramework) GetProxyUrlForService(service *api.Service) strin
 	return fmt.Sprintf("%s/api/v1/proxy/namespaces/default/services/%s/", self.masterIP, service.Name)
 }
 
-func (self *realKubeFramework) GetNodes() ([]string, error) {
+func (self *realKubeFramework) GetNodeNames() ([]string, error) {
 	var nodes []string
-	nodeList, err := self.kubeClient.Nodes().List(api.ListOptions{
-		LabelSelector: labels.Everything(),
-		FieldSelector: fields.Everything(),
-	})
+	nodeList, err := self.GetNodes()
 	if err != nil {
 		return nodes, err
 	}
-
 	for _, node := range nodeList.Items {
 		nodes = append(nodes, node.Name)
 	}
 	return nodes, nil
+}
+
+func (self *realKubeFramework) GetNodes() (*api.NodeList, error) {
+	return self.kubeClient.Nodes().List(api.ListOptions{
+		LabelSelector: labels.Everything(),
+		FieldSelector: fields.Everything(),
+	})
 }
 
 func (self *realKubeFramework) GetAllRunningPods() ([]api.Pod, error) {
