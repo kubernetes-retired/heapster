@@ -10,8 +10,11 @@ spec:
   # In a production setup, we recommend accessing Grafana through an external Loadbalancer
   # or through a public IP. 
   # type: LoadBalancer
+  type: NodePort
   ports:
   - port: 80
     targetPort: 3000
+    nodePort: 30080
+    protocol: TCP
   selector:
     name: influxGrafana

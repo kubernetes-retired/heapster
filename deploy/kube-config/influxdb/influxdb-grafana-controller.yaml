@@ -36,7 +36,10 @@ spec:
           - name: GF_AUTH_ANONYMOUS_ORG_ROLE
             value: Admin
           - name: GF_SERVER_ROOT_URL
-            value: /api/v1/proxy/namespaces/kube-system/services/monitoring-grafana/
+            # This is a workaround, looke here:
+            # https://github.com/kubernetes/heapster/issues/657
+            value: /
+            #value: /api/v1/proxy/namespaces/kube-system/services/monitoring-grafana/
         volumeMounts:
         - mountPath: /var
           name: grafana-storage
