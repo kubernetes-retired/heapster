@@ -6,9 +6,13 @@ metadata:
   namespace: kube-system
 spec:
   ports:
+  type: NodePort
+  ports:
   - name: http
     port: 8083
     targetPort: 8083
+    nodePort: 30083
+    protocol: TCP
   - name: api
     port: 8086
     targetPort: 8086
