@@ -3,8 +3,7 @@
 	"GoVersion": "go1.6",
 	"GodepVersion": "v74",
 	"Packages": [
-		"./...",
-		"github.com/progrium/go-extpoints"
+		"./..."
 	],
 	"Deps": [
 		{
@@ -201,11 +200,6 @@
 		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
 			"Rev": "d8ed2627bdf02c080bf22230dbb337003b7aba2d"
-		},
-		{
-			"ImportPath": "github.com/progrium/go-extpoints",
-			"Comment": "go-plugins-43-g529a176",
-			"Rev": "529a176f52394e48e8882dd70a01732f1bb480f3"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",
