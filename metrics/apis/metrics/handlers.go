@@ -128,7 +128,7 @@ func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) 
 	node := request.PathParameter("node-name")
 	m := a.getNodeMetrics(node)
 	if m == nil {
-		response.WriteError(http.StatusNotFound, fmt.Errorf("No metrics for ode %v", node))
+		response.WriteError(http.StatusNotFound, fmt.Errorf("No metrics for node %v", node))
 		return
 	}
 	response.WriteEntity(m)
