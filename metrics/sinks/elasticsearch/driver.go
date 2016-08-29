@@ -60,7 +60,7 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 			}
 			err := sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
 			if err != nil {
-				glog.V(3).Info("Failed to export data to ElasticSearch sink: ", err)
+				glog.Warningf("Failed to export data to ElasticSearch sink: %v", err)
 			}
 		}
 		for _, metric := range metricSet.LabeledMetrics {
@@ -81,7 +81,7 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 			}
 			err := sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
 			if err != nil {
-				glog.V(3).Info("Failed to export data to ElasticSearch sink: ", err)
+				glog.Warningf("Failed to export data to ElasticSearch sink: %v", err)
 			}
 		}
 	}
@@ -99,12 +99,12 @@ func NewElasticSearchSink(uri *url.URL) (core.DataSink, error) {
 	var esSink elasticSearchSink
 	elasticsearchConfig, err := esCommon.CreateElasticSearchConfig(uri)
 	if err != nil {
-		glog.V(2).Infof("Failed to config ElasticSearch")
+		glog.Warningf("Failed to config ElasticSearch: %v", err)
 		return nil, err
 	}
 
 	esSink.esConfig = *elasticsearchConfig
 	esSink.saveDataFunc = esCommon.SaveDataIntoES
-	glog.V(2).Infof("ElasticSearch sink setup successfully")
+	glog.V(2).Info("ElasticSearch sink setup successfully")
 	return &esSink, nil
 }

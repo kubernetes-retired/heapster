@@ -55,7 +55,7 @@ func SaveDataIntoES(esClient *elastic.Client, indexName string, typeName string,
 			return err
 		}
 		if !createIndex.Acknowledged {
-			return fmt.Errorf("failed to create Index in ES cluster: %s", err)
+			return fmt.Errorf("Failed to create Index in ES cluster: %s", err)
 		}
 	}
 	indexID := uuid.NewUUID()
@@ -78,7 +78,7 @@ func CreateElasticSearchConfig(uri *url.URL) (*ElasticSearchConfig, error) {
 	var esConfig ElasticSearchConfig
 	opts, err := url.ParseQuery(uri.RawQuery)
 	if err != nil {
-		return nil, fmt.Errorf("fFailed to parser url's query string: %s", err)
+		return nil, fmt.Errorf("Failed to parser url's query string: %s", err)
 	}
 
 	// set the index for es,the default value is "heapster"
@@ -130,7 +130,6 @@ func CreateElasticSearchConfig(uri *url.URL) (*ElasticSearchConfig, error) {
 
 	if os.Getenv("AWS_ACCESS_KEY_ID") != "" || os.Getenv("AWS_ACCESS_KEY") != "" ||
 		os.Getenv("AWS_SECRET_ACCESS_KEY") != "" || os.Getenv("AWS_SECRET_KEY") != "" {
-
 		glog.Info("Configuring with AWS credentials..")
 
 		awsClient, err := createAWSClient()
@@ -138,8 +137,7 @@ func CreateElasticSearchConfig(uri *url.URL) (*ElasticSearchConfig, error) {
 			return nil, err
 		}
 
-		startupFns = append(startupFns, elastic.SetHttpClient(awsClient))
-		startupFns = append(startupFns, elastic.SetSniff(false))
+		startupFns = append(startupFns, elastic.SetHttpClient(awsClient), elastic.SetSniff(false))
 	} else {
 		if len(opts["sniff"]) > 0 {
 			sniff, err := strconv.ParseBool(opts["sniff"][0])

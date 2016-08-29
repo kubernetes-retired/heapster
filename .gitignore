@@ -8,3 +8,4 @@ eventer
 *.un~
 Session.vim
 .netrwhist
+.idea
