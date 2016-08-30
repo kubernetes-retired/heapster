@@ -723,6 +723,11 @@
 			"Rev": "301be4eeb561fc9d5834a6d5b1e3cbf65091b302"
 		},
 		{
+			"ImportPath": "k8s.io/kubernetes/pkg/healthz",
+			"Comment": "v1.4.0-alpha.2-552-g301be4e",
+			"Rev": "301be4eeb561fc9d5834a6d5b1e3cbf65091b302"
+		},
+		{
 			"ImportPath": "k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats",
 			"Comment": "v1.4.0-alpha.2-552-g301be4e",
 			"Rev": "301be4eeb561fc9d5834a6d5b1e3cbf65091b302"
