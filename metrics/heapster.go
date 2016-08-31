@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -35,12 +36,14 @@ import (
 	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/processors"
 	"k8s.io/heapster/metrics/sinks"
+	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sources"
 	"k8s.io/heapster/version"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
+	"k8s.io/kubernetes/pkg/healthz"
 )
 
 var (
@@ -203,6 +206,7 @@ func main() {
 		}
 		mux.Handle("/", handler)
 		mux.Handle("/metrics", promHandler)
+		healthz.InstallHandler(mux, healthzChecker(metricSink))
 
 		// If allowed users is set, then we need to enable Client Authentication
 		if len(*argAllowedUsers) > 0 {
@@ -219,8 +223,35 @@ func main() {
 	} else {
 		mux.Handle("/", handler)
 		mux.Handle("/metrics", promHandler)
+		healthz.InstallHandler(mux, healthzChecker(metricSink))
+
 		glog.Fatal(http.ListenAndServe(addr, mux))
 	}
+}
+
+const (
+	minMetricsCount = 1
+	maxMetricsDelay = 3 * time.Minute
+)
+
+func healthzChecker(metricSink *metricsink.MetricSink) healthz.HealthzChecker {
+	return healthz.NamedCheck("healthz", func(r *http.Request) error {
+		batch := metricSink.GetLatestDataBatch()
+		if batch == nil {
+			return errors.New("could not get the latest data batch")
+		}
+		if time.Since(batch.Timestamp) > maxMetricsDelay {
+			message := fmt.Sprintf("No current data batch available (latest: %s).", batch.Timestamp.String())
+			glog.Warningf(message)
+			return errors.New(message)
+		}
+		if len(batch.MetricSets) < minMetricsCount {
+			message := fmt.Sprintf("Not enough metrics found in the latest data batch: %d (expected min. %d) %s", len(batch.MetricSets), minMetricsCount, batch.Timestamp.String())
+			glog.Warningf(message)
+			return errors.New(message)
+		}
+		return nil
+	})
 }
 
 // Gets the address of the kubernetes source from the list of source URIs.
