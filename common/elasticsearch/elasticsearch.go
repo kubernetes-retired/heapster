@@ -50,7 +50,7 @@ func SaveDataIntoES(esClient *elastic.Client, indexName string, typeName string,
 	}
 	if !exists {
 		// Create a new index.
-		createIndex, err := esClient.CreateIndex(indexName).Do()
+		createIndex, err := esClient.CreateIndex(indexName).BodyString(mapping).Do()
 		if err != nil {
 			return err
 		}
