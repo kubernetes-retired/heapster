@@ -111,7 +111,7 @@ func removeHeapsterImage(fm kubeFramework, zone string) error {
 	} else {
 		glog.V(2).Infof("Heapster image removed.")
 	}
-	if nodes, err := fm.GetNodes(); err == nil {
+	if nodes, err := fm.GetNodeNames(); err == nil {
 		for _, node := range nodes {
 			host := strings.Split(node, ".")[0]
 			cleanupRemoteHost(host, zone)
@@ -168,7 +168,7 @@ func buildAndPushDockerImages(fm kubeFramework, zone string) error {
 	if *avoidBuild {
 		return nil
 	}
-	nodes, err := fm.GetNodes()
+	nodes, err := fm.GetNodeNames()
 	if err != nil {
 		return err
 	}
@@ -247,7 +247,7 @@ func runMetricExportTest(fm kubeFramework, svc *kube_api.Service) error {
 	}
 	glog.V(0).Infof("Expected pods: %v", expectedPods)
 
-	expectedNodes, err := fm.GetNodes()
+	expectedNodes, err := fm.GetNodeNames()
 	if err != nil {
 		return err
 	}
@@ -530,7 +530,7 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 	if len(podList) == 0 {
 		return fmt.Errorf("empty pod list")
 	}
-	nodeList, err := fm.GetNodes()
+	nodeList, err := fm.GetNodeNames()
 	if err != nil {
 		return err
 	}
@@ -624,6 +624,14 @@ func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
 	return nil
 }
 
+const (
+	apiPrefix           = "apis"
+	metricsApiGroupName = "metrics"
+	metricsApiVersion   = "v1alpha1"
+)
+
+var baseMetricsUrl = fmt.Sprintf("%s/%s/%s", apiPrefix, metricsApiGroupName, metricsApiVersion)
+
 func checkUsage(res kube_v1.ResourceList) error {
 	if _, found := res[kube_v1.ResourceCPU]; !found {
 		return fmt.Errorf("Cpu not found")
@@ -635,7 +643,7 @@ func checkUsage(res kube_v1.ResourceList) error {
 }
 
 func getPodMetrics(fm kubeFramework, svc *kube_api.Service, pod kube_api.Pod) (*metrics_api.PodMetrics, error) {
-	url := fmt.Sprintf("apis/metrics/v1alpha1/namespaces/%s/pods/%s", pod.Namespace, pod.Name)
+	url := fmt.Sprintf("%s/namespaces/%s/pods/%s", baseMetricsUrl, pod.Namespace, pod.Name)
 	body, err := getDataFromProxy(fm, svc, url)
 	if err != nil {
 		return nil, err
@@ -649,18 +657,18 @@ func getPodMetrics(fm kubeFramework, svc *kube_api.Service, pod kube_api.Pod) (*
 }
 
 func getAllPodsInNamespaceMetrics(fm kubeFramework, svc *kube_api.Service, namespace string) (metrics_api.PodMetricsList, error) {
-	url := fmt.Sprintf("apis/metrics/v1alpha1/namespaces/%s/pods/", namespace)
+	url := fmt.Sprintf("%s/namespaces/%s/pods/", baseMetricsUrl, namespace)
 	return getPodMetricsList(fm, svc, url, &labelSelectorEverything)
 }
 
 func getAllPodsMetrics(fm kubeFramework, svc *kube_api.Service) (metrics_api.PodMetricsList, error) {
-	url := "apis/metrics/v1alpha1/pods/"
+	url := fmt.Sprintf("%s/pods/", baseMetricsUrl)
 	selector := labels.Everything()
 	return getPodMetricsList(fm, svc, url, &selector)
 }
 
-func getLabelSelectedPodsMetrics(fm kubeFramework, svc *kube_api.Service, namespace string, labelSelector *labels.Selector) (metrics_api.PodMetricsList, error) {
-	url := fmt.Sprintf("apis/metrics/v1alpha1/namespaces/%s/pods/", namespace)
+func getLabelSelectedPodMetrics(fm kubeFramework, svc *kube_api.Service, namespace string, labelSelector *labels.Selector) (metrics_api.PodMetricsList, error) {
+	url := fmt.Sprintf("%s/namespaces/%s/pods/", baseMetricsUrl, namespace)
 	return getPodMetricsList(fm, svc, url, labelSelector)
 }
 
@@ -696,7 +704,7 @@ func checkSinglePodMetrics(metrics *metrics_api.PodMetrics, pod *kube_api.Pod) e
 }
 
 func getSingleNodeMetrics(fm kubeFramework, svc *kube_api.Service, node string) (*metrics_api.NodeMetrics, error) {
-	url := fmt.Sprintf("apis/metrics/v1alpha1/nodes/%s", node)
+	url := fmt.Sprintf("%s/nodes/%s", baseMetricsUrl, node)
 	body, err := getDataFromProxy(fm, svc, url)
 	if err != nil {
 		return nil, err
@@ -709,8 +717,8 @@ func getSingleNodeMetrics(fm kubeFramework, svc *kube_api.Service, node string) 
 	return &data, nil
 }
 
-func getNodeMetricsList(fm kubeFramework, svc *kube_api.Service, url string) (metrics_api.NodeMetricsList, error) {
-	body, err := getDataFromProxy(fm, svc, url)
+func getNodeMetricsList(fm kubeFramework, svc *kube_api.Service, url string, labelSelector *labels.Selector) (metrics_api.NodeMetricsList, error) {
+	body, err := getDataFromProxyWithSelector(fm, svc, url, labelSelector)
 	if err != nil {
 		return metrics_api.NodeMetricsList{}, err
 	}
@@ -722,13 +730,19 @@ func getNodeMetricsList(fm kubeFramework, svc *kube_api.Service, url string) (me
 	return data, nil
 }
 
+func getLabelSelectedNodeMetrics(fm kubeFramework, svc *kube_api.Service, labelSelector *labels.Selector) (metrics_api.NodeMetricsList, error) {
+	url := fmt.Sprintf("%s/nodes", baseMetricsUrl)
+	return getNodeMetricsList(fm, svc, url, labelSelector)
+}
+
 func getAllNodeMetrics(fm kubeFramework, svc *kube_api.Service) (metrics_api.NodeMetricsList, error) {
-	url := "apis/metrics/v1alpha1/nodes/"
-	return getNodeMetricsList(fm, svc, url)
+	url := fmt.Sprintf("%s/nodes", baseMetricsUrl)
+	selector := labels.Everything()
+	return getNodeMetricsList(fm, svc, url, &selector)
 }
 
 func runSingleNodeMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
-	nodeList, err := fm.GetNodes()
+	nodeList, err := fm.GetNodeNames()
 	if err != nil {
 		return err
 	}
@@ -751,8 +765,52 @@ func runSingleNodeMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error 
 	return nil
 }
 
-func runAllNodesMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runLabelSelectorNodeMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	nodeList, err := fm.GetNodes()
+	if err != nil {
+		return err
+	}
+	if len(nodeList.Items) == 0 {
+		return fmt.Errorf("empty node list")
+	}
+	labelMap := make(map[string]map[string]kube_api.Node)
+	for _, n := range nodeList.Items {
+		for label, value := range n.Labels {
+			selector := label + "=" + value
+			if _, found := labelMap[selector]; !found {
+				labelMap[selector] = make(map[string]kube_api.Node)
+			}
+			labelMap[selector][n.Name] = n
+		}
+	}
+
+	for selector, nodesWithLabel := range labelMap {
+		sel, err := labels.Parse(selector)
+		if err != nil {
+			return err
+		}
+		metrics, err := getLabelSelectedNodeMetrics(fm, svc, &sel)
+		if err != nil {
+			return err
+		}
+		if len(metrics.Items) != len(nodesWithLabel) {
+			return fmt.Errorf("Wrong number of label selected node metrics: expected %v, got %v", len(nodesWithLabel), len(metrics.Items))
+		}
+		for _, nodeMetric := range metrics.Items {
+			node := nodesWithLabel[nodeMetric.Name]
+			if nodeMetric.Name != node.Name {
+				return fmt.Errorf("Wrong node name: expected %v, got %v", node.Name, nodeMetric.Name)
+			}
+			if err := checkUsage(nodeMetric.Usage); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func runAllNodesMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+	nodeList, err := fm.GetNodeNames()
 	if err != nil {
 		return err
 	}
@@ -868,7 +926,7 @@ func runAllPodsMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	return nil
 }
 
-func runLabelSelectorMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runLabelSelectorPodMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	podList, err := fm.GetAllRunningPods()
 	if err != nil {
 		return err
@@ -897,7 +955,7 @@ func runLabelSelectorMetricsApiTest(fm kubeFramework, svc *kube_api.Service) err
 			if err != nil {
 				return err
 			}
-			metrics, err := getLabelSelectedPodsMetrics(fm, svc, ns, &sel)
+			metrics, err := getLabelSelectedPodMetrics(fm, svc, ns, &sel)
 			if err != nil {
 				return err
 			}
@@ -994,12 +1052,12 @@ func apiTest(kubeVersion string, zone string) error {
 			return err
 		},
 		func() error {
-			glog.V(2).Infof("Metrics API test - label selector")
-			err := runLabelSelectorMetricsApiTest(fm, svc)
+			glog.V(2).Infof("Metrics API test - label selector for pods")
+			err := runLabelSelectorPodMetricsApiTest(fm, svc)
 			if err == nil {
-				glog.V(2).Infof("Metrics API test - label selector: OK")
+				glog.V(2).Infof("Metrics API test - label selector for pods: OK")
 			} else {
-				glog.V(2).Infof("Metrics API test - label selector: error: %v", err)
+				glog.V(2).Infof("Metrics API test - label selector for pods: error: %v", err)
 			}
 			return err
 		},
@@ -1010,6 +1068,16 @@ func apiTest(kubeVersion string, zone string) error {
 				glog.V(2).Infof("Metrics API test - single node: OK")
 			} else {
 				glog.V(2).Infof("Metrics API test - single node: error: %v", err)
+			}
+			return err
+		},
+		func() error {
+			glog.V(2).Infof("Metrics API test - label selector for nodes")
+			err := runLabelSelectorNodeMetricsApiTest(fm, svc)
+			if err == nil {
+				glog.V(2).Infof("Metrics API test - label selector for nodes: OK")
+			} else {
+				glog.V(2).Infof("Metrics API test - label selector for nodes: error: %v", err)
 			}
 			return err
 		},

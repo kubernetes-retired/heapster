@@ -40,12 +40,14 @@ import (
 type Api struct {
 	metricSink *metricsink.MetricSink
 	podLister  *cache.StoreToPodLister
+	nodeLister *cache.StoreToNodeLister
 }
 
-func NewApi(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister) *Api {
+func NewApi(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, nodeLister *cache.StoreToNodeLister) *Api {
 	return &Api{
 		metricSink: metricSink,
 		podLister:  podLister,
+		nodeLister: nodeLister,
 	}
 }
 
@@ -58,7 +60,8 @@ func (a *Api) Register(container *restful.Container) {
 	ws.Route(ws.GET("/nodes/").
 		To(a.nodeMetricsList).
 		Doc("Get a list of metrics for all available nodes.").
-		Operation("nodeMetricsList"))
+		Operation("nodeMetricsList")).
+		Param(ws.QueryParameter("labelSelector", "A selector to restrict the list of returned objects by their labels. Defaults to everything.").DataType("string"))
 
 	ws.Route(ws.GET("/nodes/{node-name}/").
 		To(a.nodeMetrics).
@@ -89,9 +92,32 @@ func (a *Api) Register(container *restful.Container) {
 }
 
 func (a *Api) nodeMetricsList(request *restful.Request, response *restful.Response) {
+	selector := request.QueryParameter("labelSelector")
+
+	labelSelector, err := labels.Parse(selector)
+	if err != nil {
+		errMsg := fmt.Errorf("Error while parsing selector %v: %v", selector, err)
+		glog.Error(errMsg)
+		response.WriteError(http.StatusBadRequest, errMsg)
+		return
+	}
+
+	nodes, err := a.nodeLister.NodeCondition(func(node *kube_api.Node) bool {
+		if labelSelector.Empty() {
+			return true
+		}
+		return labelSelector.Matches(labels.Set(node.Labels))
+	}).List()
+	if err != nil {
+		errMsg := fmt.Errorf("Error while listing nodes: %v", err)
+		glog.Error(errMsg)
+		response.WriteError(http.StatusInternalServerError, errMsg)
+		return
+	}
+
 	res := v1alpha1.NodeMetricsList{}
-	for _, node := range a.metricSink.GetNodes() {
-		if m := a.getNodeMetrics(node); m != nil {
+	for _, node := range nodes {
+		if m := a.getNodeMetrics(node.Name); m != nil {
 			res.Items = append(res.Items, *m)
 		}
 	}
@@ -102,7 +128,7 @@ func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) 
 	node := request.PathParameter("node-name")
 	m := a.getNodeMetrics(node)
 	if m == nil {
-		response.WriteError(http.StatusNotFound, fmt.Errorf("No metrics for ode %v", node))
+		response.WriteError(http.StatusNotFound, fmt.Errorf("No metrics for node %v", node))
 		return
 	}
 	response.WriteEntity(m)

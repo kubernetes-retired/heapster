@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -35,12 +36,14 @@ import (
 	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/processors"
 	"k8s.io/heapster/metrics/sinks"
+	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sources"
 	"k8s.io/heapster/version"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
+	"k8s.io/kubernetes/pkg/healthz"
 )
 
 var (
@@ -126,9 +129,20 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Failed to get kubernetes address: %v", err)
 	}
-	podLister, err := getPodLister(kubernetesUrl)
+
+	kubeConfig, err := kube_config.GetKubeClientConfig(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to get client config: %v", err)
+	}
+	kubeClient := kube_client.NewOrDie(kubeConfig)
+
+	podLister, err := getPodLister(kubeClient)
 	if err != nil {
 		glog.Fatalf("Failed to create podLister: %v", err)
+	}
+	nodeLister, err := getNodeLister(kubeClient)
+	if err != nil {
+		glog.Fatalf("Failed to create nodeLister: %v", err)
 	}
 
 	podBasedEnricher, err := processors.NewPodBasedEnricher(podLister)
@@ -170,7 +184,7 @@ func main() {
 	}
 	manager.Start()
 
-	handler := setupHandlers(metricSink, podLister, historicalSource)
+	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource)
 	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
 	glog.Infof("Starting heapster on port %d", *argPort)
 
@@ -192,6 +206,7 @@ func main() {
 		}
 		mux.Handle("/", handler)
 		mux.Handle("/metrics", promHandler)
+		healthz.InstallHandler(mux, healthzChecker(metricSink))
 
 		// If allowed users is set, then we need to enable Client Authentication
 		if len(*argAllowedUsers) > 0 {
@@ -208,8 +223,35 @@ func main() {
 	} else {
 		mux.Handle("/", handler)
 		mux.Handle("/metrics", promHandler)
+		healthz.InstallHandler(mux, healthzChecker(metricSink))
+
 		glog.Fatal(http.ListenAndServe(addr, mux))
 	}
+}
+
+const (
+	minMetricsCount = 1
+	maxMetricsDelay = 3 * time.Minute
+)
+
+func healthzChecker(metricSink *metricsink.MetricSink) healthz.HealthzChecker {
+	return healthz.NamedCheck("healthz", func(r *http.Request) error {
+		batch := metricSink.GetLatestDataBatch()
+		if batch == nil {
+			return errors.New("could not get the latest data batch")
+		}
+		if time.Since(batch.Timestamp) > maxMetricsDelay {
+			message := fmt.Sprintf("No current data batch available (latest: %s).", batch.Timestamp.String())
+			glog.Warningf(message)
+			return errors.New(message)
+		}
+		if len(batch.MetricSets) < minMetricsCount {
+			message := fmt.Sprintf("Not enough metrics found in the latest data batch: %d (expected min. %d) %s", len(batch.MetricSets), minMetricsCount, batch.Timestamp.String())
+			glog.Warningf(message)
+			return errors.New(message)
+		}
+		return nil
+	})
 }
 
 // Gets the address of the kubernetes source from the list of source URIs.
@@ -223,20 +265,21 @@ func getKubernetesAddress(args flags.Uris) (*url.URL, error) {
 	return nil, fmt.Errorf("No kubernetes source found.")
 }
 
-func getPodLister(url *url.URL) (*cache.StoreToPodLister, error) {
-	kubeConfig, err := kube_config.GetKubeClientConfig(url)
-	if err != nil {
-		return nil, err
-	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
-
+func getPodLister(kubeClient *kube_client.Client) (*cache.StoreToPodLister, error) {
 	lw := cache.NewListWatchFromClient(kubeClient, "pods", kube_api.NamespaceAll, fields.Everything())
 	store := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	podLister := &cache.StoreToPodLister{Indexer: store}
 	reflector := cache.NewReflector(lw, &kube_api.Pod{}, store, time.Hour)
 	reflector.Run()
-
 	return podLister, nil
+}
+
+func getNodeLister(kubeClient *kube_client.Client) (*cache.StoreToNodeLister, error) {
+	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
+	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
+	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
+	reflector.Run()
+	return nodeLister, nil
 }
 
 func validateFlags() error {

@@ -1,6 +1,6 @@
 all: build
 
-TAG = v1.2.0-beta.0
+TAG = v1.2.0-beta.2
 PREFIX = gcr.io/google_containers
 FLAGS = 
 
@@ -8,10 +8,9 @@ SUPPORTED_KUBE_VERSIONS = "1.2.4"
 TEST_NAMESPACE = heapster-e2e-tests
 
 deps:
-	go get github.com/tools/godep
+	which godep || go get github.com/tools/godep
 
 build: clean deps
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build ./...
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o heapster k8s.io/heapster/metrics
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o eventer k8s.io/heapster/events
 
