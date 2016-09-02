@@ -31,8 +31,7 @@ test-integration: clean deps build
 container: build
 	cp heapster deploy/docker/heapster
 	cp eventer deploy/docker/eventer
-	docker build -t heapster deploy/docker/
-	docker tag heapster:latest 032833530291.dkr.ecr.eu-west-1.amazonaws.com/heapster:latest
+	docker build -t $(PREFIX)/heapster:$(TAG) deploy/docker/
 
 grafana:
 	docker build -t $(PREFIX)/heapster_grafana:$(TAG) grafana/
