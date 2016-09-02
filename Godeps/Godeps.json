@@ -106,6 +106,10 @@
 			"Rev": "c4afa8e5421428d584b32d36d7b35f2c9ae5f823"
 		},
 		{
+			"ImportPath": "github.com/gedex/inflector",
+			"Rev": "91797f1712fd58f224781be1080b8613d096187e"
+		},
+		{
 			"ImportPath": "github.com/ghodss/yaml",
 			"Rev": "73d445a93680fa1a78ae23a5839bad48f32ba1ee"
 		},
@@ -180,11 +184,6 @@
 		{
 			"ImportPath": "github.com/mitchellh/mapstructure",
 			"Rev": "740c764bc6149d3f1806231418adb9f52c11bcbf"
-		},
-		{
-			"ImportPath": "github.com/olivere/elastic",
-			"Comment": "v3.0.41",
-			"Rev": "de60371c6ac39d035d1db8d64e6ae66552536950"
 		},
 		{
 			"ImportPath": "github.com/optiopay/kafka",
@@ -284,6 +283,10 @@
 			"Rev": "934dbf81977c67c521c75492dc1f55ca74dc5b04"
 		},
 		{
+			"ImportPath": "github.com/smartystreets/go-aws-auth",
+			"Rev": "2043e6d0bb7e4c18464a7bba562acbe482e3cabd"
+		},
+		{
 			"ImportPath": "github.com/spf13/pflag",
 			"Rev": "08b1a584251b5b62f458943640fc8ebd4d50aaa5"
 		},
@@ -379,6 +382,11 @@
 			"ImportPath": "gopkg.in/inf.v0",
 			"Comment": "v0.9.0",
 			"Rev": "3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4"
+		},
+		{
+			"ImportPath": "gopkg.in/olivere/elastic.v3",
+			"Comment": "v3.0.41",
+			"Rev": "de60371c6ac39d035d1db8d64e6ae66552536950"
 		},
 		{
 			"ImportPath": "gopkg.in/olivere/elastic.v3/backoff",

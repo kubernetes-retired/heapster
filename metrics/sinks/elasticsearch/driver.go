@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/olivere/elastic"
+	"gopkg.in/olivere/elastic.v3"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	"k8s.io/heapster/metrics/core"
 )
@@ -58,7 +58,10 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 				},
 				MetricsTimestamp: dataBatch.Timestamp.UTC(),
 			}
-			sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
+			err := sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
+			if err != nil {
+				glog.Warningf("Failed to export data to ElasticSearch sink: %v", err)
+			}
 		}
 		for _, metric := range metricSet.LabeledMetrics {
 			labels := make(map[string]string)
@@ -76,7 +79,10 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 				},
 				MetricsTimestamp: dataBatch.Timestamp.UTC(),
 			}
-			sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
+			err := sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
+			if err != nil {
+				glog.Warningf("Failed to export data to ElasticSearch sink: %v", err)
+			}
 		}
 	}
 }
@@ -93,12 +99,12 @@ func NewElasticSearchSink(uri *url.URL) (core.DataSink, error) {
 	var esSink elasticSearchSink
 	elasticsearchConfig, err := esCommon.CreateElasticSearchConfig(uri)
 	if err != nil {
-		glog.V(2).Infof("failed to config elasticsearch")
+		glog.Warningf("Failed to config ElasticSearch: %v", err)
 		return nil, err
 	}
 
 	esSink.esConfig = *elasticsearchConfig
 	esSink.saveDataFunc = esCommon.SaveDataIntoES
-	glog.V(2).Infof("elasticsearch sink setup successfully")
+	glog.V(2).Info("ElasticSearch sink setup successfully")
 	return &esSink, nil
 }
