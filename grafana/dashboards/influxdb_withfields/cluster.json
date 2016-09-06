@@ -191,7 +191,7 @@
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Overal Cluster CPU Usage",
+            "title": "Overall Cluster CPU Usage",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -873,7 +873,7 @@
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Overal Cluster Memory Usage",
+            "title": "Overall Cluster Memory Usage",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -980,7 +980,7 @@
                 ]
               },
               {
-                "alias": "Usage $tag_nodename",
+                "alias": "Working Set $tag_nodename",
                 "dsType": "influxdb",
                 "groupBy": [
                   {
@@ -1250,7 +1250,7 @@
                 ]
               },
               {
-                "alias": "Usage $tag_nodename",
+                "alias": "Working Set $tag_nodename",
                 "dsType": "influxdb",
                 "groupBy": [
                   {
@@ -1563,7 +1563,7 @@
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Overal Cluster Network Usage",
+            "title": "Overall Cluster Network Usage",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
@@ -2041,7 +2041,7 @@
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Overal Cluster Filesystem Usage",
+            "title": "Overall Cluster Filesystem Usage",
             "tooltip": {
               "shared": true,
               "value_type": "cumulative"
