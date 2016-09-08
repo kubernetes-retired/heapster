@@ -66,7 +66,7 @@ func TestDescriptorTransform(t *testing.T) {
 	smd.Type = core.MetricCumulative
 
 	md = hSink.descriptorToDefinition(&smd)
-	assert.Equal(t, md.Type, metrics.Counter)
+	assert.EqualValues(t, md.Type, metrics.Counter)
 }
 
 func TestMetricTransform(t *testing.T) {
