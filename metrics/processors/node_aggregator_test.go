@@ -86,9 +86,9 @@ func TestNodeAggregate(t *testing.T) {
 
 	m1, found := node.MetricValues["m1"]
 	assert.True(t, found)
-	assert.Equal(t, 110, m1.IntValue)
+	assert.Equal(t, int64(110), m1.IntValue)
 
 	m3, found := node.MetricValues["m3"]
 	assert.True(t, found)
-	assert.Equal(t, 30, m3.IntValue)
+	assert.Equal(t, int64(30), m3.IntValue)
 }

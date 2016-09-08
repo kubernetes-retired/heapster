@@ -76,15 +76,15 @@ func TestPodAggregator(t *testing.T) {
 
 	m1, found := pod.MetricValues["m1"]
 	assert.True(t, found)
-	assert.Equal(t, 110, m1.IntValue)
+	assert.Equal(t, int64(110), m1.IntValue)
 
 	m2, found := pod.MetricValues["m2"]
 	assert.True(t, found)
-	assert.Equal(t, 222, m2.IntValue)
+	assert.Equal(t, int64(222), m2.IntValue)
 
 	m3, found := pod.MetricValues["m3"]
 	assert.True(t, found)
-	assert.Equal(t, 30, m3.IntValue)
+	assert.Equal(t, int64(30), m3.IntValue)
 
 	labelPodName, found := pod.Labels[core.LabelPodName.Key]
 	assert.True(t, found)

@@ -160,7 +160,7 @@ func TestRealInput(t *testing.T) {
 			as.NotEqual(ex, 0)
 			ex.count--
 			for _, point := range points {
-				as.Equal(point.Value, -1)
+				as.Equal(point.Value, int64(-1))
 				if !ex.extraLabels {
 					continue
 				}

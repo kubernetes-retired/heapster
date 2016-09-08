@@ -168,7 +168,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 	expectations := []struct {
 		key     string
 		setType string
-		seed    int
+		seed    int64
 		cpu     bool
 		memory  bool
 		network bool
@@ -337,7 +337,7 @@ func uint64Val(seed, offset int) *uint64 {
 	return &val
 }
 
-func checkIntMetric(t *testing.T, metrics *core.MetricSet, key string, metric core.Metric, value int) {
+func checkIntMetric(t *testing.T, metrics *core.MetricSet, key string, metric core.Metric, value int64) {
 	m, ok := metrics.MetricValues[metric.Name]
 	if !assert.True(t, ok, "missing %q:%q", key, metric.Name) {
 		return
@@ -345,7 +345,7 @@ func checkIntMetric(t *testing.T, metrics *core.MetricSet, key string, metric co
 	assert.Equal(t, value, m.IntValue, "%q:%q", key, metric.Name)
 }
 
-func checkFsMetric(t *testing.T, metrics *core.MetricSet, key, label string, metric core.Metric, value int) {
+func checkFsMetric(t *testing.T, metrics *core.MetricSet, key, label string, metric core.Metric, value int64) {
 	for _, m := range metrics.LabeledMetrics {
 		if m.Name == metric.Name && m.Labels[core.LabelResourceID.Key] == label {
 			assert.Equal(t, value, m.IntValue, "%q:%q[%s]", key, metric.Name, label)

@@ -167,8 +167,8 @@ func TestGetMetrics(t *testing.T) {
 	//batch1 is discarded by long store
 	result1 := metrics.GetMetric("m1", []string{key}, now.Add(-120*time.Second), now)
 	assert.Equal(t, 2, len(result1[key]))
-	assert.Equal(t, 40, result1[key][0].MetricValue.IntValue)
-	assert.Equal(t, 20, result1[key][1].MetricValue.IntValue)
+	assert.Equal(t, int64(40), result1[key][0].MetricValue.IntValue)
+	assert.Equal(t, int64(20), result1[key][1].MetricValue.IntValue)
 	assert.Equal(t, 1, len(metrics.GetMetric("m1", []string{otherKey}, now.Add(-120*time.Second), now)[otherKey]))
 
 	//batch1 is discarded by long store and batch2 doesn't belong to time window
