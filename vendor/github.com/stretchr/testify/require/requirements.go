@@ -1,8 +1,10 @@
 package require
 
 import (
-	"github.com/stretchr/testify/assert"
+	"encoding/json"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type TestingT interface {
@@ -37,6 +39,15 @@ func IsType(t TestingT, expectedType interface{}, object interface{}, msgAndArgs
 //    require.Equal(t, 123, 123, "123 and 123 should be equal")
 func Equal(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) {
 	if !assert.Equal(t, expected, actual, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// EqualValues asserts that two objects are equal or convertable to each other.
+//
+//    require.EqualValues(t, uint32(123), int32(123), "123 and 123 should be equal")
+func EqualValues(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) {
+	if !assert.EqualValues(t, expected, actual, msgAndArgs...) {
 		t.FailNow()
 	}
 }
@@ -108,7 +119,7 @@ func True(t TestingT, value bool, msgAndArgs ...interface{}) {
 	}
 }
 
-// False asserts that the specified value is true.
+// False asserts that the specified value is false.
 //
 //    require.False(t, myBool, "myBool should be false")
 func False(t TestingT, value bool, msgAndArgs ...interface{}) {
@@ -126,9 +137,12 @@ func NotEqual(t TestingT, expected, actual interface{}, msgAndArgs ...interface{
 	}
 }
 
-// Contains asserts that the specified string contains the specified substring.
+// Contains asserts that the specified string, list(array, slice...) or map contains the
+// specified substring or element.
 //
 //    require.Contains(t, "Hello World", "World", "But 'Hello World' does contain 'World'")
+//    require.Contains(t, ["Hello", "World"], "World", "But ["Hello", "World"] does contain 'World'")
+//    require.Contains(t, {"Hello": "World"}, "Hello", "But {'Hello': 'World'} does contain 'Hello'")
 func Contains(t TestingT, s, contains interface{}, msgAndArgs ...interface{}) {
 	if !assert.Contains(t, s, contains, msgAndArgs...) {
 		t.FailNow()
@@ -202,8 +216,8 @@ func InEpsilon(t TestingT, expected, actual interface{}, epsilon float64, msgAnd
 //
 //  require.Regexp(t, regexp.MustCompile("start"), "it's starting")
 //  require.Regexp(t, "start...$", "it's not starting")
-func Regexp(t TestingT, rx interface{}, str interface{}) {
-	if !assert.Regexp(t, rx, str) {
+func Regexp(t TestingT, rx interface{}, str interface{}, msgAndArgs ...interface{}) {
+	if !assert.Regexp(t, rx, str, msgAndArgs...) {
 		t.FailNow()
 	}
 }
@@ -212,10 +226,29 @@ func Regexp(t TestingT, rx interface{}, str interface{}) {
 //
 //  require.NotRegexp(t, regexp.MustCompile("starts"), "it's starting")
 //  require.NotRegexp(t, "^start", "it's not starting")
-func NotRegexp(t TestingT, rx interface{}, str interface{}) {
-	if !assert.NotRegexp(t, rx, str) {
+func NotRegexp(t TestingT, rx interface{}, str interface{}, msgAndArgs ...interface{}) {
+	if !assert.NotRegexp(t, rx, str, msgAndArgs...) {
 		t.FailNow()
 	}
+}
+
+// JSONEq asserts that two JSON strings are equivalent.
+//
+//  assert.JSONEq(t, `{"hello": "world", "foo": "bar"}`, `{"foo": "bar", "hello": "world"}`)
+//
+// Returns whether the assertion was successful (true) or not (false).
+func JSONEq(t TestingT, expected string, actual string, msgAndArgs ...interface{}) {
+	var expectedJSONAsInterface, actualJSONAsInterface interface{}
+
+	if err := json.Unmarshal([]byte(expected), &expectedJSONAsInterface); err != nil {
+		t.FailNow()
+	}
+
+	if err := json.Unmarshal([]byte(actual), &actualJSONAsInterface); err != nil {
+		t.FailNow()
+	}
+
+	Equal(t, expectedJSONAsInterface, actualJSONAsInterface, msgAndArgs...)
 }
 
 /*
@@ -256,6 +289,20 @@ func Error(t TestingT, err error, msgAndArgs ...interface{}) {
 //   }
 func EqualError(t TestingT, theError error, errString string, msgAndArgs ...interface{}) {
 	if !assert.EqualError(t, theError, errString, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// Zero asserts that i is the zero value for its type and returns the truth.
+func Zero(t TestingT, i interface{}, msgAndArgs ...interface{}) {
+	if !assert.Zero(t, i, msgAndArgs...) {
+		t.FailNow()
+	}
+}
+
+// NotZero asserts that i is not the zero value for its type and returns the truth.
+func NotZero(t TestingT, i interface{}, msgAndArgs ...interface{}) {
+	if !assert.NotZero(t, i, msgAndArgs...) {
 		t.FailNow()
 	}
 }
