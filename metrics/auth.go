@@ -21,19 +21,20 @@ import (
 	"net/http"
 	"strings"
 
+	"k8s.io/heapster/metrics/options"
 	"k8s.io/kubernetes/pkg/auth/authenticator"
 	"k8s.io/kubernetes/pkg/auth/user"
 	x509request "k8s.io/kubernetes/plugin/pkg/auth/authenticator/request/x509"
 )
 
-func newAuthHandler(handler http.Handler) (http.Handler, error) {
+func newAuthHandler(opt *options.HeapsterRunOptions, handler http.Handler) (http.Handler, error) {
 	// Authn/Authz setup
-	authn, err := newAuthenticatorFromClientCAFile(*argTLSClientCAFile)
+	authn, err := newAuthenticatorFromClientCAFile(opt.TLSClientCAFile)
 	if err != nil {
 		return nil, err
 	}
 
-	authz, err := newAuthorizerFromUserList(strings.Split(*argAllowedUsers, ",")...)
+	authz, err := newAuthorizerFromUserList(strings.Split(opt.AllowedUsers, ",")...)
 	if err != nil {
 		return nil, err
 	}

@@ -19,7 +19,6 @@ package main
 import (
 	"crypto/tls"
 	"errors"
-	"flag"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -30,10 +29,13 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/pflag"
+
 	"k8s.io/heapster/common/flags"
 	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/manager"
+	"k8s.io/heapster/metrics/options"
 	"k8s.io/heapster/metrics/processors"
 	"k8s.io/heapster/metrics/sinks"
 	"k8s.io/heapster/metrics/sinks/metric"
@@ -44,40 +46,33 @@ import (
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/healthz"
-)
-
-var (
-	argMetricResolution = flag.Duration("metric_resolution", 60*time.Second, "The resolution at which heapster will retain metrics.")
-	argPort             = flag.Int("port", 8082, "port to listen to")
-	argIp               = flag.String("listen_ip", "", "IP to listen on, defaults to all IPs")
-	argMaxProcs         = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
-	argTLSCertFile      = flag.String("tls_cert", "", "file containing TLS certificate")
-	argTLSKeyFile       = flag.String("tls_key", "", "file containing TLS key")
-	argTLSClientCAFile  = flag.String("tls_client_ca", "", "file containing TLS client CA for client cert validation")
-	argAllowedUsers     = flag.String("allowed_users", "", "comma-separated list of allowed users")
-	argSources          flags.Uris
-	argSinks            flags.Uris
-	argHistoricalSource = flag.String("historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
+	"k8s.io/kubernetes/pkg/util/flag"
+	"k8s.io/kubernetes/pkg/util/logs"
+	"k8s.io/kubernetes/pkg/version/verflag"
 )
 
 func main() {
-	defer glog.Flush()
-	flag.Var(&argSources, "source", "source(s) to watch")
-	flag.Var(&argSinks, "sink", "external sink(s) that receive data")
-	flag.Parse()
-	setMaxProcs()
+	opt := options.NewHeapsterRunOptions()
+	opt.AddFlags(pflag.CommandLine)
+
+	flag.InitFlags()
+	logs.InitLogs()
+	defer logs.FlushLogs()
+	verflag.PrintAndExitIfRequested()
+
+	setMaxProcs(opt)
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", version.HeapsterVersion)
-	if err := validateFlags(); err != nil {
+	if err := validateFlags(opt); err != nil {
 		glog.Fatal(err)
 	}
 
 	// sources
-	if len(argSources) != 1 {
+	if len(opt.Sources) != 1 {
 		glog.Fatal("Wrong number of sources specified")
 	}
 	sourceFactory := sources.NewSourceFactory()
-	sourceProvider, err := sourceFactory.BuildAll(argSources)
+	sourceProvider, err := sourceFactory.BuildAll(opt.Sources)
 	if err != nil {
 		glog.Fatalf("Failed to create source provide: %v", err)
 	}
@@ -88,11 +83,11 @@ func main() {
 
 	// sinks
 	sinksFactory := sinks.NewSinkFactory()
-	metricSink, sinkList, historicalSource := sinksFactory.BuildAll(argSinks, *argHistoricalSource)
+	metricSink, sinkList, historicalSource := sinksFactory.BuildAll(opt.Sinks, opt.HistoricalSource)
 	if metricSink == nil {
 		glog.Fatal("Failed to create metric sink")
 	}
-	if historicalSource == nil && len(*argHistoricalSource) > 0 {
+	if historicalSource == nil && len(opt.HistoricalSource) > 0 {
 		glog.Fatal("Failed to use a sink as a historical metrics source")
 	}
 	for _, sink := range sinkList {
@@ -125,7 +120,7 @@ func main() {
 		processors.NewRateCalculator(core.RateMetricsMapping),
 	}
 
-	kubernetesUrl, err := getKubernetesAddress(argSources)
+	kubernetesUrl, err := getKubernetesAddress(opt.Sources)
 	if err != nil {
 		glog.Fatalf("Failed to get kubernetes address: %v", err)
 	}
@@ -177,7 +172,7 @@ func main() {
 	dataProcessors = append(dataProcessors, nodeAutoscalingEnricher)
 
 	// main manager
-	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, *argMetricResolution,
+	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, opt.MetricResolution,
 		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
 	if err != nil {
 		glog.Fatalf("Failed to create main manager: %v", err)
@@ -185,20 +180,20 @@ func main() {
 	manager.Start()
 
 	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource)
-	addr := fmt.Sprintf("%s:%d", *argIp, *argPort)
-	glog.Infof("Starting heapster on port %d", *argPort)
+	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
+	glog.Infof("Starting heapster on port %d", opt.Port)
 
 	mux := http.NewServeMux()
 	promHandler := prometheus.Handler()
-	if len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) > 0 {
-		if len(*argTLSClientCAFile) > 0 {
-			authPprofHandler, err := newAuthHandler(handler)
+	if len(opt.TLSCertFile) > 0 && len(opt.TLSKeyFile) > 0 {
+		if len(opt.TLSClientCAFile) > 0 {
+			authPprofHandler, err := newAuthHandler(opt, handler)
 			if err != nil {
 				glog.Fatalf("Failed to create authorized pprof handler: %v", err)
 			}
 			handler = authPprofHandler
 
-			authPromHandler, err := newAuthHandler(promHandler)
+			authPromHandler, err := newAuthHandler(opt, promHandler)
 			if err != nil {
 				glog.Fatalf("Failed to create authorized prometheus handler: %v", err)
 			}
@@ -209,15 +204,15 @@ func main() {
 		healthz.InstallHandler(mux, healthzChecker(metricSink))
 
 		// If allowed users is set, then we need to enable Client Authentication
-		if len(*argAllowedUsers) > 0 {
+		if len(opt.AllowedUsers) > 0 {
 			server := &http.Server{
 				Addr:      addr,
 				Handler:   mux,
 				TLSConfig: &tls.Config{ClientAuth: tls.RequestClientCert},
 			}
-			glog.Fatal(server.ListenAndServeTLS(*argTLSCertFile, *argTLSKeyFile))
+			glog.Fatal(server.ListenAndServeTLS(opt.TLSCertFile, opt.TLSKeyFile))
 		} else {
-			glog.Fatal(http.ListenAndServeTLS(addr, *argTLSCertFile, *argTLSKeyFile, mux))
+			glog.Fatal(http.ListenAndServeTLS(addr, opt.TLSCertFile, opt.TLSKeyFile, mux))
 		}
 
 	} else {
@@ -282,26 +277,26 @@ func getNodeLister(kubeClient *kube_client.Client) (*cache.StoreToNodeLister, er
 	return nodeLister, nil
 }
 
-func validateFlags() error {
-	if *argMetricResolution < 5*time.Second {
-		return fmt.Errorf("metric resolution needs to be greater than 5 seconds - %d", *argMetricResolution)
+func validateFlags(opt *options.HeapsterRunOptions) error {
+	if opt.MetricResolution < 5*time.Second {
+		return fmt.Errorf("metric resolution needs to be greater than 5 seconds - %d", opt.MetricResolution)
 	}
-	if (len(*argTLSCertFile) > 0 && len(*argTLSKeyFile) == 0) || (len(*argTLSCertFile) == 0 && len(*argTLSKeyFile) > 0) {
+	if (len(opt.TLSCertFile) > 0 && len(opt.TLSKeyFile) == 0) || (len(opt.TLSCertFile) == 0 && len(opt.TLSKeyFile) > 0) {
 		return fmt.Errorf("both TLS certificate & key are required to enable TLS serving")
 	}
-	if len(*argTLSClientCAFile) > 0 && len(*argTLSCertFile) == 0 {
+	if len(opt.TLSClientCAFile) > 0 && len(opt.TLSCertFile) == 0 {
 		return fmt.Errorf("client cert authentication requires TLS certificate & key")
 	}
 	return nil
 }
 
-func setMaxProcs() {
+func setMaxProcs(opt *options.HeapsterRunOptions) {
 	// Allow as many threads as we have cores unless the user specified a value.
 	var numProcs int
-	if *argMaxProcs < 1 {
+	if opt.MaxProcs < 1 {
 		numProcs = runtime.NumCPU()
 	} else {
-		numProcs = *argMaxProcs
+		numProcs = opt.MaxProcs
 	}
 	runtime.GOMAXPROCS(numProcs)
 
