@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// +groupName=certificates.k8s.io
 // +k8s:deepcopy-gen=package,register
-// +k8s:conversion-gen=k8s.io/kubernetes/pkg/apis/certificates
-
-package v1alpha1
+// +k8s:conversion-gen=k8s.io/kubernetes/pkg/apis/storage
+// +groupName=storage.k8s.io
+package v1beta1
