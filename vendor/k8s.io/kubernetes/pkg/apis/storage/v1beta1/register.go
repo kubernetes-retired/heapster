@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2015 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,43 +14,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package apps
+package v1beta1
 
 import (
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/runtime"
+	versionedwatch "k8s.io/kubernetes/pkg/watch/versioned"
 )
+
+// GroupName is the group name use in this package
+const GroupName = "storage.k8s.io"
+
+// SchemeGroupVersion is group version used to register these objects
+var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: "v1beta1"}
 
 var (
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
 	AddToScheme   = SchemeBuilder.AddToScheme
 )
 
-// GroupName is the group name use in this package
-const GroupName = "apps"
-
-// SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal}
-
-// Kind takes an unqualified kind and returns a Group qualified GroupKind
-func Kind(kind string) unversioned.GroupKind {
-	return SchemeGroupVersion.WithKind(kind).GroupKind()
-}
-
-// Resource takes an unqualified resource and returns a Group qualified GroupResource
-func Resource(resource string) unversioned.GroupResource {
-	return SchemeGroupVersion.WithResource(resource).GroupResource()
-}
-
 // Adds the list of known types to api.Scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
-	// TODO this will get cleaned up with the scheme types are fixed
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&PetSet{},
-		&PetSetList{},
-		&api.ListOptions{},
-		&api.DeleteOptions{},
+		&v1.ListOptions{},
+		&v1.DeleteOptions{},
+		&v1.ExportOptions{},
+
+		&StorageClass{},
+		&StorageClassList{},
 	)
+
+	versionedwatch.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }
