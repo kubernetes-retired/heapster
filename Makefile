@@ -1,6 +1,6 @@
 all: build
 
-TAG = v1.2.0-beta.3
+TAG = v1.2.0
 PREFIX = gcr.io/google_containers
 FLAGS = 
 
