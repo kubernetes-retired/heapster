@@ -1108,6 +1108,11 @@
 			"Rev": "a0a9a282b431f437b048932eaf01631408b5bae0"
 		},
 		{
+			"ImportPath": "k8s.io/kubernetes/pkg/util/flag",
+			"Comment": "v1.4.0-beta.3",
+			"Rev": "a0a9a282b431f437b048932eaf01631408b5bae0"
+		},
+		{
 			"ImportPath": "k8s.io/kubernetes/pkg/util/flowcontrol",
 			"Comment": "v1.4.0-beta.3",
 			"Rev": "a0a9a282b431f437b048932eaf01631408b5bae0"
@@ -1144,6 +1149,11 @@
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/util/labels",
+			"Comment": "v1.4.0-beta.3",
+			"Rev": "a0a9a282b431f437b048932eaf01631408b5bae0"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/pkg/util/logs",
 			"Comment": "v1.4.0-beta.3",
 			"Rev": "a0a9a282b431f437b048932eaf01631408b5bae0"
 		},
@@ -1209,6 +1219,11 @@
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/version",
+			"Comment": "v1.4.0-beta.3",
+			"Rev": "a0a9a282b431f437b048932eaf01631408b5bae0"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/pkg/version/verflag",
 			"Comment": "v1.4.0-beta.3",
 			"Rev": "a0a9a282b431f437b048932eaf01631408b5bae0"
 		},
