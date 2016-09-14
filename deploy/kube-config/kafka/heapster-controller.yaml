@@ -26,3 +26,4 @@ spec:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
         - --sink=kafka:?brokers=monitoring-kafka:9092&timeseriestopic=timeseries&eventstopic=events
+        - --service-cluster-ip-range=10.10.0.0/24
