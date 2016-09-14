@@ -27,19 +27,16 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"k8s.io/heapster/metrics/apis/metrics"
 	"k8s.io/kubernetes/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apiserver/authenticator"
+	"k8s.io/kubernetes/pkg/controller/framework/informers"
 	"k8s.io/kubernetes/pkg/genericapiserver"
 	genericauthorizer "k8s.io/kubernetes/pkg/genericapiserver/authorizer"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
-	genericvalidation "k8s.io/kubernetes/pkg/genericapiserver/validation"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
-	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/controller/framework/informers"
-	"k8s.io/heapster/metrics/apis/metrics"
-	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 )
 
 // NewAPIServerCommand creates a *cobra.Command object with default parameters
@@ -47,7 +44,7 @@ func NewAPIServerCommand() *cobra.Command {
 	s := genericoptions.NewServerRunOptions()
 	s.AddUniversalFlags(pflag.CommandLine)
 	cmd := &cobra.Command{
-		Use: "heapster-apiserver",
+		Use:  "heapster-apiserver",
 		Long: `heapster apiserver`,
 		Run: func(cmd *cobra.Command, args []string) {
 		},
@@ -56,16 +53,12 @@ func NewAPIServerCommand() *cobra.Command {
 	return cmd
 }
 
-// Run runs the specified APIServer.  This should never exit.
+// Run runs the specified APIServer. This should never exit.
 func Run(s *genericoptions.ServerRunOptions) error {
-	genericvalidation.VerifyEtcdServersList(s)
 	genericapiserver.DefaultAndValidateRunOptions(s)
 
-	// TODO: register heapster resources here.
 	resourceConfig := genericapiserver.NewResourceConfig()
 	resourceConfig.EnableVersions(unversioned.GroupVersion{Group: metrics.GroupName, Version: "v1alpha1"})
-
-	resourceConfig.EnableResources(v1alpha1.SchemeGroupVersion.WithResource("nodemetrics"))
 
 	storageGroupsToEncodingVersion, err := s.StorageGroupsToEncodingVersion()
 	if err != nil {
@@ -78,26 +71,6 @@ func Run(s *genericoptions.ServerRunOptions) error {
 	if err != nil {
 		glog.Fatalf("error in initializing storage factory: %s", err)
 	}
-
-	//for _, override := range s.EtcdServersOverrides {
-	//	tokens := strings.Split(override, "#")
-	//	if len(tokens) != 2 {
-	//		glog.Errorf("invalid value of etcd server overrides: %s", override)
-	//		continue
-	//	}
-	//
-	//	apiresource := strings.Split(tokens[0], "/")
-	//	if len(apiresource) != 2 {
-	//		glog.Errorf("invalid resource definition: %s", tokens[0])
-	//		continue
-	//	}
-	//	group := apiresource[0]
-	//	resource := apiresource[1]
-	//	groupResource := unversioned.GroupResource{Group: group, Resource: resource}
-	//
-	//	servers := strings.Split(tokens[1], ";")
-	//	storageFactory.SetEtcdLocation(groupResource, servers)
-	//}
 
 	authz, err := authenticator.New(authenticator.AuthenticatorConfig{
 		BasicAuthFile:     s.BasicAuthFile,
@@ -163,16 +136,4 @@ func Run(s *genericoptions.ServerRunOptions) error {
 
 	m.Run(s)
 	return nil
-}
-
-func createRESTOptionsOrDie(s *genericoptions.ServerRunOptions, g *genericapiserver.GenericAPIServer, f genericapiserver.StorageFactory, resource unversioned.GroupResource) generic.RESTOptions {
-	storage, err := f.NewConfig(resource)
-	if err != nil {
-		glog.Fatalf("Unable to find storage destination for %v, due to %v", resource, err.Error())
-	}
-	return generic.RESTOptions{
-		StorageConfig:                 storage,
-		Decorator:               g.StorageDecorator(),
-		DeleteCollectionWorkers: s.DeleteCollectionWorkers,
-	}
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2014 The Kubernetes Authors.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// apiserver is the main api server and master for the cluster.
-// it is responsible for serving the cluster management API.
+// apiserver is the main api server of the metrics.
+// It is responsible for serving the Master Metrics API.
 package main
 
 import (
@@ -24,21 +24,20 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/pflag"
+
 	"k8s.io/heapster/metrics/cmd/heapster-apiserver/app"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
-	"k8s.io/kubernetes/pkg/util/logs"
 	"k8s.io/kubernetes/pkg/util/flag"
+	"k8s.io/kubernetes/pkg/util/logs"
 	"k8s.io/kubernetes/pkg/version/verflag"
-
-	"github.com/spf13/pflag"
 )
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	s := genericoptions.NewServerRunOptions().WithEtcdOptions()
+	s := genericoptions.NewServerRunOptions()
 	s.AddUniversalFlags(pflag.CommandLine)
-	s.AddEtcdStorageFlags(pflag.CommandLine)
 
 	flag.InitFlags()
 	logs.InitLogs()

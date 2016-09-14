@@ -19,21 +19,20 @@ package app
 import (
 	"github.com/golang/glog"
 
+	"k8s.io/heapster/metrics/apis/metrics"
+	_ "k8s.io/heapster/metrics/apis/metrics/install"
+	nodemetricsstorage "k8s.io/heapster/metrics/storage/nodemetrics"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/rest"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	"k8s.io/kubernetes/pkg/genericapiserver"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
-
-	_ "k8s.io/heapster/metrics/apis/metrics/install"
-	"k8s.io/heapster/metrics/apis/metrics"
-	nodemetricsetcd "k8s.io/heapster/metrics/registry/nodemetrics/etcd"
 )
 
 func installMetricsAPIs(s *genericoptions.ServerRunOptions, g *genericapiserver.GenericAPIServer, f genericapiserver.StorageFactory) {
-	nodemetricsStorage := nodemetricsetcd.NewREST(createRESTOptionsOrDie(s, g, f, metrics.Resource("nodemetrics")))
+	nodemetricsStorage := nodemetricsstorage.NewReadOnlyStorage(metrics.Resource("nodes"))
 	heapsterResources := map[string]rest.Storage{
-		"nodemetrics":        nodemetricsStorage,
+		"nodes": nodemetricsStorage,
 	}
 	heapsterGroupMeta := registered.GroupOrDie(metrics.GroupName)
 	apiGroupInfo := genericapiserver.APIGroupInfo{
@@ -41,8 +40,7 @@ func installMetricsAPIs(s *genericoptions.ServerRunOptions, g *genericapiserver.
 		VersionedResourcesStorageMap: map[string]map[string]rest.Storage{
 			"v1alpha1": heapsterResources,
 		},
-		// TODO: registered.GroupOrDie(api.GroupName) => heapsterGroupMeta
-		OptionsExternalVersion: &registered.GroupOrDie(api.GroupName).GroupVersion,
+		OptionsExternalVersion: &heapsterGroupMeta.GroupVersion,
 		Scheme:                 api.Scheme,
 		ParameterCodec:         api.ParameterCodec,
 		NegotiatedSerializer:   api.Codecs,
