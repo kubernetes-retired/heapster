@@ -67,6 +67,9 @@ func NewHeapsterApiServer(s *options.HeapsterRunOptions) (*HeapsterAPIServer, er
 	if err != nil {
 		return &HeapsterAPIServer{}, err
 	}
+
+	installMetricsAPIs(s.ServerRunOptions, server)
+
 	return &HeapsterAPIServer{
 		GenericAPIServer: server,
 		options:          s,
