@@ -75,3 +75,7 @@ func (us *Uris) Set(value string) error {
 	*us = append(*us, u)
 	return nil
 }
+
+func (us *Uris) Type() string {
+	return fmt.Sprintf("%T", us)
+}
