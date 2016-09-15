@@ -19,9 +19,11 @@ import (
 
 	"github.com/spf13/pflag"
 	"k8s.io/heapster/common/flags"
+	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
 )
 
 type HeapsterRunOptions struct {
+	*genericoptions.ServerRunOptions
 	MetricResolution time.Duration
 	Port             int
 	Ip               string
@@ -36,14 +38,20 @@ type HeapsterRunOptions struct {
 }
 
 func NewHeapsterRunOptions() *HeapsterRunOptions {
-	return &HeapsterRunOptions{}
+	opt := genericoptions.NewServerRunOptions()
+	return &HeapsterRunOptions{
+		ServerRunOptions: opt,
+
+	}
 }
 
 func (h *HeapsterRunOptions) AddFlags(fs *pflag.FlagSet) {
+	h.ServerRunOptions.AddUniversalFlags(pflag.CommandLine)
+
 	fs.Var(&h.Sources, "source", "source(s) to watch")
 	fs.Var(&h.Sinks, "sink", "external sink(s) that receive data")
 	fs.DurationVar(&h.MetricResolution, "metric_resolution", 60*time.Second, "The resolution at which heapster will retain metrics.")
-	fs.IntVar(&h.Port, "port", 8082, "port to listen to")
+	//fs.IntVar(&h.Port, "port", 8082, "port to listen to")
 	fs.StringVar(&h.Ip, "listen_ip", "", "IP to listen on, defaults to all IPs")
 	fs.IntVar(&h.MaxProcs, "max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
 	fs.StringVar(&h.TLSCertFile, "tls_cert", "", "file containing TLS certificate")
