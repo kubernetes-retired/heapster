@@ -1,0 +1,38 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: heapster-apiserver
+  namespace: heapster-ns
+  labels:
+    app: heapster-cluster
+spec:
+  template:
+    metadata:
+      name: heapster-apiserver
+      labels:
+        app: heapster-cluster
+        module: heapster-apiserver
+    spec:
+      containers:
+      - name: apiserver
+        image: gcr.io/google.com/magorzata-dev-1362/heapster-apiserver-noetcd:canary
+        imagePullPolicy: Always
+        command:
+        - /heapster-apiserver
+        - --service-cluster-ip-range=10.10.0.0/24
+        - --secure-port=443
+        # TODO: --admission-control values must be set when support is added for each type of control.
+        - --token-auth-file=/srv/kubernetes/known-tokens.csv
+        ports:
+        - containerPort: 443
+          name: https
+        - containerPort: 8080
+          name: local
+        volumeMounts:
+        - name: heapster-apiserver-secrets
+          mountPath: /srv/kubernetes/
+          readOnly: true
+      volumes:
+      - name: heapster-apiserver-secrets
+        secret:
+          secretName: heapster-apiserver-secrets

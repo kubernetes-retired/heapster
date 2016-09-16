@@ -49,6 +49,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/util/logs"
 	"k8s.io/kubernetes/pkg/version/verflag"
+	"k8s.io/heapster/metrics/cmd/heapster-apiserver/app"
 )
 
 func main() {
@@ -220,7 +221,12 @@ func main() {
 		mux.Handle("/metrics", promHandler)
 		healthz.InstallHandler(mux, healthzChecker(metricSink))
 
-		glog.Fatal(http.ListenAndServe(addr, mux))
+		glog.V(0).Infof("======> Running the apiserver.")
+
+		opt.MetricSink = metricSink
+		if err := app.Run(opt); err != nil {
+			glog.Fatal(err)
+		}
 	}
 }
 
