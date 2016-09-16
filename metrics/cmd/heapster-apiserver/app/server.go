@@ -59,9 +59,33 @@ func NewAPIServerCommand() *cobra.Command {
 	return cmd
 }
 
+type HeapsterAPIServer struct {
+	*genericapiserver.GenericAPIServer
+	MetricSink metricsink.MetricSink
+}
+
 // Run runs the specified APIServer. This should never exit.
-func Run(s *options.HeapsterRunOptions) error {
-	genericapiserver.DefaultAndValidateRunOptions(s.ServerRunOptions)
+func (h *HeapsterAPIServer) Run() error {
+
+
+	healthz.InstallHandler(h.MuxHelper, healthzChecker(h.MetricSink))
+	installMetricsAPIs(s.ServerRunOptions, m, storageFactory)
+
+	m.Run(s.ServerRunOptions)
+	return nil
+}
+
+func NewHeapsterApiServer(s *HeapsterOptions) {
+
+	m, err := newAPIServer(s)
+	if err != nil {
+		return HeapsterAPIServer{}, err
+	}
+	return HeapsterAPIServer{m}, nil
+}
+
+func newAPIServer(s *genericoptions.ServerRunOptions) (*genericapiserver.GenericAPIServer, error) {
+	genericapiserver.DefaultAndValidateRunOptions(s)
 
 	resourceConfig := genericapiserver.NewResourceConfig()
 	resourceConfig.EnableVersions(unversioned.GroupVersion{Group: metrics.GroupName, Version: "v1alpha1"})
@@ -117,7 +141,7 @@ func Run(s *options.HeapsterRunOptions) error {
 
 	admissionController, err := admission.NewFromPlugins(client, admissionControlPluginNames, s.AdmissionControlConfigFile, pluginInitializer)
 
-	genericConfig := genericapiserver.NewConfig(s.ServerRunOptions)
+	genericConfig := genericapiserver.NewConfig(s)
 	// TODO: Move the following to generic api server as well.
 	genericConfig.StorageFactory = storageFactory
 	genericConfig.Authenticator = authz
@@ -133,16 +157,7 @@ func Run(s *options.HeapsterRunOptions) error {
 		cachesize.SetWatchCacheSizes(s.WatchCacheSizes)
 	}
 
-	m, err := genericapiserver.New(genericConfig)
-	if err != nil {
-		return err
-	}
-
-	healthz.InstallHandler(m.MuxHelper, healthzChecker(s.MetricSink))
-	installMetricsAPIs(s.ServerRunOptions, m, storageFactory)
-
-	m.Run(s.ServerRunOptions)
-	return nil
+	return genericapiserver.New(genericConfig)
 }
 
 const (
