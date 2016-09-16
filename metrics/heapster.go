@@ -67,117 +67,22 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	// sources
-	if len(opt.Sources) != 1 {
-		glog.Fatal("Wrong number of sources specified")
-	}
-	sourceFactory := sources.NewSourceFactory()
-	sourceProvider, err := sourceFactory.BuildAll(opt.Sources)
-	if err != nil {
-		glog.Fatalf("Failed to create source provide: %v", err)
-	}
-	sourceManager, err := sources.NewSourceManager(sourceProvider, sources.DefaultMetricsScrapeTimeout)
-	if err != nil {
-		glog.Fatalf("Failed to create source manager: %v", err)
-	}
-
-	// sinks
-	sinksFactory := sinks.NewSinkFactory()
-	metricSink, sinkList, historicalSource := sinksFactory.BuildAll(opt.Sinks, opt.HistoricalSource)
-	if metricSink == nil {
-		glog.Fatal("Failed to create metric sink")
-	}
-	if historicalSource == nil && len(opt.HistoricalSource) > 0 {
-		glog.Fatal("Failed to use a sink as a historical metrics source")
-	}
-	for _, sink := range sinkList {
-		glog.Infof("Starting with %s", sink.Name())
-	}
-	sinkManager, err := sinks.NewDataSinkManager(sinkList, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
-	if err != nil {
-		glog.Fatalf("Failed to created sink manager: %v", err)
-	}
-
-	// data processors
-	metricsToAggregate := []string{
-		core.MetricCpuUsageRate.Name,
-		core.MetricMemoryUsage.Name,
-		core.MetricCpuRequest.Name,
-		core.MetricCpuLimit.Name,
-		core.MetricMemoryRequest.Name,
-		core.MetricMemoryLimit.Name,
-	}
-
-	metricsToAggregateForNode := []string{
-		core.MetricCpuRequest.Name,
-		core.MetricCpuLimit.Name,
-		core.MetricMemoryRequest.Name,
-		core.MetricMemoryLimit.Name,
-	}
-
-	dataProcessors := []core.DataProcessor{
-		// Convert cumulaties to rate
-		processors.NewRateCalculator(core.RateMetricsMapping),
-	}
-
 	kubernetesUrl, err := getKubernetesAddress(opt.Sources)
 	if err != nil {
 		glog.Fatalf("Failed to get kubernetes address: %v", err)
 	}
+	sourceManager := createSourceManagerOrDie(opt.Sources)
+	sinkManager, metricSink, historicalSource := createAndInitSinksOrDie(opt.Sinks, opt.HistoricalSource)
 
-	kubeConfig, err := kube_config.GetKubeClientConfig(kubernetesUrl)
-	if err != nil {
-		glog.Fatalf("Failed to get client config: %v", err)
-	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	podLister, nodeLister := getListersOrDie(kubernetesUrl)
+	dataProcessors := createDataProcessorsOrDie(kubernetesUrl, podLister)
 
-	podLister, err := getPodLister(kubeClient)
-	if err != nil {
-		glog.Fatalf("Failed to create podLister: %v", err)
-	}
-	nodeLister, err := getNodeLister(kubeClient)
-	if err != nil {
-		glog.Fatalf("Failed to create nodeLister: %v", err)
-	}
-
-	podBasedEnricher, err := processors.NewPodBasedEnricher(podLister)
-	if err != nil {
-		glog.Fatalf("Failed to create PodBasedEnricher: %v", err)
-	}
-	dataProcessors = append(dataProcessors, podBasedEnricher)
-
-	namespaceBasedEnricher, err := processors.NewNamespaceBasedEnricher(kubernetesUrl)
-	if err != nil {
-		glog.Fatalf("Failed to create NamespaceBasedEnricher: %v", err)
-	}
-	dataProcessors = append(dataProcessors, namespaceBasedEnricher)
-
-	// then aggregators
-	dataProcessors = append(dataProcessors,
-		processors.NewPodAggregator(),
-		&processors.NamespaceAggregator{
-			MetricsToAggregate: metricsToAggregate,
-		},
-		&processors.NodeAggregator{
-			MetricsToAggregate: metricsToAggregateForNode,
-		},
-		&processors.ClusterAggregator{
-			MetricsToAggregate: metricsToAggregate,
-		})
-
-	nodeAutoscalingEnricher, err := processors.NewNodeAutoscalingEnricher(kubernetesUrl)
-	if err != nil {
-		glog.Fatalf("Failed to create NodeAutoscalingEnricher: %v", err)
-	}
-	dataProcessors = append(dataProcessors, nodeAutoscalingEnricher)
-
-	// main manager
-	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, opt.MetricResolution,
-		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
+	man, err := manager.NewManager(sourceManager, dataProcessors, sinkManager,
+		opt.MetricResolution, manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
 	if err != nil {
 		glog.Fatalf("Failed to create main manager: %v", err)
 	}
-	manager.Start()
+	man.Start()
 
 	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource)
 	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
@@ -222,6 +127,118 @@ func main() {
 
 		glog.Fatal(http.ListenAndServe(addr, mux))
 	}
+}
+
+func createSourceManagerOrDie(src flags.Uris) core.MetricsSource {
+	if len(src) != 1 {
+		glog.Fatal("Wrong number of sources specified")
+	}
+	sourceFactory := sources.NewSourceFactory()
+	sourceProvider, err := sourceFactory.BuildAll(src)
+	if err != nil {
+		glog.Fatalf("Failed to create source provide: %v", err)
+	}
+	sourceManager, err := sources.NewSourceManager(sourceProvider, sources.DefaultMetricsScrapeTimeout)
+	if err != nil {
+		glog.Fatalf("Failed to create source manager: %v", err)
+	}
+	return sourceManager
+}
+
+func createAndInitSinksOrDie(sinkAddresses flags.Uris, historicalSource string) (core.DataSink, *metricsink.MetricSink, core.HistoricalSource) {
+	sinksFactory := sinks.NewSinkFactory()
+	metricSink, sinkList, histSource := sinksFactory.BuildAll(sinkAddresses, historicalSource)
+	if metricSink == nil {
+		glog.Fatal("Failed to create metric sink")
+	}
+	if histSource == nil && len(historicalSource) > 0 {
+		glog.Fatal("Failed to use a sink as a historical metrics source")
+	}
+	for _, sink := range sinkList {
+		glog.Infof("Starting with %s", sink.Name())
+	}
+	sinkManager, err := sinks.NewDataSinkManager(sinkList, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
+	if err != nil {
+		glog.Fatalf("Failed to created sink manager: %v", err)
+	}
+	return sinkManager, metricSink, histSource
+}
+
+func getListersOrDie(kubernetesUrl *url.URL) (*cache.StoreToPodLister, *cache.StoreToNodeLister) {
+	kubeClient := createKubeClientOrDie(kubernetesUrl)
+
+	podLister, err := getPodLister(kubeClient)
+	if err != nil {
+		glog.Fatalf("Failed to create podLister: %v", err)
+	}
+	nodeLister, err := getNodeLister(kubeClient)
+	if err != nil {
+		glog.Fatalf("Failed to create nodeLister: %v", err)
+	}
+	return podLister, nodeLister
+}
+
+func createKubeClientOrDie(kubernetesUrl *url.URL) *kube_client.Client {
+	kubeConfig, err := kube_config.GetKubeClientConfig(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to get client config: %v", err)
+	}
+	return kube_client.NewOrDie(kubeConfig)
+}
+
+func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister *cache.StoreToPodLister) []core.DataProcessor {
+	dataProcessors := []core.DataProcessor{
+		// Convert cumulaties to rate
+		processors.NewRateCalculator(core.RateMetricsMapping),
+	}
+
+	podBasedEnricher, err := processors.NewPodBasedEnricher(podLister)
+	if err != nil {
+		glog.Fatalf("Failed to create PodBasedEnricher: %v", err)
+	}
+	dataProcessors = append(dataProcessors, podBasedEnricher)
+
+	namespaceBasedEnricher, err := processors.NewNamespaceBasedEnricher(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to create NamespaceBasedEnricher: %v", err)
+	}
+	dataProcessors = append(dataProcessors, namespaceBasedEnricher)
+
+	// aggregators
+	metricsToAggregate := []string{
+		core.MetricCpuUsageRate.Name,
+		core.MetricMemoryUsage.Name,
+		core.MetricCpuRequest.Name,
+		core.MetricCpuLimit.Name,
+		core.MetricMemoryRequest.Name,
+		core.MetricMemoryLimit.Name,
+	}
+
+	metricsToAggregateForNode := []string{
+		core.MetricCpuRequest.Name,
+		core.MetricCpuLimit.Name,
+		core.MetricMemoryRequest.Name,
+		core.MetricMemoryLimit.Name,
+	}
+
+	dataProcessors = append(dataProcessors,
+		processors.NewPodAggregator(),
+		&processors.NamespaceAggregator{
+			MetricsToAggregate: metricsToAggregate,
+		},
+		&processors.NodeAggregator{
+			MetricsToAggregate: metricsToAggregateForNode,
+		},
+		&processors.ClusterAggregator{
+			MetricsToAggregate: metricsToAggregate,
+		})
+
+	nodeAutoscalingEnricher, err := processors.NewNodeAutoscalingEnricher(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to create NodeAutoscalingEnricher: %v", err)
+	}
+	dataProcessors = append(dataProcessors, nodeAutoscalingEnricher)
+	return dataProcessors
 }
 
 const (
