@@ -22,6 +22,7 @@ import (
 	"k8s.io/heapster/metrics/apis/metrics"
 	_ "k8s.io/heapster/metrics/apis/metrics/install"
 	nodemetricsstorage "k8s.io/heapster/metrics/storage/nodemetrics"
+	podmetricsstorage "k8s.io/heapster/metrics/storage/podmetrics"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/rest"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
@@ -31,8 +32,10 @@ import (
 
 func installMetricsAPIs(s *genericoptions.ServerRunOptions, g *genericapiserver.GenericAPIServer, f genericapiserver.StorageFactory) {
 	nodemetricsStorage := nodemetricsstorage.NewReadOnlyStorage(metrics.Resource("nodes"))
+	podmetricsStorage := podmetricsstorage.NewReadOnlyStorage(metrics.Resource("pods"))
 	heapsterResources := map[string]rest.Storage{
 		"nodes": nodemetricsStorage,
+		"pods": podmetricsStorage,
 	}
 	heapsterGroupMeta := registered.GroupOrDie(metrics.GroupName)
 	apiGroupInfo := genericapiserver.APIGroupInfo{

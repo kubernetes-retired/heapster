@@ -223,11 +223,10 @@ func main() {
 
 		glog.V(0).Infof("======> Running the apiserver.")
 
-		if err := app.Run(opt.ServerRunOptions); err != nil {
+		opt.MetricSink = metricSink
+		if err := app.Run(opt); err != nil {
 			glog.Fatal(err)
 		}
-
-		//glog.Fatal(http.ListenAndServe(addr, mux))
 	}
 }
 

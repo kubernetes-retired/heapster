@@ -37,6 +37,12 @@ import (
 	genericauthorizer "k8s.io/kubernetes/pkg/genericapiserver/authorizer"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
+	"k8s.io/kubernetes/pkg/healthz"
+	"k8s.io/heapster/metrics/sinks/metric"
+	"fmt"
+	"k8s.io/heapster/metrics/options"
+	"errors"
+	"net/http"
 )
 
 // NewAPIServerCommand creates a *cobra.Command object with default parameters
@@ -54,8 +60,8 @@ func NewAPIServerCommand() *cobra.Command {
 }
 
 // Run runs the specified APIServer. This should never exit.
-func Run(s *genericoptions.ServerRunOptions) error {
-	genericapiserver.DefaultAndValidateRunOptions(s)
+func Run(s *options.HeapsterRunOptions) error {
+	genericapiserver.DefaultAndValidateRunOptions(s.ServerRunOptions)
 
 	resourceConfig := genericapiserver.NewResourceConfig()
 	resourceConfig.EnableVersions(unversioned.GroupVersion{Group: metrics.GroupName, Version: "v1alpha1"})
@@ -111,7 +117,7 @@ func Run(s *genericoptions.ServerRunOptions) error {
 
 	admissionController, err := admission.NewFromPlugins(client, admissionControlPluginNames, s.AdmissionControlConfigFile, pluginInitializer)
 
-	genericConfig := genericapiserver.NewConfig(s)
+	genericConfig := genericapiserver.NewConfig(s.ServerRunOptions)
 	// TODO: Move the following to generic api server as well.
 	genericConfig.StorageFactory = storageFactory
 	genericConfig.Authenticator = authz
@@ -132,8 +138,34 @@ func Run(s *genericoptions.ServerRunOptions) error {
 		return err
 	}
 
-	installMetricsAPIs(s, m, storageFactory)
+	healthz.InstallHandler(m.MuxHelper, healthzChecker(s.MetricSink))
+	installMetricsAPIs(s.ServerRunOptions, m, storageFactory)
 
-	m.Run(s)
+	m.Run(s.ServerRunOptions)
 	return nil
+}
+
+const (
+	minMetricsCount = 1
+	maxMetricsDelay = 3 * time.Minute
+)
+
+func healthzChecker(metricSink *metricsink.MetricSink) healthz.HealthzChecker {
+	return healthz.NamedCheck("healthz", func(r *http.Request) error {
+		batch := metricSink.GetLatestDataBatch()
+		if batch == nil {
+			return errors.New("could not get the latest data batch")
+		}
+		if time.Since(batch.Timestamp) > maxMetricsDelay {
+			message := fmt.Sprintf("No current data batch available (latest: %s).", batch.Timestamp.String())
+			glog.Warningf(message)
+			return errors.New(message)
+		}
+		if len(batch.MetricSets) < minMetricsCount {
+			message := fmt.Sprintf("Not enough metrics found in the latest data batch: %d (expected min. %d) %s", len(batch.MetricSets), minMetricsCount, batch.Timestamp.String())
+			glog.Warningf(message)
+			return errors.New(message)
+		}
+		return nil
+	})
 }

@@ -20,10 +20,12 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/heapster/common/flags"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
+	"k8s.io/heapster/metrics/sinks/metric"
 )
 
 type HeapsterRunOptions struct {
 	*genericoptions.ServerRunOptions
+	MetricSink       *metricsink.MetricSink
 	MetricResolution time.Duration
 	Port             int
 	Ip               string
