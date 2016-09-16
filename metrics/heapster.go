@@ -67,12 +67,80 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	// sources
-	if len(opt.Sources) != 1 {
+	kubernetesUrl, err := getKubernetesAddress(opt.Sources)
+	if err != nil {
+		glog.Fatalf("Failed to get kubernetes address: %v", err)
+	}
+	sourceManager := createSourceManagerOrDie(opt.Sources)
+	sinkManager, metricSink, historicalSource := createAndInitSinksOrDie(opt.Sinks, opt.HistoricalSource)
+
+	podLister, nodeLister := getListersOrDie(kubernetesUrl)
+	dataProcessors := createDataProcessorsOrDie(kubernetesUrl, podLister)
+
+	man, err := manager.NewManager(sourceManager, dataProcessors, sinkManager,
+		opt.MetricResolution, manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
+	if err != nil {
+		glog.Fatalf("Failed to create main manager: %v", err)
+	}
+	man.Start()
+
+	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource)
+	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
+	glog.Infof("Starting heapster on port %d", opt.Port)
+
+	mux := http.NewServeMux()
+	promHandler := prometheus.Handler()
+
+	healthz.InstallHandler(mux, healthzChecker(metricSink))
+
+	if len(opt.TLSCertFile) > 0 && len(opt.TLSKeyFile) > 0 {
+		startSecureServing(opt, handler, promHandler, mux, addr)
+	} else {
+		mux.Handle("/", handler)
+		mux.Handle("/metrics", promHandler)
+
+		glog.Fatal(http.ListenAndServe(addr, mux))
+	}
+}
+
+func startSecureServing(opt *options.HeapsterRunOptions, handler http.Handler, promHandler http.Handler,
+	mux *http.ServeMux, address string) {
+
+	if len(opt.TLSClientCAFile) > 0 {
+		authPprofHandler, err := newAuthHandler(opt, handler)
+		if err != nil {
+			glog.Fatalf("Failed to create authorized pprof handler: %v", err)
+		}
+		handler = authPprofHandler
+
+		authPromHandler, err := newAuthHandler(opt, promHandler)
+		if err != nil {
+			glog.Fatalf("Failed to create authorized prometheus handler: %v", err)
+		}
+		promHandler = authPromHandler
+	}
+	mux.Handle("/", handler)
+	mux.Handle("/metrics", promHandler)
+
+	// If allowed users is set, then we need to enable Client Authentication
+	if len(opt.AllowedUsers) > 0 {
+		server := &http.Server{
+			Addr:      address,
+			Handler:   mux,
+			TLSConfig: &tls.Config{ClientAuth: tls.RequestClientCert},
+		}
+		glog.Fatal(server.ListenAndServeTLS(opt.TLSCertFile, opt.TLSKeyFile))
+	} else {
+		glog.Fatal(http.ListenAndServeTLS(address, opt.TLSCertFile, opt.TLSKeyFile, mux))
+	}
+}
+
+func createSourceManagerOrDie(src flags.Uris) core.MetricsSource {
+	if len(src) != 1 {
 		glog.Fatal("Wrong number of sources specified")
 	}
 	sourceFactory := sources.NewSourceFactory()
-	sourceProvider, err := sourceFactory.BuildAll(opt.Sources)
+	sourceProvider, err := sourceFactory.BuildAll(src)
 	if err != nil {
 		glog.Fatalf("Failed to create source provide: %v", err)
 	}
@@ -80,14 +148,16 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Failed to create source manager: %v", err)
 	}
+	return sourceManager
+}
 
-	// sinks
+func createAndInitSinksOrDie(sinkAddresses flags.Uris, historicalSource string) (core.DataSink, *metricsink.MetricSink, core.HistoricalSource) {
 	sinksFactory := sinks.NewSinkFactory()
-	metricSink, sinkList, historicalSource := sinksFactory.BuildAll(opt.Sinks, opt.HistoricalSource)
+	metricSink, sinkList, histSource := sinksFactory.BuildAll(sinkAddresses, historicalSource)
 	if metricSink == nil {
 		glog.Fatal("Failed to create metric sink")
 	}
-	if historicalSource == nil && len(opt.HistoricalSource) > 0 {
+	if histSource == nil && len(historicalSource) > 0 {
 		glog.Fatal("Failed to use a sink as a historical metrics source")
 	}
 	for _, sink := range sinkList {
@@ -97,8 +167,50 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Failed to created sink manager: %v", err)
 	}
+	return sinkManager, metricSink, histSource
+}
 
-	// data processors
+func getListersOrDie(kubernetesUrl *url.URL) (*cache.StoreToPodLister, *cache.StoreToNodeLister) {
+	kubeClient := createKubeClientOrDie(kubernetesUrl)
+
+	podLister, err := getPodLister(kubeClient)
+	if err != nil {
+		glog.Fatalf("Failed to create podLister: %v", err)
+	}
+	nodeLister, err := getNodeLister(kubeClient)
+	if err != nil {
+		glog.Fatalf("Failed to create nodeLister: %v", err)
+	}
+	return podLister, nodeLister
+}
+
+func createKubeClientOrDie(kubernetesUrl *url.URL) *kube_client.Client {
+	kubeConfig, err := kube_config.GetKubeClientConfig(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to get client config: %v", err)
+	}
+	return kube_client.NewOrDie(kubeConfig)
+}
+
+func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister *cache.StoreToPodLister) []core.DataProcessor {
+	dataProcessors := []core.DataProcessor{
+		// Convert cumulaties to rate
+		processors.NewRateCalculator(core.RateMetricsMapping),
+	}
+
+	podBasedEnricher, err := processors.NewPodBasedEnricher(podLister)
+	if err != nil {
+		glog.Fatalf("Failed to create PodBasedEnricher: %v", err)
+	}
+	dataProcessors = append(dataProcessors, podBasedEnricher)
+
+	namespaceBasedEnricher, err := processors.NewNamespaceBasedEnricher(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to create NamespaceBasedEnricher: %v", err)
+	}
+	dataProcessors = append(dataProcessors, namespaceBasedEnricher)
+
+	// aggregators
 	metricsToAggregate := []string{
 		core.MetricCpuUsageRate.Name,
 		core.MetricMemoryUsage.Name,
@@ -115,44 +227,6 @@ func main() {
 		core.MetricMemoryLimit.Name,
 	}
 
-	dataProcessors := []core.DataProcessor{
-		// Convert cumulaties to rate
-		processors.NewRateCalculator(core.RateMetricsMapping),
-	}
-
-	kubernetesUrl, err := getKubernetesAddress(opt.Sources)
-	if err != nil {
-		glog.Fatalf("Failed to get kubernetes address: %v", err)
-	}
-
-	kubeConfig, err := kube_config.GetKubeClientConfig(kubernetesUrl)
-	if err != nil {
-		glog.Fatalf("Failed to get client config: %v", err)
-	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
-
-	podLister, err := getPodLister(kubeClient)
-	if err != nil {
-		glog.Fatalf("Failed to create podLister: %v", err)
-	}
-	nodeLister, err := getNodeLister(kubeClient)
-	if err != nil {
-		glog.Fatalf("Failed to create nodeLister: %v", err)
-	}
-
-	podBasedEnricher, err := processors.NewPodBasedEnricher(podLister)
-	if err != nil {
-		glog.Fatalf("Failed to create PodBasedEnricher: %v", err)
-	}
-	dataProcessors = append(dataProcessors, podBasedEnricher)
-
-	namespaceBasedEnricher, err := processors.NewNamespaceBasedEnricher(kubernetesUrl)
-	if err != nil {
-		glog.Fatalf("Failed to create NamespaceBasedEnricher: %v", err)
-	}
-	dataProcessors = append(dataProcessors, namespaceBasedEnricher)
-
-	// then aggregators
 	dataProcessors = append(dataProcessors,
 		processors.NewPodAggregator(),
 		&processors.NamespaceAggregator{
@@ -170,58 +244,7 @@ func main() {
 		glog.Fatalf("Failed to create NodeAutoscalingEnricher: %v", err)
 	}
 	dataProcessors = append(dataProcessors, nodeAutoscalingEnricher)
-
-	// main manager
-	manager, err := manager.NewManager(sourceManager, dataProcessors, sinkManager, opt.MetricResolution,
-		manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
-	if err != nil {
-		glog.Fatalf("Failed to create main manager: %v", err)
-	}
-	manager.Start()
-
-	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource)
-	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
-	glog.Infof("Starting heapster on port %d", opt.Port)
-
-	mux := http.NewServeMux()
-	promHandler := prometheus.Handler()
-	if len(opt.TLSCertFile) > 0 && len(opt.TLSKeyFile) > 0 {
-		if len(opt.TLSClientCAFile) > 0 {
-			authPprofHandler, err := newAuthHandler(opt, handler)
-			if err != nil {
-				glog.Fatalf("Failed to create authorized pprof handler: %v", err)
-			}
-			handler = authPprofHandler
-
-			authPromHandler, err := newAuthHandler(opt, promHandler)
-			if err != nil {
-				glog.Fatalf("Failed to create authorized prometheus handler: %v", err)
-			}
-			promHandler = authPromHandler
-		}
-		mux.Handle("/", handler)
-		mux.Handle("/metrics", promHandler)
-		healthz.InstallHandler(mux, healthzChecker(metricSink))
-
-		// If allowed users is set, then we need to enable Client Authentication
-		if len(opt.AllowedUsers) > 0 {
-			server := &http.Server{
-				Addr:      addr,
-				Handler:   mux,
-				TLSConfig: &tls.Config{ClientAuth: tls.RequestClientCert},
-			}
-			glog.Fatal(server.ListenAndServeTLS(opt.TLSCertFile, opt.TLSKeyFile))
-		} else {
-			glog.Fatal(http.ListenAndServeTLS(addr, opt.TLSCertFile, opt.TLSKeyFile, mux))
-		}
-
-	} else {
-		mux.Handle("/", handler)
-		mux.Handle("/metrics", promHandler)
-		healthz.InstallHandler(mux, healthzChecker(metricSink))
-
-		glog.Fatal(http.ListenAndServe(addr, mux))
-	}
+	return dataProcessors
 }
 
 const (
