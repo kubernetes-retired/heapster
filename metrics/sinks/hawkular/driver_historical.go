@@ -70,10 +70,7 @@ func (h *hawkularSink) GetLabeledMetric(metricName string, labels map[string]str
 				return
 			}
 
-			if len(metricDefs) > 1 {
-				errChan <- fmt.Errorf("Given metric query (metricName=%q, key=%q) did not result in unique metricId, found %d results", metricName, key, len(metricDefs))
-				return
-			} else if len(metricDefs) < 1 {
+			if len(metricDefs) < 1 {
 				return
 			}
 
@@ -88,29 +85,34 @@ func (h *hawkularSink) GetLabeledMetric(metricName string, labels map[string]str
 				filters = append(filters, metrics.StartTimeFilter(start))
 			}
 
-			datapoints, err := h.client.ReadRaw(metricDefs[0].Type, metricDefs[0].ID, metrics.Filters(filters...))
-			if err != nil {
-				errChan <- err
-				return
-			}
-
-			if len(datapoints) > 0 {
-				metricValues := make([]core.TimestampedMetricValue, 0, len(datapoints))
-
-				for _, datapoint := range datapoints {
-					value, err := h.datapointToMetricValue(datapoint, &typ)
-					if err != nil {
-						errChan <- err
-						return
-					}
-					metricValues = append(metricValues, value)
+			for _, foundDef := range metricDefs {
+				datapoints, err := h.client.ReadRaw(foundDef.Type, foundDef.ID, metrics.Filters(filters...))
+				if err != nil {
+					errChan <- err
+					return
 				}
 
-				resLock.Lock()
-				res[key] = metricValues
-				resLock.Unlock()
-			}
+				if len(datapoints) > 0 {
+					metricValues := make([]core.TimestampedMetricValue, 0, len(datapoints))
 
+					for _, datapoint := range datapoints {
+						value, err := h.datapointToMetricValue(datapoint, &typ)
+						if err != nil {
+							errChan <- err
+							return
+						}
+						metricValues = append(metricValues, value)
+					}
+
+					resLock.Lock()
+					defer resLock.Unlock()
+					if _, exists := res[key]; exists {
+						errChan <- fmt.Errorf("Given metric query (metricName=%q, key=%q) did not result in unique metricId, found more than one result with datapoints", metricName, key)
+						return
+					}
+					res[key] = metricValues
+				}
+			}
 		}(keyM)
 	}
 	wg.Wait()
@@ -370,11 +372,6 @@ func (h *hawkularSink) bucketPointToAggregationValue(bp *metrics.Bucketpoint, mt
 			ValueType:  core.ValueFloat,
 			FloatValue: float32(val),
 		}
-		f, err := metrics.ConvertToFloat64(val)
-		if err != nil {
-			return aggregationValues, err
-		}
-		mv.FloatValue = float32(f)
 
 		aggs[a] = mv
 	}
@@ -396,7 +393,7 @@ func (h *hawkularSink) datapointToMetricValue(dp *metrics.Datapoint, mt *metrics
 	case metrics.Counter:
 		mv.ValueType = core.ValueInt64
 		if v, ok := dp.Value.(int64); ok {
-			mv.IntValue = int64(v)
+			mv.IntValue = v
 		}
 	case metrics.Gauge:
 		mv.ValueType = core.ValueFloat
@@ -405,9 +402,6 @@ func (h *hawkularSink) datapointToMetricValue(dp *metrics.Datapoint, mt *metrics
 			return tmv, err
 		}
 		mv.FloatValue = float32(f)
-		// if v, ok := dp.Value.(float64); ok {
-
-		// }
 	}
 	tmv.MetricValue = mv
 
