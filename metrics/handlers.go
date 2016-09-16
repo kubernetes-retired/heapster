@@ -15,7 +15,6 @@
 package main
 
 import (
-	"net/http"
 	"net/http/pprof"
 	"strings"
 
@@ -31,19 +30,17 @@ import (
 
 const pprofBasePath = "/debug/pprof/"
 
-func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, nodeLister *cache.StoreToNodeLister, historicalSource core.HistoricalSource) http.Handler {
+func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, nodeLister *cache.StoreToNodeLister,
+	historicalSource core.HistoricalSource, handlerContainer *restful.Container) {
 
 	runningInKubernetes := true
 
 	// Make API handler.
-	wsContainer := restful.NewContainer()
-	wsContainer.EnableContentEncoding(true)
-	wsContainer.Router(restful.CurlyRouter{})
 	a := v1.NewApi(runningInKubernetes, metricSink, historicalSource)
-	a.Register(wsContainer)
+	a.Register(handlerContainer)
 	// Metrics API
 	m := metricsApi.NewApi(metricSink, podLister, nodeLister)
-	m.Register(wsContainer)
+	m.Register(handlerContainer)
 
 	handlePprofEndpoint := func(req *restful.Request, resp *restful.Response) {
 		name := strings.TrimPrefix(req.Request.URL.Path, pprofBasePath)
@@ -59,10 +56,8 @@ func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPo
 		}
 	}
 
-	// Setup pporf handlers.
+	// Setup pprof handlers.
 	ws := new(restful.WebService).Path(pprofBasePath)
 	ws.Route(ws.GET("/{subpath:*}").To(metrics.InstrumentRouteFunc("pprof", handlePprofEndpoint))).Doc("pprof endpoint")
-	wsContainer.Add(ws)
-
-	return wsContainer
+	handlerContainer.Add(ws)
 }
