@@ -369,7 +369,7 @@ func TestDatapointToMetricValue(t *testing.T) {
 	tmv, err := hSink.datapointToMetricValue(&dp, &mt)
 	assert.NoError(t, err)
 
-	assert.Equal(t, val, tmv.MetricValue.FloatValue)
+	assert.Equal(t, float32(val), tmv.MetricValue.FloatValue)
 	assert.Equal(t, core.MetricGauge, tmv.MetricType)
 	assert.Equal(t, core.ValueFloat, tmv.MetricValue.ValueType)
 
@@ -433,11 +433,6 @@ func TestKeyToTags(t *testing.T) {
 
 	assert.Equal(t, core.MetricSetTypePod, mmap[core.LabelMetricSetType.Key])
 	assert.Equal(t, "terrible", mmap[core.LabelPodId.Key])
-
-	// hKeys := historicKeys()
-	// for _, key := range hKeys {
-	//     tags := hSink.keyToTags(key)
-	// }
 }
 
 func TestIsNamespaceTenant(t *testing.T) {
