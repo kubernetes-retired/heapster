@@ -67,7 +67,6 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 			} else {
 				continue
 			}
-
 			// Prepare measurement without fields
 			fieldName := "value"
 			measurementName := metricName

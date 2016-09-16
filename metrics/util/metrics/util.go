@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kubelet
+package metrics
 
 import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 )
 
-func isNode(c *cadvisor.ContainerInfo) bool {
+func IsNode(c *cadvisor.ContainerInfo) bool {
 	return c.Name == "/"
 }
