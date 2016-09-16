@@ -102,12 +102,11 @@ func TestMonascaHealthy(t *testing.T) {
 }
 
 func TestMonascaUnhealthy(t *testing.T) {
-	// TODO: reenable once #1232 is fixed
-	t.Skip("skipping test due to #1232")
+
 	// setup
 	ksClientMock := new(keystoneClientMock)
-	monURL, _ := url.Parse("http://unexisting.monasca.com")
-	sut := &ClientImpl{ksClient: ksClientMock, monascaURL: monURL}
+	nonReachableMonURL, _ := url.Parse("http://127.0.0.1:9")
+	sut := &ClientImpl{ksClient: ksClientMock, monascaURL: nonReachableMonURL}
 	ksClientMock.On("GetToken").Return(testToken, nil).Once()
 
 	// do
