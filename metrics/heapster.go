@@ -33,6 +33,7 @@ import (
 
 	"k8s.io/heapster/common/flags"
 	kube_config "k8s.io/heapster/common/kubernetes"
+	"k8s.io/heapster/metrics/cmd/heapster-apiserver/app"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/options"
@@ -49,6 +50,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/util/logs"
 	"k8s.io/kubernetes/pkg/version/verflag"
+	"k8s.io/kubernetes/pkg/apiserver"
 )
 
 func main() {
@@ -84,28 +86,29 @@ func main() {
 	}
 	man.Start()
 
-	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource)
-	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
+
+	// Create Generic API server
+	server, err := app.NewHeapsterApiServer(opt)
+
+	promHandler := prometheus.Handler()
+	healthz.InstallHandler(server.MuxHelper, healthzChecker(metricSink))
+
+	setupHandlers(metricSink, podLister, nodeLister, historicalSource, server.HandlerContainer)
+
 	glog.Infof("Starting heapster on port %d", opt.Port)
 
-	mux := http.NewServeMux()
-	promHandler := prometheus.Handler()
-
-	healthz.InstallHandler(mux, healthzChecker(metricSink))
-
 	if len(opt.TLSCertFile) > 0 && len(opt.TLSKeyFile) > 0 {
-		startSecureServing(opt, handler, promHandler, mux, addr)
-	} else {
-		mux.Handle("/", handler)
-		mux.Handle("/metrics", promHandler)
+		startSecureServing(opt, server.Handler, promHandler, server.MuxHelper)
 
-		glog.Fatal(http.ListenAndServe(addr, mux))
+	} else {
+		server.MuxHelper.Handle("/metrics", promHandler)
+		server.RunServer()
 	}
 }
 
-func startSecureServing(opt *options.HeapsterRunOptions, handler http.Handler, promHandler http.Handler,
-	mux *http.ServeMux, address string) {
+func startSecureServing(opt *options.HeapsterRunOptions, handler http.Handler, promHandler http.Handler, mux *apiserver.MuxHelper) {
 
+	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
 	if len(opt.TLSClientCAFile) > 0 {
 		authPprofHandler, err := newAuthHandler(opt, handler)
 		if err != nil {
@@ -125,13 +128,13 @@ func startSecureServing(opt *options.HeapsterRunOptions, handler http.Handler, p
 	// If allowed users is set, then we need to enable Client Authentication
 	if len(opt.AllowedUsers) > 0 {
 		server := &http.Server{
-			Addr:      address,
+			Addr:      addr,
 			Handler:   mux,
 			TLSConfig: &tls.Config{ClientAuth: tls.RequestClientCert},
 		}
 		glog.Fatal(server.ListenAndServeTLS(opt.TLSCertFile, opt.TLSKeyFile))
 	} else {
-		glog.Fatal(http.ListenAndServeTLS(address, opt.TLSCertFile, opt.TLSKeyFile, mux))
+		glog.Fatal(http.ListenAndServeTLS(addr, opt.TLSCertFile, opt.TLSKeyFile, mux))
 	}
 }
 
