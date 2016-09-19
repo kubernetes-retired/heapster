@@ -6,8 +6,9 @@ Heapster exports the following metrics to its backends.
 |------------|-------------|
 | cpu/limit | CPU hard limit in millicores. |
 | cpu/node_capacity | Cpu capacity of a node. |
-| cpu/node_reservation | Share of cpu that is reserved on the node. |
-| cpu/node_utilization | CPU utilization as a share of node capacity. |
+| cpu/node_allocatable | Cpu allocatable of a node. |
+| cpu/node_reservation | Share of cpu that is reserved on the node allocatable. |
+| cpu/node_utilization | CPU utilization as a share of node allocatable. |
 | cpu/request | CPU request (the guaranteed amount of resources) in millicores. |
 | cpu/usage | Cumulative CPU usage on all cores. |
 | cpu/usage_rate | CPU usage on all cores in millicores. |
@@ -18,8 +19,9 @@ Heapster exports the following metrics to its backends.
 | memory/major_page_faults | Number of major page faults. |
 | memory/major_page_faults_rate | Number of major page faults per second. |
 | memory/node_capacity | Memory capacity of a node. |
-| memory/node_reservation | Share of memory that is reserved on the node. |
-| memory/node_utilization | Memory utilization as a share of memory capacity. |
+| memory/node_allocatable | Memory allocatable of a node. |
+| memory/node_reservation | Share of memory that is reserved on the node allocatable. |
+| memory/node_utilization | Memory utilization as a share of memory allocatable. |
 | memory/page_faults | Number of page faults. |
 | memory/page_faults_rate | Number of page faults per second. |
 | memory/request | Memory request (the guaranteed amount of resources) in bytes. |

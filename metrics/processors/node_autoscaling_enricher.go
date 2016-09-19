@@ -44,25 +44,29 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 	for _, node := range nodes.Items {
 		if metricSet, found := batch.MetricSets[core.NodeKey(node.Name)]; found {
 			metricSet.Labels[core.LabelLabels.Key] = util.LabelsToString(node.Labels, ",")
-			availableCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
-			availableMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
+			capacityCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
+			capacityMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
+			allocatableCpu, _ := node.Status.Allocatable[kube_api.ResourceCPU]
+			allocatableMem, _ := node.Status.Allocatable[kube_api.ResourceMemory]
 
 			cpuRequested := getInt(metricSet, &core.MetricCpuRequest)
 			cpuUsed := getInt(metricSet, &core.MetricCpuUsageRate)
 			memRequested := getInt(metricSet, &core.MetricMemoryRequest)
 			memUsed := getInt(metricSet, &core.MetricMemoryUsage)
 
-			if availableCpu.MilliValue() != 0 {
-				setFloat(metricSet, &core.MetricNodeCpuUtilization, float32(cpuUsed)/float32(availableCpu.MilliValue()))
-				setFloat(metricSet, &core.MetricNodeCpuReservation, float32(cpuRequested)/float32(availableCpu.MilliValue()))
-				setFloat(metricSet, &core.MetricNodeCpuCapacity, float32(availableCpu.MilliValue()))
+			if allocatableCpu.MilliValue() != 0 {
+				setFloat(metricSet, &core.MetricNodeCpuUtilization, float32(cpuUsed)/float32(allocatableCpu.MilliValue()))
+				setFloat(metricSet, &core.MetricNodeCpuReservation, float32(cpuRequested)/float32(allocatableCpu.MilliValue()))
 			}
+			setFloat(metricSet, &core.MetricNodeCpuCapacity, float32(capacityCpu.MilliValue()))
+			setFloat(metricSet, &core.MetricNodeCpuAllocatable, float32(allocatableCpu.MilliValue()))
 
-			if availableMem.Value() != 0 {
-				setFloat(metricSet, &core.MetricNodeMemoryUtilization, float32(memUsed)/float32(availableMem.Value()))
-				setFloat(metricSet, &core.MetricNodeMemoryReservation, float32(memRequested)/float32(availableMem.Value()))
-				setFloat(metricSet, &core.MetricNodeMemoryCapacity, float32(availableMem.Value()))
+			if allocatableMem.Value() != 0 {
+				setFloat(metricSet, &core.MetricNodeMemoryUtilization, float32(memUsed)/float32(allocatableMem.Value()))
+				setFloat(metricSet, &core.MetricNodeMemoryReservation, float32(memRequested)/float32(allocatableMem.Value()))
 			}
+			setFloat(metricSet, &core.MetricNodeMemoryCapacity, float32(capacityMem.Value()))
+			setFloat(metricSet, &core.MetricNodeMemoryAllocatable, float32(allocatableMem.Value()))
 		}
 	}
 	return batch, nil

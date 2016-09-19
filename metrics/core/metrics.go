@@ -72,6 +72,8 @@ var LabeledMetrics = []Metric{
 var NodeAutoscalingMetrics = []Metric{
 	MetricNodeCpuCapacity,
 	MetricNodeMemoryCapacity,
+	MetricNodeCpuAllocatable,
+	MetricNodeMemoryAllocatable,
 	MetricNodeCpuUtilization,
 	MetricNodeMemoryUtilization,
 	MetricNodeCpuReservation,
@@ -398,6 +400,26 @@ var MetricNodeMemoryCapacity = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "memory/node_capacity",
 		Description: "Memory capacity of a node",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNodeCpuAllocatable = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/node_allocatable",
+		Description: "Cpu allocatable of a node",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNodeMemoryAllocatable = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/node_allocatable",
+		Description: "Memory allocatable of a node",
 		Type:        MetricGauge,
 		ValueType:   ValueFloat,
 		Units:       UnitsCount,
