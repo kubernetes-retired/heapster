@@ -26,11 +26,18 @@ spec:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
         - --service-cluster-ip-range=10.10.0.0/24
+        - --basic-auth-file=/srv/kubernetes/basic_auth.csv
         volumeMounts:
         - name: ssl-certs
           mountPath: /etc/ssl/certs
+          readOnly: true
+        - mountPath: /srv/kubernetes
+          name: srvkube
           readOnly: true
       volumes:
       - name: ssl-certs
         hostPath:
           path: /etc/ssl/certs
+      - hostPath:
+          path: /srv/kubernetes
+        name: srvkube
