@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+
 	"k8s.io/heapster/common/flags"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
 )
@@ -25,6 +26,7 @@ import (
 type HeapsterRunOptions struct {
 	*genericoptions.ServerRunOptions
 	MetricResolution time.Duration
+	EnableAPIServer  bool
 	Port             int
 	Ip               string
 	MaxProcs         int
@@ -50,8 +52,12 @@ func (h *HeapsterRunOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.Var(&h.Sources, "source", "source(s) to watch")
 	fs.Var(&h.Sinks, "sink", "external sink(s) that receive data")
 	fs.DurationVar(&h.MetricResolution, "metric_resolution", 60*time.Second, "The resolution at which heapster will retain metrics.")
-	// TODO: Revise this flag before Heapster v1.3 and Kubernetes v1.5
+
+	// TODO: Revise these flags before Heapster v1.3 and Kubernetes v1.5
+	fs.BoolVar(&h.EnableAPIServer, "api-server", false, "Enable API server for the Metrics API. "+
+		"If set, the Metrics API will be served on --insecure-port (internally) and --secure-port (externally).")
 	fs.IntVar(&h.Port, "heapster-port", 8082, "port used by the Heapster-specific APIs")
+
 	fs.StringVar(&h.Ip, "listen_ip", "", "IP to listen on, defaults to all IPs")
 	fs.IntVar(&h.MaxProcs, "max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
 	fs.StringVar(&h.TLSCertFile, "tls_cert", "", "file containing TLS certificate")

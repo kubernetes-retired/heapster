@@ -85,8 +85,10 @@ func main() {
 	}
 	man.Start()
 
-	// Run API server in a separate goroutine
-	createAndRunAPIServer(opt, metricSink)
+	if opt.EnableAPIServer {
+		// Run API server in a separate goroutine
+		createAndRunAPIServer(opt, metricSink)
+	}
 
 	mux := http.NewServeMux()
 	promHandler := prometheus.Handler()
