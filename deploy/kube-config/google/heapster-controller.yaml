@@ -29,6 +29,7 @@ spec:
         - --sink=gcl
         - --poll_duration=2m
         - --stats_resolution=1m
+        - --service-cluster-ip-range=10.10.0.0/24
         volumeMounts:
         - mountPath: /etc/ssl/certs
           name: ssl-certs

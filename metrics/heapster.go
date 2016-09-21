@@ -33,6 +33,7 @@ import (
 
 	"k8s.io/heapster/common/flags"
 	kube_config "k8s.io/heapster/common/kubernetes"
+	"k8s.io/heapster/metrics/cmd/heapster-apiserver/app"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/manager"
 	"k8s.io/heapster/metrics/options"
@@ -84,14 +85,18 @@ func main() {
 	}
 	man.Start()
 
-	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource)
-	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
-	glog.Infof("Starting heapster on port %d", opt.Port)
+	if opt.EnableAPIServer {
+		// Run API server in a separate goroutine
+		createAndRunAPIServer(opt, metricSink)
+	}
 
 	mux := http.NewServeMux()
 	promHandler := prometheus.Handler()
-
+	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource)
 	healthz.InstallHandler(mux, healthzChecker(metricSink))
+
+	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
+	glog.Infof("Starting heapster on port %d", opt.Port)
 
 	if len(opt.TLSCertFile) > 0 && len(opt.TLSKeyFile) > 0 {
 		startSecureServing(opt, handler, promHandler, mux, addr)
@@ -101,6 +106,23 @@ func main() {
 
 		glog.Fatal(http.ListenAndServe(addr, mux))
 	}
+}
+func createAndRunAPIServer(opt *options.HeapsterRunOptions, metricSink *metricsink.MetricSink) {
+	server, err := app.NewHeapsterApiServer(opt)
+	if err != nil {
+		// TODO: Should this be fatal?
+		glog.Errorf("Could not create the API server: %v", err)
+		return
+	}
+	healthz.InstallHandler(server.MuxHelper, healthzChecker(metricSink))
+	runApiServer := func(s *app.HeapsterAPIServer) {
+		if err := s.RunServer(); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+	}
+	glog.Infof("Starting Heapster API server on port %d", opt.InsecurePort)
+	go runApiServer(server)
 }
 
 func startSecureServing(opt *options.HeapsterRunOptions, handler http.Handler, promHandler http.Handler,
