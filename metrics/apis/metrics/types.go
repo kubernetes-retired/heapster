@@ -15,14 +15,14 @@
 package metrics
 
 import (
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 // resource usage metrics of a node.
 type NodeMetrics struct {
 	unversioned.TypeMeta `json:",inline"`
-	api.ObjectMeta        `json:"metadata,omitempty"`
+	api.ObjectMeta       `json:"metadata,omitempty"`
 
 	// The following fields define time interval from which metrics were
 	// collected from the interval [Timestamp-Window, Timestamp].
@@ -47,7 +47,7 @@ type NodeMetricsList struct {
 // resource usage metrics of a pod.
 type PodMetrics struct {
 	unversioned.TypeMeta `json:",inline"`
-	api.ObjectMeta        `json:"metadata,omitempty"`
+	api.ObjectMeta       `json:"metadata,omitempty"`
 
 	// The following fields define time interval from which metrics were
 	// collected from the interval [Timestamp-Window, Timestamp].

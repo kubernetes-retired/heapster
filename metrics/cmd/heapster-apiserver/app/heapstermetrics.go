@@ -17,19 +17,24 @@ package app
 import (
 	"github.com/golang/glog"
 
+	"k8s.io/heapster/metrics/apis/metrics"
+	_ "k8s.io/heapster/metrics/apis/metrics/install"
+	"k8s.io/heapster/metrics/sinks/metric"
+	nodemetricsstorage "k8s.io/heapster/metrics/storage/nodemetrics"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/rest"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
+	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/genericapiserver"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
-
-	"k8s.io/heapster/metrics/apis/metrics"
-	_ "k8s.io/heapster/metrics/apis/metrics/install"
 )
 
-func installMetricsAPIs(s *genericoptions.ServerRunOptions, g *genericapiserver.GenericAPIServer) {
+func installMetricsAPIs(s *genericoptions.ServerRunOptions, g *genericapiserver.GenericAPIServer,
+	metricSink *metricsink.MetricSink, nodeLister *cache.StoreToNodeLister) {
+
+	nodemetricsStorage := nodemetricsstorage.NewStorage(metrics.Resource("nodemetrics"), metricSink, nodeLister)
 	heapsterResources := map[string]rest.Storage{
-	// TODO: Register resources with storage
+		"nodes": nodemetricsStorage,
 	}
 	heapsterGroupMeta := registered.GroupOrDie(metrics.GroupName)
 	apiGroupInfo := genericapiserver.APIGroupInfo{

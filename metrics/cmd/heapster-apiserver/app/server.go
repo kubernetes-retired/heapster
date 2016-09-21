@@ -26,10 +26,12 @@ import (
 	"github.com/spf13/pflag"
 
 	"k8s.io/heapster/metrics/options"
+	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/kubernetes/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apiserver/authenticator"
+	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/controller/framework/informers"
 	"k8s.io/kubernetes/pkg/genericapiserver"
 	genericauthorizer "k8s.io/kubernetes/pkg/genericapiserver/authorizer"
@@ -53,7 +55,9 @@ func NewAPIServerCommand() *cobra.Command {
 
 type HeapsterAPIServer struct {
 	*genericapiserver.GenericAPIServer
-	options *options.HeapsterRunOptions
+	options    *options.HeapsterRunOptions
+	metricSink *metricsink.MetricSink
+	nodeLister *cache.StoreToNodeLister
 }
 
 // Run runs the specified APIServer. This should never exit.
@@ -62,17 +66,21 @@ func (h *HeapsterAPIServer) RunServer() error {
 	return nil
 }
 
-func NewHeapsterApiServer(s *options.HeapsterRunOptions) (*HeapsterAPIServer, error) {
+func NewHeapsterApiServer(s *options.HeapsterRunOptions, metricSink *metricsink.MetricSink,
+	nodeLister *cache.StoreToNodeLister) (*HeapsterAPIServer, error) {
+
 	server, err := newAPIServer(s.ServerRunOptions)
 	if err != nil {
 		return &HeapsterAPIServer{}, err
 	}
 
-	installMetricsAPIs(s.ServerRunOptions, server)
+	installMetricsAPIs(s.ServerRunOptions, server, metricSink, nodeLister)
 
 	return &HeapsterAPIServer{
 		GenericAPIServer: server,
 		options:          s,
+		metricSink:       metricSink,
+		nodeLister:       nodeLister,
 	}, nil
 }
 

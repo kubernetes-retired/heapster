@@ -15,6 +15,7 @@
 package metrics
 
 import (
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/runtime"
 )
@@ -41,5 +42,12 @@ func AddToScheme(scheme *runtime.Scheme) {
 }
 
 func addKnownTypes(scheme *runtime.Scheme) {
-	scheme.AddKnownTypes(SchemeGroupVersion)
+	scheme.AddKnownTypes(SchemeGroupVersion,
+		&NodeMetrics{},
+		&NodeMetricsList{},
+		&api.ListOptions{},
+	)
 }
+
+func (obj *NodeMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
+func (obj *NodeMetricsList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }

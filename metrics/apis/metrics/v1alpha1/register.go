@@ -16,6 +16,7 @@ package v1alpha1
 
 import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/runtime"
 	versionedwatch "k8s.io/kubernetes/pkg/watch/versioned"
 )
@@ -32,6 +33,13 @@ func AddToScheme(scheme *runtime.Scheme) {
 }
 
 func addKnownTypes(scheme *runtime.Scheme) {
-	scheme.AddKnownTypes(SchemeGroupVersion)
+	scheme.AddKnownTypes(SchemeGroupVersion,
+		&NodeMetrics{},
+		&NodeMetricsList{},
+		&v1.ListOptions{},
+	)
 	versionedwatch.AddToGroupVersion(scheme, SchemeGroupVersion)
 }
+
+func (obj *NodeMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
+func (obj *NodeMetricsList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }
