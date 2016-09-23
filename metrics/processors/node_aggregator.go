@@ -41,7 +41,7 @@ func (this *NodeAggregator) Process(batch *core.DataBatch) (*core.DataBatch, err
 				nodeKey := core.NodeKey(nodeName)
 				node, found := batch.MetricSets[nodeKey]
 				if !found {
-					glog.V(1).Info("No metric for node %s, cannot perform node level aggregation.")
+					glog.V(1).Infof("No metric for node %s, cannot perform node level aggregation.", nodeKey)
 				} else if err := aggregate(metricSet, node, this.MetricsToAggregate); err != nil {
 					return nil, err
 				}
