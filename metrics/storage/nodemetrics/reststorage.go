@@ -24,9 +24,9 @@ import (
 	_ "k8s.io/heapster/metrics/apis/metrics/install"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/heapster/metrics/storage/util"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/labels"
@@ -109,7 +109,7 @@ func (m *MetricStorage) getNodeMetrics(node string) *metrics.NodeMetrics {
 		return nil
 	}
 
-	usage, err := parseResourceList(ms)
+	usage, err := util.ParseResourceList(ms)
 	if err != nil {
 		return nil
 	}
@@ -123,24 +123,4 @@ func (m *MetricStorage) getNodeMetrics(node string) *metrics.NodeMetrics {
 		Window:    unversioned.Duration{Duration: time.Minute},
 		Usage:     usage,
 	}
-}
-
-func parseResourceList(ms *core.MetricSet) (api.ResourceList, error) {
-	cpu, found := ms.MetricValues[core.MetricCpuUsageRate.MetricDescriptor.Name]
-	if !found {
-		return api.ResourceList{}, fmt.Errorf("cpu not found")
-	}
-	mem, found := ms.MetricValues[core.MetricMemoryWorkingSet.MetricDescriptor.Name]
-	if !found {
-		return api.ResourceList{}, fmt.Errorf("memory not found")
-	}
-
-	return api.ResourceList{
-		api.ResourceCPU: *resource.NewMilliQuantity(
-			cpu.IntValue,
-			resource.DecimalSI),
-		api.ResourceMemory: *resource.NewQuantity(
-			mem.IntValue,
-			resource.BinarySI),
-	}, nil
 }

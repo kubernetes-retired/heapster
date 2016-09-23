@@ -36,6 +36,8 @@ func addKnownTypes(scheme *runtime.Scheme) {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&NodeMetrics{},
 		&NodeMetricsList{},
+		&PodMetrics{},
+		&PodMetricsList{},
 		&v1.ListOptions{},
 	)
 	versionedwatch.AddToGroupVersion(scheme, SchemeGroupVersion)
@@ -43,3 +45,6 @@ func addKnownTypes(scheme *runtime.Scheme) {
 
 func (obj *NodeMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
 func (obj *NodeMetricsList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }
+
+func (obj *PodMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
+func (obj *PodMetricsList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }
