@@ -106,7 +106,7 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 	podKey := core.PodKey(namespace, podName)
 	_, oldfound := batch.MetricSets[podKey]
 	if !oldfound {
-		_, newfound := batch.MetricSets[podKey]
+		_, newfound := newMs[podKey]
 		if !newfound {
 			glog.V(2).Infof("Pod %s not found, creating a stub", podKey)
 			podMs := &core.MetricSet{
