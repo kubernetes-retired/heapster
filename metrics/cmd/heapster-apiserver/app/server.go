@@ -67,14 +67,14 @@ func (h *HeapsterAPIServer) RunServer() error {
 }
 
 func NewHeapsterApiServer(s *options.HeapsterRunOptions, metricSink *metricsink.MetricSink,
-	nodeLister *cache.StoreToNodeLister) (*HeapsterAPIServer, error) {
+	nodeLister *cache.StoreToNodeLister, podLister *cache.StoreToPodLister) (*HeapsterAPIServer, error) {
 
 	server, err := newAPIServer(s.ServerRunOptions)
 	if err != nil {
 		return &HeapsterAPIServer{}, err
 	}
 
-	installMetricsAPIs(s.ServerRunOptions, server, metricSink, nodeLister)
+	installMetricsAPIs(s.ServerRunOptions, server, metricSink, nodeLister, podLister)
 
 	return &HeapsterAPIServer{
 		GenericAPIServer: server,
