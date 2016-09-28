@@ -855,8 +855,12 @@ func validateGlusterfs(glusterfs *api.GlusterfsVolumeSource, fldPath *field.Path
 
 func validateFlockerVolumeSource(flocker *api.FlockerVolumeSource, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	if len(flocker.DatasetName) == 0 {
-		allErrs = append(allErrs, field.Required(fldPath.Child("datasetName"), ""))
+	if len(flocker.DatasetName) == 0 && len(flocker.DatasetUUID) == 0 {
+		//TODO: consider adding a RequiredOneOf() error for this and similar cases
+		allErrs = append(allErrs, field.Required(fldPath, "one of datasetName and datasetUUID is required"))
+	}
+	if len(flocker.DatasetName) != 0 && len(flocker.DatasetUUID) != 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath, "resource", "datasetName and datasetUUID can not be specified simultaneously"))
 	}
 	if strings.Contains(flocker.DatasetName, "/") {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("datasetName"), flocker.DatasetName, "must not contain '/'"))
@@ -2567,6 +2571,9 @@ func ValidateServiceUpdate(service, oldService *api.Service) field.ErrorList {
 	if api.IsServiceIPSet(oldService) {
 		allErrs = append(allErrs, ValidateImmutableField(service.Spec.ClusterIP, oldService.Spec.ClusterIP, field.NewPath("spec", "clusterIP"))...)
 	}
+
+	// TODO(freehan): allow user to update loadbalancerSourceRanges
+	allErrs = append(allErrs, ValidateImmutableField(service.Spec.LoadBalancerSourceRanges, oldService.Spec.LoadBalancerSourceRanges, field.NewPath("spec", "loadBalancerSourceRanges"))...)
 
 	allErrs = append(allErrs, ValidateService(service)...)
 	return allErrs
