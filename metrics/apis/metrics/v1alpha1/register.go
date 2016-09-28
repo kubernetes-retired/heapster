@@ -28,11 +28,11 @@ const GroupName = "metrics"
 var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: "v1alpha1"}
 
 // Adds the list of known types to api.Scheme.
-func AddToScheme(scheme *runtime.Scheme) {
-	addKnownTypes(scheme)
+func AddToScheme(scheme *runtime.Scheme) error {
+	return addKnownTypes(scheme)
 }
 
-func addKnownTypes(scheme *runtime.Scheme) {
+func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&NodeMetrics{},
 		&NodeMetricsList{},
@@ -41,6 +41,7 @@ func addKnownTypes(scheme *runtime.Scheme) {
 		&v1.ListOptions{},
 	)
 	versionedwatch.AddToGroupVersion(scheme, SchemeGroupVersion)
+	return nil
 }
 
 func (obj *NodeMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }

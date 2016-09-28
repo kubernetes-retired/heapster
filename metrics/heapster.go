@@ -112,11 +112,10 @@ func createAndRunAPIServer(opt *options.HeapsterRunOptions, metricSink *metricsi
 
 	server, err := app.NewHeapsterApiServer(opt, metricSink, nodeLister, podLister)
 	if err != nil {
-		// TODO: Should this be fatal?
 		glog.Errorf("Could not create the API server: %v", err)
 		return
 	}
-	healthz.InstallHandler(server.MuxHelper, healthzChecker(metricSink))
+	healthz.InstallHandler(server.Mux, healthzChecker(metricSink))
 	runApiServer := func(s *app.HeapsterAPIServer) {
 		if err := s.RunServer(); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
