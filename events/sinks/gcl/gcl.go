@@ -22,11 +22,11 @@ import (
 	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/events/core"
 
+	gce "cloud.google.com/go/compute/metadata"
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	gcl "google.golang.org/api/logging/v2beta1"
-	gce "google.golang.org/cloud/compute/metadata"
 )
 
 const (

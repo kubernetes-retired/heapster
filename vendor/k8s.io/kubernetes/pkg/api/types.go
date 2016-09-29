@@ -741,10 +741,14 @@ type CephFSVolumeSource struct {
 }
 
 // Represents a Flocker volume mounted by the Flocker agent.
+// One and only one of datasetName and datasetUUID should be set.
 // Flocker volumes do not support ownership management or SELinux relabeling.
 type FlockerVolumeSource struct {
-	// Required: the volume name. This is going to be store on metadata -> name on the payload for Flocker
-	DatasetName string `json:"datasetName"`
+	// Name of the dataset stored as metadata -> name on the dataset for Flocker
+	// should be considered as deprecated
+	DatasetName string `json:"datasetName,omitempty"`
+	// UUID of the dataset. This is unique identifier of a Flocker dataset
+	DatasetUUID string `json:"datasetUUID,omitempty"`
 }
 
 // Represents a volume containing downward API info.
@@ -2086,9 +2090,13 @@ type NodeDaemonEndpoints struct {
 
 // NodeSystemInfo is a set of ids/uuids to uniquely identify the node.
 type NodeSystemInfo struct {
-	// Machine ID reported by the node.
+	// MachineID reported by the node. For unique machine identification
+	// in the cluster this field is prefered. Learn more from man(5)
+	// machine-id: http://man7.org/linux/man-pages/man5/machine-id.5.html
 	MachineID string `json:"machineID"`
-	// System UUID reported by the node.
+	// SystemUUID reported by the node. For unique machine identification
+	// MachineID is prefered. This field is specific to Red Hat hosts
+	// https://access.redhat.com/documentation/en-US/Red_Hat_Subscription_Management/1/html/RHSM/getting-system-uuid.html
 	SystemUUID string `json:"systemUUID"`
 	// Boot ID reported by the node.
 	BootID string `json:"bootID"`
@@ -2564,7 +2572,7 @@ type SerializedReference struct {
 type EventSource struct {
 	// Component from which the event is generated.
 	Component string `json:"component,omitempty"`
-	// Host name on which the event is generated.
+	// Node name on which the event is generated.
 	Host string `json:"host,omitempty"`
 }
 

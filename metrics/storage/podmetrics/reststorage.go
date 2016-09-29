@@ -91,28 +91,14 @@ func (m *MetricStorage) List(ctx api.Context, options *api.ListOptions) (runtime
 func (m *MetricStorage) Get(ctx api.Context, name string) (runtime.Object, error) {
 	namespace := api.NamespaceValue(ctx)
 
-	o, exists, err := m.podLister.Get(
-		&api.Pod{
-			ObjectMeta: api.ObjectMeta{
-				Namespace: namespace,
-				Name:      name,
-			},
-		},
-	)
+	pod, err := m.podLister.Pods(namespace).Get(name)
 	if err != nil {
 		errMsg := fmt.Errorf("Error while getting pod %v: %v", name, err)
 		glog.Error(errMsg)
 		return &metrics.PodMetrics{}, errMsg
 	}
-	if !exists || o == nil {
+	if pod == nil {
 		return &metrics.PodMetrics{}, errors.NewNotFound(api.Resource("Pod"), fmt.Sprintf("%v/%v", namespace, name))
-	}
-
-	pod, ok := o.(*api.Pod)
-	if !ok {
-		errMsg := fmt.Errorf("Error while converting pod %v/%v: %v", namespace, name, err)
-		glog.Error(errMsg)
-		return &metrics.PodMetrics{}, errors.NewInternalError(errMsg)
 	}
 
 	podMetrics := m.getPodMetrics(pod)
