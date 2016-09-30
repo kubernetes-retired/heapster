@@ -119,7 +119,7 @@ func TestPodEnricher(t *testing.T) {
 
 	store := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	podLister := &cache.StoreToPodLister{Indexer: store}
-	podLister.Add(&pod)
+	podLister.Indexer.Add(&pod)
 	podBasedEnricher := PodBasedEnricher{podLister: podLister}
 
 	var err error
