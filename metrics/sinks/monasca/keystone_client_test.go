@@ -34,7 +34,7 @@ func TestMonascaURLDiscovery(t *testing.T) {
 	assert.Equal(t, monURL.String(), monascaAPIStub.URL)
 }
 
-func TestGetTokenWhenMissing(t *testing.T) {
+func TestCreateUnscopedToken(t *testing.T) {
 	// setup
 	ksClient, err := NewKeystoneClient(testConfig)
 	assert.NoError(t, err)
@@ -45,6 +45,20 @@ func TestGetTokenWhenMissing(t *testing.T) {
 	// assert
 	assert.NoError(t, err)
 	assert.Equal(t, token, testToken)
+}
+
+func TestCreateScopedToken(t *testing.T) {
+	// setup
+	scopedConfig := testConfig
+	scopedConfig.TenantID = testTenantID
+	ksClient, err := NewKeystoneClient(scopedConfig)
+
+	// do
+	token, err := ksClient.GetToken()
+
+	// assert
+	assert.NoError(t, err)
+	assert.Equal(t, token, testScopedToken)
 }
 
 func TestGetTokenWhenInvalid(t *testing.T) {
