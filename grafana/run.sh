@@ -66,4 +66,3 @@ done
 echo ""
 echo "Bringing Grafana back to the foreground"
 fg
-
