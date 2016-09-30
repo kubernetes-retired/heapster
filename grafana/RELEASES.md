@@ -1,5 +1,8 @@
 # Release Notes for Grafana container.
 
+## 3.1.1 (30-09-2016)
+- Support Grafana 3.1.1.
+
 ## 2.6.0-2 (29-02-2016)
 - Handle new Influxdb format
 - Updated dashboards
