@@ -3,8 +3,8 @@ kind: Service
 metadata:
   labels:
     task: monitoring
-    service: grafana
-  name: grafana
+    service: chronograf
+  name: chronograf
   namespace: kube-system
 spec:
   # In a production setup, we recommend accessing Grafana through an external Loadbalancer
@@ -13,6 +13,6 @@ spec:
   # type: NodePort
   ports:
   - port: 80
-    targetPort: 3000
+    targetPort: 10000
   selector:
-    service: grafana
+    service: chronograf

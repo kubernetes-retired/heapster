@@ -4,6 +4,7 @@ metadata:
   labels:
     kubernetes.io/cluster-service: 'true'
     kubernetes.io/name: Heapster
+    task: monitoring
   name: heapster
   namespace: kube-system
 spec:
@@ -11,4 +12,4 @@ spec:
   - port: 80
     targetPort: 8082
   selector:
-    k8s-app: heapster
+    service: heapster
