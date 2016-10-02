@@ -230,7 +230,7 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 
 	if a.isRunningInKubernetes() {
 		// The /namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name} endpoint exposes
-		// metrics for a list od pods of the model.
+		// metrics for a list of pods of the model.
 		ws.Route(ws.GET("/namespaces/{namespace-name}/pod-list/{pod-list}/metrics/{metric-name:*}").
 			To(metrics.InstrumentRouteFunc("podListMetric", a.podListMetrics)).
 			Doc("Export a metric for all pods from the given list").
