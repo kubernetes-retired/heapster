@@ -41,7 +41,7 @@ Grafana is set up to auto-populate nodes and pods using templates.
 
 	kubectl --namespace kube-system get pods
 
-	kubectl --namespace get services
+	kubectl --namespace kube-system get services
 
 2. To access the InfluxDB UI, you will have to make the InfluxDB service externally visible, similar to how Grafana & Chronograf are made publicly accessible.
 
