@@ -4,6 +4,9 @@ metadata:
   labels:
     task: monitoring
     app: grafana
+    # For use as a Cluster add-on (https://github.com/kubernetes/kubernetes/tree/master/cluster/addons)
+    # If you are NOT using this as an addon, you should comment out this line.
+    kubernetes.io/cluster-service: 'true'
     kubernetes.io/name: Grafana
   name: grafana
   namespace: kube-system

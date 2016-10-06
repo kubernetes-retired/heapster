@@ -4,6 +4,10 @@ metadata:
   labels:
     task: monitoring
     app: influxdb
+    # For use as a Cluster add-on (https://github.com/kubernetes/kubernetes/tree/master/cluster/addons)
+    # If you are NOT using this as an addon, you should comment out this line.
+    kubernetes.io/cluster-service: 'true'
+    kubernetes.io/name: InfluxDB
   name: influxdb
   namespace: kube-system
 spec:
