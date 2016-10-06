@@ -3,7 +3,8 @@ kind: Service
 metadata:
   labels:
     task: monitoring
-    service: chronograf
+    app: chronograf
+    kubernetes.io/name: Chronograf
   name: chronograf
   namespace: kube-system
 spec:
