@@ -3,10 +3,11 @@ kind: Service
 metadata:
   labels:
     task: monitoring
+    app: influxdb
   name: influxdb
   namespace: kube-system
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
   - name: http
     port: 80
