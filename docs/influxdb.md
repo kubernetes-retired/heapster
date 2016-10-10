@@ -1,9 +1,17 @@
 # Run Heapster in a Kubernetes cluster with an InfluxDB backend and a Grafana UI
 
 ### Setup a Kubernetes cluster
-[Bring up a Kubernetes cluster](https://github.com/kubernetes/kubernetes), if you haven't already. Ensure that `kubecfg.sh` is exported.
+[Bring up a Kubernetes cluster](https://github.com/kubernetes/kubernetes), if you haven't already.
+Ensure that you are able to interact with the cluster via `kubectl` (this may be `kubectl.sh` if using
+the local-up-cluster in the Kubernetes repository).
 
 ### Start all of the pods and services
+
+In order to deploy Heapster and InfluxDB, you will need to create the Kubernetes resources
+described by the contents of [deploy/kube-config/influxdb](../deploy/kubeconfig/influxdb).
+Ensure that you have a valid checkout of Heapster and are in the root directory of
+the Heapster repository, and then run
+
 ```shell
 $ kubectl create -f deploy/kube-config/influxdb/
 ```
@@ -11,7 +19,7 @@ $ kubectl create -f deploy/kube-config/influxdb/
 Grafana service by default requests for a LoadBalancer. If that is not available in your cluster, consider changing that to NodePort. Use the external IP assigned to the Grafana service,
 to access Grafana.
 The default user name and password is 'admin'.
-Once you login to Grafana, add a datasource that is InfluxDB. The URL for InfluxDB will be `http://localhost:8086`. Database name is 'k8s'. Default user name and password is 'root'. 
+Once you login to Grafana, add a datasource that is InfluxDB. The URL for InfluxDB will be `http://localhost:8086`. Database name is 'k8s'. Default user name and password is 'root'.
 Grafana documentation for InfluxDB [here](http://docs.grafana.org/datasources/influxdb/).
 
 Take a look at the [storage schema](storage-schema.md) to understand how metrics are stored in InfluxDB.
