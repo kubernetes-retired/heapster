@@ -52,6 +52,7 @@ type ksAuthRequest struct {
 
 type ksAuth struct {
 	Identity ksIdentity `json:"identity"`
+	Scope    ksScope    `json:"scope"`
 }
 
 type ksIdentity struct {
@@ -66,6 +67,14 @@ type ksPassword struct {
 type ksUser struct {
 	ID       string `json:"id"`
 	Password string `json:"password"`
+}
+
+type ksScope struct {
+	Project ksProject `json:"project"`
+}
+
+type ksProject struct {
+	ID string `json:"id"`
 }
 
 // prepare before testing
@@ -172,10 +181,21 @@ func TestMain(m *testing.M) {
 				return
 			}
 
+			// check if the request is for a scoped token
+			returnedToken := testToken
+			returnedBody := ksUnscopedAuthResp
+			if req.Auth.Scope.Project.ID != "" {
+				if req.Auth.Scope.Project.ID != testTenantID {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				returnedToken = testScopedToken
+				returnedBody = ksScopedAuthResp
+			}
 			// return a token
-			w.Header().Add("X-Subject-Token", testToken)
+			w.Header().Add("X-Subject-Token", returnedToken)
 			w.WriteHeader(http.StatusAccepted)
-			w.Write([]byte(ksAuthResp))
+			w.Write([]byte(returnedBody))
 			break
 		case "/v3/services":
 			w.Write([]byte(ksServicesResp))

@@ -27,7 +27,7 @@ var measureTime = time.Now()
 var testInput = &core.DataBatch{
 	Timestamp: measureTime,
 	MetricSets: map[string]*core.MetricSet{
-		"set1": &core.MetricSet{
+		"set1": {
 			MetricValues: map[string]core.MetricValue{
 				"m2": core.MetricValue{ValueType: core.ValueInt64, IntValue: 2 ^ 63},
 				"m3": core.MetricValue{ValueType: core.ValueFloat, FloatValue: -1023.0233},
@@ -37,13 +37,13 @@ var testInput = &core.DataBatch{
 			},
 			LabeledMetrics: []core.LabeledMetric{},
 		},
-		"set2": &core.MetricSet{
+		"set2": {
 			MetricValues: map[string]core.MetricValue{},
 			Labels: map[string]string{
 				core.LabelHostname.Key: "10.140.32.11",
 			},
 			LabeledMetrics: []core.LabeledMetric{
-				core.LabeledMetric{
+				{
 					Name: "cpu/usage",
 					Labels: map[string]string{
 						core.LabelContainerName.Key: "POD",
@@ -56,7 +56,7 @@ var testInput = &core.DataBatch{
 						IntValue:  1,
 					},
 				},
-				core.LabeledMetric{
+				{
 					Name: "memory/usage",
 					Labels: map[string]string{
 						core.LabelContainerName.Key: "machine",
@@ -74,7 +74,7 @@ var testInput = &core.DataBatch{
 }
 
 var expectedTransformed = []metric{
-	metric{
+	{
 		Name: "m2",
 		Dimensions: map[string]string{
 			"component":                 emptyValue,
@@ -86,7 +86,7 @@ var expectedTransformed = []metric{
 		Timestamp: measureTime.UnixNano() / 1000000,
 		ValueMeta: map[string]string{},
 	},
-	metric{
+	{
 		Name: "m3",
 		Dimensions: map[string]string{
 			"component":                 emptyValue,
@@ -98,7 +98,7 @@ var expectedTransformed = []metric{
 		Timestamp: measureTime.UnixNano() / 1000000,
 		ValueMeta: map[string]string{},
 	},
-	metric{
+	{
 		Name: "cpu.usage",
 		Dimensions: map[string]string{
 			"component":                 "mypod-hc3s",
@@ -112,7 +112,7 @@ var expectedTransformed = []metric{
 			core.LabelLabels.Key: "run:test pod.name:default/test-u2dc",
 		},
 	},
-	metric{
+	{
 		Name: "memory.usage",
 		Dimensions: map[string]string{
 			"component":                 emptyValue,
@@ -129,7 +129,10 @@ var expectedTransformed = []metric{
 	},
 }
 
-const testToken = "e80b74"
+const (
+	testToken       = "e80b74"
+	testScopedToken = "ac54e1"
+)
 
 var invalidToken = &tokens.Token{ID: "invalidToken", ExpiresAt: time.Unix(time.Now().Unix()-5000, 0)}
 var validToken = &tokens.Token{ID: testToken, ExpiresAt: time.Unix(time.Now().Unix()+50000, 0)}
@@ -142,11 +145,13 @@ const (
 	testUserID     = "0ca8f6"
 	testDomainID   = "1789d1"
 	testDomainName = "example.com"
+	testTenantID   = "8ca4e3"
 )
 
 var (
 	ksVersionResp       string
-	ksAuthResp          string
+	ksUnscopedAuthResp  string
+	ksScopedAuthResp    string
 	ksServicesResp      string
 	ksEndpointsResp     string
 	monUnauthorizedResp string
@@ -167,7 +172,7 @@ func initKeystoneRespStubs() {
                         }]
                       }
                     }`
-	ksAuthResp = `{
+	ksUnscopedAuthResp = `{
                     "token": {
                         "audit_ids": ["VcxU2JYqT8OzfUVvrjEITQ", "qNUTIJntTzO1-XUk5STybw"],
                         "expires_at": "2013-02-27T18:30:59.999999Z",
@@ -185,6 +190,72 @@ func initKeystoneRespStubs() {
                         }
                     }
                 }`
+	ksScopedAuthResp = `{
+		   "token":{
+		      "audit_ids":[
+			 "wQ19eUlHQcGi_MZka-CFPA"
+		      ],
+		      "issued_at":"2013-02-27T16:30:59.999999Z",
+		      "expires_at":"2013-02-27T18:30:59.999999Z",
+		      "is_domain":false,
+		      "methods":[
+			 "password"
+		      ],
+		      "roles":[
+			 {
+			    "id":"241497",
+			    "name":"monasca-agent"
+			 }
+		      ],
+		      "is_admin_project":false,
+		      "project":{
+			 "domain":{
+			    "id":"` + testDomainID + `",
+			    "name":"` + testDomainName + `"
+			 },
+			 "id":"` + testTenantID + `",
+			 "name":"monasca-project"
+		      },
+		      "catalog":[
+			 {
+			    "endpoints":[
+			       {
+				  "region_id":"RegionOne",
+				  "url":"` + monascaAPIStub.URL + `",
+				  "region":"RegionOne",
+				  "interface":"public",
+				  "id":"3afbce"
+			       }
+			    ],
+			    "type":"monitoring",
+			    "id":"6d0a8d",
+			    "name":"monasca"
+			 },
+			 {
+			    "endpoints":[
+			       {
+				  "region_id":"RegionOne",
+				  "url":"` + keystoneAPIStub.URL + `",
+				  "region":"RegionOne",
+				  "interface":"public",
+				  "id":"94927e"
+			       }
+			    ],
+			    "type":"identity",
+			    "id":"73c7a2",
+			    "name":"keystone"
+			 }
+		      ],
+		      "user":{
+			 "domain":{
+			    "id":"` + testDomainID + `",
+			    "name":"` + testDomainName + `"
+			 },
+			 "id":"` + testUserID + `",
+			 "name":"` + testUsername + `"
+		      }
+		   }
+		}`
 	ksServicesResp = `{
                         "services": [{
                           "description": "Monasca Service",

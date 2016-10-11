@@ -123,7 +123,16 @@ func (ksClient *KeystoneClientImpl) GetToken() (string, error) {
 
 // generates a brand new Keystone token
 func (ksClient *KeystoneClientImpl) newToken() (string, error) {
-	token, err := tokens.Create(ksClient.client, ksClient.opts, nil).Extract()
+	opts := ksClient.opts
+	var scope *tokens.Scope
+	if opts.TenantID != "" {
+		scope = &tokens.Scope{
+			ProjectID: opts.TenantID,
+		}
+		opts.TenantID = ""
+		opts.TenantName = ""
+	}
+	token, err := tokens.Create(ksClient.client, opts, scope).Extract()
 	if err != nil {
 		return "", err
 	}
