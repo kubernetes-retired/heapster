@@ -1,0 +1,128 @@
+package: k8s.io/heapster
+import:
+- package: cloud.google.com/go
+  version: 39c34167480d9b17fb60788334bffd5e116d6799
+  subpackages:
+  - compute/metadata
+  - internal
+- package: github.com/bigdatadev/goryman
+  version: 55c3cbc3df542201b3c140e72a758d0adae4bc05
+- package: github.com/bluebreezecf/opentsdb-goclient
+  version: 539764bd9a9cae6632dea52b5a587451728a3983
+  subpackages:
+  - client
+  - config
+- package: github.com/davecgh/go-spew
+  version: v1.0.0
+  subpackages:
+  - spew
+- package: github.com/emicklei/go-restful
+  version: 89ef8af493ab468a45a42bb0d89a06fccdd2fb22
+- package: github.com/gogo/protobuf
+  version: v0.2
+- package: github.com/golang/glog
+  version: 44145f04b68cf362d9c4df2182967c2275eaefed
+- package: github.com/google/cadvisor
+  version: v0.24.0
+  subpackages:
+  - info/v1
+- package: github.com/hawkular/hawkular-client-go
+  version: v0.6.0
+  subpackages:
+  - metrics
+- package: github.com/influxdata/influxdb
+  version: v0.12.2
+  subpackages:
+  - client
+  - models
+- package: github.com/optiopay/kafka
+  version: bc8e0950689f19fafd454acd517abe7b251cf54f
+  subpackages:
+  - proto
+- package: github.com/pborman/uuid
+  version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+- package: github.com/prometheus/client_golang
+  version: 0.7.0
+  subpackages:
+  - prometheus
+- package: github.com/rackspace/gophercloud
+  version: 934dbf81977c67c521c75492dc1f55ca74dc5b04
+  subpackages:
+  - openstack
+  - openstack/identity/v3/endpoints
+  - openstack/identity/v3/services
+  - openstack/identity/v3/tokens
+  - pagination
+- package: github.com/smartystreets/go-aws-auth
+  version: 2043e6d0bb7e4c18464a7bba562acbe482e3cabd
+- package: github.com/spf13/cobra
+  version: f62e98d28ab7ad31d707ba837a966378465c7b57
+- package: github.com/spf13/pflag
+  version: c7e63cf4530bcd3ba943729cee0efeff2ebea63f
+- package: golang.org/x/oauth2
+  version: b5adcc2dcdf009d0391547edc6ecbaff889f5bb9
+  subpackages:
+  - google
+- package: google.golang.org/api
+  version: 4300f6b0c8a7f09e521dd0af2cee27e28846e037
+  subpackages:
+  - cloudmonitoring/v2beta2
+  - logging/v2beta1
+- package: google.golang.org/cloud
+  version: eb47ba841d53d93506cfbfbc03927daf9cc48f88
+  subpackages:
+  - compute/metadata
+  - internal
+- package: gopkg.in/olivere/elastic.v3
+  version: v3.0.41
+- package: k8s.io/kubernetes
+  version: cbbf22a7d2b06a55066b16885a4baaf4ce92d3a4
+  subpackages:
+  - pkg/admission
+  - pkg/api
+  - pkg/api/errors
+  - pkg/api/resource
+  - pkg/api/rest
+  - pkg/api/unversioned
+  - pkg/api/v1
+  - pkg/apimachinery/announced
+  - pkg/apimachinery/registered
+  - pkg/apiserver/authenticator
+  - pkg/auth/authenticator
+  - pkg/auth/user
+  - pkg/client/cache
+  - pkg/client/restclient
+  - pkg/client/unversioned
+  - pkg/client/unversioned/clientcmd
+  - pkg/client/unversioned/clientcmd/api
+  - pkg/cloudprovider/providers
+  - pkg/controller/informers
+  - pkg/fields
+  - pkg/genericapiserver
+  - pkg/genericapiserver/authorizer
+  - pkg/genericapiserver/options
+  - pkg/healthz
+  - pkg/kubelet/api/v1alpha1/stats
+  - pkg/kubelet/client
+  - pkg/labels
+  - pkg/registry/cachesize
+  - pkg/runtime
+  - pkg/util/flag
+  - pkg/util/logs
+  - pkg/util/sets
+  - pkg/version
+  - pkg/version/verflag
+  - pkg/watch
+  - pkg/watch/versioned
+  - plugin/pkg/admission/admit
+  - plugin/pkg/admission/deny
+  - plugin/pkg/auth/authenticator/request/x509
+testImport:
+- package: github.com/google/gofuzz
+  version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
+- package: github.com/stretchr/testify
+  version: e3a8ff8ce36581f87a15341206f205b1da467059
+  subpackages:
+  - assert
+  - mock
+  - require

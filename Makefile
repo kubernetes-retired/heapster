@@ -7,12 +7,25 @@ FLAGS =
 SUPPORTED_KUBE_VERSIONS = "1.3.6"
 TEST_NAMESPACE = heapster-e2e-tests
 
-deps:
-	which godep || go get github.com/tools/godep
+verify-glide-installation:
+	which glide || go get github.com/Masterminds/glide
+	which glide-vc || go get github.com/sgotti/glide-vc
 
+deps: verify-glide-installation
+	glide install --strip-vendor
+	glide-vc --only-code --no-tests --keep="**/*.json.in"
+
+update-deps: verify-glide-installation
+	glide update --strip-vendor
+	glide-vc --only-code --no-tests --keep="**/*.json.in"
+
+ifeq ($(wildcard vendor/*),)
 build: clean deps
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o heapster k8s.io/heapster/metrics
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o eventer k8s.io/heapster/events
+else
+build: clean
+endif
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o heapster k8s.io/heapster/metrics
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o eventer k8s.io/heapster/events
 
 sanitize:
 	hooks/check_boilerplate.sh
@@ -20,13 +33,13 @@ sanitize:
 	hooks/run_vet.sh
 
 test-unit: clean deps sanitize build
-	GOOS=linux GOARCH=amd64 godep go test --test.short -race ./... $(FLAGS)
+	GOOS=linux GOARCH=amd64 go test --test.short -race ./... $(FLAGS)
 
 test-unit-cov: clean deps sanitize build
 	hooks/coverage.sh
 
 test-integration: clean deps build
-	godep go test -v --timeout=60m ./integration/... --vmodule=*=2 $(FLAGS) --namespace=$(TEST_NAMESPACE) --kube_versions=$(SUPPORTED_KUBE_VERSIONS)
+	go test -v --timeout=60m ./integration/... --vmodule=*=2 $(FLAGS) --namespace=$(TEST_NAMESPACE) --kube_versions=$(SUPPORTED_KUBE_VERSIONS)
 
 container: build
 	cp heapster deploy/docker/heapster
@@ -45,4 +58,4 @@ clean:
 	rm -f deploy/docker/heapster
 	rm -f deploy/docker/eventer
 
-.PHONY: all deps build sanitize test-unit test-unit-cov test-integration container grafana influxdb clean
+.PHONY: all verify-glide-installation deps update-deps build sanitize test-unit test-unit-cov test-integration container grafana influxdb clean
