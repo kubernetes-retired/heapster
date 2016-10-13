@@ -94,10 +94,10 @@ func TestMonascaHealthy(t *testing.T) {
 	ksClientMock.On("GetToken").Return(testToken, nil).Once()
 
 	// do
-	healthy := sut.CheckHealth()
+	err := sut.CheckHealth()
 
 	// assert
-	assert.True(t, healthy)
+	assert.Nil(t, err)
 	ksClientMock.AssertExpectations(t)
 }
 
@@ -110,9 +110,9 @@ func TestMonascaUnhealthy(t *testing.T) {
 	ksClientMock.On("GetToken").Return(testToken, nil).Once()
 
 	// do
-	healthy := sut.CheckHealth()
+	err := sut.CheckHealth()
 
 	// assert
-	assert.False(t, healthy)
+	assert.NotNil(t, err)
 	ksClientMock.AssertExpectations(t)
 }
