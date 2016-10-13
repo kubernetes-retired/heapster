@@ -30,7 +30,7 @@ import (
 type Client interface {
 	SendRequest(method, path string, request interface{}) (int, string, error)
 	GetURL() *url.URL
-	CheckHealth() bool
+	CheckHealth() error
 }
 
 // ClientImpl implements the monasca API client interface.
@@ -102,9 +102,15 @@ func (monClient *ClientImpl) GetURL() *url.URL {
 }
 
 // CheckHealth of the monasca API server.
-func (monClient *ClientImpl) CheckHealth() bool {
-	code, _, _ := monClient.SendRequest("GET", "/", nil)
-	return code == http.StatusOK
+func (monClient *ClientImpl) CheckHealth() error {
+	code, _, err := monClient.SendRequest("GET", "/", nil)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to Monasca: %s", err)
+	}
+	if code != http.StatusOK {
+		return fmt.Errorf("Monasca is not running on the provided/discovered URL: %s", monClient.GetURL().String())
+	}
+	return nil
 }
 
 // NewMonascaClient creates a monasca client.
@@ -131,9 +137,9 @@ func NewMonascaClient(config Config) (Client, error) {
 
 	// create monasca client
 	client := &ClientImpl{ksClient: ksClient, monascaURL: monascaURL}
-	healthy := client.CheckHealth()
-	if !healthy {
-		return nil, fmt.Errorf("Monasca is not running on the provided/discovered URL: %s", client.GetURL().String())
+	err = client.CheckHealth()
+	if err != nil {
+		return nil, err
 	}
 	return client, nil
 }
