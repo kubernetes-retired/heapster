@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
@@ -161,13 +163,18 @@ func (s *DeleteByQueryService) Query(query Query) *DeleteByQueryService {
 
 // Do executes the delete-by-query operation.
 func (s *DeleteByQueryService) Do() (*DeleteByQueryResult, error) {
+	return s.DoC(nil)
+}
+
+// DoC executes the delete-by-query operation.
+func (s *DeleteByQueryService) DoC(ctx context.Context) (*DeleteByQueryResult, error) {
 	var err error
 
 	// Build url
 	path := "/"
 
 	// Indices part
-	indexPart := make([]string, 0)
+	var indexPart []string
 	for _, index := range s.indices {
 		index, err = uritemplates.Expand("{index}", map[string]string{
 			"index": index,
@@ -182,7 +189,7 @@ func (s *DeleteByQueryService) Do() (*DeleteByQueryResult, error) {
 	}
 
 	// Types part
-	typesPart := make([]string, 0)
+	var typesPart []string
 	for _, typ := range s.types {
 		typ, err = uritemplates.Expand("{type}", map[string]string{
 			"type": typ,
@@ -251,7 +258,7 @@ func (s *DeleteByQueryService) Do() (*DeleteByQueryResult, error) {
 	}
 
 	// Get response
-	res, err := s.client.PerformRequest("DELETE", path, params, body)
+	res, err := s.client.PerformRequestC(ctx, "DELETE", path, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +282,7 @@ type DeleteByQueryResult struct {
 // IndexNames returns the names of the indices the DeleteByQuery touched.
 func (res DeleteByQueryResult) IndexNames() []string {
 	var indices []string
-	for index, _ := range res.Indices {
+	for index := range res.Indices {
 		indices = append(indices, index)
 	}
 	return indices

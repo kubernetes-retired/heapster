@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
@@ -37,13 +39,17 @@ func (s *AliasesService) Index(indices ...string) *AliasesService {
 }
 
 func (s *AliasesService) Do() (*AliasesResult, error) {
+	return s.DoC(nil)
+}
+
+func (s *AliasesService) DoC(ctx context.Context) (*AliasesResult, error) {
 	var err error
 
 	// Build url
 	path := "/"
 
 	// Indices part
-	indexPart := make([]string, 0)
+	var indexPart []string
 	for _, index := range s.indices {
 		index, err = uritemplates.Expand("{index}", map[string]string{
 			"index": index,
@@ -67,7 +73,7 @@ func (s *AliasesService) Do() (*AliasesResult, error) {
 	}
 
 	// Get response
-	res, err := s.client.PerformRequest("GET", path, params, nil)
+	res, err := s.client.PerformRequestC(ctx, "GET", path, params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +109,7 @@ func (s *AliasesService) Do() (*AliasesResult, error) {
 		if ok {
 			aliasesData, ok := indexDataMap["aliases"].(map[string]interface{})
 			if ok {
-				for aliasName, _ := range aliasesData {
+				for aliasName := range aliasesData {
 					aliasRes := aliasResult{AliasName: aliasName}
 					indexOut.Aliases = append(indexOut.Aliases, aliasRes)
 				}
@@ -131,7 +137,7 @@ type aliasResult struct {
 }
 
 func (ar AliasesResult) IndicesByAlias(aliasName string) []string {
-	indices := make([]string, 0)
+	var indices []string
 
 	for indexName, indexInfo := range ar.Indices {
 		for _, aliasInfo := range indexInfo.Aliases {
