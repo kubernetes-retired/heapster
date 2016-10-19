@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
@@ -68,7 +70,7 @@ func (s *ClusterStateService) ExpandWildcards(expandWildcards string) *ClusterSt
 	return s
 }
 
-// FlatSettings, when set, returns settings in flat format (default: false).
+// FlatSettings indicates whether to return settings in flat format (default: false).
 func (s *ClusterStateService) FlatSettings(flatSettings bool) *ClusterStateService {
 	s.flatSettings = &flatSettings
 	return s
@@ -152,6 +154,11 @@ func (s *ClusterStateService) Validate() error {
 
 // Do executes the operation.
 func (s *ClusterStateService) Do() (*ClusterStateResponse, error) {
+	return s.DoC(nil)
+}
+
+// DoC executes the operation.
+func (s *ClusterStateService) DoC(ctx context.Context) (*ClusterStateResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -164,7 +171,7 @@ func (s *ClusterStateService) Do() (*ClusterStateResponse, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("GET", path, params, nil)
+	res, err := s.client.PerformRequestC(ctx, "GET", path, params, nil)
 	if err != nil {
 		return nil, err
 	}

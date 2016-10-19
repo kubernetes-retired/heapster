@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
@@ -58,11 +60,15 @@ func (s *SuggestService) Suggester(suggester Suggester) *SuggestService {
 }
 
 func (s *SuggestService) Do() (SuggestResult, error) {
+	return s.DoC(nil)
+}
+
+func (s *SuggestService) DoC(ctx context.Context) (SuggestResult, error) {
 	// Build url
 	path := "/"
 
 	// Indices part
-	indexPart := make([]string, 0)
+	var indexPart []string
 	for _, index := range s.indices {
 		index, err := uritemplates.Expand("{index}", map[string]string{
 			"index": index,
@@ -100,7 +106,7 @@ func (s *SuggestService) Do() (SuggestResult, error) {
 	}
 
 	// Get response
-	res, err := s.client.PerformRequest("POST", path, params, body)
+	res, err := s.client.PerformRequestC(ctx, "POST", path, params, body)
 	if err != nil {
 		return nil, err
 	}
