@@ -30,6 +30,7 @@ import (
 	"k8s.io/heapster/events/sinks"
 	"k8s.io/heapster/events/sources"
 	"k8s.io/heapster/version"
+	"k8s.io/kubernetes/pkg/util/logs"
 )
 
 var (
@@ -42,11 +43,15 @@ var (
 func main() {
 	quitChannel := make(chan struct{}, 0)
 
-	defer glog.Flush()
 	flag.Var(&argSources, "source", "source(s) to read events from")
 	flag.Var(&argSinks, "sink", "external sink(s) that receive events")
 	flag.Parse()
+
+	logs.InitLogs()
+	defer logs.FlushLogs()
+
 	setMaxProcs()
+
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Eventer version %v", version.HeapsterVersion)
 	if err := validateFlags(); err != nil {
