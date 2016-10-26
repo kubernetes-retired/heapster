@@ -104,7 +104,7 @@ func TestWrongMonascaURLError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// test the successful creation of the monasca
+// test the successful creation of the monasca sink
 func TestMonascaSinkCreation(t *testing.T) {
 	// setup
 	uri, _ := url.Parse("monasca:?keystone-url=" + testConfig.IdentityEndpoint + "&password=" +

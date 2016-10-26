@@ -87,7 +87,7 @@ func main() {
 
 	if opt.EnableAPIServer {
 		// Run API server in a separate goroutine
-		createAndRunAPIServer(opt, metricSink)
+		createAndRunAPIServer(opt, metricSink, nodeLister, podLister)
 	}
 
 	mux := http.NewServeMux()
@@ -107,14 +107,15 @@ func main() {
 		glog.Fatal(http.ListenAndServe(addr, mux))
 	}
 }
-func createAndRunAPIServer(opt *options.HeapsterRunOptions, metricSink *metricsink.MetricSink) {
-	server, err := app.NewHeapsterApiServer(opt)
+func createAndRunAPIServer(opt *options.HeapsterRunOptions, metricSink *metricsink.MetricSink,
+	nodeLister *cache.StoreToNodeLister, podLister *cache.StoreToPodLister) {
+
+	server, err := app.NewHeapsterApiServer(opt, metricSink, nodeLister, podLister)
 	if err != nil {
-		// TODO: Should this be fatal?
 		glog.Errorf("Could not create the API server: %v", err)
 		return
 	}
-	healthz.InstallHandler(server.MuxHelper, healthzChecker(metricSink))
+	healthz.InstallHandler(server.Mux, healthzChecker(metricSink))
 	runApiServer := func(s *app.HeapsterAPIServer) {
 		if err := s.RunServer(); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)

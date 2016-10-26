@@ -22,15 +22,18 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/pborman/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"k8s.io/heapster/metrics/options"
+	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/kubernetes/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apiserver/authenticator"
-	"k8s.io/kubernetes/pkg/controller/framework/informers"
+	"k8s.io/kubernetes/pkg/client/cache"
+	"k8s.io/kubernetes/pkg/controller/informers"
 	"k8s.io/kubernetes/pkg/genericapiserver"
 	genericauthorizer "k8s.io/kubernetes/pkg/genericapiserver/authorizer"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
@@ -53,7 +56,9 @@ func NewAPIServerCommand() *cobra.Command {
 
 type HeapsterAPIServer struct {
 	*genericapiserver.GenericAPIServer
-	options *options.HeapsterRunOptions
+	options    *options.HeapsterRunOptions
+	metricSink *metricsink.MetricSink
+	nodeLister *cache.StoreToNodeLister
 }
 
 // Run runs the specified APIServer. This should never exit.
@@ -62,14 +67,21 @@ func (h *HeapsterAPIServer) RunServer() error {
 	return nil
 }
 
-func NewHeapsterApiServer(s *options.HeapsterRunOptions) (*HeapsterAPIServer, error) {
+func NewHeapsterApiServer(s *options.HeapsterRunOptions, metricSink *metricsink.MetricSink,
+	nodeLister *cache.StoreToNodeLister, podLister *cache.StoreToPodLister) (*HeapsterAPIServer, error) {
+
 	server, err := newAPIServer(s.ServerRunOptions)
 	if err != nil {
 		return &HeapsterAPIServer{}, err
 	}
+
+	installMetricsAPIs(s.ServerRunOptions, server, metricSink, nodeLister, podLister)
+
 	return &HeapsterAPIServer{
 		GenericAPIServer: server,
 		options:          s,
+		metricSink:       metricSink,
+		nodeLister:       nodeLister,
 	}, nil
 }
 
@@ -90,7 +102,7 @@ func newAPIServer(s *genericoptions.ServerRunOptions) (*genericapiserver.Generic
 		glog.Fatalf("error in initializing storage factory: %s", err)
 	}
 
-	authz, err := authenticator.New(authenticator.AuthenticatorConfig{
+	authn, err := authenticator.New(authenticator.AuthenticatorConfig{
 		BasicAuthFile:     s.BasicAuthFile,
 		ClientCAFile:      s.ClientCAFile,
 		TokenAuthFile:     s.TokenAuthFile,
@@ -119,7 +131,9 @@ func newAPIServer(s *genericoptions.ServerRunOptions) (*genericapiserver.Generic
 	}
 
 	admissionControlPluginNames := strings.Split(s.AdmissionControl, ",")
-	client, err := s.NewSelfClient()
+	privilegedLoopbackToken := uuid.NewRandom().String()
+
+	client, err := s.NewSelfClient(privilegedLoopbackToken)
 	if err != nil {
 		glog.Errorf("Failed to create clientset: %v", err)
 	}
@@ -131,8 +145,7 @@ func newAPIServer(s *genericoptions.ServerRunOptions) (*genericapiserver.Generic
 
 	genericConfig := genericapiserver.NewConfig(s)
 	// TODO: Move the following to generic api server as well.
-	genericConfig.StorageFactory = storageFactory
-	genericConfig.Authenticator = authz
+	genericConfig.Authenticator = authn
 	genericConfig.SupportsBasicAuth = len(s.BasicAuthFile) > 0
 	genericConfig.Authorizer = authorizer
 	genericConfig.AdmissionControl = admissionController
@@ -145,5 +158,5 @@ func newAPIServer(s *genericoptions.ServerRunOptions) (*genericapiserver.Generic
 		cachesize.SetWatchCacheSizes(s.WatchCacheSizes)
 	}
 
-	return genericapiserver.New(genericConfig)
+	return genericConfig.New()
 }

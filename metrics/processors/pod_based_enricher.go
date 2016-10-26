@@ -65,23 +65,12 @@ func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, e
 }
 
 func (this *PodBasedEnricher) getPod(namespace, name string) (*kube_api.Pod, error) {
-	o, exists, err := this.podLister.Get(
-		&kube_api.Pod{
-			ObjectMeta: kube_api.ObjectMeta{
-				Namespace: namespace,
-				Name:      name,
-			},
-		},
-	)
+	pod, err := this.podLister.Pods(namespace).Get(name)
 	if err != nil {
 		return nil, err
 	}
-	if !exists || o == nil {
+	if pod == nil {
 		return nil, fmt.Errorf("cannot find pod definition")
-	}
-	pod, ok := o.(*kube_api.Pod)
-	if !ok {
-		return nil, fmt.Errorf("cache contains wrong type")
 	}
 	return pod, nil
 }
@@ -106,7 +95,7 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 	podKey := core.PodKey(namespace, podName)
 	_, oldfound := batch.MetricSets[podKey]
 	if !oldfound {
-		_, newfound := batch.MetricSets[podKey]
+		_, newfound := newMs[podKey]
 		if !newfound {
 			glog.V(2).Infof("Pod %s not found, creating a stub", podKey)
 			podMs := &core.MetricSet{

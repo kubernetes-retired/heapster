@@ -105,7 +105,7 @@ To use the Monasca sink add the following flag:
 	--sink=monasca:[?<OPTIONS>]
 
 The available options are listed below, and some of them are mandatory. You need to provide access to the Identity service of OpenStack (keystone).
-Currently, only authorization through `username` / `userID` + `password` / `APIKey` is supported.
+Currently, only authorization through `username` / `userID` + `password` / `APIKey` is supported. If the agent access (for sending metrics) to Monasca is restricted to a role, please specify the corresponding `tenant-id` for automatic scoped authorization.
 
 The Monasca sink is then created with either the provided Monasca API Server URL, or the URL is discovered automatically if none is provided by the user.
 

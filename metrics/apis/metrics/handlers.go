@@ -223,30 +223,15 @@ func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 	ns := request.PathParameter("namespace-name")
 	name := request.PathParameter("pod-name")
 
-	o, exists, err := a.podLister.Get(
-		&kube_api.Pod{
-			ObjectMeta: kube_api.ObjectMeta{
-				Namespace: ns,
-				Name:      name,
-			},
-		},
-	)
+	pod, err := a.podLister.Pods(ns).Get(name)
 	if err != nil {
 		errMsg := fmt.Errorf("Error while getting pod %v: %v", name, err)
 		glog.Error(errMsg)
 		response.WriteError(http.StatusInternalServerError, errMsg)
 		return
 	}
-	if !exists || o == nil {
+	if pod == nil {
 		response.WriteError(http.StatusNotFound, fmt.Errorf("Pod %v/%v not defined", ns, name))
-		return
-	}
-
-	pod, ok := o.(*kube_api.Pod)
-	if !ok {
-		errMsg := fmt.Errorf("Error while converting pod %v: %v", name, err)
-		glog.Error(errMsg)
-		response.WriteError(http.StatusInternalServerError, errMsg)
 		return
 	}
 

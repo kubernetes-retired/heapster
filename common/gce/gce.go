@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	"cloud.google.com/go/compute/metadata"
 	"github.com/golang/glog"
-	"google.golang.org/cloud/compute/metadata"
 )
 
 const (

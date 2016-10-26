@@ -1,16 +1,24 @@
 apiVersion: v1
 kind: Service
 metadata:
-  labels: null
+  labels:
+    task: monitoring
+    # For use as a Cluster add-on (https://github.com/kubernetes/kubernetes/tree/master/cluster/addons)
+    # If you are NOT using this as an addon, you should comment out this line.
+    kubernetes.io/cluster-service: 'true'
+    kubernetes.io/name: monitoring-influxdb
   name: monitoring-influxdb
   namespace: kube-system
 spec:
+  # InfluxDB has a UI that can be used to query, uncomment the `http` port and expose
+  # to access this service.
+  # type: NodePort
   ports:
-  - name: http
-    port: 8083
-    targetPort: 8083
+  # - name: http
+  #   port: 80
+  #   targetPort: 8083
   - name: api
     port: 8086
     targetPort: 8086
   selector:
-    name: influxGrafana
+    name: monitoring-influxdb

@@ -2196,6 +2196,7 @@ func Convert_api_FlexVolumeSource_To_v1_FlexVolumeSource(in *api.FlexVolumeSourc
 
 func autoConvert_v1_FlockerVolumeSource_To_api_FlockerVolumeSource(in *FlockerVolumeSource, out *api.FlockerVolumeSource, s conversion.Scope) error {
 	out.DatasetName = in.DatasetName
+	out.DatasetUUID = in.DatasetUUID
 	return nil
 }
 
@@ -2205,6 +2206,7 @@ func Convert_v1_FlockerVolumeSource_To_api_FlockerVolumeSource(in *FlockerVolume
 
 func autoConvert_api_FlockerVolumeSource_To_v1_FlockerVolumeSource(in *api.FlockerVolumeSource, out *FlockerVolumeSource, s conversion.Scope) error {
 	out.DatasetName = in.DatasetName
+	out.DatasetUUID = in.DatasetUUID
 	return nil
 }
 
@@ -4926,6 +4928,9 @@ func autoConvert_v1_PodSecurityContext_To_api_PodSecurityContext(in *PodSecurity
 }
 
 func autoConvert_api_PodSecurityContext_To_v1_PodSecurityContext(in *api.PodSecurityContext, out *PodSecurityContext, s conversion.Scope) error {
+	// INFO: in.HostNetwork opted out of conversion generation
+	// INFO: in.HostPID opted out of conversion generation
+	// INFO: in.HostIPC opted out of conversion generation
 	if in.SELinuxOptions != nil {
 		in, out := &in.SELinuxOptions, &out.SELinuxOptions
 		*out = new(SELinuxOptions)
@@ -5017,7 +5022,11 @@ func autoConvert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conv
 	out.DNSPolicy = api.DNSPolicy(in.DNSPolicy)
 	out.NodeSelector = in.NodeSelector
 	out.ServiceAccountName = in.ServiceAccountName
+	// INFO: in.DeprecatedServiceAccount opted out of conversion generation
 	out.NodeName = in.NodeName
+	// INFO: in.HostNetwork opted out of conversion generation
+	// INFO: in.HostPID opted out of conversion generation
+	// INFO: in.HostIPC opted out of conversion generation
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
 		*out = new(api.PodSecurityContext)
@@ -5995,6 +6004,7 @@ func autoConvert_v1_Secret_To_api_Secret(in *Secret, out *api.Secret, s conversi
 		return err
 	}
 	out.Data = in.Data
+	// INFO: in.StringData opted out of conversion generation
 	out.Type = api.SecretType(in.Type)
 	return nil
 }
@@ -6503,6 +6513,7 @@ func autoConvert_v1_ServiceSpec_To_api_ServiceSpec(in *ServiceSpec, out *api.Ser
 	out.ClusterIP = in.ClusterIP
 	out.Type = api.ServiceType(in.Type)
 	out.ExternalIPs = in.ExternalIPs
+	// INFO: in.DeprecatedPublicIPs opted out of conversion generation
 	out.SessionAffinity = api.ServiceAffinity(in.SessionAffinity)
 	out.LoadBalancerIP = in.LoadBalancerIP
 	out.LoadBalancerSourceRanges = in.LoadBalancerSourceRanges
