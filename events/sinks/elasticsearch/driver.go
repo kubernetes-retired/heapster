@@ -19,8 +19,6 @@ import (
 	"sync"
 	"time"
 
-	"encoding/json"
-
 	"github.com/golang/glog"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	event_core "k8s.io/heapster/events/core"
@@ -43,29 +41,29 @@ type elasticSearchSink struct {
 }
 
 type EsSinkPoint struct {
-	EventValue     interface{}
-	EventTimestamp time.Time
-	EventTags      map[string]string
-}
-
-// Generate point value for event
-func getEventValue(event *kube_api.Event) (string, error) {
-	// TODO: check whether indenting is required.
-	bytes, err := json.MarshalIndent(event, "", " ")
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
+	Count                    interface{}
+	Metadata                 interface{}
+	InvolvedObject           interface{}
+	Source                   interface{}
+	FirstOccurrenceTimestamp time.Time
+	LastOccurrenceTimestamp  time.Time
+	Message                  string
+	Reason                   string
+	Type                     string
+	EventTags                map[string]string
 }
 
 func eventToPoint(event *kube_api.Event) (*EsSinkPoint, error) {
-	value, err := getEventValue(event)
-	if err != nil {
-		return nil, err
-	}
 	point := EsSinkPoint{
-		EventTimestamp: event.LastTimestamp.Time.UTC(),
-		EventValue:     value,
+		FirstOccurrenceTimestamp: event.FirstTimestamp.Time.UTC(),
+		LastOccurrenceTimestamp:  event.LastTimestamp.Time.UTC(),
+		Message:                  event.Message,
+		Reason:                   event.Reason,
+		Type:                     event.Type,
+		Count:                    event.Count,
+		Metadata:                 event.ObjectMeta,
+		InvolvedObject:           event.InvolvedObject,
+		Source:                   event.Source,
 		EventTags: map[string]string{
 			"eventID": string(event.UID),
 		},
@@ -86,7 +84,7 @@ func (sink *elasticSearchSink) ExportEvents(eventBatch *event_core.EventBatch) {
 		if err != nil {
 			glog.Warningf("Failed to convert event to point: %v", err)
 		}
-		err = sink.saveData(point.EventTimestamp, []interface{}{*point})
+		err = sink.saveData(point.LastOccurrenceTimestamp, []interface{}{*point})
 		if err != nil {
 			glog.Warningf("Failed to export data to ElasticSearch sink: %v", err)
 		}

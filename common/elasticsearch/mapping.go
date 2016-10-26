@@ -104,7 +104,12 @@ func customMetricTypeSchema(typeName string, customSchema string) string {
         },
         "namespace_name": {
           "type": "string",
-          "index": "not_analyzed"
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
         },
         "nodename": {
           "type": "string",
@@ -132,7 +137,12 @@ func customMetricTypeSchema(typeName string, customSchema string) string {
         },
         "pod_namespace": {
           "type": "string",
-          "index": "not_analyzed"
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
         },
         "resource_id": {
           "type": "string",
@@ -212,12 +222,136 @@ var mapping = `{
             }
           }
         },
-        "EventTimestamp": {
+        "InvolvedObject": {
+          "properties": {
+            "apiVersion": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "fieldPath": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "kind": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "name": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "namespace": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "resourceVersion": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "uid": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "FirstOccurrenceTimestamp": {
           "type": "date",
           "format": "strict_date_optional_time||epoch_millis"
         },
-        "EventValue": {
-          "type": "string"
+        "LastOccurrenceTimestamp": {
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis"
+        },
+        "Type": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "Message": {
+          "type": "string",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "Reason": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+
+        "Count": {
+          "type": "long"
+        },
+        "Metadata": {
+          "properties": {
+            "creationTimestamp": {
+              "type": "date",
+              "format": "strict_date_optional_time||epoch_millis"
+            },
+            "name": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "namespace": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "resourceVersion": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "selfLink": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "uid": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "Source": {
+          "properties": {
+            "component": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "host": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            }
+          }
         }
       }
     }
