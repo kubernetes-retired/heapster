@@ -21,4 +21,4 @@ spec:
     port: 8086
     targetPort: 8086
   selector:
-    name: monitoring-influxdb
+    k8s-app: influxdb
