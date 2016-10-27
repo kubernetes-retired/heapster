@@ -17,4 +17,4 @@ spec:
   - port: 80
     targetPort: 3000
   selector:
-    name: monitoring-grafana
+    k8s-app: grafana
