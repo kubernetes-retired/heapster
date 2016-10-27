@@ -6,13 +6,14 @@ FLAGS =
 
 SUPPORTED_KUBE_VERSIONS = "1.3.6"
 TEST_NAMESPACE = heapster-e2e-tests
+ARCH=$(shell uname -i)
 
 deps:
 	which godep || go get github.com/tools/godep
 
 build: clean deps
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o heapster k8s.io/heapster/metrics
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o eventer k8s.io/heapster/events
+	GOOS=linux GOARCH=$(ARCH) CGO_ENABLED=0 godep go build -o heapster k8s.io/heapster/metrics
+	GOOS=linux GOARCH=$(ARCH) CGO_ENABLED=0 godep go build -o eventer k8s.io/heapster/events
 
 sanitize:
 	hooks/check_boilerplate.sh
@@ -20,7 +21,11 @@ sanitize:
 	hooks/run_vet.sh
 
 test-unit: clean deps sanitize build
-	GOOS=linux GOARCH=amd64 godep go test --test.short -race ./... $(FLAGS)
+ifeq ($(ARCH),s390x)
+        GOOS=linux GOARCH=$(ARCH) godep go test --test.short ./... $(FLAGS)
+else
+	GOOS=linux GOARCH=$(ARCH) godep go test --test.short -race ./... $(FLAGS)
+endif
 
 test-unit-cov: clean deps sanitize build
 	hooks/coverage.sh
