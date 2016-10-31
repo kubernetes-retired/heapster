@@ -6,7 +6,7 @@ FLAGS =
 
 SUPPORTED_KUBE_VERSIONS = "1.3.6"
 TEST_NAMESPACE = heapster-e2e-tests
-ARCH=$(shell uname -i)
+ARCH?=amd64
 
 deps:
 	which godep || go get github.com/tools/godep
