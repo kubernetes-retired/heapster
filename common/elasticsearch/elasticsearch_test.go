@@ -23,13 +23,13 @@ import (
 	"gopkg.in/olivere/elastic.v3"
 )
 
-func TestCreateElasticSearchConfig(t *testing.T) {
+func TestCreateElasticSearchService(t *testing.T) {
 	url, err := url.Parse("?nodes=https://foo.com:20468&nodes=https://bar.com:20468&esUserName=test&esUserSecret=password&maxRetries=10&startupHealthcheckTimeout=30&sniff=false&healthCheck=false")
 	if err != nil {
 		t.Fatalf("Error when parsing URL: %s", err.Error())
 	}
 
-	config, err := CreateElasticSearchConfig(url)
+	esSvc, err := CreateElasticSearchService(url)
 	if err != nil {
 		t.Fatalf("Error when creating config: %s", err.Error())
 	}
@@ -45,7 +45,7 @@ func TestCreateElasticSearchConfig(t *testing.T) {
 		t.Fatalf("Error when creating client: %s", err.Error())
 	}
 
-	actualClientRefl := reflect.ValueOf(config.EsClient).Elem()
+	actualClientRefl := reflect.ValueOf(esSvc.EsClient).Elem()
 	expectedClientRefl := reflect.ValueOf(expectedClient).Elem()
 
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {

@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"net/url"
 
+	"golang.org/x/net/context"
+
 	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
@@ -34,14 +36,15 @@ type BulkService struct {
 	refresh  *bool
 	pretty   bool
 
-	sizeInBytes int64
+	// estimated bulk size in bytes, up to the request index sizeInBytesCursor
+	sizeInBytes       int64
+	sizeInBytesCursor int
 }
 
 // NewBulkService initializes a new BulkService.
 func NewBulkService(client *Client) *BulkService {
 	builder := &BulkService{
-		client:   client,
-		requests: make([]BulkableRequest, 0),
+		client: client,
 	}
 	return builder
 }
@@ -49,6 +52,7 @@ func NewBulkService(client *Client) *BulkService {
 func (s *BulkService) reset() {
 	s.requests = make([]BulkableRequest, 0)
 	s.sizeInBytes = 0
+	s.sizeInBytesCursor = 0
 }
 
 // Index specifies the index to use for all batches. You may also leave
@@ -73,7 +77,7 @@ func (s *BulkService) Timeout(timeout string) *BulkService {
 	return s
 }
 
-// Refresh, when set to true, tells Elasticsearch to make the bulk requests
+// Refresh tells Elasticsearch to make the bulk requests
 // available to search immediately after being processed. Normally, this
 // only happens after a specified refresh interval.
 func (s *BulkService) Refresh(refresh bool) *BulkService {
@@ -92,7 +96,6 @@ func (s *BulkService) Pretty(pretty bool) *BulkService {
 func (s *BulkService) Add(requests ...BulkableRequest) *BulkService {
 	for _, r := range requests {
 		s.requests = append(s.requests, r)
-		s.sizeInBytes += s.estimateSizeInBytes(r)
 	}
 	return s
 }
@@ -100,6 +103,13 @@ func (s *BulkService) Add(requests ...BulkableRequest) *BulkService {
 // EstimatedSizeInBytes returns the estimated size of all bulkable
 // requests added via Add.
 func (s *BulkService) EstimatedSizeInBytes() int64 {
+	if s.sizeInBytesCursor == len(s.requests) {
+		return s.sizeInBytes
+	}
+	for _, r := range s.requests[s.sizeInBytesCursor:] {
+		s.sizeInBytes += s.estimateSizeInBytes(r)
+		s.sizeInBytesCursor++
+	}
 	return s.sizeInBytes
 }
 
@@ -123,7 +133,7 @@ func (s *BulkService) NumberOfActions() int {
 }
 
 func (s *BulkService) bodyAsString() (string, error) {
-	buf := bytes.NewBufferString("")
+	var buf bytes.Buffer
 
 	for _, req := range s.requests {
 		source, err := req.Source()
@@ -131,10 +141,8 @@ func (s *BulkService) bodyAsString() (string, error) {
 			return "", err
 		}
 		for _, line := range source {
-			_, err := buf.WriteString(fmt.Sprintf("%s\n", line))
-			if err != nil {
-				return "", nil
-			}
+			buf.WriteString(line)
+			buf.WriteByte('\n')
 		}
 	}
 
@@ -145,6 +153,13 @@ func (s *BulkService) bodyAsString() (string, error) {
 // you can reuse the BulkService for the next batch as the list of bulk
 // requests is cleared on success.
 func (s *BulkService) Do() (*BulkResponse, error) {
+	return s.DoC(nil)
+}
+
+// DoC sends the batched requests to Elasticsearch. Note that, when successful,
+// you can reuse the BulkService for the next batch as the list of bulk
+// requests is cleared on success.
+func (s *BulkService) DoC(ctx context.Context) (*BulkResponse, error) {
 	// No actions?
 	if s.NumberOfActions() == 0 {
 		return nil, errors.New("elastic: No bulk actions to commit")
@@ -158,7 +173,7 @@ func (s *BulkService) Do() (*BulkResponse, error) {
 
 	// Build url
 	path := "/"
-	if s.index != "" {
+	if len(s.index) > 0 {
 		index, err := uritemplates.Expand("{index}", map[string]string{
 			"index": s.index,
 		})
@@ -167,7 +182,7 @@ func (s *BulkService) Do() (*BulkResponse, error) {
 		}
 		path += index + "/"
 	}
-	if s.typ != "" {
+	if len(s.typ) > 0 {
 		typ, err := uritemplates.Expand("{type}", map[string]string{
 			"type": s.typ,
 		})
@@ -191,7 +206,7 @@ func (s *BulkService) Do() (*BulkResponse, error) {
 	}
 
 	// Get response
-	res, err := s.client.PerformRequest("POST", path, params, body)
+	res, err := s.client.PerformRequestC(ctx, "POST", path, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +307,7 @@ func (r *BulkResponse) ByAction(action string) []*BulkResponseItem {
 	if r.Items == nil {
 		return nil
 	}
-	items := make([]*BulkResponseItem, 0)
+	var items []*BulkResponseItem
 	for _, item := range r.Items {
 		if result, found := item[action]; found {
 			items = append(items, result)
@@ -307,7 +322,7 @@ func (r *BulkResponse) ById(id string) []*BulkResponseItem {
 	if r.Items == nil {
 		return nil
 	}
-	items := make([]*BulkResponseItem, 0)
+	var items []*BulkResponseItem
 	for _, item := range r.Items {
 		for _, result := range item {
 			if result.Id == id {
@@ -324,7 +339,7 @@ func (r *BulkResponse) Failed() []*BulkResponseItem {
 	if r.Items == nil {
 		return nil
 	}
-	errors := make([]*BulkResponseItem, 0)
+	var errors []*BulkResponseItem
 	for _, item := range r.Items {
 		for _, result := range item {
 			if !(result.Status >= 200 && result.Status <= 299) {
@@ -341,7 +356,7 @@ func (r *BulkResponse) Succeeded() []*BulkResponseItem {
 	if r.Items == nil {
 		return nil
 	}
-	succeeded := make([]*BulkResponseItem, 0)
+	var succeeded []*BulkResponseItem
 	for _, item := range r.Items {
 		for _, result := range item {
 			if result.Status >= 200 && result.Status <= 299 {

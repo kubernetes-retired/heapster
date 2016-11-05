@@ -39,12 +39,14 @@ type fakeESSink struct {
 
 var FakeESSink fakeESSink
 
-func SaveDataIntoESStub(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error {
-	jsonItems, err := json.Marshal(sinkData)
-	if err != nil {
-		return fmt.Errorf("failed to transform the items to json : %s", err)
+func SaveDataIntoES_Stub(date time.Time, sinkData []interface{}) error {
+	for _, data := range sinkData {
+		jsonItems, err := json.Marshal(data)
+		if err != nil {
+			return fmt.Errorf("failed to transform the items to json : %s", err)
+		}
+		FakeESSink.savedData = append(FakeESSink.savedData, dataSavedToES{string(jsonItems)})
 	}
-	FakeESSink.savedData = append(FakeESSink.savedData, dataSavedToES{string(jsonItems)})
 	return nil
 }
 
@@ -53,9 +55,9 @@ func NewFakeSink() fakeESSink {
 	savedData := make([]dataSavedToES, 0)
 	return fakeESSink{
 		&elasticSearchSink{
-			saveDataFunc: SaveDataIntoESStub,
-			esConfig: esCommon.ElasticSearchConfig{
-				Index:    "heapster-metric-index",
+			saveData:  SaveDataIntoES_Stub,
+			flushData: func() error { return nil },
+			esSvc: esCommon.ElasticSearchService{
 				EsClient: &elastic.Client{},
 			},
 		},

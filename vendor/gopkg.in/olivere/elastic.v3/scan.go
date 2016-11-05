@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -7,6 +7,7 @@ package elastic
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
 
@@ -19,7 +20,7 @@ const (
 
 var (
 	// End of stream (or scan)
-	EOS = errors.New("EOS")
+	EOS = io.EOF
 
 	// No ScrollId
 	ErrNoScrollId = errors.New("no scrollId")
@@ -31,6 +32,7 @@ type ScanService struct {
 	indices      []string
 	types        []string
 	keepAlive    string
+	body         interface{}
 	searchSource *SearchSource
 	pretty       bool
 	routing      string
@@ -84,6 +86,15 @@ func (s *ScanService) KeepAlive(keepAlive string) *ScanService {
 // See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-request-fields.html.
 func (s *ScanService) Fields(fields ...string) *ScanService {
 	s.searchSource = s.searchSource.Fields(fields...)
+	return s
+}
+
+// Body sets the raw body to send to Elasticsearch. This can be e.g. a string,
+// a map[string]interface{} or anything that can be serialized into JSON.
+// Notice that setting the body disables the use of SearchSource and many
+// other properties of the ScanService.
+func (s *ScanService) Body(body interface{}) *ScanService {
+	s.body = body
 	return s
 }
 
@@ -225,10 +236,6 @@ func (s *ScanService) Do() (*ScanCursor, error) {
 
 	// Parameters
 	params := make(url.Values)
-	if !s.searchSource.hasSort() {
-		// TODO: ES 2.1 deprecates search_type=scan. See https://www.elastic.co/guide/en/elasticsearch/reference/current/breaking_21_search_changes.html#_literal_search_type_scan_literal_deprecated.
-		params.Set("search_type", "scan")
-	}
 	if s.pretty {
 		params.Set("pretty", fmt.Sprintf("%v", s.pretty))
 	}
@@ -245,9 +252,19 @@ func (s *ScanService) Do() (*ScanCursor, error) {
 	}
 
 	// Get response
-	body, err := s.searchSource.Source()
-	if err != nil {
-		return nil, err
+	var err error
+	var body interface{}
+	if s.body != nil {
+		body = s.body
+	} else {
+		if !s.searchSource.hasSort() {
+			// TODO: ES 2.1 deprecates search_type=scan. See https://www.elastic.co/guide/en/elasticsearch/reference/current/breaking_21_search_changes.html#_literal_search_type_scan_literal_deprecated.
+			params.Set("search_type", "scan")
+		}
+		body, err = s.searchSource.Source()
+		if err != nil {
+			return nil, err
+		}
 	}
 	res, err := s.client.PerformRequest("POST", path, params, body)
 	if err != nil {
