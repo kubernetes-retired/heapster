@@ -37,6 +37,7 @@ type HeapsterRunOptions struct {
 	Sources          flags.Uris
 	Sinks            flags.Uris
 	HistoricalSource string
+	Version          bool
 }
 
 func NewHeapsterRunOptions() *HeapsterRunOptions {
@@ -65,4 +66,5 @@ func (h *HeapsterRunOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&h.TLSClientCAFile, "tls_client_ca", "", "file containing TLS client CA for client cert validation")
 	fs.StringVar(&h.AllowedUsers, "allowed_users", "", "comma-separated list of allowed users")
 	fs.StringVar(&h.HistoricalSource, "historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
+	fs.BoolVar(&h.Version, "version", false, "print version info and exit")
 }

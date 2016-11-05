@@ -4,6 +4,9 @@ TAG = v1.2.0
 PREFIX = gcr.io/google_containers
 FLAGS = 
 
+VERSION = 1.2.0
+GIT_COMMIT := `git rev-parse --short HEAD`
+
 SUPPORTED_KUBE_VERSIONS = "1.3.6"
 TEST_NAMESPACE = heapster-e2e-tests
 
@@ -11,8 +14,8 @@ deps:
 	which godep || go get github.com/tools/godep
 
 build: clean deps
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o heapster k8s.io/heapster/metrics
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o eventer k8s.io/heapster/events
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -ldflags "-X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)" -o heapster k8s.io/heapster/metrics
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -ldflags "-X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)" -o eventer k8s.io/heapster/events
 
 sanitize:
 	hooks/check_boilerplate.sh
