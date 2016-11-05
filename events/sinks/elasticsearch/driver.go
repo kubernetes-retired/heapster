@@ -89,7 +89,10 @@ func (sink *elasticSearchSink) ExportEvents(eventBatch *event_core.EventBatch) {
 			glog.Warningf("Failed to export data to ElasticSearch sink: %v", err)
 		}
 	}
-	sink.flushData()
+	err := sink.flushData()
+	if err != nil {
+		glog.Warningf("Failed to flushing data to ElasticSearch sink: %v", err)
+	}
 }
 
 func (sink *elasticSearchSink) Name() string {
