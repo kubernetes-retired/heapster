@@ -49,7 +49,6 @@ import (
 	"k8s.io/kubernetes/pkg/healthz"
 	"k8s.io/kubernetes/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/util/logs"
-	"k8s.io/kubernetes/pkg/version/verflag"
 )
 
 func main() {
@@ -57,9 +56,14 @@ func main() {
 	opt.AddFlags(pflag.CommandLine)
 
 	flag.InitFlags()
+
+	if opt.Version {
+		fmt.Println(version.VersionInfo())
+		os.Exit(0)
+	}
+
 	logs.InitLogs()
 	defer logs.FlushLogs()
-	verflag.PrintAndExitIfRequested()
 
 	setMaxProcs(opt)
 	glog.Infof(strings.Join(os.Args, " "))
