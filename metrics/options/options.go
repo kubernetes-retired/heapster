@@ -37,7 +37,7 @@ type HeapsterRunOptions struct {
 	Sources          flags.Uris
 	Sinks            flags.Uris
 	HistoricalSource string
-	LabelSeperator string
+	LabelSeperator   string
 }
 
 func NewHeapsterRunOptions() *HeapsterRunOptions {

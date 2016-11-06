@@ -41,6 +41,7 @@ import (
 	"k8s.io/heapster/metrics/sinks"
 	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sources"
+	"k8s.io/heapster/metrics/util"
 	"k8s.io/heapster/version"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
@@ -50,7 +51,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/util/logs"
 	"k8s.io/kubernetes/pkg/version/verflag"
-	"k8s.io/heapster/metrics/util"
 )
 
 func main() {
