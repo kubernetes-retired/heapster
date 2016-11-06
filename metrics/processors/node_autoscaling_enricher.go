@@ -43,7 +43,7 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 	}
 	for _, node := range nodes.Items {
 		if metricSet, found := batch.MetricSets[core.NodeKey(node.Name)]; found {
-			metricSet.Labels[core.LabelLabels.Key] = util.LabelsToString(node.Labels, ",")
+			metricSet.Labels[core.LabelLabels.Key] = util.LabelsToString(node.Labels)
 			capacityCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
 			capacityMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
 			allocatableCpu, _ := node.Status.Allocatable[kube_api.ResourceCPU]
