@@ -15,49 +15,52 @@
 package kafka
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/optiopay/kafka/proto"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/heapster/metrics/core"
 )
 
-type msgProducedToKafka struct {
-	message string
-}
-
-type fakeKafkaProducer struct {
-	msgs []msgProducedToKafka
+type fakeKafkaClient struct {
+	points []KafkaSinkPoint
 }
 
 type fakeKafkaSink struct {
 	core.DataSink
-	fakeProducer *fakeKafkaProducer
+	fakeProducer *fakeKafkaClient
 }
 
-func NewFakeKafkaProducer() *fakeKafkaProducer {
-	return &fakeKafkaProducer{[]msgProducedToKafka{}}
+func NewFakeKafkaClient() *fakeKafkaClient {
+	return &fakeKafkaClient{[]KafkaSinkPoint{}}
 }
 
-func (producer *fakeKafkaProducer) Produce(topic string, partition int32, messages ...*proto.Message) (int64, error) {
-	for _, msg := range messages {
-		producer.msgs = append(producer.msgs, msgProducedToKafka{string(msg.Value)})
+func (client *fakeKafkaClient) ProduceKafkaMessage(msgData interface{}) error {
+	if point, ok := msgData.(KafkaSinkPoint); ok {
+		client.points = append(client.points, point)
 	}
-	return 0, nil
+
+	return nil
+}
+
+func (client *fakeKafkaClient) Name() string {
+	return "Apache Kafka Sink"
+}
+
+func (client *fakeKafkaClient) Stop() {
+	// nothing needs to be done.
 }
 
 // Returns a fake kafka sink.
 func NewFakeSink() fakeKafkaSink {
-	producer := NewFakeKafkaProducer()
-	fakeTimeSeriesTopic := "kafkaTime-test-topic"
+	client := NewFakeKafkaClient()
 	return fakeKafkaSink{
 		&kafkaSink{
-			producer:  producer,
-			dataTopic: fakeTimeSeriesTopic,
+			KafkaClient: client,
 		},
-		producer,
+		client,
 	}
 }
 
@@ -65,7 +68,7 @@ func TestStoreDataEmptyInput(t *testing.T) {
 	fakeSink := NewFakeSink()
 	dataBatch := core.DataBatch{}
 	fakeSink.ExportData(&dataBatch)
-	assert.Equal(t, 0, len(fakeSink.fakeProducer.msgs))
+	assert.Equal(t, 0, len(fakeSink.fakeProducer.points))
 }
 
 func TestStoreMultipleDataInput(t *testing.T) {
@@ -166,7 +169,7 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	fakeSink.ExportData(&data)
 
 	//expect msg string
-	assert.Equal(t, 5, len(fakeSink.fakeProducer.msgs))
+	assert.Equal(t, 5, len(fakeSink.fakeProducer.points))
 
 	var expectMsgTemplate = [5]string{
 		`{"MetricsName":"/system.slice/-.mount//cpu/limit","MetricsValue":{"value":123456},"MetricsTimestamp":%s,"MetricsTags":{"container_name":"/system.slice/-.mount","namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"}}`,
@@ -176,7 +179,11 @@ func TestStoreMultipleDataInput(t *testing.T) {
 		`{"MetricsName":"removeme","MetricsValue":{"value":123456},"MetricsTimestamp":%s,"MetricsTags":{"namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"}}`,
 	}
 
-	msgsString := fmt.Sprintf("%s", fakeSink.fakeProducer.msgs)
+	msgsJson, err := json.Marshal(fakeSink.fakeProducer.points)
+	if err != nil {
+		t.Fatalf("KafkaSinkPoint data is illegal")
+	}
+	msgsString := fmt.Sprintf("%s", string(msgsJson))
 
 	for _, mgsTemplate := range expectMsgTemplate {
 		expectMsg := fmt.Sprintf(mgsTemplate, timeStr)
