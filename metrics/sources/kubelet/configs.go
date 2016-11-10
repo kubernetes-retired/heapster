@@ -57,6 +57,7 @@ func GetKubeConfigs(uri *url.URL) (*kube_client.Config, *kubelet_client.KubeletC
 			return nil, nil, err
 		}
 	}
+
 	glog.Infof("Using Kubernetes client with master %q and version %+v\n", kubeConfig.Host, kubeConfig.GroupVersion)
 	glog.Infof("Using kubelet port %d", kubeletPort)
 
