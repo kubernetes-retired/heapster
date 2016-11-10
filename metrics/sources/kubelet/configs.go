@@ -57,11 +57,19 @@ func GetKubeConfigs(uri *url.URL) (*kube_client.Config, *kubelet_client.KubeletC
 			return nil, nil, err
 		}
 	}
+
+	ipMode := ""
+	if len(opts["ipMode"]) >= 1 {
+		ipMode = opts["ipMode"][0]
+		glog.Infof("Using IP mode %s", ipMode)
+	}
+
 	glog.Infof("Using Kubernetes client with master %q and version %+v\n", kubeConfig.Host, kubeConfig.GroupVersion)
 	glog.Infof("Using kubelet port %d", kubeletPort)
 
 	kubeletConfig := &kubelet_client.KubeletClientConfig{
 		Port:            uint(kubeletPort),
+		IpMode:          string(ipMode),
 		EnableHttps:     kubeletHttps,
 		TLSClientConfig: kubeConfig.TLSClientConfig,
 		BearerToken:     kubeConfig.BearerToken,

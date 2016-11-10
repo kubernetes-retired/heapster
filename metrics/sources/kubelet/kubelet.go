@@ -22,6 +22,8 @@ import (
 
 	. "k8s.io/heapster/metrics/core"
 
+	"net"
+
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	"github.com/prometheus/client_golang/prometheus"
@@ -274,7 +276,7 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 	nodeNames := make(map[string]bool)
 	for _, node := range nodes.Items {
 		nodeNames[node.Name] = true
-		hostname, ip, err := getNodeHostnameAndIP(&node)
+		hostname, ip, err := getNodeHostnameAndIP(&node, this.kubeletClient.config.IpMode)
 		if err != nil {
 			glog.Errorf("%v", err)
 			continue
@@ -290,7 +292,24 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 	return sources
 }
 
-func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
+func validateKubeNodeIP(ip string, ipMode string) bool {
+	parseIP := net.ParseIP(ip)
+
+	switch ipMode {
+	case "v4", "ipv4", "4":
+		if parseIP.To4() == nil {
+			return false
+		}
+	case "v6", "ipv6", "6", "16":
+		if parseIP.To16() == nil {
+			return false
+		}
+	}
+
+	return true
+}
+
+func getNodeHostnameAndIP(node *kube_api.Node, ipMode string) (string, string, error) {
 	for _, c := range node.Status.Conditions {
 		if c.Type == kube_api.NodeReady && c.Status != kube_api.ConditionTrue {
 			return "", "", fmt.Errorf("Node %v is not ready", node.Name)
@@ -302,7 +321,9 @@ func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
 			hostname = addr.Address
 		}
 		if addr.Type == kube_api.NodeInternalIP && addr.Address != "" {
-			ip = addr.Address
+			if validateKubeNodeIP(addr.Address, ipMode) {
+				ip = addr.Address
+			}
 		}
 		if addr.Type == kube_api.NodeLegacyHostIP && addr.Address != "" && ip == "" {
 			ip = addr.Address
