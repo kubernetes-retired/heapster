@@ -141,6 +141,22 @@ const mapping = `{
       "properties": {
         "EventTags": {
           "properties": {
+            "eventType": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "eventKind": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "eventReason": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "eventMessage": {
+              "type": "string",
+              "index": "analyzed"
+            },
             "eventID": {
               "type": "string",
               "index": "not_analyzed"
