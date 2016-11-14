@@ -67,12 +67,17 @@ func eventToPoint(event *kube_api.Event) (*EsSinkPoint, error) {
 		EventTimestamp: event.LastTimestamp.Time.UTC(),
 		EventValue:     value,
 		EventTags: map[string]string{
-			"eventID": string(event.UID),
+			"eventType":    event.Type,
+			"eventKind":    event.InvolvedObject.Kind,
+			"eventReason":  event.Reason,
+			"eventMessage": event.Message,
+			"eventID":      string(event.UID),
 		},
 	}
 	if event.InvolvedObject.Kind == "Pod" {
 		point.EventTags[core.LabelPodId.Key] = string(event.InvolvedObject.UID)
 		point.EventTags[core.LabelPodName.Key] = event.InvolvedObject.Name
+		point.EventTags[core.LabelPodNamespace.Key] = event.InvolvedObject.Namespace
 	}
 	point.EventTags[core.LabelHostname.Key] = event.Source.Host
 	return &point, nil
