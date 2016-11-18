@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,6 @@ package riemann
 
 import (
 	"net/url"
-	"reflect"
-	"runtime"
-	"strconv"
 	"sync"
 
 	"strings"
@@ -26,114 +23,53 @@ import (
 
 	riemann_api "github.com/bigdatadev/goryman"
 	"github.com/golang/glog"
-	event_core "k8s.io/heapster/events/core"
+	riemannCommon "k8s.io/heapster/common/riemann"
+	core "k8s.io/heapster/events/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
 // Abstracted for testing: this package works against any client that obeys the
 // interface contract exposed by the goryman Riemann client
 
-type riemannClient interface {
-	Connect() error
-	Close() error
-	SendEvent(e *riemann_api.Event) error
-}
-
-type riemannSink struct {
-	client riemannClient
-	config riemannConfig
+type RiemannSink struct {
+	client riemannCommon.RiemannClient
+	config riemannCommon.RiemannConfig
 	sync.RWMutex
 }
 
-type riemannConfig struct {
-	host  string
-	ttl   float32
-	state string
-	tags  []string
-}
-
-const (
-	// Maximum number of riemann Events to be sent in one batch.
-	maxSendBatchSize = 10000
-	max_retries      = 2
-)
-
-func CreateRiemannSink(uri *url.URL) (event_core.EventSink, error) {
-	c := riemannConfig{
-		host:  "riemann-heapster:5555",
-		ttl:   60.0,
-		state: "",
-		tags:  make([]string, 0),
-	}
-	if len(uri.Host) > 0 {
-		c.host = uri.Host
-	}
-	options := uri.Query()
-	if len(options["ttl"]) > 0 {
-		var ttl, err = strconv.ParseFloat(options["ttl"][0], 32)
-		if err != nil {
-			return nil, err
-		}
-		c.ttl = float32(ttl)
-	}
-	if len(options["state"]) > 0 {
-		c.state = options["state"][0]
-	}
-	if len(options["tags"]) > 0 {
-		c.tags = options["tags"]
-	}
-
-	glog.Infof("Riemann sink URI: '%+v', host: '%+v', options: '%+v', ", uri, c.host, options)
-	rs := &riemannSink{
-		client: nil,
-		config: c,
-	}
-
-	err := rs.setupRiemannClient()
+func CreateRiemannSink(uri *url.URL) (core.EventSink, error) {
+	var sink, err = riemannCommon.CreateRiemannSink(uri)
 	if err != nil {
-		glog.Warningf("Riemann sink not connected: %v", err)
-		// Warn but return the sink.
+		return nil, err
+	}
+	rs := &RiemannSink{
+		client: sink.Client,
+		config: sink.Config,
 	}
 	return rs, nil
 }
 
-func (rs *riemannSink) setupRiemannClient() error {
-	client := riemann_api.NewGorymanClient(rs.config.host)
-	runtime.SetFinalizer(client, func(c riemannClient) { c.Close() })
-	err := client.Connect()
-	if err != nil {
-		return err
-	}
-	rs.client = client
-	return nil
-}
-
 // Return a user-friendly string describing the sink
-func (sink *riemannSink) Name() string {
+func (sink *RiemannSink) Name() string {
 	return "Riemann Sink"
 }
 
-func (sink *riemannSink) Stop() {
+func (sink *RiemannSink) Stop() {
 	sink.client.Close()
 }
 
-func (sink *riemannSink) ExportEvents(eventBatch *event_core.EventBatch) {
+func (sink *RiemannSink) ExportEvents(eventBatch *core.EventBatch) {
 	sink.Lock()
 	defer sink.Unlock()
 
 	if sink.client == nil {
-		if err := sink.setupRiemannClient(); err != nil {
+		var client, err = riemannCommon.SetupRiemannClient(sink.config)
+		if err != nil {
 			glog.Warningf("Riemann sink not connected: %v", err)
 			return
+		} else {
+			sink.client = client
 		}
-	}
-
-	riemannValue := func(value interface{}) interface{} {
-		// Workaround for error from goryman: "Metric of invalid type (type int64)"
-		if reflect.TypeOf(value).Kind() == reflect.Int64 {
-			return int(value.(int64))
-		}
-		return value
 	}
 
 	var dataEvents []riemann_api.Event
@@ -164,14 +100,14 @@ func (sink *riemannSink) ExportEvents(eventBatch *event_core.EventBatch) {
 				"field-path":       event.InvolvedObject.FieldPath,
 				"component":        event.Source.Component,
 			},
-			Metric: riemannValue(event.Count),
-			Ttl:    sink.config.ttl,
+			Metric: riemannCommon.RiemannValue(event.Count),
+			Ttl:    sink.config.Ttl,
 			State:  eventState(event),
-			Tags:   sink.config.tags,
+			Tags:   sink.config.Tags,
 		}
 
 		dataEvents = append(dataEvents, riemannEvent)
-		if len(dataEvents) >= maxSendBatchSize {
+		if len(dataEvents) >= riemannCommon.MaxSendBatchSize {
 			sink.sendData(dataEvents)
 			dataEvents = nil
 		}
@@ -186,7 +122,7 @@ func (sink *riemannSink) ExportEvents(eventBatch *event_core.EventBatch) {
 	}
 }
 
-func (sink *riemannSink) sendData(dataEvents []riemann_api.Event) {
+func (sink *RiemannSink) sendData(dataEvents []riemann_api.Event) {
 	if sink.client == nil {
 		return
 	}
@@ -196,7 +132,7 @@ func (sink *riemannSink) sendData(dataEvents []riemann_api.Event) {
 	for _, event := range dataEvents {
 		glog.V(8).Infof("Sending event to Riemann:  %+v", event)
 		var err error
-		for try := 0; try < max_retries; try++ {
+		for try := 0; try < riemannCommon.MaxRetries; try++ {
 			err = sink.client.SendEvent(&event)
 			if err == nil {
 				break
