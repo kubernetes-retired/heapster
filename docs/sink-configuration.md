@@ -140,7 +140,8 @@ For example,
     --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&timeseriestopic=testseries&eventstopic=testtopic"
 
 ### Riemann
-This sink supports metrics only.
+This sink supports monitoring metrics and events.
+
 To use the reimann sink add the following flag:
 
 	--sink="riemann:<RIEMANN_SERVER_URL>[?<OPTIONS>]"
@@ -203,7 +204,7 @@ In order to use AWS Managed Elastic we need to use one of the following methods:
 	1. Configure the ElasticSearch cluster policy with IAM User
 	2. Create a secret that stores the IAM credentials
 	3. Expose the credentials to the environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-	
+
 	```
 	env:
       - name: AWS_ACCESS_KEY_ID
