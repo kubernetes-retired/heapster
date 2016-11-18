@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: monitoring-influxdb
+  namespace: kube-system
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        task: monitoring
+        k8s-app: influxdb
+    spec:
+      volumes:
+      - name: influxdb-storage
+        emptyDir: {}
+      containers:
+      - name: influxdb
+        image: kubernetes/heapster_influxdb:v0.6
+        volumeMounts:
+        - mountPath: /data
+          name: influxdb-storage

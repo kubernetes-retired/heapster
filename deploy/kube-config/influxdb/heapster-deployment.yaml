@@ -1,20 +1,14 @@
-apiVersion: v1
-kind: ReplicationController
+apiVersion: extensions/v1beta1
+kind: Deployment
 metadata:
-  labels:
-    k8s-app: heapster
-    name: heapster
-    version: v6
   name: heapster
   namespace: kube-system
 spec:
   replicas: 1
-  selector:
-    k8s-app: heapster
-    version: v6
   template:
     metadata:
       labels:
+        task: monitoring
         k8s-app: heapster
         version: v6
     spec:
