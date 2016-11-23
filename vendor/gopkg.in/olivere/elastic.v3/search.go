@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"gopkg.in/olivere/elastic.v3/uritemplates"
 )
 
@@ -25,6 +27,7 @@ type SearchService struct {
 	typ               []string
 	routing           string
 	preference        string
+	requestCache      *bool
 	ignoreUnavailable *bool
 	allowNoIndices    *bool
 	expandWildcards   string
@@ -115,6 +118,13 @@ func (s *SearchService) Routing(routings ...string) *SearchService {
 // across different requests.
 func (s *SearchService) Preference(preference string) *SearchService {
 	s.preference = preference
+	return s
+}
+
+// RequestCache indicates whether the cache should be used for this
+// request or not, defaults to index level setting.
+func (s *SearchService) RequestCache(requestCache bool) *SearchService {
+	s.requestCache = &requestCache
 	return s
 }
 
@@ -303,6 +313,9 @@ func (s *SearchService) buildURL() (string, url.Values, error) {
 	if s.preference != "" {
 		params.Set("preference", s.preference)
 	}
+	if s.requestCache != nil {
+		params.Set("request_cache", fmt.Sprintf("%v", *s.requestCache))
+	}
 	if s.allowNoIndices != nil {
 		params.Set("allow_no_indices", fmt.Sprintf("%v", *s.allowNoIndices))
 	}
@@ -322,6 +335,11 @@ func (s *SearchService) Validate() error {
 
 // Do executes the search and returns a SearchResult.
 func (s *SearchService) Do() (*SearchResult, error) {
+	return s.DoC(nil)
+}
+
+// DoC executes the search and returns a SearchResult.
+func (s *SearchService) DoC(ctx context.Context) (*SearchResult, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -344,7 +362,7 @@ func (s *SearchService) Do() (*SearchResult, error) {
 		}
 		body = src
 	}
-	res, err := s.client.PerformRequest("POST", path, params, body)
+	res, err := s.client.PerformRequestC(ctx, "POST", path, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -359,15 +377,17 @@ func (s *SearchService) Do() (*SearchResult, error) {
 
 // SearchResult is the result of a search in Elasticsearch.
 type SearchResult struct {
-	TookInMillis int64         `json:"took"`         // search time in milliseconds
-	ScrollId     string        `json:"_scroll_id"`   // only used with Scroll and Scan operations
-	Hits         *SearchHits   `json:"hits"`         // the actual search hits
-	Suggest      SearchSuggest `json:"suggest"`      // results from suggesters
-	Aggregations Aggregations  `json:"aggregations"` // results from aggregations
-	TimedOut     bool          `json:"timed_out"`    // true if the search timed out
+	TookInMillis    int64         `json:"took"`             // search time in milliseconds
+	ScrollId        string        `json:"_scroll_id"`       // only used with Scroll and Scan operations
+	Hits            *SearchHits   `json:"hits"`             // the actual search hits
+	Suggest         SearchSuggest `json:"suggest"`          // results from suggesters
+	Aggregations    Aggregations  `json:"aggregations"`     // results from aggregations
+	TimedOut        bool          `json:"timed_out"`        // true if the search timed out
+	TerminatedEarly bool          `json:"terminated_early"` // true if the operation has terminated before e.g. an expiration was reached
 	//Error        string        `json:"error,omitempty"` // used in MultiSearch only
 	// TODO double-check that MultiGet now returns details error information
-	Error *ErrorDetails `json:"error,omitempty"` // only used in MultiGet
+	Error  *ErrorDetails `json:"error,omitempty"`   // only used in MultiGet
+	Shards *shardsInfo   `json:"_shards,omitempty"` // shard information
 }
 
 // TotalHits is a convenience function to return the number of hits for
@@ -386,7 +406,7 @@ func (r *SearchResult) Each(typ reflect.Type) []interface{} {
 	if r.Hits == nil || r.Hits.Hits == nil || len(r.Hits.Hits) == 0 {
 		return nil
 	}
-	slice := make([]interface{}, 0)
+	var slice []interface{}
 	for _, hit := range r.Hits.Hits {
 		v := reflect.New(typ).Elem()
 		if err := json.Unmarshal(*hit.Source, v.Addr().Interface()); err == nil {

@@ -183,6 +183,7 @@ Besides this, the following options can be set in query string:
 * `startupHealthcheckTimeout` - the time in seconds the healthcheck waits for
   a response from Elasticsearch on startup, i.e. when creating a client. The
   default value is `1`.
+* `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
 
 Like this:
 

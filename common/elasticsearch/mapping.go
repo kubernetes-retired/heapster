@@ -13,16 +13,48 @@
 // limitations under the License.
 package elasticsearch
 
-const mapping = `{
-  "aliases": {
-    "heapster-events": {
+import (
+	"k8s.io/heapster/metrics/core"
+	"strings"
+)
 
+func MetricFamilyTimestamp(metricFamily core.MetricFamily) string {
+	return strings.Title(string(metricFamily)) + "MetricsTimestamp"
+}
+func metricFamilySchema(metricFamily core.MetricFamily) string {
+	metricSchemas := []string{}
+	for _, metric := range core.MetricFamilies[metricFamily] {
+		metricSchemas = append(metricSchemas,
+			`"`+metric.Name+`": {
+  "properties": {
+    "value": {
+      "type": "long"
     }
-  },
-  "mappings": {
-    "k8s-heapster": {
+  }
+}`,
+		)
+	}
+
+	return customMetricTypeSchema(string(metricFamily),
+		`"`+MetricFamilyTimestamp(metricFamily)+`": {
+  "type": "date",
+  "format": "strict_date_optional_time||epoch_millis"
+},
+"Metrics": {
+  "properties": {
+  `+strings.Join(metricSchemas, ",\r\n")+`
+  }
+}
+`,
+	)
+}
+
+func customMetricTypeSchema(typeName string, customSchema string) string {
+	return `"` + typeName + `": {
+  "properties": {
+    "MetricsTags": {
       "properties": {
-        "MetricsName": {
+        "container_base_image": {
           "type": "string",
           "index": "analyzed",
           "fields": {
@@ -32,111 +64,135 @@ const mapping = `{
             }
           }
         },
-        "MetricsTags": {
-          "properties": {
-            "container_base_image": {
-              "type": "string",
-              "index": "analyzed",
-              "fields": {
-                "raw": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                }
-              }
-            },
-            "container_name": {
-              "type": "string",
-              "index": "analyzed",
-              "fields": {
-                "raw": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                }
-              }
-            },
-            "host_id": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "hostname": {
-              "type": "string",
-              "index": "analyzed",
-              "fields": {
-                "raw": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                }
-              }
-            },
-            "labels": {
-              "type": "string",
-              "index": "analyzed",
-              "fields": {
-                "raw": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                }
-              }
-            },
-            "namespace_id": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "namespace_name": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "nodename": {
-              "type": "string",
-              "index": "analyzed",
-              "fields": {
-                "raw": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                }
-              }
-            },
-            "pod_id": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "pod_name": {
-              "type": "string",
-              "index": "analyzed",
-              "fields": {
-                "raw": {
-                  "type": "string",
-                  "index": "not_analyzed"
-                }
-              }
-            },
-            "pod_namespace": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "resource_id": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "type": {
+        "container_name": {
+          "type": "string",
+          "index": "analyzed",
+          "fields": {
+            "raw": {
               "type": "string",
               "index": "not_analyzed"
             }
           }
         },
-        "MetricsTimestamp": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
+        "host_id": {
+          "type": "string",
+          "index": "not_analyzed"
         },
-        "MetricsValue": {
-          "properties": {
-            "value": {
-              "type": "long"
+        "hostname": {
+          "type": "string",
+          "index": "analyzed",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
             }
           }
+        },
+        "labels": {
+          "type": "string",
+          "index": "analyzed",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "namespace_id": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "namespace_name": {
+          "type": "string",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "nodename": {
+          "type": "string",
+          "index": "analyzed",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "pod_id": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "pod_name": {
+          "type": "string",
+          "index": "analyzed",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "pod_namespace": {
+          "type": "string",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "resource_id": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "type": {
+          "type": "string",
+          "index": "not_analyzed"
         }
       }
     },
+    ` + customSchema + `
+  }
+}`
+}
+
+var mapping = `{
+  "mappings": {
+    "_default_": {
+      "_all": {
+        "enabled": false
+      }
+    },
+    ` + metricFamilySchema(core.MetricFamilyCpu) + `,
+    ` + metricFamilySchema(core.MetricFamilyFilesystem) + `,
+    ` + metricFamilySchema(core.MetricFamilyMemory) + `,
+    ` + metricFamilySchema(core.MetricFamilyNetwork) + `,
+    ` + customMetricTypeSchema(core.MetricFamilyGeneral,
+	`"MetricsName": {
+  "type": "string",
+  "index": "analyzed",
+  "fields": {
+    "raw": {
+      "type": "string",
+      "index": "not_analyzed"
+    }
+  }
+},
+"GeneralMetricsTimestamp": {
+"type": "date",
+"format": "strict_date_optional_time||epoch_millis"
+},
+"MetricsValue": {
+  "properties": {
+    "value": {
+      "type": "long"
+    }
+  }
+}`) + `,
+
     "events": {
       "properties": {
         "EventTags": {
@@ -171,12 +227,136 @@ const mapping = `{
             }
           }
         },
-        "EventTimestamp": {
+        "InvolvedObject": {
+          "properties": {
+            "apiVersion": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "fieldPath": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "kind": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "name": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "namespace": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "resourceVersion": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "uid": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "FirstOccurrenceTimestamp": {
           "type": "date",
           "format": "strict_date_optional_time||epoch_millis"
         },
-        "EventValue": {
-          "type": "string"
+        "LastOccurrenceTimestamp": {
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis"
+        },
+        "Type": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "Message": {
+          "type": "string",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "Reason": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+
+        "Count": {
+          "type": "long"
+        },
+        "Metadata": {
+          "properties": {
+            "creationTimestamp": {
+              "type": "date",
+              "format": "strict_date_optional_time||epoch_millis"
+            },
+            "name": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "namespace": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            },
+            "resourceVersion": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "selfLink": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "uid": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
+        "Source": {
+          "properties": {
+            "component": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "host": {
+              "type": "string",
+              "fields": {
+                "raw": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                }
+              }
+            }
+          }
         }
       }
     }

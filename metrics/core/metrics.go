@@ -80,6 +80,74 @@ var NodeAutoscalingMetrics = []Metric{
 	MetricNodeMemoryReservation,
 }
 
+var CpuMetrics = []Metric{
+	MetricCpuLimit,
+	MetricCpuRequest,
+	MetricCpuUsage,
+	MetricCpuUsageRate,
+	MetricNodeCpuAllocatable,
+	MetricNodeCpuCapacity,
+	MetricNodeCpuReservation,
+	MetricNodeCpuUtilization,
+}
+var FilesystemMetrics = []Metric{
+	MetricFilesystemAvailable,
+	MetricFilesystemLimit,
+	MetricFilesystemUsage,
+}
+var MemoryMetrics = []Metric{
+	MetricMemoryLimit,
+	MetricMemoryMajorPageFaults,
+	MetricMemoryMajorPageFaultsRate,
+	MetricMemoryPageFaults,
+	MetricMemoryPageFaultsRate,
+	MetricMemoryRequest,
+	MetricMemoryUsage,
+	MetricMemoryWorkingSet,
+	MetricNodeMemoryAllocatable,
+	MetricNodeMemoryCapacity,
+	MetricNodeMemoryUtilization,
+	MetricNodeMemoryReservation,
+}
+var NetworkMetrics = []Metric{
+	MetricNetworkRx,
+	MetricNetworkRxErrors,
+	MetricNetworkRxErrorsRate,
+	MetricNetworkRxRate,
+	MetricNetworkTx,
+	MetricNetworkTxErrors,
+	MetricNetworkTxErrorsRate,
+	MetricNetworkTxRate,
+}
+
+type MetricFamily string
+
+const (
+	MetricFamilyCpu        MetricFamily = "cpu"
+	MetricFamilyFilesystem              = "filesystem"
+	MetricFamilyMemory                  = "memory"
+	MetricFamilyNetwork                 = "network"
+	MetricFamilyGeneral                 = "general"
+)
+
+var MetricFamilies = map[MetricFamily][]Metric{
+	MetricFamilyCpu:        CpuMetrics,
+	MetricFamilyFilesystem: FilesystemMetrics,
+	MetricFamilyMemory:     MemoryMetrics,
+	MetricFamilyNetwork:    NetworkMetrics,
+}
+
+func MetricFamilyForName(metricName string) MetricFamily {
+	for family, metrics := range MetricFamilies {
+		for _, metric := range metrics {
+			if metricName == metric.Name {
+				return family
+			}
+		}
+	}
+	return MetricFamilyGeneral
+}
+
 var AllMetrics = append(append(append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...), LabeledMetrics...),
 	NodeAutoscalingMetrics...)
 

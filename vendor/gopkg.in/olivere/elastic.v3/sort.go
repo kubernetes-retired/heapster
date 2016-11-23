@@ -59,6 +59,23 @@ func (info SortInfo) Source() (interface{}, error) {
 	return source, nil
 }
 
+// -- SortByDoc --
+
+// SortByDoc sorts by the "_doc" field, as described in
+// https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-scroll.html.
+//
+// Example:
+//   ss := elastic.NewSearchSource()
+//   ss = ss.SortBy(elastic.SortByDoc{})
+type SortByDoc struct {
+	Sorter
+}
+
+// Source returns the JSON-serializable data.
+func (s SortByDoc) Source() (interface{}, error) {
+	return "_doc", nil
+}
+
 // -- ScoreSort --
 
 // ScoreSort sorts by relevancy score.
@@ -341,7 +358,7 @@ func (s GeoDistanceSort) Source() (interface{}, error) {
 	source["_geo_distance"] = x
 
 	// Points
-	ptarr := make([]interface{}, 0)
+	var ptarr []interface{}
 	for _, pt := range s.points {
 		ptarr = append(ptarr, pt.Source())
 	}
