@@ -45,11 +45,11 @@ func (h *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
 		// If no descriptorTag is found, this metric does not belong to Heapster
 		if mk, found := p.Tags[descriptorTag]; found {
 			if model, f := h.models[mk]; f && !h.recent(p, model) {
-				if err := h.client.UpdateTags(mt, p.Id, p.Tags, h.modifiers...); err != nil {
+				if err := h.client.UpdateTags(mt, p.ID, p.Tags, h.modifiers...); err != nil {
 					return err
 				}
 			}
-			h.reg[p.Id] = p
+			h.reg[p.ID] = p
 		}
 	}
 	return nil
@@ -86,7 +86,7 @@ func (h *hawkularSink) descriptorToDefinition(md *core.MetricDescriptor) metrics
 	tags[descriptorTag] = md.Name
 
 	hmd := metrics.MetricDefinition{
-		Id:   md.Name,
+		ID:   md.Name,
 		Tags: tags,
 		Type: heapsterTypeToHawkularType(md.Type),
 	}
@@ -149,12 +149,15 @@ func (h *hawkularSink) nodeName(ms *core.MetricSet) string {
 }
 
 func (h *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric core.LabeledMetric, m ...metrics.Modifier) error {
-	key := h.idName(ms, metric.Name)
+	var key string
 
 	if resourceID, found := metric.Labels[core.LabelResourceID.Key]; found {
 		key = h.idName(ms, metric.Name+separator+resourceID)
+	} else {
+		key = h.idName(ms, metric.Name)
 	}
 
+	// TODO There's no concurrency here as the Mutex blocks the whole process. Fix and use a channel?
 	h.regLock.Lock()
 	defer h.regLock.Unlock()
 
@@ -250,11 +253,14 @@ func (h *hawkularSink) sendData(tmhs map[string][]metrics.MetricHeader, wg *sync
 // Converts Timeseries to metric structure used by the Hawkular
 func (h *hawkularSink) pointToLabeledMetricHeader(ms *core.MetricSet, metric core.LabeledMetric, timestamp time.Time) (*metrics.MetricHeader, error) {
 
-	name := h.idName(ms, metric.Name)
+	var name string
 	if resourceID, found := metric.Labels[core.LabelResourceID.Key]; found {
 		name = h.idName(ms, metric.Name+separator+resourceID)
+	} else {
+		name = h.idName(ms, metric.Name)
 	}
 
+	// TODO This is unnecessary, Counter type uses Integer
 	var value float64
 	if metric.ValueType == core.ValueInt64 {
 		value = float64(metric.IntValue)
@@ -264,11 +270,11 @@ func (h *hawkularSink) pointToLabeledMetricHeader(ms *core.MetricSet, metric cor
 
 	m := metrics.Datapoint{
 		Value:     value,
-		Timestamp: metrics.UnixMilli(timestamp),
+		Timestamp: timestamp,
 	}
 
 	mh := &metrics.MetricHeader{
-		Id:   name,
+		ID:   name,
 		Data: []metrics.Datapoint{m},
 		Type: heapsterTypeToHawkularType(metric.MetricType),
 	}

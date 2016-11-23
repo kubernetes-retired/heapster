@@ -493,8 +493,8 @@
 		},
 		{
 			"ImportPath": "github.com/hawkular/hawkular-client-go/metrics",
-			"Comment": "v0.6.0",
-			"Rev": "50f4099dfd739f913ed7d8f33288aeeca338516a"
+			"Comment": "v0.7.0",
+			"Rev": "d3a0e3ccb068e354fc61c5811a24414792e6159b"
 		},
 		{
 			"ImportPath": "github.com/howeyc/gopass",

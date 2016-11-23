@@ -37,12 +37,16 @@ var StandardMetrics = []Metric{
 	MetricNetworkTx,
 	MetricNetworkTxErrors}
 
+var StandardMetricsMapping map[string]Metric
+
 // Metrics computed based on cluster state using Kubernetes API.
 var AdditionalMetrics = []Metric{
 	MetricCpuRequest,
 	MetricCpuLimit,
 	MetricMemoryRequest,
 	MetricMemoryLimit}
+
+var AdditionalMetricsMapping map[string]Metric
 
 // Computed based on corresponding StandardMetrics.
 var RateMetrics = []Metric{
@@ -69,6 +73,8 @@ var LabeledMetrics = []Metric{
 	MetricFilesystemAvailable,
 }
 
+var LabeledMetricsMapping map[string]Metric
+
 var NodeAutoscalingMetrics = []Metric{
 	MetricNodeCpuCapacity,
 	MetricNodeMemoryCapacity,
@@ -80,8 +86,12 @@ var NodeAutoscalingMetrics = []Metric{
 	MetricNodeMemoryReservation,
 }
 
+var NodeAutoscalingMetricsMapping map[string]Metric
+
 var AllMetrics = append(append(append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...), LabeledMetrics...),
 	NodeAutoscalingMetrics...)
+
+var AllMetricsMapping map[string]Metric
 
 // Definition of Standard Metrics.
 var MetricUptime = Metric{
@@ -581,4 +591,22 @@ type Metric struct {
 
 	// Returns a slice of internal point objects that contain metric values and associated labels.
 	GetLabeledMetric func(*cadvisor.ContainerSpec, *cadvisor.ContainerStats) []LabeledMetric
+}
+
+func init() {
+	// Create Mapping maps
+	createMap := func(sourceMetrics []Metric) map[string]Metric {
+		targetMap := make(map[string]Metric, len(sourceMetrics))
+		for _, metric := range sourceMetrics {
+			targetMap[metric.MetricDescriptor.Name] = metric
+		}
+		return targetMap
+	}
+
+	AllMetricsMapping = createMap(AllMetrics)
+	StandardMetricsMapping = createMap(StandardMetrics)
+	AdditionalMetricsMapping = createMap(AdditionalMetrics)
+	//	RateMetricsMapping = createMap(RateMetrics)
+	LabeledMetricsMapping = createMap(LabeledMetrics)
+	NodeAutoscalingMetricsMapping = createMap(NodeAutoscalingMetrics)
 }

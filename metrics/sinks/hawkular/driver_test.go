@@ -57,7 +57,7 @@ func TestDescriptorTransform(t *testing.T) {
 
 	md := hSink.descriptorToDefinition(&smd)
 
-	assert.Equal(t, smd.Name, md.Id)
+	assert.Equal(t, smd.Name, md.ID)
 	assert.Equal(t, 3, len(md.Tags)) // descriptorTag, unitsTag, typesTag, k1
 
 	assert.Equal(t, smd.Units.String(), md.Tags[unitsTag])
@@ -122,7 +122,7 @@ func TestMetricTransform(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key],
-		metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
+		metricSet.Labels[core.LabelPodId.Key], metricName), m.ID)
 
 	assert.Equal(t, 1, len(m.Data))
 	_, ok := m.Data[0].Value.(float64)
@@ -134,7 +134,7 @@ func TestMetricTransform(t *testing.T) {
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[2], now)
 	assert.NoError(t, err)
 
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelNodename.Key], metricName), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelNodename.Key], metricName), m.ID)
 
 	//
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
@@ -142,13 +142,13 @@ func TestMetricTransform(t *testing.T) {
 
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key],
 		metricSet.Labels[core.LabelNodename.Key], labeledMetricNameA,
-		metricSet.LabeledMetrics[0].Labels[core.LabelResourceID.Key]), m.Id)
+		metricSet.LabeledMetrics[0].Labels[core.LabelResourceID.Key]), m.ID)
 
 	//
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[1], now)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key],
-		metricSet.Labels[core.LabelNodename.Key], labeledMetricNameB), m.Id)
+		metricSet.Labels[core.LabelNodename.Key], labeledMetricNameB), m.ID)
 }
 
 func TestMetricIds(t *testing.T) {
@@ -181,43 +181,43 @@ func TestMetricIds(t *testing.T) {
 	//
 	m, err := hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.ID)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeNode
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", "machine", metricSet.Labels[core.LabelNodename.Key], metricName), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", "machine", metricSet.Labels[core.LabelNodename.Key], metricName), m.ID)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypePod
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", core.MetricSetTypePod, metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", core.MetricSetTypePod, metricSet.Labels[core.LabelPodId.Key], metricName), m.ID)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypePodContainer
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.ID)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeSystemContainer
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s/%s", core.MetricSetTypeSystemContainer, metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s/%s", core.MetricSetTypeSystemContainer, metricSet.Labels[core.LabelContainerName.Key], metricSet.Labels[core.LabelPodId.Key], metricName), m.ID)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeCluster
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf("%s/%s", core.MetricSetTypeCluster, metricName), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s", core.MetricSetTypeCluster, metricName), m.ID)
 
 	//
 	metricSet.Labels[core.LabelMetricSetType.Key] = core.MetricSetTypeNamespace
 	m, err = hSink.pointToLabeledMetricHeader(&metricSet, metricSet.LabeledMetrics[0], now)
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf("%s/%s/%s", core.MetricSetTypeNamespace, metricSet.Labels[core.LabelNamespaceName.Key], metricName), m.Id)
+	assert.Equal(t, fmt.Sprintf("%s/%s/%s", core.MetricSetTypeNamespace, metricSet.Labels[core.LabelNamespaceName.Key], metricName), m.ID)
 
 }
 
@@ -232,7 +232,7 @@ func TestRecentTest(t *testing.T) {
 	modelT["hep"+descriptionTag] = "n"
 
 	model := metrics.MetricDefinition{
-		Id:   id,
+		ID:   id,
 		Tags: modelT,
 	}
 
@@ -242,7 +242,7 @@ func TestRecentTest(t *testing.T) {
 	}
 
 	live := metrics.MetricDefinition{
-		Id:   "test/" + id,
+		ID:   "test/" + id,
 		Tags: liveT,
 	}
 
@@ -381,7 +381,7 @@ func TestStoreTimeseries(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 
 		typ := r.RequestURI[strings.Index(r.RequestURI, "hawkular/metrics/")+17:]
-		typ = typ[:len(typ)-5]
+		typ = typ[:strings.LastIndex(typ, "/")]
 
 		switch typ {
 		case "counters":
@@ -404,7 +404,7 @@ func TestStoreTimeseries(t *testing.T) {
 
 		assert.Equal(t, 1, len(mH))
 
-		ids = append(ids, mH[0].Id)
+		ids = append(ids, mH[0].ID)
 	}))
 	defer s.Close()
 
@@ -494,7 +494,7 @@ func TestFiltering(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		m.Lock()
 		defer m.Unlock()
-		if strings.Contains(r.RequestURI, "data") {
+		if strings.Contains(r.RequestURI, "raw") {
 			defer r.Body.Close()
 			b, err := ioutil.ReadAll(r.Body)
 			assert.NoError(t, err)
@@ -621,7 +621,7 @@ func TestBatchingTimeseries(t *testing.T) {
 		assert.NoError(t, err)
 
 		for _, v := range mH {
-			ids = append(ids, v.Id)
+			ids = append(ids, v.ID)
 		}
 
 		calls++
@@ -671,3 +671,5 @@ func TestBatchingTimeseries(t *testing.T) {
 		newIds[v] = true
 	}
 }
+
+// HistoricalSource tests
