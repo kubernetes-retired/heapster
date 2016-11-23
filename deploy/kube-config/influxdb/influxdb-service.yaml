@@ -10,13 +10,8 @@ metadata:
   name: monitoring-influxdb
   namespace: kube-system
 spec:
-  # InfluxDB has a UI that can be used to query, uncomment the `http` port and expose
-  # to access this service.
   # type: NodePort
   ports:
-  # - name: http
-  #   port: 80
-  #   targetPort: 8083
   - name: api
     port: 8086
     targetPort: 8086
