@@ -163,7 +163,7 @@ to be configured for the ElasticSearch sink. To do this, you can set
 `ES_SERVER_URL` to a dummy value, and use the `?nodes=` query value for each
 additional node in the cluster. For example:
 ```
-  --sink=elasticsearch:?nodes=foo.com:9200&nodes=bar.com:9200
+  --sink=elasticsearch:?nodes=http://foo.com:9200&nodes=http://bar.com:9200
 ```
 (*) Notice that using the `?nodes` notation will override the `ES_SERVER_URL`
 
@@ -186,11 +186,11 @@ Besides this, the following options can be set in query string:
 
 Like this:
 
-    --sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testMetric"
+    --sink="elasticsearch:?nodes=http://127.0.0.1:9200&Index=testMetric"
 
 	or
 
-	--sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testEvent"
+	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&Index=testEvent"
 
 #### AWS Integration
 In order to use AWS Managed Elastic we need to use one of the following methods:
