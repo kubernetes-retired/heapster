@@ -16,7 +16,7 @@ spec:
         emptyDir: {}
       containers:
       - name: grafana
-        image: kubernetes/heapster_grafana:v2.6.0
+        image: gcr.io/google_containers/heapster_grafana:v3.1.1
         ports:
           - containerPort: 3000
             protocol: TCP
