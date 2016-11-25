@@ -42,7 +42,7 @@ func TestAllExportsInTime(t *testing.T) {
 	manager.ExportData(&batch)
 
 	elapsed := time.Now().Sub(now)
-	if elapsed > 2*timeout+2*time.Second {
+	if elapsed > 3*timeout+2*time.Second {
 		t.Fatalf("3xExportData took too long: %s", elapsed)
 	}
 
