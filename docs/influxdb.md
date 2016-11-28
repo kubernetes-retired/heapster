@@ -26,13 +26,21 @@ Take a look at the [storage schema](storage-schema.md) to understand how metrics
 
 Grafana is set up to auto-populate nodes and pods using templates.
 
+The Grafana web interface can also be accessed via the api-server proxy. The URL should be visible in `kubectl cluster-info` once the above resources are created.
+
 ## Troubleshooting guide
-1. If the Grafana service is not accessible, chances are it might not be running. Use `kubectl.sh` to verify that the `heapster` and `influxdb & grafana` pods are alive.
 
-	kubectl get pods
+See also the [debugging documentation](debugging.md).
 
-	kubectl get services
+1. If the Grafana service is not accessible, it might not be running. Use `kubectl` to verify that the `heapster` and `influxdb & grafana` pods are alive.
+    ```
+    $ kubectl get pods --namespace=kube-system
+    ...
+    monitoring-grafana-927606581-0tmdx        1/1       Running   0          6d
+    monitoring-influxdb-3276295126-joqo2      1/1       Running   0          15d
+    ...
+    
+    $ kubectl get services --namespace=kube-system monitoring-grafana monitoring-influxdb
+    ```
 
-2. To access the InfluxDB UI, you will have to make the InfluxDB service externally visible, similar to how Grafana is made publicly accessible.
-
-3. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](../deploy/kube-config/influxdb/influxdb-grafana-controller.yaml) and relaunch the controllers:
+1. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](../deploy/kube-config/influxdb/influxdb-grafana-controller.yaml) and relaunch the controllers by running `kubectl apply -f deploy/kube-config/influxdb/influxdb-grafana-controller.yaml` and deleting and old influxdb pods.
