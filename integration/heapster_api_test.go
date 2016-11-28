@@ -224,15 +224,21 @@ func getSchema(fm kubeFramework, svc *kube_api.Service) (*api_v1.TimeseriesSchem
 }
 
 var expectedSystemContainers = map[string]struct{}{
-	"machine":       {},
-	"kubelet":       {},
-	"kube-proxy":    {},
-	"system":        {},
+	"machine":    {},
+	"kubelet":    {},
+	"kube-proxy": {},
+	// TODO(piosz): Uncomment once https://github.com/kubernetes/kubernetes/issues/37453 is fixed
+	// "system":        {},
 	"docker-daemon": {},
 }
 
 func isContainerBaseImageExpected(ts *api_v1.Timeseries) bool {
-	_, exists := expectedSystemContainers[ts.Labels[core.LabelContainerName.Key]]
+	cName := ts.Labels[core.LabelContainerName.Key]
+	// TODO(piosz): remove this if once https://github.com/kubernetes/kubernetes/issues/37453 is fixed
+	if cName == "system" {
+		return false
+	}
+	_, exists := expectedSystemContainers[cName]
 	return !exists
 }
 
