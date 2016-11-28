@@ -56,31 +56,6 @@ Heapster tags each metric with the following labels.
 | namespace_id   | UID of the namespace of a Pod                                                 |
 | resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | 
 
-**Note**
-* The seperator used to join `key:value` pairs in making up `labels` can be customized through the Heapster `--label-seperator` command line argument. For more info please take a look at [PR 1367](https://github.com/kubernetes/heapster/pull/1367).
-  * Comma is fine until we use [Bosun](http://bosun.org) as the alert system and use the `group by labels` to search for labels.
-  As currently, [bosun use comma to split queried tag key and tag value](https://github.com/bosun-monitor/bosun/blob/0.5.0/opentsdb/tsdb.go#L566-L575). For example if the query expression used for query InfluxDB from Bosun is like this:
-  ```
-  $limit = avg(influx("k8s", '''SELECT mean(value) as value FROM "memory/limit" WHERE type = 'node' GROUP BY nodename, labels''', "${INTERVAL}s", "", ""))
-  ``` 
-  Then, we will get tag key and tag value string like this:
-  ```
-  nodename=127.0.0.1,labels=beta.kubernetes.io/arch:amd64,beta.kubernetes.io/os:linux,kubernetes.io/hostname:127.0.0.1
-  ```
-  When split by a comma, something wrong happens. Bosun split it wrongly to this:
-  ```
-  nodename=127.0.0.1
-  labels=labels:beta.kubernetes.io/arch:amd64
-  beta.kubernetes.io/os.linux
-  kubernetes.io/hostname:127.0.0.1
-  ```
-  what we expect is like:
-  ```
-  nodename=127.0.0.1
-  labels=beta.kubernetes.io/arch:amd64,beta.kubernetes.io/os:linux,kubernetes.io/hostname:127.0.0.1
-  ```
-  the last two tag key-value pairs is wrong. This will make bosun confused and panic with something like "panic: opentsdb: bad tag: beta.kubernetes.io/os:linux". 
-
 ## Aggregates
 
 The metrics are collected initally collected for nodes and containers and latter aggregated for pods, namespaces and clusters. 
