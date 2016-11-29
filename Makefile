@@ -13,8 +13,8 @@ deps:
 	which godep || go get github.com/tools/godep
 
 build: clean deps
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -ldflags "-X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)" -o heapster k8s.io/heapster/metrics
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -ldflags "-X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)" -o eventer k8s.io/heapster/events
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -ldflags "-w -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)" -o heapster k8s.io/heapster/metrics
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -ldflags "-w -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)" -o eventer k8s.io/heapster/events
 
 sanitize:
 	hooks/check_boilerplate.sh
