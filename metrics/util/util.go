@@ -21,8 +21,10 @@ import (
 	"time"
 )
 
-// Concatenates a map of labels into a comma-separated key=value pairs.
-func LabelsToString(labels map[string]string, separator string) string {
+var labelSeperator string
+
+// Concatenates a map of labels into a Seperator-seperated key:value pairs.
+func LabelsToString(labels map[string]string) string {
 	output := make([]string, 0, len(labels))
 	for key, value := range labels {
 		output = append(output, fmt.Sprintf("%s:%s", key, value))
@@ -30,7 +32,7 @@ func LabelsToString(labels map[string]string, separator string) string {
 
 	// Sort to produce a stable output.
 	sort.Strings(output)
-	return strings.Join(output, separator)
+	return strings.Join(output, labelSeperator)
 }
 
 func CopyLabels(labels map[string]string) map[string]string {
@@ -46,4 +48,8 @@ func GetLatest(a, b time.Time) time.Time {
 		return a
 	}
 	return b
+}
+
+func SetLabelSeperator(seperator string) {
+	labelSeperator = seperator
 }
