@@ -87,7 +87,7 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 	}
 
 	containerMs.Labels[core.LabelPodId.Key] = string(pod.UID)
-	containerMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels, ",")
+	containerMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels)
 
 	namespace := containerMs.Labels[core.LabelNamespaceName.Key]
 	podName := containerMs.Labels[core.LabelPodName.Key]
@@ -120,7 +120,7 @@ func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *cor
 
 	// Add UID to pod
 	podMs.Labels[core.LabelPodId.Key] = string(pod.UID)
-	podMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels, ",")
+	podMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels)
 
 	// Add cpu/mem requests and limits to containers
 	for _, container := range pod.Spec.Containers {
@@ -138,7 +138,7 @@ func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *cor
 						core.LabelContainerName.Key:      container.Name,
 						core.LabelContainerBaseImage.Key: container.Image,
 						core.LabelPodId.Key:              string(pod.UID),
-						core.LabelLabels.Key:             util.LabelsToString(pod.Labels, ","),
+						core.LabelLabels.Key:             util.LabelsToString(pod.Labels),
 						core.LabelNodename.Key:           podMs.Labels[core.LabelNodename.Key],
 						core.LabelHostname.Key:           podMs.Labels[core.LabelHostname.Key],
 						core.LabelHostID.Key:             podMs.Labels[core.LabelHostID.Key],

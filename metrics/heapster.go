@@ -41,6 +41,7 @@ import (
 	"k8s.io/heapster/metrics/sinks"
 	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sources"
+	"k8s.io/heapster/metrics/util"
 	"k8s.io/heapster/version"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
@@ -65,6 +66,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
+	setLabelSeperator(opt)
 	setMaxProcs(opt)
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", version.HeapsterVersion)
@@ -355,4 +357,8 @@ func setMaxProcs(opt *options.HeapsterRunOptions) {
 	if actualNumProcs != numProcs {
 		glog.Warningf("Specified max procs of %d but using %d", numProcs, actualNumProcs)
 	}
+}
+
+func setLabelSeperator(opt *options.HeapsterRunOptions) {
+	util.SetLabelSeperator(opt.LabelSeperator)
 }

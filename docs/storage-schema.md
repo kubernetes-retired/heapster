@@ -52,9 +52,33 @@ Heapster tags each metric with the following labels.
 | container_name | User-provided name of the container or full cgroup name for system containers |
 | host_id        | Cloud-provider specified or user specified Identifier of a node               | 
 | hostname       | Hostname where the container ran                                              | 
-| labels         | Comma-separated list of user-provided labels. Format is 'key:value'           |
+| labels         | Comma-separated(Default) list of user-provided labels. Format is 'key:value'  |
 | namespace_id   | UID of the namespace of a Pod                                                 |
 | resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | 
+
+**Note**
+  * Label seperator can be configured with Heapster `--label-seperator`. Comma-seperated label pairs is fine until we use [Bosun](http://bosun.org) as alert system and use `group by labels` to search for labels.
+    [Bosun(0.5.0) uses comma to split queried tag key and tag value](https://github.com/bosun-monitor/bosun/blob/0.5.0/opentsdb/tsdb.go#L566-L575). For example if the expression used for query InfluxDB from Bosun is like this:
+```
+$limit = avg(influx("k8s", '''SELECT mean(value) as value FROM "memory/limit" WHERE type = 'node' GROUP BY nodename, labels''', "${INTERVAL}s", "", ""))
+```
+With a comma-separated labels:
+```
+nodename=127.0.0.1,labels=beta.kubernetes.io/arch:amd64,beta.kubernetes.io/os:linux,kubernetes.io/hostname:127.0.0.1
+```
+When split by a comma, something wrong happened. Bosun split it wrongly to:
+```
+nodename=127.0.0.1
+labels=labels:beta.kubernetes.io/arch:amd64
+beta.kubernetes.io/os.linux
+kubernetes.io/hostname:127.0.0.1
+```
+Last two tag key-value pairs is wrong. They should not exist and be squashed to `labels`:
+```
+nodename=127.0.0.1
+labels=labels:beta.kubernetes.io/arch:amd64,beta.kubernetes.io/os.linux,kubernetes.io/hostname:127.0.0.1
+```
+This will make bosun confused and panic with something like "panic: opentsdb: bad tag: beta.kubernetes.io/os:linux".
 
 ## Aggregates
 
