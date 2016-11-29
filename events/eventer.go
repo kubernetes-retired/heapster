@@ -38,6 +38,7 @@ var (
 	argMaxProcs  = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
 	argSources   flags.Uris
 	argSinks     flags.Uris
+	argVersion   bool
 )
 
 func main() {
@@ -45,7 +46,13 @@ func main() {
 
 	flag.Var(&argSources, "source", "source(s) to read events from")
 	flag.Var(&argSinks, "sink", "external sink(s) that receive events")
+	flag.BoolVar(&argVersion, "version", false, "print version info and exit")
 	flag.Parse()
+
+	if argVersion {
+		fmt.Println(version.VersionInfo())
+		os.Exit(0)
+	}
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
