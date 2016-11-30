@@ -189,12 +189,12 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	assert.Equal(t, 2, len(FakeESSink.savedData))
 
 	var expectMsgTemplate = [6]string{
-		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"namespace_id":"","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"test/metric/1","MetricsValue":{"value":123456}}`,
-		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"removeme","MetricsValue":{"value":123456}}`,
-		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"container_name":"/system.slice/-.mount","namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"/system.slice/-.mount//cpu/limit","MetricsValue":{"value":123456}}`,
-		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"container_name":"/system.slice/dbus.service","namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"/system.slice/dbus.service//cpu/usage","MetricsValue":{"value":123456}}`,
-		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"test/metric/1","MetricsValue":{"value":123456}}`,
-		`{"CpuMetricsTimestamp":%s,"Metrics":{"cpu/limit":{"value":223456},"cpu/usage":{"value":123456}},"MetricsTags":{"container_name":"/system.slice/-.mount","namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"}}`,
+		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"ClusterName":"","namespace_id":"","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"test/metric/1","MetricsValue":{"value":123456}}`,
+		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"ClusterName":"","namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"removeme","MetricsValue":{"value":123456}}`,
+		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"ClusterName":"","container_name":"/system.slice/-.mount","namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"/system.slice/-.mount//cpu/limit","MetricsValue":{"value":123456}}`,
+		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"ClusterName":"","container_name":"/system.slice/dbus.service","namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"/system.slice/dbus.service//cpu/usage","MetricsValue":{"value":123456}}`,
+		`{"GeneralMetricsTimestamp":%s,"MetricsTags":{"ClusterName":"","namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"},"MetricsName":"test/metric/1","MetricsValue":{"value":123456}}`,
+		`{"CpuMetricsTimestamp":%s,"Metrics":{"cpu/limit":{"value":223456},"cpu/usage":{"value":123456}},"MetricsTags":{"ClusterName":"","container_name":"/system.slice/-.mount","namespace_id":"123","pod_id":"aaaa-bbbb-cccc-dddd"}}`,
 	}
 
 	msgsString := fmt.Sprintf("%s", FakeESSink.savedData)

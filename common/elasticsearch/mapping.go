@@ -14,8 +14,9 @@
 package elasticsearch
 
 import (
-	"k8s.io/heapster/metrics/core"
 	"strings"
+
+	"k8s.io/heapster/metrics/core"
 )
 
 func MetricFamilyTimestamp(metricFamily core.MetricFamily) string {
@@ -121,6 +122,10 @@ func customMetricTypeSchema(typeName string, customSchema string) string {
             }
           }
         },
+		"ClusterName": {
+			"type": "string",
+			"index": "not_analyzed"
+		},
         "pod_id": {
           "type": "string",
           "index": "not_analyzed"
@@ -201,6 +206,10 @@ var mapping = `{
               "type": "string",
               "index": "not_analyzed"
             },
+		    "ClusterName": {
+			  "type": "string",
+			  "index": "not_analyzed"
+	    	},
             "hostname": {
               "type": "string",
               "index": "analyzed",
@@ -299,7 +308,6 @@ var mapping = `{
           "type": "string",
           "index": "not_analyzed"
         },
-
         "Count": {
           "type": "long"
         },
