@@ -255,7 +255,7 @@ func TestDecodeMetrics6(t *testing.T) {
 					LoadAverage: 20,
 				},
 				CustomMetrics: map[string][]cadvisor_api.MetricVal{
-					"test1": []cadvisor_api.MetricVal{
+					"test1": {
 						{
 							Label:      "test1",
 							Timestamp:  time.Now(),
@@ -263,7 +263,7 @@ func TestDecodeMetrics6(t *testing.T) {
 							FloatValue: 1.0,
 						},
 					},
-					"test2": []cadvisor_api.MetricVal{
+					"test2": {
 						{
 							Label:      "test2",
 							Timestamp:  time.Now(),
@@ -271,7 +271,7 @@ func TestDecodeMetrics6(t *testing.T) {
 							FloatValue: 1.0,
 						},
 					},
-					"test3": []cadvisor_api.MetricVal{
+					"test3": {
 						{
 							Label:      "test3",
 							Timestamp:  time.Now(),
@@ -279,7 +279,7 @@ func TestDecodeMetrics6(t *testing.T) {
 							FloatValue: 1.0,
 						},
 					},
-					"test4": []cadvisor_api.MetricVal{
+					"test4": {
 						{
 							Label:      "test4",
 							Timestamp:  time.Now(),
@@ -297,7 +297,7 @@ func TestDecodeMetrics6(t *testing.T) {
 }
 
 var nodes = []kube_api.Node{
-	kube_api.Node{
+	{
 		ObjectMeta: kube_api.ObjectMeta{
 			Name: "testNode",
 		},
@@ -320,7 +320,7 @@ var nodes = []kube_api.Node{
 			},
 		},
 	},
-	kube_api.Node{
+	{
 		ObjectMeta: kube_api.ObjectMeta{
 			Name: "testNode",
 		},
@@ -343,7 +343,7 @@ var nodes = []kube_api.Node{
 			},
 		},
 	},
-	kube_api.Node{
+	{
 		ObjectMeta: kube_api.ObjectMeta{
 			Name: "testNode",
 		},

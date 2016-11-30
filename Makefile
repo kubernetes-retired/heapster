@@ -12,7 +12,10 @@ TEST_NAMESPACE = heapster-e2e-tests
 deps:
 	which godep || go get github.com/tools/godep
 
-build: clean deps
+fmt:
+	find . -type f -name "*.go" | grep -v "./vendor*" | xargs gofmt -s -w
+
+build: clean deps fmt
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -ldflags "-w -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)" -o heapster k8s.io/heapster/metrics
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -ldflags "-w -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)" -o eventer k8s.io/heapster/events
 

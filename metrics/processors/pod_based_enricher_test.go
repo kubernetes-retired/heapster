@@ -28,7 +28,7 @@ import (
 )
 
 var batches = []*core.DataBatch{
-	&core.DataBatch{
+	{
 		Timestamp: time.Now(),
 		MetricSets: map[string]*core.MetricSet{
 			core.PodContainerKey("ns1", "pod1", "c1"): {
@@ -51,7 +51,7 @@ var batches = []*core.DataBatch{
 			},
 		},
 	},
-	&core.DataBatch{
+	{
 		Timestamp: time.Now(),
 		MetricSets: map[string]*core.MetricSet{
 			core.PodContainerKey("ns1", "pod1", "c1"): {
@@ -65,7 +65,7 @@ var batches = []*core.DataBatch{
 			},
 		},
 	},
-	&core.DataBatch{
+	{
 		Timestamp: time.Now(),
 		MetricSets: map[string]*core.MetricSet{
 			core.PodKey("ns1", "pod1"): {
