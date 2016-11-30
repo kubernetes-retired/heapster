@@ -38,12 +38,12 @@ func TestRateCalculator(t *testing.T) {
 					core.LabelMetricSetType.Key: core.MetricSetTypePodContainer,
 				},
 				MetricValues: map[string]core.MetricValue{
-					core.MetricCpuUsage.MetricDescriptor.Name: core.MetricValue{
+					core.MetricCpuUsage.MetricDescriptor.Name: {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricCumulative,
 						IntValue:   947130377781,
 					},
-					core.MetricNetworkTxErrors.MetricDescriptor.Name: core.MetricValue{
+					core.MetricNetworkTxErrors.MetricDescriptor.Name: {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricCumulative,
 						IntValue:   0,
@@ -65,12 +65,12 @@ func TestRateCalculator(t *testing.T) {
 					core.LabelMetricSetType.Key: core.MetricSetTypePodContainer,
 				},
 				MetricValues: map[string]core.MetricValue{
-					core.MetricCpuUsage.MetricDescriptor.Name: core.MetricValue{
+					core.MetricCpuUsage.MetricDescriptor.Name: {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricCumulative,
 						IntValue:   948071062732,
 					},
-					core.MetricNetworkTxErrors.MetricDescriptor.Name: core.MetricValue{
+					core.MetricNetworkTxErrors.MetricDescriptor.Name: {
 						ValueType:  core.ValueInt64,
 						MetricType: core.MetricCumulative,
 						IntValue:   120,

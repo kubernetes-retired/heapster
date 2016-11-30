@@ -29,8 +29,8 @@ var testInput = &core.DataBatch{
 	MetricSets: map[string]*core.MetricSet{
 		"set1": {
 			MetricValues: map[string]core.MetricValue{
-				"m2": core.MetricValue{ValueType: core.ValueInt64, IntValue: 2 ^ 63},
-				"m3": core.MetricValue{ValueType: core.ValueFloat, FloatValue: -1023.0233},
+				"m2": {ValueType: core.ValueInt64, IntValue: 2 ^ 63},
+				"m3": {ValueType: core.ValueFloat, FloatValue: -1023.0233},
 			},
 			Labels: map[string]string{
 				core.LabelHostname.Key: "h1",

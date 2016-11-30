@@ -190,7 +190,7 @@ func generateMetricSet(name string, metricType core.MetricType, value int64) *co
 	return &core.MetricSet{
 		Labels: fakeLabel,
 		MetricValues: map[string]core.MetricValue{
-			name: core.MetricValue{
+			name: {
 				MetricType: metricType,
 				ValueType:  core.ValueInt64,
 				IntValue:   value,
