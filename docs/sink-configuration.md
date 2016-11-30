@@ -184,6 +184,7 @@ Besides this, the following options can be set in query string:
   a response from Elasticsearch on startup, i.e. when creating a client. The
   default value is `1`.
 * `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
+* `cluster` - cluster name for different Kubernetes clusters. Default value is `default`.
 
 Like this:
 

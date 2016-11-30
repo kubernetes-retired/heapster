@@ -43,6 +43,7 @@ type EsSinkPointGeneral struct {
 	GeneralMetricsTimestamp time.Time
 	MetricsTags             esPointTags
 	MetricsName             string
+	Cluster                 string
 	MetricsValue            interface{}
 }
 type EsSinkPointFamily map[string]interface{}
@@ -55,7 +56,7 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 		familyPoints := EsFamilyPoints{}
 
 		for metricName, metricValue := range metricSet.MetricValues {
-			familyPoints = addMetric(familyPoints, metricName, dataBatch.Timestamp, metricSet.Labels, metricValue.GetValue())
+			familyPoints = addMetric(familyPoints, metricName, dataBatch.Timestamp, metricSet.Labels, metricValue.GetValue(), sink.esSvc.Cluster)
 		}
 		for _, metric := range metricSet.LabeledMetrics {
 			labels := make(map[string]string)
@@ -66,7 +67,7 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 				labels[k] = v
 			}
 
-			familyPoints = addMetric(familyPoints, metric.Name, dataBatch.Timestamp, labels, metric.GetValue())
+			familyPoints = addMetric(familyPoints, metric.Name, dataBatch.Timestamp, labels, metric.GetValue(), sink.esSvc.Cluster)
 		}
 
 		for family, dataPoints := range familyPoints {
@@ -82,7 +83,7 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 	}
 }
 
-func addMetric(points EsFamilyPoints, metricName string, date time.Time, tags esPointTags, value interface{}) EsFamilyPoints {
+func addMetric(points EsFamilyPoints, metricName string, date time.Time, tags esPointTags, value interface{}, cluster string) EsFamilyPoints {
 	family := core.MetricFamilyForName(metricName)
 
 	if points[family] == nil {
@@ -94,6 +95,7 @@ func addMetric(points EsFamilyPoints, metricName string, date time.Time, tags es
 		point.MetricsTags = tags
 		point.GeneralMetricsTimestamp = date.UTC()
 		point.MetricsName = metricName
+		point.Cluster = cluster
 		point.MetricsValue = EsPointValue(value)
 
 		//add
@@ -111,6 +113,7 @@ func addMetric(points EsFamilyPoints, metricName string, date time.Time, tags es
 					glog.Warningf("Failed to cast metrics to map")
 				}
 
+				point["Cluster"] = cluster
 				//add
 				points[family][idx] = point
 				return points
@@ -124,6 +127,7 @@ func addMetric(points EsFamilyPoints, metricName string, date time.Time, tags es
 	metrics := make(map[string]interface{})
 	metrics[metricName] = EsPointValue(value)
 	point["Metrics"] = metrics
+	point["Cluster"] = cluster
 
 	//add
 	points[family] = append(points[family], point)

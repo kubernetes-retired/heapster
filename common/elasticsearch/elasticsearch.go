@@ -27,13 +27,15 @@ import (
 )
 
 const (
-	ESIndex = "heapster"
+	ESIndex   = "heapster"
+	ESCluster = "default"
 )
 
 type ElasticSearchService struct {
 	EsClient      *elastic.Client
 	bulkProcessor *elastic.BulkProcessor
 	baseIndex     string
+	Cluster       string
 }
 
 func (esSvc *ElasticSearchService) Index(date time.Time) string {
@@ -107,6 +109,11 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 	opts, err := url.ParseQuery(uri.RawQuery)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parser url's query string: %s", err)
+	}
+
+	esSvc.Cluster = ESCluster
+	if len(opts["cluster"]) > 0 {
+		esSvc.Cluster = opts["cluster"][0]
 	}
 
 	// set the index for es,the default value is "heapster"

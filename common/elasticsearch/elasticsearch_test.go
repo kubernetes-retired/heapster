@@ -20,11 +20,17 @@ import (
 	"testing"
 	"time"
 
+	"fmt"
 	"gopkg.in/olivere/elastic.v3"
 )
 
 func TestCreateElasticSearchService(t *testing.T) {
-	url, err := url.Parse("?nodes=https://foo.com:20468&nodes=https://bar.com:20468&esUserName=test&esUserSecret=password&maxRetries=10&startupHealthcheckTimeout=30&sniff=false&healthCheck=false")
+	cluster := "sandbox"
+	esURI := fmt.Sprintf("?nodes=https://foo.com:20468&nodes=https://bar.com:20468&"+
+		"esUserName=test&esUserSecret=password&maxRetries=10&startupHealthcheckTimeout=30&"+
+		"sniff=false&healthCheck=false&cluster=%s", cluster)
+
+	url, err := url.Parse(esURI)
 	if err != nil {
 		t.Fatalf("Error when parsing URL: %s", err.Error())
 	}
@@ -49,21 +55,24 @@ func TestCreateElasticSearchService(t *testing.T) {
 	expectedClientRefl := reflect.ValueOf(expectedClient).Elem()
 
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
-		t.Fatalf("basicAuthUsername is not equal")
+		t.Fatal("basicAuthUsername is not equal")
 	}
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
-		t.Fatalf("basicAuthUsername is not equal")
+		t.Fatal("basicAuthUsername is not equal")
 	}
 	if actualClientRefl.FieldByName("maxRetries").Int() != expectedClientRefl.FieldByName("maxRetries").Int() {
-		t.Fatalf("maxRetries is not equal")
+		t.Fatal("maxRetries is not equal")
 	}
 	if actualClientRefl.FieldByName("healthcheckTimeoutStartup").Int() != expectedClientRefl.FieldByName("healthcheckTimeoutStartup").Int() {
-		t.Fatalf("healthcheckTimeoutStartup is not equal")
+		t.Fatal("healthcheckTimeoutStartup is not equal")
 	}
 	if actualClientRefl.FieldByName("snifferEnabled").Bool() != expectedClientRefl.FieldByName("snifferEnabled").Bool() {
-		t.Fatalf("snifferEnabled is not equal")
+		t.Fatal("snifferEnabled is not equal")
 	}
 	if actualClientRefl.FieldByName("healthcheckEnabled").Bool() != expectedClientRefl.FieldByName("healthcheckEnabled").Bool() {
-		t.Fatalf("healthcheckEnabled is not equal")
+		t.Fatal("healthcheckEnabled is not equal")
+	}
+	if esSvc.Cluster != cluster {
+		t.Fatal("cluster is not equal")
 	}
 }

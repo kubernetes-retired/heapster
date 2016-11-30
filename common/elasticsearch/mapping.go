@@ -181,6 +181,10 @@ var mapping = `{
     }
   }
 },
+"Cluster": {
+"type": "string",
+"index": "not_analyzed"
+},
 "GeneralMetricsTimestamp": {
 "type": "date",
 "format": "strict_date_optional_time||epoch_millis"
@@ -286,6 +290,10 @@ var mapping = `{
           "type": "string",
           "index": "not_analyzed"
         },
+        "Cluster": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
         "Message": {
           "type": "string",
           "fields": {
@@ -299,7 +307,6 @@ var mapping = `{
           "type": "string",
           "index": "not_analyzed"
         },
-
         "Count": {
           "type": "long"
         },
