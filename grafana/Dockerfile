@@ -2,7 +2,7 @@
 # Stock Grafana + a few custom dashboards
 #
 
-FROM grafana/grafana:3.1.1
+FROM grafana/grafana:4.0.0
 
 RUN apt-get update && \
     apt-get install -y curl
