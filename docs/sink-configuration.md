@@ -87,6 +87,21 @@ The following options are available:
 
 A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. To increase the performance of Hawkular sink in case of multiple instances of Hawkular-Metrics (such as scaled scenario in OpenShift) modify the parameters of batchSize and concurrencyLimit to balance the load on Hawkular-Metrics instances.
 
+
+### Wavefront
+The Wavefront sink supports monitoring metrics only.
+To use the Wavefront sink add the following flag:
+
+    --sink=wavefront:<WAVEFRONT_PROXY_URL:PORT>[?<OPTIONS>]
+
+The following options are available:
+
+* `clusterName` - The name of the Kubernetes cluster being monitored. This will be added as a tag called `cluster` to metrics in Wavefront (default: `k8s-cluster`)
+* `prefix` - The prefix to be added to all metrics that Heapster collects (default: `heapster.`)
+* `includeLabels` - If set to true, any K8s labels will be applied to metrics as tags (default: `false`)
+* `includeContainers` - If set to true, all container metrics will be sent to Wavefront. When set to false, container level metrics are skipped (pod level and above are still sent to Wavefront) (default: `true`)
+
+
 ### OpenTSDB
 This sink supports monitoring metrics and events.
 To use the opentsdb sink add the following flag:

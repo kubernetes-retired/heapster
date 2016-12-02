@@ -31,6 +31,7 @@ import (
 	"k8s.io/heapster/metrics/sinks/monasca"
 	"k8s.io/heapster/metrics/sinks/opentsdb"
 	"k8s.io/heapster/metrics/sinks/riemann"
+	"k8s.io/heapster/metrics/sinks/wavefront"
 )
 
 type SinkFactory struct {
@@ -60,6 +61,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return opentsdb.CreateOpenTSDBSink(&uri.Val)
 	case "elasticsearch":
 		return elasticsearch.NewElasticSearchSink(&uri.Val)
+	case "wavefront":
+		return wavefront.NewWavefrontSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
