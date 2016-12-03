@@ -156,7 +156,6 @@ func (this *WavefrontSink) Send(batch *core.DataBatch) {
 					source = tags["hostname"]
 				}
 				tagStr := tagsToString(tags)
-				//metricLine := fmt.Sprintf("%s %s %s source=\"%s\" %s\n", this.cleanMetricName(metricName), metricValStr, ts, source, tagStr)
 				this.SendPoint(this.cleanMetricName(metricName), metricValStr, ts, source, tagStr)
 				metricCounter = metricCounter + 1
 			}
@@ -184,7 +183,6 @@ func (this *WavefrontSink) Send(batch *core.DataBatch) {
 			}
 		}
 	}
-	glog.Info(fmt.Sprintf("Sent %d metric points to Wavefront", metricCounter))
 
 }
 
@@ -204,10 +202,10 @@ func (this *WavefrontSink) Connect() error {
 	var err error
 	this.Conn, err = net.DialTimeout("tcp", this.ProxyAddress, time.Second*10)
 	if err != nil {
-		glog.Warning(fmt.Sprintf("Unable to connect to Wavefront proxy at address: %s", this.ProxyAddress))
+		glog.Warningf("Unable to connect to Wavefront proxy at address: %s", this.ProxyAddress)
 		return err
 	} else {
-		//glog.Info("Connected to Wavefront proxy at address: " + this.ProxyAddress)
+		glog.Infof("Connected to Wavefront proxy at address: %s", this.ProxyAddress)
 		return nil
 	}
 }
