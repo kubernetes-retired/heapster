@@ -100,13 +100,11 @@ func (this *WavefrontSink) addLabelTags(ms *core.MetricSet, tags map[string]stri
 	for _, labelName := range sortedLabelKeys(ms.Labels) {
 		labelValue := ms.Labels[labelName]
 		if labelName == "labels" {
-			if this.IncludeLabels {
-				for _, label := range strings.Split(labelValue, ",") {
-					//labels = app:webproxy,version:latest
-					tagParts := strings.SplitN(label, ":", 2)
-					if len(tagParts) == 2 {
-						tags["label."+tagParts[0]] = tagParts[1]
-					}
+			for _, label := range strings.Split(labelValue, ",") {
+				//labels = app:webproxy,version:latest
+				tagParts := strings.SplitN(label, ":", 2)
+				if len(tagParts) == 2 {
+					tags["label."+tagParts[0]] = tagParts[1]
 				}
 			}
 		} else {
