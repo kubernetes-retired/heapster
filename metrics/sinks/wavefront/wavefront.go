@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/heapster/metrics/core"
+	//"k8s.io/kubernetes/pkg/apis/batch"
 )
 
 const (
@@ -93,6 +94,29 @@ func (this *WavefrontSink) cleanMetricName(metricName string) string {
 	return this.Prefix + strings.Replace(metricName, "/", ".", -1)
 }
 
+func (this *WavefrontSink) addLabelTags(ms *core.MetricSet, tags map[string]string) {
+	if !this.IncludeLabels {
+		return
+	}
+	for _, labelName := range sortedLabelKeys(ms.Labels) {
+		labelValue := ms.Labels[labelName]
+		if labelName == "labels" {
+			if this.IncludeLabels {
+				for _, label := range strings.Split(labelValue, ",") {
+					//labels = app:webproxy,version:latest
+					tagParts := strings.SplitN(label, ":", 2)
+					if len(tagParts) == 2 {
+						tags["label."+tagParts[0]] = tagParts[1]
+					}
+				}
+			}
+		} else {
+			tags[labelName] = labelValue
+		}
+	}
+
+}
+
 func (this *WavefrontSink) Send(batch *core.DataBatch) {
 
 	metricCounter := 0
@@ -102,22 +126,8 @@ func (this *WavefrontSink) Send(batch *core.DataBatch) {
 		tags := make(map[string]string)
 		// Make sure all metrics are tagged with the cluster name
 		tags["cluster"] = this.ClusterName
-		for _, labelName := range sortedLabelKeys(ms.Labels) {
-			labelValue := ms.Labels[labelName]
-			if labelName == "labels" {
-				if this.IncludeLabels {
-					for _, label := range strings.Split(labelValue, ",") {
-						//labels = app:webproxy,version:latest
-						tagParts := strings.SplitN(label, ":", 2)
-						if len(tagParts) == 2 {
-							tags["label."+tagParts[0]] = tagParts[1]
-						}
-					}
-				}
-			} else {
-				tags[labelName] = labelValue
-			}
-		}
+		// Add pod labels as tags
+		this.addLabelTags(ms, tags)
 		if strings.Contains(tags["container_name"], sysSubContainerName) {
 			//don't send system subcontainers
 			continue
@@ -127,7 +137,7 @@ func (this *WavefrontSink) Send(batch *core.DataBatch) {
 			continue
 		}
 		for _, metricName := range sortedMetricValueKeys(ms.MetricValues) {
-			metricValStr := ""
+			var metricValStr string
 			metricValue := ms.MetricValues[metricName]
 			if core.ValueInt64 == metricValue.ValueType {
 				metricValStr = fmt.Sprintf("%d", metricValue.IntValue)
