@@ -25,7 +25,6 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/heapster/metrics/core"
-	//"k8s.io/kubernetes/pkg/apis/batch"
 )
 
 const (
