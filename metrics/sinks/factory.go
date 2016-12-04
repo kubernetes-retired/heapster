@@ -87,6 +87,11 @@ func (this *SinkFactory) BuildAll(uris flags.Uris, historicalUri string) (*metri
 		}
 		result = append(result, sink)
 	}
+
+	if len([]flags.Uri(uris)) != 0 && len(result) == 0 {
+		glog.Fatal("No available sink to use")
+	}
+
 	if metric == nil {
 		uri := flags.Uri{}
 		uri.Set("metric")
