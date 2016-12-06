@@ -33,6 +33,7 @@ Using Heapster to monitor an OpenShift cluster requires some additional changes 
 
 #### Troubleshooting guide [here](docs/debugging.md)
 
-### Community
 
-Contributions, questions, and comments are all welcomed and encouraged! Heapster and cAdvisor developers hang out in the [#google-containers](http://webchat.freenode.net/?channels=google-containers) room on freenode.net.  You can also reach us on the [kubernetes-users Google Groups mailing list](https://groups.google.com/forum/#!forum/kubernetes-users).
+## Community
+
+Contributions, questions, and comments are all welcomed and encouraged! minkube developers hang out on [Slack](https://kubernetes.slack.com) in the #sig-instrumentation channel (get an invitation [here](http://slack.kubernetes.io/)). We also have the [kubernetes-dev Google Groups mailing list](https://groups.google.com/forum/#!forum/kubernetes-dev). If you are posting to the list please prefix your subject with "heapster: ".
