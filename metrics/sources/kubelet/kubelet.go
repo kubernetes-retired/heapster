@@ -132,7 +132,6 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		},
 		LabeledMetrics: []LabeledMetric{},
 	}
-
 	if isNode(c) {
 		metricSetKey = NodeKey(this.nodename)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
