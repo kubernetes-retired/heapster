@@ -29,7 +29,6 @@ import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
 	kube_client "k8s.io/kubernetes/pkg/kubelet/client"
-	"github.com/golang/glog"
 	"strings"
 )
 
