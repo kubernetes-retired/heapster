@@ -28,7 +28,7 @@ func metricFamilySchema(metricFamily core.MetricFamily) string {
 			`"`+metric.Name+`": {
   "properties": {
     "value": {
-      "type": "long"
+      "type": "double"
     }
   }
 }`,
@@ -188,7 +188,7 @@ var mapping = `{
 "MetricsValue": {
   "properties": {
     "value": {
-      "type": "long"
+      "type": "double"
     }
   }
 }`) + `,
