@@ -16,7 +16,7 @@ Heapster supports multiple sources of data.
 More information [here](docs/source-configuration.md).
 
 Heapster supports a pluggable storage backend.
-It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/), [Google Cloud Logging](https://cloud.google.com/logging/), [Hawkular](http://www.hawkular.org), [Riemann](http://riemann.io) and [Kafka](http://kafka.apache.org/).
+It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/), [ElasticSearch](https://www.elastic.co/products/elasticsearch), [Google Cloud Logging](https://cloud.google.com/logging/), [Hawkular](http://www.hawkular.org), [Riemann](http://riemann.io) and [Kafka](http://kafka.apache.org/).
 We welcome patches that add additional storage backends.
 Documentation on storage sinks [here](docs/sink-configuration.md)
 The current version of Storage Schema is documented [here](docs/storage-schema.md).
