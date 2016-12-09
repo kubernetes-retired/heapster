@@ -60,6 +60,8 @@ type clusterMetricsFetcher interface {
 	availablePodMetrics(request *restful.Request, response *restful.Response)
 	podMetrics(request *restful.Request, response *restful.Response)
 
+	podContainerList(request *restful.Request, response *restful.Response)
+
 	availablePodContainerMetrics(request *restful.Request, response *restful.Response)
 	podContainerMetrics(request *restful.Request, response *restful.Response)
 
@@ -172,6 +174,15 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricResult{}))
+
+		// The /namespaces/{namespace-name}/pods/{pod-name}/containers endpoint
+		// returns a list of all containers for a Pod entity.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pods/{pod-name}/containers").
+			To(metrics.InstrumentRouteFunc("podContainerList", a.podContainerList)).
+			Doc("Get a list of containers for a Pod entity ").
+			Operation("podContainerList").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pod-name", "The name of the pod to lookup").DataType("string")))
 
 		// The /namespaces/{namespace-name}/pods/{pod-name}/containers/metrics/{container-name}/metrics endpoint
 		// returns a list of all available metrics for a Pod Container entity.
@@ -317,6 +328,10 @@ func (a *Api) namespaceList(request *restful.Request, response *restful.Response
 
 func (a *Api) namespacePodList(request *restful.Request, response *restful.Response) {
 	response.WriteEntity(a.metricSink.GetPodsFromNamespace(request.PathParameter("namespace-name")))
+}
+
+func (a *Api) podContainerList(request *restful.Request, response *restful.Response) {
+	response.WriteEntity(a.metricSink.GetContainersForPodFromNamespace(request.PathParameter("namespace-name"), request.PathParameter("pod-name")))
 }
 
 func (a *Api) nodeSystemContainerList(request *restful.Request, response *restful.Response) {
