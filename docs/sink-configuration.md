@@ -31,6 +31,7 @@ The following options are available:
 * `user` - InfluxDB username (default: `root`)
 * `pw` - InfluxDB password (default: `root`)
 * `db` - InfluxDB Database name (default: `k8s`)
+* `retentionpolicy` - InfluxDB Retention Policy (default: `default`)
 * `secure` - Connect securely to InfluxDB (default: `false`)
 * `withfields` - Use [InfluxDB fields](storage-schema.md#using-fields) (default: `false`)
 
