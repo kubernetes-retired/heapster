@@ -15,6 +15,7 @@
 package manager
 
 import (
+	"strings"
 	"time"
 
 	"k8s.io/heapster/metrics/core"
@@ -59,10 +60,11 @@ type realManager struct {
 	stopChan               chan struct{}
 	housekeepSemaphoreChan chan struct{}
 	housekeepTimeout       time.Duration
+	ignoredLabels          []string
 }
 
 func NewManager(source core.MetricsSource, processors []core.DataProcessor, sink core.DataSink, resolution time.Duration,
-	scrapeOffset time.Duration, maxParallelism int) (Manager, error) {
+	scrapeOffset time.Duration, maxParallelism int, ignoredLabels []string) (Manager, error) {
 	manager := realManager{
 		source:                 source,
 		processors:             processors,
@@ -72,6 +74,7 @@ func NewManager(source core.MetricsSource, processors []core.DataProcessor, sink
 		stopChan:               make(chan struct{}),
 		housekeepSemaphoreChan: make(chan struct{}, maxParallelism),
 		housekeepTimeout:       resolution / 2,
+		ignoredLabels:          ignoredLabels,
 	}
 
 	for i := 0; i < maxParallelism; i++ {
@@ -134,6 +137,18 @@ func (rm *realManager) housekeep(start, end time.Time) {
 			} else {
 				glog.Errorf("Error in processor: %v", err)
 				return
+			}
+		}
+
+		for metricKey, key := range data.MetricSets {
+			for _, label := range rm.ignoredLabels {
+				labelSplit := strings.Split(label, "=")
+				labelKey := strings.ToLower(labelSplit[0])
+				if _, ok := key.Labels[labelKey]; ok {
+					if labelSplit[1] == key.Labels[labelKey] {
+						delete(data.MetricSets, metricKey)
+					}
+				}
 			}
 		}
 
