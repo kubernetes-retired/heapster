@@ -83,9 +83,13 @@ func main() {
 
 	podLister, nodeLister := getListersOrDie(kubernetesUrl)
 	dataProcessors := createDataProcessorsOrDie(kubernetesUrl, podLister)
+	if strings.Contains(strings.ToLower(opt.IgnoredLabels), "type=container") {
+		glog.Warning("Resource metrics for container are ignored. Certain metrics will not be reported!")
+	}
 
 	man, err := manager.NewManager(sourceManager, dataProcessors, sinkManager,
-		opt.MetricResolution, manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
+		opt.MetricResolution, manager.DefaultScrapeOffset, manager.DefaultMaxParallelism,
+		ignoredLabels)
 	if err != nil {
 		glog.Fatalf("Failed to create main manager: %v", err)
 	}
