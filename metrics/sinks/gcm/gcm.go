@@ -29,7 +29,10 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	gcm "google.golang.org/api/cloudmonitoring/v2beta2"
+	gcm3 "google.golang.org/api/monitoring/v3"
 )
+
+var _ = gcm3.Field{}
 
 const (
 	metricDomain    = "kubernetes.io"

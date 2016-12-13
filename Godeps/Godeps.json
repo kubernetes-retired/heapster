@@ -1,7 +1,7 @@
 {
 	"ImportPath": "k8s.io/heapster",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v76",
+	"GodepVersion": "v77",
 	"Packages": [
 		"./..."
 	],
@@ -1064,6 +1064,10 @@
 		},
 		{
 			"ImportPath": "google.golang.org/api/logging/v2beta1",
+			"Rev": "4300f6b0c8a7f09e521dd0af2cee27e28846e037"
+		},
+		{
+			"ImportPath": "google.golang.org/api/monitoring/v3",
 			"Rev": "4300f6b0c8a7f09e521dd0af2cee27e28846e037"
 		},
 		{
