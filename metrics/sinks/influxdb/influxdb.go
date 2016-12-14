@@ -197,13 +197,19 @@ func (sink *influxdbSink) createDatabase() error {
 	if sink.dbExists {
 		return nil
 	}
-	q := influxdb.Query{
+	qCreate := influxdb.Query{
 		Command: fmt.Sprintf("CREATE DATABASE %s", sink.c.DbName),
 	}
-	if resp, err := sink.client.Query(q); err != nil {
+	if resp, err := sink.client.Query(qCreate); err != nil {
 		if !(resp != nil && resp.Err != nil && strings.Contains(resp.Err.Error(), "already exists")) {
 			return fmt.Errorf("Database creation failed: %v", err)
 		}
+	}
+	qRetPol := influxdb.Query{
+		Command: fmt.Sprintf("ALTER RETENTION POLICY default ON %s DURATION %s REPLICATION 1 DEFAULT", sink.c.DbName, sink.c.RetentionPolicy),
+	}
+	if _, err := sink.client.Query(qRetPol); err != nil {
+		glog.Warningf("failed to set retention policy: %v", err)
 	}
 	sink.dbExists = true
 	glog.Infof("Created database %q on influxDB server at %q", sink.c.DbName, sink.c.Host)
@@ -228,6 +234,6 @@ func CreateInfluxdbSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 	sink := new(*config)
-	glog.Infof("created influxdb sink with options: host:%s user:%s db:%s", config.Host, config.User, config.DbName)
+	glog.Infof("created influxdb sink with options: host:%s user:%s db:%s retention: %s", config.Host, config.User, config.DbName, config.RetentionPolicy)
 	return sink, nil
 }
