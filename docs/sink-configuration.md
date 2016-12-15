@@ -31,6 +31,7 @@ The following options are available:
 * `user` - InfluxDB username (default: `root`)
 * `pw` - InfluxDB password (default: `root`)
 * `db` - InfluxDB Database name (default: `k8s`)
+* `retention` - Duration of the default InfluxDB retention policy, e.g. `4h` or `7d` (default: `0` meaning infinite)
 * `secure` - Connect securely to InfluxDB (default: `false`)
 * `withfields` - Use [InfluxDB fields](storage-schema.md#using-fields) (default: `false`)
 
@@ -204,7 +205,7 @@ In order to use AWS Managed Elastic we need to use one of the following methods:
 	1. Configure the ElasticSearch cluster policy with IAM User
 	2. Create a secret that stores the IAM credentials
 	3. Expose the credentials to the environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-	
+
 	```
 	env:
       - name: AWS_ACCESS_KEY_ID
