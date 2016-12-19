@@ -17,7 +17,6 @@ package gcm
 import (
 	"fmt"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -28,15 +27,12 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	gcm "google.golang.org/api/cloudmonitoring/v2beta2"
-	gcm3 "google.golang.org/api/monitoring/v3"
+	gcm "google.golang.org/api/monitoring/v3"
 )
-
-var _ = gcm3.Field{}
 
 const (
 	metricDomain    = "kubernetes.io"
-	customApiPrefix = "custom.cloudmonitoring.googleapis.com"
+	customApiPrefix = "custom.googleapis.com"
 	maxNumLabels    = 10
 	// The largest number of timeseries we can write to per request.
 	maxTimeseriesPerRequest = 200
@@ -61,42 +57,59 @@ func (sink *gcmSink) Name() string {
 	return "GCM Sink"
 }
 
-func getReq() *gcm.WriteTimeseriesRequest {
-	return &gcm.WriteTimeseriesRequest{Timeseries: make([]*gcm.TimeseriesPoint, 0)}
+func getReq() *gcm.CreateTimeSeriesRequest {
+	return &gcm.CreateTimeSeriesRequest{TimeSeries: make([]*gcm.TimeSeries, 0)}
 }
 
-func fullLabelName(name string) string {
-	// handle correctly GCE specific labels
-	if !strings.Contains(name, "compute.googleapis.com") {
-		return fmt.Sprintf("%s/%s/label/%s", customApiPrefix, metricDomain, name)
-	}
-	return name
+func fullMetricName(project string, name string) string {
+	return fmt.Sprintf("projects/%s/metricDescriptors/%s/%s/%s", project, customApiPrefix, metricDomain, name)
 }
 
-func fullMetricName(name string) string {
+func fullMetricType(name string) string {
 	return fmt.Sprintf("%s/%s/%s", customApiPrefix, metricDomain, name)
 }
 
-func (sink *gcmSink) getTimeseriesPoint(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, createTime time.Time) *gcm.TimeseriesPoint {
+func createTimeSeries(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, createTime time.Time) *gcm.TimeSeries {
 	point := &gcm.Point{
-		Start: timestamp.Format(time.RFC3339),
-		End:   timestamp.Format(time.RFC3339),
+		Interval: &gcm.TimeInterval{
+			StartTime: timestamp.Format(time.RFC3339),
+			EndTime:   timestamp.Format(time.RFC3339),
+		},
+		Value: &gcm.TypedValue{},
 	}
+
+	var valueType string
+
 	switch val.ValueType {
 	case core.ValueInt64:
-		point.Int64Value = &val.IntValue
+		point.Value.Int64Value = val.IntValue
+		point.Value.ForceSendFields = []string{"Int64Value"}
+		valueType = "INT64"
 	case core.ValueFloat:
 		v := float64(val.FloatValue)
-		point.DoubleValue = &v
+		point.Value.DoubleValue = v
+		point.Value.ForceSendFields = []string{"DoubleValue"}
+		valueType = "DOUBLE"
 	default:
 		glog.Errorf("Type not supported %v in %v", val.ValueType, metric)
 		return nil
 	}
 	// For cumulative metric use the provided start time.
 	if val.MetricType == core.MetricCumulative {
-		point.Start = createTime.Format(time.RFC3339)
+		point.Interval.StartTime = createTime.Format(time.RFC3339)
 	}
 
+	return &gcm.TimeSeries{
+		Points: []*gcm.Point{point},
+		Metric: &gcm.Metric{
+			Type:   fullMetricType(metric),
+			Labels: labels,
+		},
+		ValueType: valueType,
+	}
+}
+
+func (sink *gcmSink) getTimeSeries(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, createTime time.Time) *gcm.TimeSeries {
 	finalLabels := make(map[string]string)
 	if core.IsNodeAutoscalingMetric(metric) {
 		// All and autoscaling. Do not populate for other filters.
@@ -105,9 +118,9 @@ func (sink *gcmSink) getTimeseriesPoint(timestamp time.Time, labels map[string]s
 			return nil
 		}
 
-		finalLabels[fullLabelName(core.LabelHostname.Key)] = labels[core.LabelHostname.Key]
-		finalLabels[fullLabelName(core.LabelGCEResourceID.Key)] = labels[core.LabelHostID.Key]
-		finalLabels[fullLabelName(core.LabelGCEResourceType.Key)] = "instance"
+		finalLabels[core.LabelHostname.Key] = labels[core.LabelHostname.Key]
+		finalLabels[core.LabelGCEResourceID.Key] = labels[core.LabelHostID.Key]
+		finalLabels[core.LabelGCEResourceType.Key] = "instance"
 	} else {
 		// Only all.
 		if sink.metricFilter != metricsAll {
@@ -116,72 +129,46 @@ func (sink *gcmSink) getTimeseriesPoint(timestamp time.Time, labels map[string]s
 		supportedLables := core.GcmLabels()
 		for key, value := range labels {
 			if _, ok := supportedLables[key]; ok {
-				finalLabels[fullLabelName(key)] = value
+				finalLabels[key] = value
 			}
 		}
 	}
-	desc := &gcm.TimeseriesDescriptor{
-		Project: sink.project,
-		Labels:  finalLabels,
-		Metric:  fullMetricName(metric),
-	}
 
-	return &gcm.TimeseriesPoint{Point: point, TimeseriesDesc: desc}
+	return createTimeSeries(timestamp, finalLabels, metric, val, createTime)
 }
 
-func (sink *gcmSink) getTimeseriesPointForLabeledMetrics(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *gcm.TimeseriesPoint {
-	// Only all. There are no atuoscaling labeled metrics.
+func (sink *gcmSink) getTimeSeriesForLabeledMetrics(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *gcm.TimeSeries {
+	// Only all. There are no autoscaling labeled metrics.
 	if sink.metricFilter != metricsAll {
 		return nil
-	}
-
-	point := &gcm.Point{
-		Start: timestamp.Format(time.RFC3339),
-		End:   timestamp.Format(time.RFC3339),
-	}
-	switch metric.ValueType {
-	case core.ValueInt64:
-		point.Int64Value = &metric.IntValue
-	case core.ValueFloat:
-		v := float64(metric.FloatValue)
-		point.DoubleValue = &v
-	default:
-		glog.Errorf("Type not supported %v in %v", metric.ValueType, metric)
-		return nil
-	}
-	// For cumulative metric use the provided start time.
-	if metric.MetricType == core.MetricCumulative {
-		point.Start = createTime.Format(time.RFC3339)
 	}
 
 	finalLabels := make(map[string]string)
 	supportedLables := core.GcmLabels()
 	for key, value := range labels {
 		if _, ok := supportedLables[key]; ok {
-			finalLabels[fullLabelName(key)] = value
+			finalLabels[key] = value
 		}
 	}
 	for key, value := range metric.Labels {
 		if _, ok := supportedLables[key]; ok {
-			finalLabels[fullLabelName(key)] = value
+			finalLabels[key] = value
 		}
 	}
 
-	desc := &gcm.TimeseriesDescriptor{
-		Project: sink.project,
-		Labels:  finalLabels,
-		Metric:  fullMetricName(metric.Name),
-	}
-
-	return &gcm.TimeseriesPoint{Point: point, TimeseriesDesc: desc}
+	return createTimeSeries(timestamp, finalLabels, metric.Name, metric.MetricValue, createTime)
 }
 
-func (sink *gcmSink) sendRequest(req *gcm.WriteTimeseriesRequest) {
-	_, err := sink.gcmService.Timeseries.Write(sink.project, req).Do()
+func fullProjectName(name string) string {
+	return fmt.Sprintf("projects/%s", name)
+}
+
+func (sink *gcmSink) sendRequest(req *gcm.CreateTimeSeriesRequest) {
+	_, err := sink.gcmService.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
 	if err != nil {
 		glog.Errorf("Error while sending request to GCM %v", err)
 	} else {
-		glog.V(4).Infof("Successfully sent %v timeserieses to GCM", len(req.Timeseries))
+		glog.V(4).Infof("Successfully sent %v timeserieses to GCM", len(req.TimeSeries))
 	}
 }
 
@@ -194,27 +181,27 @@ func (sink *gcmSink) ExportData(dataBatch *core.DataBatch) {
 	req := getReq()
 	for _, metricSet := range dataBatch.MetricSets {
 		for metric, val := range metricSet.MetricValues {
-			point := sink.getTimeseriesPoint(dataBatch.Timestamp, metricSet.Labels, metric, val, metricSet.CreateTime)
+			point := sink.getTimeSeries(dataBatch.Timestamp, metricSet.Labels, metric, val, metricSet.CreateTime)
 			if point != nil {
-				req.Timeseries = append(req.Timeseries, point)
+				req.TimeSeries = append(req.TimeSeries, point)
 			}
-			if len(req.Timeseries) >= maxTimeseriesPerRequest {
+			if len(req.TimeSeries) >= maxTimeseriesPerRequest {
 				sink.sendRequest(req)
 				req = getReq()
 			}
 		}
 		for _, metric := range metricSet.LabeledMetrics {
-			point := sink.getTimeseriesPointForLabeledMetrics(dataBatch.Timestamp, metricSet.Labels, metric, metricSet.CreateTime)
+			point := sink.getTimeSeriesForLabeledMetrics(dataBatch.Timestamp, metricSet.Labels, metric, metricSet.CreateTime)
 			if point != nil {
-				req.Timeseries = append(req.Timeseries, point)
+				req.TimeSeries = append(req.TimeSeries, point)
 			}
-			if len(req.Timeseries) >= maxTimeseriesPerRequest {
+			if len(req.TimeSeries) >= maxTimeseriesPerRequest {
 				sink.sendRequest(req)
 				req = getReq()
 			}
 		}
 	}
-	if len(req.Timeseries) > 0 {
+	if len(req.TimeSeries) > 0 {
 		sink.sendRequest(req)
 	}
 }
@@ -236,11 +223,13 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 	}
 
 	for _, metric := range metrics {
-		metricName := fullMetricName(metric.MetricDescriptor.Name)
-		if _, err := sink.gcmService.MetricDescriptors.Delete(sink.project, metricName).Do(); err != nil {
+		metricName := fullMetricName(sink.project, metric.MetricDescriptor.Name)
+		metricType := fullMetricType(metric.MetricDescriptor.Name)
+
+		if _, err := sink.gcmService.Projects.MetricDescriptors.Delete(metricName).Do(); err != nil {
 			glog.Infof("[GCM] Deleting metric %v failed: %v", metricName, err)
 		}
-		labels := make([]*gcm.MetricDescriptorLabelDescriptor, 0)
+		labels := make([]*gcm.LabelDescriptor, 0)
 
 		// Node autoscaling metrics have special labels.
 		if core.IsNodeAutoscalingMetric(metric.MetricDescriptor.Name) {
@@ -251,8 +240,8 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 			}
 
 			for _, l := range core.GcmNodeAutoscalingLabels() {
-				labels = append(labels, &gcm.MetricDescriptorLabelDescriptor{
-					Key:         fullLabelName(l.Key),
+				labels = append(labels, &gcm.LabelDescriptor{
+					Key:         l.Key,
 					Description: l.Description,
 				})
 			}
@@ -263,25 +252,44 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 			}
 
 			for _, l := range core.GcmLabels() {
-				labels = append(labels, &gcm.MetricDescriptorLabelDescriptor{
-					Key:         fullLabelName(l.Key),
+				labels = append(labels, &gcm.LabelDescriptor{
+					Key:         l.Key,
 					Description: l.Description,
 				})
 			}
 		}
 
-		t := &gcm.MetricDescriptorTypeDescriptor{
-			MetricType: metric.MetricDescriptor.Type.String(),
-			ValueType:  metric.MetricDescriptor.ValueType.String(),
+		var metricKind string
+
+		switch metric.MetricDescriptor.Type {
+		case core.MetricCumulative:
+			metricKind = "CUMULATIVE"
+		case core.MetricGauge:
+			metricKind = "GAUGE"
+		case core.MetricDelta:
+			metricKind = "DELTA"
 		}
+
+		var valueType string
+
+		switch metric.MetricDescriptor.ValueType {
+		case core.ValueInt64:
+			valueType = "INT64"
+		case core.ValueFloat:
+			valueType = "DOUBLE"
+		}
+
 		desc := &gcm.MetricDescriptor{
-			Name:           metricName,
-			Project:        sink.project,
-			Description:    metric.MetricDescriptor.Description,
-			Labels:         labels,
-			TypeDescriptor: t,
+			Name:        metricName,
+			Description: metric.MetricDescriptor.Description,
+			Labels:      labels,
+			MetricKind:  metricKind,
+			ValueType:   valueType,
+			Type:        metricType,
 		}
-		if _, err := sink.gcmService.MetricDescriptors.Create(sink.project, desc).Do(); err != nil {
+
+		if _, err := sink.gcmService.Projects.MetricDescriptors.Create(fullProjectName(sink.project), desc).Do(); err != nil {
+			glog.Errorf("Metric registration of %v failed: %v", desc.Name, err)
 			return err
 		}
 	}
