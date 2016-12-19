@@ -58,7 +58,7 @@ func (client *fakeRiemannClient) SendEvent(e *riemann_api.Event) error {
 	return nil
 }
 
-// Returns a fake kafka sink.
+// Returns a fake riemann sink.
 func NewFakeSink() fakeRiemannSink {
 	client := NewFakeRiemannClient()
 	config := riemannCommon.RiemannConfig{

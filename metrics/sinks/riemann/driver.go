@@ -17,7 +17,6 @@ package riemann
 import (
 	"net/url"
 	"sync"
-	"time"
 
 	riemann_api "github.com/bigdatadev/goryman"
 	"github.com/golang/glog"
@@ -86,7 +85,7 @@ func (sink *RiemannSink) ExportData(dataBatch *core.DataBatch) {
 
 		dataEvents = append(dataEvents, event)
 		if len(dataEvents) >= riemannCommon.MaxSendBatchSize {
-			sink.sendData(dataEvents)
+			riemannCommon.SendData(sink.client, dataEvents)
 			dataEvents = nil
 		}
 	}
@@ -113,36 +112,6 @@ func (sink *RiemannSink) ExportData(dataBatch *core.DataBatch) {
 	}
 
 	if len(dataEvents) > 0 {
-		sink.sendData(dataEvents)
+		riemannCommon.SendData(sink.client, dataEvents)
 	}
-}
-
-func (sink *RiemannSink) sendData(dataEvents []riemann_api.Event) {
-	if sink.client == nil {
-		return
-	}
-
-	start := time.Now()
-	errors := 0
-	for _, event := range dataEvents {
-		glog.V(8).Infof("Sending event to Riemann:  %+v", event)
-		var err error
-		for try := 0; try < riemannCommon.MaxRetries; try++ {
-			err = sink.client.SendEvent(&event)
-			if err == nil {
-				break
-			}
-		}
-		if err != nil {
-			errors++
-			glog.V(4).Infof("Failed to send event to Riemann: %+v: %+v", event, err)
-		}
-	}
-	end := time.Now()
-	if errors > 0 {
-		glog.V(2).Info("There were errors sending events to Riemman, forcing reconnection")
-		sink.client.Close()
-		sink.client = nil
-	}
-	glog.V(4).Infof("Exported %d events to riemann in %s", len(dataEvents)-errors, end.Sub(start))
 }

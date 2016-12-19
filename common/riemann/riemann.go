@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type RiemannClient interface {
@@ -106,4 +107,31 @@ func RiemannValue(value interface{}) interface{} {
 		return int(value.(int64))
 	}
 	return value
+}
+
+func SendData(client RiemannClient, dataEvents []riemann_api.Event) {
+
+	start := time.Now()
+	errors := 0
+	for _, event := range dataEvents {
+		glog.V(8).Infof("Sending event to Riemann:  %+v", event)
+		var err error
+		for try := 0; try < MaxRetries; try++ {
+			err = client.SendEvent(&event)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			errors++
+			glog.V(4).Infof("Failed to send event to Riemann: %+v: %+v", event, err)
+		}
+	}
+	end := time.Now()
+	if errors > 0 {
+		glog.V(2).Info("There were errors sending events to Riemman, forcing reconnection")
+		client.Close()
+		client = nil
+	}
+	glog.V(4).Infof("Exported %d events to riemann in %s", len(dataEvents)-errors, end.Sub(start))
 }
