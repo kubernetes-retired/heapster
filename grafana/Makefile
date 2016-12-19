@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-TAG = v4.0.0
+TAG = v4.0.2
 PREFIX = gcr.io/google_containers
 
 all: container

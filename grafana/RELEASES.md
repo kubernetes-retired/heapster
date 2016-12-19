@@ -1,7 +1,7 @@
 # Release Notes for Grafana container.
 
-## 4.0.0 (01-12-2016)
-- Support Grafana 4.0.0.
+## 4.0.2 (19-12-2016)
+- Support Grafana 4.0.2.
 
 ## 3.1.1 (24-11-2016)
 - Support Grafana 3.1.1.
