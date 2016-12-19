@@ -136,5 +136,7 @@ func GetKubeClientConfig(uri *url.URL) (*kube_client.Config, error) {
 		}
 	}
 
+	kubeConfig.ContentType = "application/vnd.kubernetes.protobuf"
+
 	return kubeConfig, nil
 }
