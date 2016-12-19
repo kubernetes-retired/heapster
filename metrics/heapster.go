@@ -223,7 +223,7 @@ func createKubeClientOrDie(kubernetesUrl *url.URL) *kube_client.Client {
 
 func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister *cache.StoreToPodLister) []core.DataProcessor {
 	dataProcessors := []core.DataProcessor{
-		// Convert cumulaties to rate
+		// Convert cumulative to rate
 		processors.NewRateCalculator(core.RateMetricsMapping),
 	}
 
