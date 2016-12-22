@@ -58,7 +58,8 @@ func NewFakeSink() fakeESSink {
 			saveData:  SaveDataIntoES_Stub,
 			flushData: func() error { return nil },
 			esSvc: esCommon.ElasticSearchService{
-				EsClient: &elastic.Client{},
+				EsClient:    &elastic.Client{},
+				ClusterName: esCommon.ESClusterName,
 			},
 		},
 		savedData,
@@ -98,5 +99,19 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	fakeSink.ExportEvents(&data)
 	// expect msg string
 	assert.Equal(t, 2, len(FakeESSink.savedData))
+
+	var expectMsgTemplate = [2]string{
+		`{"Count":100,"Metadata":{"creationTimestamp":null},"InvolvedObject":{},"Source":{},"FirstOccurrenceTimestamp":%s,"LastOccurrenceTimestamp":%s,"Message":"event1","Reason":"","Type":"","EventTags":{"cluster_name":"default","eventID":"","hostname":""}}`,
+		`{"Count":101,"Metadata":{"creationTimestamp":null},"InvolvedObject":{},"Source":{},"FirstOccurrenceTimestamp":%s,"LastOccurrenceTimestamp":%s,"Message":"event2","Reason":"","Type":"","EventTags":{"cluster_name":"default","eventID":"","hostname":""}}`,
+	}
+
+	msgsString := fmt.Sprintf("%s", FakeESSink.savedData)
+	ts, _ := json.Marshal(kube_api_unversioned.NewTime(now).Time.UTC())
+
+	for _, mgsTemplate := range expectMsgTemplate {
+		expectMsg := fmt.Sprintf(mgsTemplate, ts, ts)
+		assert.Contains(t, msgsString, expectMsg)
+	}
+
 	FakeESSink = fakeESSink{}
 }

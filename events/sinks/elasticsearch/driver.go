@@ -53,7 +53,7 @@ type EsSinkPoint struct {
 	EventTags                map[string]string
 }
 
-func eventToPoint(event *kube_api.Event) (*EsSinkPoint, error) {
+func eventToPoint(event *kube_api.Event, clusterName string) (*EsSinkPoint, error) {
 	point := EsSinkPoint{
 		FirstOccurrenceTimestamp: event.FirstTimestamp.Time.UTC(),
 		LastOccurrenceTimestamp:  event.LastTimestamp.Time.UTC(),
@@ -65,7 +65,8 @@ func eventToPoint(event *kube_api.Event) (*EsSinkPoint, error) {
 		InvolvedObject:           event.InvolvedObject,
 		Source:                   event.Source,
 		EventTags: map[string]string{
-			"eventID": string(event.UID),
+			"eventID":      string(event.UID),
+			"cluster_name": clusterName,
 		},
 	}
 	if event.InvolvedObject.Kind == "Pod" {
@@ -80,7 +81,7 @@ func (sink *elasticSearchSink) ExportEvents(eventBatch *event_core.EventBatch) {
 	sink.Lock()
 	defer sink.Unlock()
 	for _, event := range eventBatch.Events {
-		point, err := eventToPoint(event)
+		point, err := eventToPoint(event, sink.esSvc.ClusterName)
 		if err != nil {
 			glog.Warningf("Failed to convert event to point: %v", err)
 		}
