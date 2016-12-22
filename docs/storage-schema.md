@@ -82,7 +82,7 @@ This will make bosun confused and panic with something like "panic: opentsdb: ba
 
 ## Aggregates
 
-The metrics are collected initally collected for nodes and containers and latter aggregated for pods, namespaces and clusters. 
+The metrics are initally collected for nodes and containers and later aggregated for pods, namespaces and clusters. 
 Disk and network metrics are not available at container level (only at pod and node level). 
 
 ## Storage Schema
