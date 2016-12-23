@@ -108,7 +108,7 @@ following suffixes:
 For requests which simply fetch data points or list available objects, the
 return format will be the same as that used in the Heapster model API.
 
-The the case of aggregations, a different set of types is used: each bucket is
+The case of aggregations, a different set of types is used: each bucket is
 represented by a `MetricAggregationBucket`, which contains the timestamp for
 that bucket (the start of the bucket), the count of entries in that bucket (if
 requested) as an unsigned integer, as well as each of the other requested

@@ -135,7 +135,7 @@ func (sink *influxdbSink) aggregationFunc(aggregationName core.AggregationType, 
 	panic(fmt.Sprintf("Unknown aggregation type %q", aggregationName))
 }
 
-// keyToSelector converts a HistoricalKey to a InfluxQL predicate
+// keyToSelector converts a HistoricalKey to an InfluxQL predicate
 func (sink *influxdbSink) keyToSelector(key core.HistoricalKey) string {
 	typeSel := fmt.Sprintf("type = '%s'", key.ObjectType)
 	switch key.ObjectType {
