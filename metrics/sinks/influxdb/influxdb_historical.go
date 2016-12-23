@@ -38,7 +38,7 @@ func (sink *influxdbSink) Historical() core.HistoricalSource {
 
 // Kube pod and namespace names are limitted to [a-zA-Z0-9-.], while docker also allows
 // underscores, so only allow these those characters.  When Influx actually supports bound
-// paramaters, this will be less necessary.
+// parameters, this will be less necessary.
 var nameAllowedChars = regexp.MustCompile("^[a-zA-Z0-9_.-]+$")
 
 // metric names are restricted to prevent injection attacks
