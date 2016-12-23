@@ -120,7 +120,7 @@ func (sink *influxdbSink) ExportEvents(eventBatch *core.EventBatch) {
 	defer sink.Unlock()
 
 	dataPoints := make([]influxdb.Point, 0, 10)
-	for _, event := range eventBatch.Events {
+	for _, event := range eventBatch.NewEvents {
 		var point *influxdb.Point
 		var err error
 		if sink.c.WithFields {

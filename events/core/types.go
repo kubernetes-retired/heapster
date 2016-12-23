@@ -25,6 +25,7 @@ type EventBatch struct {
 	Timestamp time.Time
 	// List of events included in the batch.
 	Events []*kube_api.Event
+	NewEvents []*NewEvent
 }
 
 // A place from where the events should be scraped.

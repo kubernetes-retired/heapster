@@ -92,6 +92,13 @@ func (rm *realManager) housekeep() {
 	// No parallelism. Assumes that the events are pushed to Heapster. Add paralellism
 	// when this stops to be true.
 	events := rm.source.GetNewEvents()
+	var newEventList []*core.NewEvent
+	for _, oldEvent := range events.Events {
+		append(newEventList, core.ConvertEvent(oldEvent))
+	}
+	events.NewEvents = newEventList
 	glog.V(0).Infof("Exporting %d events", len(events.Events))
+	glog.V(0).Infof("Exporting %d events", len(events.NewEvents))
+
 	rm.sink.ExportEvents(events)
 }
