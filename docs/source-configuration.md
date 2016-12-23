@@ -1,7 +1,7 @@
 Configuring sources
 ===================
 
-Heapster can get data from multiple sources (although at this momeent we support only one kind - Kubernetes).
+Heapster can get data from multiple sources (although at this moment we support only one kind - Kubernetes).
 They are specified in the command line via the `--source` flag. The flag takes an argument of the form `PREFIX:CONFIG[?OPTIONS]`.
 Options (optional!) are specified as URL query parameters, separated by `&` as normal.
 This allows each source to have custom configuration passed to it without needing to
@@ -83,5 +83,5 @@ The following options are available:
 
 There is also a sub-source for metrics - `kubernetes.summary_api` - that uses a slightly different, memory-efficient API for passing data from Kubelet/cAdvisor to Heapster. It supports the same set of options as `kubernetes`. Sample usage:
 ```
- - --source=kubernetes.summary_api:'' 
+ - --source=kubernetes.summary_api:''
 ```

@@ -140,7 +140,7 @@ func (ksClient *KeystoneClientImpl) newToken() (string, error) {
 	return token.ID, nil
 }
 
-// NewKeystoneClient initilizes a keystone client with the provided configuration.
+// NewKeystoneClient initializes a keystone client with the provided configuration.
 func NewKeystoneClient(config Config) (KeystoneClient, error) {
 	opts := config.AuthOptions
 	provider, err := openstack.AuthenticatedClient(opts)
