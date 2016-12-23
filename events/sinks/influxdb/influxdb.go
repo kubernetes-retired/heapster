@@ -39,7 +39,7 @@ type influxdbSink struct {
 }
 
 const (
-	eventMeasurementName = "log/events"
+	eventMeasurementName = "events"
 	// Event special tags
 	eventUID = "uid"
 	// Value Field name
