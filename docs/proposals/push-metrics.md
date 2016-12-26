@@ -29,9 +29,9 @@ method of collecting metrics which describe multiple resources (other pods,
 services, etc) across the cluster.  Such producers are generally add-on cluster
 infrastructure components deployed by the cluster admins.  The push mechanisms
 are not, in general, intended for use by arbitrary cluster users (although the
-metrics transfered would probably apply to the users' pods).  It is up to
+metrics transferred would probably apply to the users' pods).  It is up to
 cluster admins to decide which applications are permitted to use the push
-mechanims (see the "Authentication" section below for more information on how
+mechanism (see the "Authentication" section below for more information on how
 cluster admins can control access).
 
 For these reasons, the push metrics mechanism is not designed to replace the
@@ -154,7 +154,7 @@ are discussed briefly below.  Note that most of these alternatives do not deal
 particularly well with a case where metrics need to come from a source that is
 not running as a pod on the cluster.  While it is expected that many of the
 producers will be running as components on the cluster (e.g. as DaemonSets or
-PetSets), it could still be adventageous to support metrics coming from
+PetSets), it could still be advantageous to support metrics coming from
 components that are not in the form of pods.
 
 ### Writing directly into sinks
@@ -186,7 +186,7 @@ which describe only the producer pod.  It would also conceptually blend
 together pods producing metrics about themselves versus pods producing metrics
 about others.  Additionally, the current cAdvisor-based custom metrics
 collection is not secured, so all metrics would be available to anyone with
-knowlege of the appropriate port, but this may change in the future.
+knowledge of the appropriate port, but this may change in the future.
 
 ### Using a new daemon per node to produce metrics
 
@@ -197,7 +197,7 @@ It was suggested that an approach similar to the Prometheus Node Exporter
 Textfile Collector could be used, in which sources would write their metrics to
 files in a directly, which would later be read by the collector when polled for
 metrics.  When the producers are containerized, you'd need to use a hostPath
-volume, have the daeamon look for specific emptyDir mounts in containers (and
+volume, have the daemon look for specific emptyDir mounts in containers (and
 use one director per container), or something similar.
 
 Alternatively, a new daemon could be run on each node that was responsible for
@@ -218,7 +218,7 @@ just serves up metrics based on text files in a directory).
 
 ### Adding an additional standard pull mechanism
 
-This alternative would involve writing a pull mechanim which, for instance, was
+This alternative would involve writing a pull mechanism which, for instance, was
 just able to read Prometheus metrics directly.  This would either require
 admins to configure the Heapster instance to know about every custom metrics
 source (and restart Heapster when a new source needed to be added), or would
