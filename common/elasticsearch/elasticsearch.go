@@ -14,6 +14,7 @@
 package elasticsearch
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -22,7 +23,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pborman/uuid"
 
-	"gopkg.in/olivere/elastic.v3"
+	"gopkg.in/olivere/elastic.v5"
 	"os"
 )
 
@@ -58,13 +59,13 @@ func (esSvc *ElasticSearchService) SaveData(date time.Time, typeName string, sin
 	indexName := esSvc.Index(date)
 
 	// Use the IndexExists service to check if a specified index exists.
-	exists, err := esSvc.EsClient.IndexExists(indexName).Do()
+	exists, err := esSvc.EsClient.IndexExists(indexName).Do(context.Background())
 	if err != nil {
 		return err
 	}
 	if !exists {
 		// Create a new index.
-		createIndex, err := esSvc.EsClient.CreateIndex(indexName).BodyString(mapping).Do()
+		createIndex, err := esSvc.EsClient.CreateIndex(indexName).BodyString(mapping).Do(context.Background())
 		if err != nil {
 			return err
 		}
@@ -73,13 +74,13 @@ func (esSvc *ElasticSearchService) SaveData(date time.Time, typeName string, sin
 		}
 	}
 
-	aliases, err := esSvc.EsClient.Aliases().Index(indexName).Do()
+	aliases, err := esSvc.EsClient.Aliases().Index(indexName).Do(context.Background())
 	if err != nil {
 		return err
 	}
 	aliasName := esSvc.IndexAlias(date, typeName)
 	if !aliases.Indices[indexName].HasAlias(aliasName) {
-		createAlias, err := esSvc.EsClient.Alias().Add(indexName, esSvc.IndexAlias(date, typeName)).Do()
+		createAlias, err := esSvc.EsClient.Alias().Add(indexName, esSvc.IndexAlias(date, typeName)).Do(context.Background())
 		if err != nil {
 			return err
 		}
