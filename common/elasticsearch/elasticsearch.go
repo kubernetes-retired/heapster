@@ -14,7 +14,6 @@
 package elasticsearch
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -22,6 +21,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pborman/uuid"
+
+	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5"
 	"os"

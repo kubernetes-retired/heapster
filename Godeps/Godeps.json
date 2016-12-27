@@ -1,6 +1,6 @@
 {
 	"ImportPath": "k8s.io/heapster",
-	"GoVersion": "go1.7",
+	"GoVersion": "go1.6",
 	"GodepVersion": "v75",
 	"Packages": [
 		"./..."
@@ -1181,16 +1181,6 @@
 			"ImportPath": "gopkg.in/olivere/elastic.v5",
 			"Comment": "v5.0.13",
 			"Rev": "b272fab42387a42585235d56f8c6b53b13ddfb7d"
-		},
-		{
-			"ImportPath": "gopkg.in/olivere/elastic.v3/backoff",
-			"Comment": "v3.0.56",
-			"Rev": "1ad75b5396674e9c783400e89106bc0c8da9d786"
-		},
-		{
-			"ImportPath": "gopkg.in/olivere/elastic.v3/uritemplates",
-			"Comment": "v3.0.56",
-			"Rev": "1ad75b5396674e9c783400e89106bc0c8da9d786"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
