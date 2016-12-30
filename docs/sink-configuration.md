@@ -170,7 +170,9 @@ additional node in the cluster. For example:
 
 Besides this, the following options can be set in query string:
 
-* `Index` - the index for metrics and events. The default is `heapster`
+(*) Note that the keys are case sensitive
+
+* `index` - the index for metrics and events. The default is `heapster`
 * `esUserName` - the username if authentication is enabled
 * `esUserSecret` - the password if authentication is enabled
 * `maxRetries` - the number of retries that the Elastic client will perform
@@ -186,13 +188,14 @@ Besides this, the following options can be set in query string:
 * `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
 * `cluster_name` - cluster name for different Kubernetes clusters. Default value is `default`.
 
+
 Like this:
 
-    --sink="elasticsearch:?nodes=http://127.0.0.1:9200&Index=testMetric"
+    --sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testMetric"
 
 	or
 
-	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&Index=testEvent"
+	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testEvent"
 
 #### AWS Integration
 In order to use AWS Managed Elastic we need to use one of the following methods:
@@ -205,7 +208,7 @@ In order to use AWS Managed Elastic we need to use one of the following methods:
 	1. Configure the ElasticSearch cluster policy with IAM User
 	2. Create a secret that stores the IAM credentials
 	3. Expose the credentials to the environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-	
+
 	```
 	env:
       - name: AWS_ACCESS_KEY_ID
