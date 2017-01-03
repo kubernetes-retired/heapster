@@ -50,11 +50,11 @@ Heapster tags each metric with the following labels.
 | pod_namespace  | The namespace of a Pod                                                        |
 | container_base_image | Base image for the container |  
 | container_name | User-provided name of the container or full cgroup name for system containers |
-| host_id        | Cloud-provider specified or user specified Identifier of a node               | 
-| hostname       | Hostname where the container ran                                              | 
+| host_id        | Cloud-provider specified or user specified Identifier of a node               |
+| hostname       | Hostname where the container ran                                              |
 | labels         | Comma-separated(Default) list of user-provided labels. Format is 'key:value'  |
 | namespace_id   | UID of the namespace of a Pod                                                 |
-| resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | 
+| resource_id    | An unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage |
 
 **Note**
   * Label separator can be configured with Heapster `--label-seperator`. Comma-seperated label pairs is fine until we use [Bosun](http://bosun.org) as alert system and use `group by labels` to search for labels.
@@ -82,8 +82,8 @@ This will make bosun confused and panic with something like "panic: opentsdb: ba
 
 ## Aggregates
 
-The metrics are initally collected for nodes and containers and later aggregated for pods, namespaces and clusters. 
-Disk and network metrics are not available at container level (only at pod and node level). 
+The metrics are initially collected for nodes and containers and later aggregated for pods, namespaces and clusters.
+Disk and network metrics are not available at container level (only at pod and node level).
 
 ## Storage Schema
 
@@ -112,10 +112,10 @@ Metrics mentioned above are stored along with corresponding labels as [custom me
 
 * Metrics are collected every 2 minutes by default and pushed with a 1 minute precision.
 * Each metric has a custom metric prefix - `custom.cloudmonitoring.googleapis.com`
-* Each metric is pushed with an additonal namespace prefix - `kubernetes.io`.
+* Each metric is pushed with an additional namespace prefix - `kubernetes.io`.
 * GCM does not support visualizing cumulative metrics yet. To work around that, heapster exports an equivalent gauge metric for all cumulative metrics mentioned above.
 
-  The gauge metrics use their parent cumulative metric name as the prefix, followed by a "_rate" suffix. 
+  The gauge metrics use their parent cumulative metric name as the prefix, followed by a "_rate" suffix.
    E.x.: "cpu/usage", which is cumulative, will have a corresponding gauge metric "cpu/usage_rate"
    NOTE: The gauge metrics will be deprecated as soon as GCM supports visualizing cumulative metrics.
 
@@ -133,4 +133,4 @@ Each metric is stored as separate timeseries (metric) in Hawkular-Metrics with t
 
 At the start, all the definitions are fetched from the Hawkular-Metrics tenant and filtered to cache only the Heapster metrics. It is recommended to use a separate tenant for Heapster information if you have lots of metrics from other systems, but not required.
 
-The Hawkular-Metrics instance can be a standalone installation of Hawkular-Metrics or the full installation of Hawkular. 
+The Hawkular-Metrics instance can be a standalone installation of Hawkular-Metrics or the full installation of Hawkular.

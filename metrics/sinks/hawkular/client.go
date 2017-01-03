@@ -176,7 +176,7 @@ func (h *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric cor
 				mdd.Tags[k] = v
 			}
 
-			// Set the labelled values
+			// Set the labeled values
 			for k, v := range metric.Labels {
 				mdd.Tags[k] = v
 			}

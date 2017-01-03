@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # required:
-# KUBE_ROOT: path of the root of the Kubernetes reposiitory
+# KUBE_ROOT: path of the root of the Kubernetes repository
 
 : "${KUBE_ROOT?Must set KUBE_ROOT env var}"
 

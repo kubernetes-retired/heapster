@@ -24,7 +24,7 @@ import (
 // A simple in-memory storage for metrics. It divides metrics into 2 categories
 // * metrics that need to be stored for couple minutes.
 // * metrics that need to be stored for longer time (15 min, 1 hour).
-// The user of this struct needs to decide what are the long-stored metrics uprfront.
+// The user of this struct needs to decide what are the long-stored metrics upfront.
 type MetricSink struct {
 	// Request can come from other threads.
 	lock sync.Mutex

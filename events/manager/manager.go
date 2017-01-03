@@ -89,7 +89,7 @@ func (rm *realManager) Housekeep() {
 func (rm *realManager) housekeep() {
 	defer lastHousekeepTimestamp.Set(float64(time.Now().Unix()))
 
-	// No parallelism. Assumes that the events are pushed to Heapster. Add paralellism
+	// No parallelism. Assumes that the events are pushed to Heapster. Add parallelism
 	// when this stops to be true.
 	events := rm.source.GetNewEvents()
 	glog.V(0).Infof("Exporting %d events", len(events.Events))
