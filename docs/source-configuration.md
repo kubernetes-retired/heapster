@@ -73,7 +73,7 @@ This will mount the generated token at `/var/run/secrets/kubernetes.io/serviceac
 
 
 The following options are available:
-* `inClusterConfig` - Use kube config in service accounts associated with Heapster's namesapce. (default: true)
+* `inClusterConfig` - Use kube config in service accounts associated with Heapster's namespace. (default: true)
 * `kubeletPort` - kubelet port to use (default: `10255`)
 * `kubeletHttps` - whether to use https to connect to kubelets (default: `false`)
 * `apiVersion` - API version to use to talk to Kubernetes. Defaults to the version in kubeConfig.

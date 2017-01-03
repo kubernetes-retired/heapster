@@ -162,7 +162,7 @@ across all metrics sinks, the list can be expanded.
 - Count: `/metrics-aggregated/count`
 
 Note: to support all the existing sinks, the supported percentiles will be
-limitted to 50, 95, and 99.  If additional percentile values later become
+limited to 50, 95, and 99.  If additional percentile values later become
 supported by other sinks, this list may be expanded (see the Sink Support
 section below).
 

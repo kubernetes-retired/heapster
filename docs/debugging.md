@@ -34,7 +34,7 @@ heapster_exporter_duration_microseconds_count{exporter="Metric Sink"} 3089
 This endpoint is enabled for both metrics(Heapster) and events(Eventer).
 
 
-* `/api/v1/model/debug/allkeys` has a list of all metrics sets that are processed inside Heapster. This can be usefull to check what is 
+* `/api/v1/model/debug/allkeys` has a list of all metrics sets that are processed inside Heapster. This can be useful to check what is 
 passed to your configured sinks Example:
 
 ```
