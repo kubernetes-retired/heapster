@@ -1178,19 +1178,19 @@
 			"Rev": "20b71e5b60d756d3d2f80def009790325acc2b23"
 		},
 		{
-			"ImportPath": "gopkg.in/olivere/elastic.v3",
-			"Comment": "v3.0.56",
-			"Rev": "1ad75b5396674e9c783400e89106bc0c8da9d786"
+			"ImportPath": "gopkg.in/olivere/elastic.v5",
+			"Comment": "v5.0.13",
+			"Rev": "b272fab42387a42585235d56f8c6b53b13ddfb7d"
 		},
 		{
-			"ImportPath": "gopkg.in/olivere/elastic.v3/backoff",
-			"Comment": "v3.0.56",
-			"Rev": "1ad75b5396674e9c783400e89106bc0c8da9d786"
+			"ImportPath": "gopkg.in/olivere/elastic.v5/backoff",
+			"Comment": "v5.0.13",
+			"Rev": "b272fab42387a42585235d56f8c6b53b13ddfb7d"
 		},
 		{
-			"ImportPath": "gopkg.in/olivere/elastic.v3/uritemplates",
-			"Comment": "v3.0.56",
-			"Rev": "1ad75b5396674e9c783400e89106bc0c8da9d786"
+			"ImportPath": "gopkg.in/olivere/elastic.v5/uritemplates",
+			"Comment": "v5.0.13",
+			"Rev": "b272fab42387a42585235d56f8c6b53b13ddfb7d"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
