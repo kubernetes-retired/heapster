@@ -10,12 +10,11 @@ spec:
       labels:
         task: monitoring
         k8s-app: heapster
-        version: v6
     spec:
       containers:
       - name: heapster
-        image: kubernetes/heapster:canary
-        imagePullPolicy: Always
+        image: gcr.io/google_containers/heapster:v1.3.0-beta.0
+        imagePullPolicy: IfNotPresent
         command:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
