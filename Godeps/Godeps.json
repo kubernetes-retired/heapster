@@ -195,14 +195,6 @@
 			"Rev": "3ac7bf7a47d159a033b107610db8a1b6575507a4"
 		},
 		{
-			"ImportPath": "github.com/bigdatadev/goryman",
-			"Rev": "55c3cbc3df542201b3c140e72a758d0adae4bc05"
-		},
-		{
-			"ImportPath": "github.com/bigdatadev/goryman/proto",
-			"Rev": "55c3cbc3df542201b3c140e72a758d0adae4bc05"
-		},
-		{
 			"ImportPath": "github.com/blang/semver",
 			"Comment": "v3.0.1",
 			"Rev": "31b736133b98f26d5e078ec9eb591666edfd091f"
@@ -794,6 +786,14 @@
 			"ImportPath": "github.com/rackspace/gophercloud/testhelper/client",
 			"Comment": "v1.0.0-920-g934dbf8",
 			"Rev": "934dbf81977c67c521c75492dc1f55ca74dc5b04"
+		},
+		{
+			"ImportPath": "github.com/rikatz/goryman",
+			"Rev": "8c8d07c1fe9b7331498287804b68a17cd66be8bd"
+		},
+		{
+			"ImportPath": "github.com/rikatz/goryman/proto",
+			"Rev": "8c8d07c1fe9b7331498287804b68a17cd66be8bd"
 		},
 		{
 			"ImportPath": "github.com/samuel/go-zookeeper/zk",

@@ -23,8 +23,8 @@ import (
 
 	"time"
 
-	riemann_api "github.com/bigdatadev/goryman"
 	"github.com/golang/glog"
+	riemann_api "github.com/rikatz/goryman"
 	"k8s.io/heapster/metrics/core"
 )
 

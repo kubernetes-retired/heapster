@@ -1,3 +1,12 @@
+# NOTICE
+
+This library seems to be abandoned and missing. I've forked and rebased the imports, only so golang projects that depends on this library can still use this.
+
+Probably there is another better option than this library that can be used !!!
+
+It's forked from the old dead/deleted bigdatadev/goryman repository (and from sauravmndl/goryman, who forked this before they delete the repo)
+
+
 # Riemann client (Golang)
 
 [![GoDoc](https://godoc.org/github.com/bigdatadev/goryman?status.png)](http://godoc.org/github.com/bigdatadev/goryman)
