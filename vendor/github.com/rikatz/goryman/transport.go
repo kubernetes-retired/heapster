@@ -9,7 +9,7 @@ import (
 	"net"
 
 	pb "github.com/golang/protobuf/proto"
-	"github.com/bigdatadev/goryman/proto"
+	"github.com/rikatz/goryman/proto"
 )
 
 // Transport is an interface to a generic transport used by the client
