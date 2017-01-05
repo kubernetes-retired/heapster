@@ -69,9 +69,9 @@ push: ./manifest-tool $(addprefix sub-push-,$(ALL_ARCHITECTURES))
 sub-push-%:
 	$(MAKE) ARCH=$* PREFIX=$(PREFIX) VERSION=$(VERSION) build
 ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
-	gcloud docker push $(PREFIX)/heapster-influxdb-$(ARCH):$(VERSION)
+	gcloud docker push $(PREFIX)/heapster-influxdb-$*:$(VERSION)
 else
-	docker push $(PREFIX)/heapster-influxdb-$(ARCH):$(VERSION)
+	docker push $(PREFIX)/heapster-influxdb-$*:$(VERSION)
 endif
 
 ./manifest-tool:

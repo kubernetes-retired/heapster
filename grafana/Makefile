@@ -80,9 +80,9 @@ push: ./manifest-tool $(addprefix sub-push-,$(ALL_ARCHITECTURES))
 sub-push-%:
 	$(MAKE) ARCH=$* PREFIX=$(PREFIX) VERSION=$(VERSION) build
 ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
-	gcloud docker push $(PREFIX)/heapster-grafana-$(ARCH):$(VERSION)
+	gcloud docker push $(PREFIX)/heapster-grafana-$*:$(VERSION)
 else
-	docker push $(PREFIX)/heapster-grafana-$(ARCH):$(VERSION)
+	docker push $(PREFIX)/heapster-grafana-$*:$(VERSION)
 endif
 
 ./manifest-tool:

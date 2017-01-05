@@ -23,7 +23,7 @@ import (
 )
 
 func buildDockerImage(imageName string) error {
-	out, err := exec.Command("./build.sh", imageName).CombinedOutput()
+	out, err := exec.Command("make", "OVERRIDE_IMAGE_NAME="+imageName, "container").CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to build docker binary (%q) - %q", err, out)
 	}
