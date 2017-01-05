@@ -3,7 +3,7 @@ all: build
 PREFIX = gcr.io/google_containers
 FLAGS = 
 
-VERSION = v1.2.1-alpha1
+VERSION = v1.3.0-beta.0
 GIT_COMMIT := `git rev-parse --short HEAD`
 
 SUPPORTED_KUBE_VERSIONS = "1.4.6"
