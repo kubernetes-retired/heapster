@@ -39,7 +39,7 @@ import (
 
 const (
 	targetTags       = "kubernetes-minion"
-	heapsterBuildDir = "../deploy/docker"
+	heapsterBuildDir = "../"
 )
 
 var (
