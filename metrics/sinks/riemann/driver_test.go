@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	riemann_api "github.com/bigdatadev/goryman"
+	riemann_api "github.com/rikatz/goryman"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/heapster/metrics/core"
 )
