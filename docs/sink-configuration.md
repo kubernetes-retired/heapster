@@ -140,7 +140,8 @@ For example,
     --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&timeseriestopic=testseries&eventstopic=testtopic"
 
 ### Riemann
-This sink supports metrics only.
+This sink supports monitoring metrics and events.
+
 To use the reimann sink add the following flag:
 
 	--sink="riemann:<RIEMANN_SERVER_URL>[?<OPTIONS>]"

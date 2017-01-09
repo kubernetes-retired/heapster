@@ -22,6 +22,7 @@ import (
 
 	riemann_api "github.com/bigdatadev/goryman"
 	"github.com/stretchr/testify/assert"
+	riemannCommon "k8s.io/heapster/common/riemann"
 	"k8s.io/heapster/metrics/core"
 )
 
@@ -56,22 +57,22 @@ func (client *fakeRiemannClient) SendEvent(e *riemann_api.Event) error {
 	return nil
 }
 
-// Returns a fake kafka sink.
+// Returns a fake riemann sink.
 func NewFakeSink() fakeRiemannSink {
-	riemannClient := NewFakeRiemannClient()
-	c := riemannConfig{
-		host:  "riemann-heapster:5555",
-		ttl:   60.0,
-		state: "",
-		tags:  make([]string, 0),
+	client := NewFakeRiemannClient()
+	config := riemannCommon.RiemannConfig{
+		Host:  "riemann-heapster:5555",
+		Ttl:   60.0,
+		State: "",
+		Tags:  make([]string, 0),
 	}
 
 	return fakeRiemannSink{
-		&riemannSink{
-			client: riemannClient,
-			config: c,
+		&RiemannSink{
+			client: client,
+			config: config,
 		},
-		riemannClient,
+		client,
 	}
 }
 
