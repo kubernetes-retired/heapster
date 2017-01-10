@@ -311,6 +311,15 @@ var mapping = `{
         "Count": {
           "type": "long"
         },
+        "Labels": {
+          "type": "string",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          }
+        },
         "Metadata": {
           "properties": {
             "creationTimestamp": {

@@ -101,8 +101,8 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	assert.Equal(t, 2, len(FakeESSink.savedData))
 
 	var expectMsgTemplate = [2]string{
-		`{"Count":100,"Metadata":{"creationTimestamp":null},"InvolvedObject":{},"Source":{},"FirstOccurrenceTimestamp":%s,"LastOccurrenceTimestamp":%s,"Message":"event1","Reason":"","Type":"","EventTags":{"cluster_name":"default","eventID":"","hostname":""}}`,
-		`{"Count":101,"Metadata":{"creationTimestamp":null},"InvolvedObject":{},"Source":{},"FirstOccurrenceTimestamp":%s,"LastOccurrenceTimestamp":%s,"Message":"event2","Reason":"","Type":"","EventTags":{"cluster_name":"default","eventID":"","hostname":""}}`,
+		`{"Count":100,"Metadata":{"creationTimestamp":null},"InvolvedObject":{},"Source":{},"FirstOccurrenceTimestamp":%s,"LastOccurrenceTimestamp":%s,"Message":"event1","Reason":"","Type":"","Labels":"","EventTags":{"cluster_name":"default","eventID":"","hostname":""}}`,
+		`{"Count":101,"Metadata":{"creationTimestamp":null},"InvolvedObject":{},"Source":{},"FirstOccurrenceTimestamp":%s,"LastOccurrenceTimestamp":%s,"Message":"event2","Reason":"","Type":"","Labels":"","EventTags":{"cluster_name":"default","eventID":"","hostname":""}}`,
 	}
 
 	msgsString := fmt.Sprintf("%s", FakeESSink.savedData)
