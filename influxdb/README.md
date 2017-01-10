@@ -1,15 +1,6 @@
-# Grafana Image For Heapster/InfluxDB
+# InfluxDB image for Heapster
 
-## What's in it:
- - Grafana 4
- - A Go binary that:
-   - creates a datasource for InfluxDB
-   - creates a couple of dashboards during startup.
-     - these dashboards leverage templating and repeating of panels features in Grafana, to discover nodes, pods, and containers automatically.
-
-## How to use it:
- - InfluxDB service URL can be passed in via the environment variable `INFLUXDB_SERVICE_URL`.
- - Otherwise, it will fall back to http://monitoring-influxdb:8086.
+This is a minimal influxdb docker image that plays well with heapster.
 
 ## How to build:
 
