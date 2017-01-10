@@ -59,7 +59,7 @@ build:
 		&& ln -s /go/src/github.com/influxdb/influxdb /go/src/github.com/influxdata/ \
 		&& GOARCH=$(ARCH) CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags=\"-s\" -o /build/influxd ./cmd/influxd"
 
-	docker build -t $(PREFIX)/heapster-influxdb-$(ARCH):$(VERSION) $(TEMP_DIR)
+	docker build --pull -t $(PREFIX)/heapster-influxdb-$(ARCH):$(VERSION) $(TEMP_DIR)
 
 	rm -rf $(TEMP_DIR)
 
