@@ -70,7 +70,7 @@ build:
 		&& cd /tmp/grafanarootfs && tar -cf /build/grafana.tar . \
 		&& cd /build && CGO_ENABLED=0 GOARCH=$(ARCH) go build -o setup_grafana setup_grafana.go"
 
-	docker build -t $(PREFIX)/heapster-grafana-$(ARCH):$(VERSION) $(TEMP_DIR)
+	docker build --pull -t $(PREFIX)/heapster-grafana-$(ARCH):$(VERSION) $(TEMP_DIR)
 
 	rm -rf $(TEMP_DIR)
 
