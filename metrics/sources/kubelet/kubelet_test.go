@@ -372,9 +372,48 @@ var nodes = []kube_api.Node{
 	},
 }
 
+var IpV6Nodes = []kube_api.Node{
+	kube_api.Node{
+		ObjectMeta: kube_api.ObjectMeta{
+			Name: "testNode",
+		},
+		Status: kube_api.NodeStatus{
+			Conditions: []kube_api.NodeCondition{
+				{
+					Type:   "NotReady",
+					Status: kube_api.ConditionTrue,
+				},
+			},
+			Addresses: []kube_api.NodeAddress{
+				{
+					Type:    kube_api.NodeHostName,
+					Address: "testNode",
+				},
+				{
+					Type:    kube_api.NodeInternalIP,
+					Address: "::1",
+				},
+				{
+					Type:    kube_api.NodeInternalIP,
+					Address: "127.0.0.1",
+				},
+			},
+		},
+	},
+}
+
+func TestGetNodeHostnameAndIpV4(t *testing.T) {
+	for _, node := range IpV6Nodes {
+		hostname, ip, err := getNodeHostnameAndIP(&node, "ipv6")
+		assert.NoError(t, err)
+		assert.Equal(t, hostname, "testNode")
+		assert.Equal(t, ip, "::1")
+	}
+}
+
 func TestGetNodeHostnameAndIP(t *testing.T) {
 	for _, node := range nodes {
-		hostname, ip, err := getNodeHostnameAndIP(&node)
+		hostname, ip, err := getNodeHostnameAndIP(&node, "")
 		assert.NoError(t, err)
 		assert.Equal(t, hostname, "testNode")
 		assert.Equal(t, ip, "127.0.0.1")
