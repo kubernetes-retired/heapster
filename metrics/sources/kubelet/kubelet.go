@@ -302,7 +302,7 @@ func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
 		if addr.Type == kube_api.NodeHostName && addr.Address != "" {
 			hostname = addr.Address
 		}
-		if addr.Type == kube_api.NodeInternalIP && addr.Address != "" && ip == "" {
+		if addr.Type == kube_api.NodeInternalIP && addr.Address != "" {
 			if net.ParseIP(addr.Address).To4() != nil {
 				ip = addr.Address
 			}
