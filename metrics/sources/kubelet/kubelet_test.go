@@ -365,6 +365,10 @@ var nodes = []kube_api.Node{
 				},
 				{
 					Type:    kube_api.NodeInternalIP,
+					Address: "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+				},
+				{
+					Type:    kube_api.NodeInternalIP,
 					Address: "127.0.0.1",
 				},
 			},
