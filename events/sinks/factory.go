@@ -22,6 +22,7 @@ import (
 	"k8s.io/heapster/events/sinks/elasticsearch"
 	"k8s.io/heapster/events/sinks/gcl"
 	"k8s.io/heapster/events/sinks/influxdb"
+	"k8s.io/heapster/events/sinks/kafka"
 	"k8s.io/heapster/events/sinks/log"
 
 	"github.com/golang/glog"
@@ -40,6 +41,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.EventSink, error) {
 		return influxdb.CreateInfluxdbSink(&uri.Val)
 	case "elasticsearch":
 		return elasticsearch.NewElasticSearchSink(&uri.Val)
+	case "kafka":
+		return kafka.NewKafkaSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
