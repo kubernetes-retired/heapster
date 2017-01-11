@@ -76,7 +76,7 @@ container:
 	cp deploy/docker/Dockerfile $(TEMP_DIR)
 	cd $(TEMP_DIR) && sed -i "s|BASEIMAGE|$(BASEIMAGE)|g" Dockerfile
 
-	docker build -t $(PREFIX)/heapster-$(ARCH):$(VERSION) $(TEMP_DIR)
+	docker build --pull -t $(PREFIX)/heapster-$(ARCH):$(VERSION) $(TEMP_DIR)
 ifneq ($(OVERRIDE_IMAGE_NAME),)
 	docker tag $(PREFIX)/heapster-$(ARCH):$(VERSION) $(OVERRIDE_IMAGE_NAME)
 endif
