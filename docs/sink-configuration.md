@@ -223,6 +223,36 @@ In order to use AWS Managed Elastic we need to use one of the following methods:
             key: aws.secret
 	```
 
+### Graphite/Carbon
+This sink supports monitoring metrics only.
+To use the graphite sink add the following flag:
+
+    --sink="graphite:<PROTOCOL>://<HOST>[:<PORT>][<?<OPTIONS>>]"
+
+PROTOCOL must be `tcp` or `udp`, PORT is 2003 by default.
+
+These options are available:
+* `prefix` - Adds specified prefix to all metric paths
+
+For example,
+
+    --sink="graphite:tcp://metrics.example.com:2003?prefix=kubernetes.example"
+
+Metrics are sent to Graphite with this hierarchy:
+* `PREFIX`
+  * `cluster`
+  * `namespaces` 
+    * `NAMESPACE`
+  * `nodes`
+    * `NODE`
+      * `pods`
+        * `NAMESPACE`
+           * `POD`
+             * `containers`
+               * `CONTAINER`
+      * `sys-containers`
+        * `SYS-CONTAINER`
+
 ## Using multiple sinks
 
 Heapster can be configured to send k8s metrics and events to multiple sinks by specifying the`--sink=...` flag multiple times.
