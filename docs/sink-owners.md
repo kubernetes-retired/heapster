@@ -30,7 +30,7 @@ List of Owners
 | Hawkular        | :heavy_check_mark: | :x:                | @burmanm / @mwringe                           | :ok:           |
 | InfluxDB        | :heavy_check_mark: | :heavy_check_mark: | @kubernetes/heapster-maintainers / @andyxning | :ok:           |
 | Metric (memory) | :heavy_check_mark: | :x:                | @kubernetes/heapster-maintainers              | :ok:           |
-| Kafka           | :heavy_check_mark: | :x:                | @huangyuqi                                    | :ok:           |
+| Kafka           | :heavy_check_mark: | :heavy_check_mark: | @huangyuqi                                    | :ok:           |
 | Monasca         | :heavy_check_mark: | :x:                |                                               | :no_entry: [1] |
 | OpenTSDB        | :heavy_check_mark: | :x:                | @bluebreezecf                                 | :ok:           |
 | Riemann         | :heavy_check_mark: | :x: :new:          | @jsoriano (temporarily)                       | :no_entry: [2] |

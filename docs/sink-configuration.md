@@ -137,7 +137,9 @@ Options can be set in query string, like this:
 
 For example,
 
-    --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&timeseriestopic=testseries&eventstopic=testtopic"
+    --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&timeseriestopic=testseries"
+    or
+    --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&eventstopic=testtopic"
 
 ### Riemann
 This sink supports metrics only.
