@@ -1,7 +1,7 @@
 {
 	"ImportPath": "k8s.io/heapster",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v74",
+	"GodepVersion": "v75",
 	"Packages": [
 		"./..."
 	],
@@ -1182,19 +1182,9 @@
 			"Rev": "20b71e5b60d756d3d2f80def009790325acc2b23"
 		},
 		{
-			"ImportPath": "gopkg.in/olivere/elastic.v3",
-			"Comment": "v3.0.56",
-			"Rev": "1ad75b5396674e9c783400e89106bc0c8da9d786"
-		},
-		{
-			"ImportPath": "gopkg.in/olivere/elastic.v3/backoff",
-			"Comment": "v3.0.56",
-			"Rev": "1ad75b5396674e9c783400e89106bc0c8da9d786"
-		},
-		{
-			"ImportPath": "gopkg.in/olivere/elastic.v3/uritemplates",
-			"Comment": "v3.0.56",
-			"Rev": "1ad75b5396674e9c783400e89106bc0c8da9d786"
+			"ImportPath": "gopkg.in/olivere/elastic.v5",
+			"Comment": "v5.0.13",
+			"Rev": "b272fab42387a42585235d56f8c6b53b13ddfb7d"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
@@ -2299,6 +2289,16 @@
 			"ImportPath": "k8s.io/kubernetes/third_party/forked/golang/reflect",
 			"Comment": "v1.5.0-alpha.0-1593-gcbbf22a",
 			"Rev": "cbbf22a7d2b06a55066b16885a4baaf4ce92d3a4"
+		},
+		{
+			"ImportPath": "gopkg.in/olivere/elastic.v5/backoff",
+			"Comment": "v5.0.13",
+			"Rev": "b272fab42387a42585235d56f8c6b53b13ddfb7d"
+		},
+		{
+			"ImportPath": "gopkg.in/olivere/elastic.v5/uritemplates",
+			"Comment": "v5.0.13",
+			"Rev": "b272fab42387a42585235d56f8c6b53b13ddfb7d"
 		}
 	]
 }
