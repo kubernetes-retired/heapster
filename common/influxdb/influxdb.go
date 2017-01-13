@@ -38,6 +38,7 @@ type InfluxdbConfig struct {
 	Host       string
 	DbName     string
 	WithFields bool
+	InsecureSsl bool
 }
 
 func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
@@ -54,6 +55,7 @@ func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
 		Username:  c.User,
 		Password:  c.Password,
 		UserAgent: fmt.Sprintf("%v/%v", "heapster", version.HeapsterVersion),
+		UnsafeSsl: c.InsecureSsl,
 	}
 	client, err := influxdb.NewClient(*iConfig)
 
@@ -74,6 +76,7 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 		DbName:     "k8s",
 		Secure:     false,
 		WithFields: false,
+		InsecureSsl: false,
 	}
 
 	if len(uri.Host) > 0 {
@@ -103,6 +106,14 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 			return nil, fmt.Errorf("failed to parse `secure` flag - %v", err)
 		}
 		config.Secure = val
+	}
+
+	if len(opts["insecuressl"]) >= 1 {
+		val, err := strconv.ParseBool(opts["insecuressl"][0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse `insecuressl` flag - %v", err)
+		}
+		config.InsecureSsl = val
 	}
 
 	return &config, nil

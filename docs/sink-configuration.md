@@ -32,6 +32,7 @@ The following options are available:
 * `pw` - InfluxDB password (default: `root`)
 * `db` - InfluxDB Database name (default: `k8s`)
 * `secure` - Connect securely to InfluxDB (default: `false`)
+* `insecuressl` - Ignore SSL certificate validity
 * `withfields` - Use [InfluxDB fields](storage-schema.md#using-fields) (default: `false`)
 
 ### Google Cloud Monitoring
