@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: influxdb
-        image: gcr.io/google_containers/heapster-influxdb:v0.13.0
+        image: gcr.io/google_containers/heapster-influxdb:v1.1.1
         volumeMounts:
         - mountPath: /data
           name: influxdb-storage

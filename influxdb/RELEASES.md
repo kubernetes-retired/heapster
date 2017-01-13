@@ -1,5 +1,8 @@
 # Release Notes for the Heapster InfluxDB container.
 
+## v1.1.1 (11.1.2016)
+- Updated to version v1.1.1; bumped Godeps and modified some code in heapster to use the latest schema
+
 ## v0.13.0 (4.1.2016)
 - Formalized the image name for every arch to `gcr.io/google_containers/influxdb-grafana-ARCH:VERSION`
 - Now this image is released for multiple architectures, including amd64, arm, arm64, ppc64le and s390x

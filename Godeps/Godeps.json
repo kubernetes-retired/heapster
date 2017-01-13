@@ -1,7 +1,7 @@
 {
 	"ImportPath": "k8s.io/heapster",
-	"GoVersion": "go1.6",
-	"GodepVersion": "v74",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v76",
 	"Packages": [
 		"./..."
 	],
@@ -976,23 +976,23 @@
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2",
-			"Rev": "b5adcc2dcdf009d0391547edc6ecbaff889f5bb9"
+			"Rev": "314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2/google",
-			"Rev": "b5adcc2dcdf009d0391547edc6ecbaff889f5bb9"
+			"Rev": "314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2/internal",
-			"Rev": "b5adcc2dcdf009d0391547edc6ecbaff889f5bb9"
+			"Rev": "314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2/jws",
-			"Rev": "b5adcc2dcdf009d0391547edc6ecbaff889f5bb9"
+			"Rev": "314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2/jwt",
-			"Rev": "b5adcc2dcdf009d0391547edc6ecbaff889f5bb9"
+			"Rev": "314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd"
 		},
 		{
 			"ImportPath": "golang.org/x/sys/unix",
@@ -1097,14 +1097,6 @@
 		{
 			"ImportPath": "google.golang.org/appengine/internal/remote_api",
 			"Rev": "8d4efd07a9358ec8c7e75b29387c31a7692db8d2"
-		},
-		{
-			"ImportPath": "google.golang.org/cloud/compute/metadata",
-			"Rev": "eb47ba841d53d93506cfbfbc03927daf9cc48f88"
-		},
-		{
-			"ImportPath": "google.golang.org/cloud/internal",
-			"Rev": "eb47ba841d53d93506cfbfbc03927daf9cc48f88"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
@@ -2177,11 +2169,6 @@
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/version",
-			"Comment": "v1.5.0-alpha.0-1593-gcbbf22a",
-			"Rev": "cbbf22a7d2b06a55066b16885a4baaf4ce92d3a4"
-		},
-		{
-			"ImportPath": "k8s.io/kubernetes/pkg/version/verflag",
 			"Comment": "v1.5.0-alpha.0-1593-gcbbf22a",
 			"Rev": "cbbf22a7d2b06a55066b16885a4baaf4ce92d3a4"
 		},
