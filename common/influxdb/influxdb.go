@@ -32,12 +32,12 @@ type InfluxdbClient interface {
 }
 
 type InfluxdbConfig struct {
-	User       string
-	Password   string
-	Secure     bool
-	Host       string
-	DbName     string
-	WithFields bool
+	User        string
+	Password    string
+	Secure      bool
+	Host        string
+	DbName      string
+	WithFields  bool
 	InsecureSsl bool
 }
 
@@ -70,12 +70,12 @@ func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
 
 func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 	config := InfluxdbConfig{
-		User:       "root",
-		Password:   "root",
-		Host:       "localhost:8086",
-		DbName:     "k8s",
-		Secure:     false,
-		WithFields: false,
+		User:        "root",
+		Password:    "root",
+		Host:        "localhost:8086",
+		DbName:      "k8s",
+		Secure:      false,
+		WithFields:  false,
 		InsecureSsl: false,
 	}
 
