@@ -1041,7 +1041,7 @@
               "selected": false
             }
           ],
-          "query": "SHOW TAG VALUES FROM \"uptime\" WITH KEY = \"pod_name\"",
+          "query": "SHOW TAG VALUES FROM \"uptime\" WITH KEY = \"pod_name\" WHERE \"pod_namespace\" =~ /$namespace$/",
           "refresh": true,
           "regex": "",
           "type": "query"
