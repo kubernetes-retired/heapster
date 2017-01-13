@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build the influxdb image for amd64, arm, arm64 and ppc64le
+# Build the influxdb image for amd64, arm, arm64, ppc64le and s390x
 #
 # Usage:
 # 	[PREFIX=gcr.io/google_containers] [ARCH=amd64] make (build|push)
@@ -74,17 +74,20 @@ build:
 
 	rm -rf $(TEMP_DIR)
 
-push: ./manifest-tool $(addprefix sub-push-,$(ALL_ARCHITECTURES))
+push: ./manifest-tool gcr-login $(addprefix sub-push-,$(ALL_ARCHITECTURES))
 	./manifest-tool push from-args --platforms $(ML_PLATFORMS) --template $(PREFIX)/heapster-grafana-ARCH:$(VERSION) --target $(PREFIX)/heapster-grafana:$(VERSION)
 
 sub-push-%:
 	$(MAKE) ARCH=$* PREFIX=$(PREFIX) VERSION=$(VERSION) build
-ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
-	gcloud docker push $(PREFIX)/heapster-grafana-$*:$(VERSION)
-else
 	docker push $(PREFIX)/heapster-grafana-$*:$(VERSION)
-endif
 
 ./manifest-tool:
 	curl -sSL https://github.com/luxas/manifest-tool/releases/download/v0.3.0/manifest-tool > manifest-tool
 	chmod +x manifest-tool
+
+gcr-login:
+ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
+	@echo "If you are pushing to a gcr.io registry, you have to be logged in via 'docker login'; 'gcloud docker push' can't push manifest lists yet."
+	@echo "This script is automatically logging you in now."
+	docker login -u oauth2accesstoken -p "$(gcloud auth print-access-token)" https://gcr.io
+endif

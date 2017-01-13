@@ -82,16 +82,12 @@ ifneq ($(OVERRIDE_IMAGE_NAME),)
 endif
 	rm -rf $(TEMP_DIR)
 
-push: ./manifest-tool $(addprefix sub-push-,$(ALL_ARCHITECTURES))
+push: ./manifest-tool gcr-login $(addprefix sub-push-,$(ALL_ARCHITECTURES))
 	./manifest-tool push from-args --platforms $(ML_PLATFORMS) --template $(PREFIX)/heapster-ARCH:$(VERSION) --target $(PREFIX)/heapster:$(VERSION)
 
 sub-push-%:
 	$(MAKE) ARCH=$* PREFIX=$(PREFIX) VERSION=$(VERSION) container
-ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
-	gcloud docker push $(PREFIX)/heapster-$*:$(VERSION)
-else
 	docker push $(PREFIX)/heapster-$*:$(VERSION)
-endif
 
 influxdb:
 	ARCH=$(ARCH) PREFIX=$(PREFIX) make -C influxdb build
@@ -108,6 +104,13 @@ push-grafana:
 ./manifest-tool:
 	curl -sSL https://github.com/luxas/manifest-tool/releases/download/v0.3.0/manifest-tool > manifest-tool
 	chmod +x manifest-tool
+
+gcr-login:
+ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
+	@echo "If you are pushing to a gcr.io registry, you have to be logged in via 'docker login'; 'gcloud docker push' can't push manifest lists yet."
+	@echo "This script is automatically logging you in now."
+	docker login -u oauth2accesstoken -p "$(gcloud auth print-access-token)" https://gcr.io
+endif
 
 clean:
 	rm -f heapster

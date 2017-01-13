@@ -12,7 +12,8 @@ spec:
   # In a production setup, we recommend accessing Grafana through an external Loadbalancer
   # or through a public IP.
   # type: LoadBalancer
-  type: NodePort
+  # You could also use NodePort to expose the service at a randomly-generated port
+  # type: NodePort
   ports:
   - port: 80
     targetPort: 3000

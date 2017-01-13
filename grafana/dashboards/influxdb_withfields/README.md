@@ -9,4 +9,7 @@ So you need to use those Grafana Dashboards:
 * If you're using eventer:
     * events.json
 
+
+_NOTE: These files are **not** built into the grafana image, they are only for reference_
+
 More info [here](/docs/storage-schema.md)
