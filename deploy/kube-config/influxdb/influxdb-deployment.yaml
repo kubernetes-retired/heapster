@@ -11,12 +11,12 @@ spec:
         task: monitoring
         k8s-app: influxdb
     spec:
-      volumes:
-      - name: influxdb-storage
-        emptyDir: {}
       containers:
       - name: influxdb
-        image: kubernetes/heapster_influxdb:v0.6
+        image: gcr.io/google_containers/heapster-influxdb:v1.1.1
         volumeMounts:
         - mountPath: /data
           name: influxdb-storage
+      volumes:
+      - name: influxdb-storage
+        emptyDir: {}

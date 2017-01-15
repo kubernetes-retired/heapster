@@ -11,12 +11,9 @@ spec:
         task: monitoring
         k8s-app: grafana
     spec:
-      volumes:
-      - name: grafana-storage
-        emptyDir: {}
       containers:
       - name: grafana
-        image: gcr.io/google_containers/heapster_grafana:v3.1.1
+        image: gcr.io/google_containers/heapster-grafana:v4.0.2
         ports:
           - containerPort: 3000
             protocol: TCP
@@ -39,5 +36,9 @@ spec:
         - name: GF_AUTH_ANONYMOUS_ORG_ROLE
           value: Admin
         - name: GF_SERVER_ROOT_URL
+          # If you're only using the API Server proxy, set this value instead:
           # value: /api/v1/proxy/namespaces/kube-system/services/monitoring-grafana/
           value: /
+      volumes:
+      - name: grafana-storage
+        emptyDir: {}

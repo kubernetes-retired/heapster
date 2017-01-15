@@ -16,6 +16,7 @@ package kubelet
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -302,7 +303,9 @@ func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
 			hostname = addr.Address
 		}
 		if addr.Type == kube_api.NodeInternalIP && addr.Address != "" {
-			ip = addr.Address
+			if net.ParseIP(addr.Address).To4() != nil {
+				ip = addr.Address
+			}
 		}
 		if addr.Type == kube_api.NodeLegacyHostIP && addr.Address != "" && ip == "" {
 			ip = addr.Address

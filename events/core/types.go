@@ -37,7 +37,7 @@ type EventSource interface {
 type EventSink interface {
 	Name() string
 
-	// Exports data to the external storge. The funciton should be synchronous/blocking and finish only
+	// Exports data to the external storage. The function should be synchronous/blocking and finish only
 	// after the given EventBatch was written. This will allow sink manager to push data only to these
 	// sinks that finished writing the previous data.
 	ExportEvents(*EventBatch)

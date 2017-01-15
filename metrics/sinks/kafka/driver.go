@@ -15,28 +15,13 @@
 package kafka
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/url"
 	"sync"
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/optiopay/kafka"
-	"github.com/optiopay/kafka/proto"
+	kafka_common "k8s.io/heapster/common/kafka"
 	"k8s.io/heapster/metrics/core"
-)
-
-const (
-	partition                = 0
-	brokerClientID           = "kafka-sink"
-	brokerDialTimeout        = 10 * time.Second
-	brokerDialRetryLimit     = 1
-	brokerDialRetryWait      = 0
-	brokerAllowTopicCreation = true
-	brokerLeaderRetryLimit   = 1
-	brokerLeaderRetryWait    = 0
-	dataTopic                = "heapster-metrics"
 )
 
 type KafkaSinkPoint struct {
@@ -47,8 +32,7 @@ type KafkaSinkPoint struct {
 }
 
 type kafkaSink struct {
-	producer  kafka.Producer
-	dataTopic string
+	kafka_common.KafkaClient
 	sync.RWMutex
 }
 
@@ -66,7 +50,10 @@ func (sink *kafkaSink) ExportData(dataBatch *core.DataBatch) {
 				},
 				MetricsTimestamp: dataBatch.Timestamp.UTC(),
 			}
-			sink.produceKafkaMessage(point, sink.dataTopic)
+			err := sink.ProduceKafkaMessage(point)
+			if err != nil {
+				glog.Errorf("Failed to produce metric message: %s", err)
+			}
 		}
 		for _, metric := range metricSet.LabeledMetrics {
 			labels := make(map[string]string)
@@ -84,87 +71,21 @@ func (sink *kafkaSink) ExportData(dataBatch *core.DataBatch) {
 				},
 				MetricsTimestamp: dataBatch.Timestamp.UTC(),
 			}
-			sink.produceKafkaMessage(point, sink.dataTopic)
+			err := sink.ProduceKafkaMessage(point)
+			if err != nil {
+				glog.Errorf("Failed to produce metric message: %s", err)
+			}
 		}
 	}
 }
 
-func (sink *kafkaSink) produceKafkaMessage(dataPoint KafkaSinkPoint, topic string) error {
-	start := time.Now()
-	jsonItems, err := json.Marshal(dataPoint)
-	if err != nil {
-		return fmt.Errorf("failed to transform the items to json : %s", err)
-	}
-	message := &proto.Message{Value: []byte(string(jsonItems))}
-	_, err = sink.producer.Produce(topic, partition, message)
-	if err != nil {
-		return fmt.Errorf("failed to produce message to %s:%d: %s", topic, partition, err)
-	}
-	end := time.Now()
-	glog.V(4).Info("Exported %d data to kafka in %s", len([]byte(string(jsonItems))), end.Sub(start))
-	return nil
-}
-
-func (sink *kafkaSink) Name() string {
-	return "Apache Kafka Sink"
-}
-
-func (sink *kafkaSink) Stop() {
-	// nothing needs to be done.
-}
-
-// setupProducer returns a producer of kafka server
-func setupProducer(sinkBrokerHosts []string, brokerConf kafka.BrokerConf) (kafka.Producer, error) {
-	glog.V(3).Infof("attempting to setup kafka sink")
-	broker, err := kafka.Dial(sinkBrokerHosts, brokerConf)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to kafka cluster: %s", err)
-	}
-	defer broker.Close()
-
-	//create kafka producer
-	conf := kafka.NewProducerConf()
-	conf.RequiredAcks = proto.RequiredAcksLocal
-	sinkProducer := broker.Producer(conf)
-	glog.V(3).Infof("kafka sink setup successfully")
-	return sinkProducer, nil
-}
-
 func NewKafkaSink(uri *url.URL) (core.DataSink, error) {
-	opts, err := url.ParseQuery(uri.RawQuery)
+	client, err := kafka_common.NewKafkaClient(uri, kafka_common.TimeSeriesTopic)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parser url's query string: %s", err)
-	}
-
-	var topic string = dataTopic
-	if len(opts["timeseriestopic"]) > 0 {
-		topic = opts["timeseriestopic"][0]
-	}
-
-	var kafkaBrokers []string
-	if len(opts["brokers"]) < 1 {
-		return nil, fmt.Errorf("There is no broker assigned for connecting kafka")
-	}
-	kafkaBrokers = append(kafkaBrokers, opts["brokers"]...)
-	glog.V(2).Infof("initializing kafka sink with brokers - %v", kafkaBrokers)
-
-	//structure the config of broker
-	brokerConf := kafka.NewBrokerConf(brokerClientID)
-	brokerConf.DialTimeout = brokerDialTimeout
-	brokerConf.DialRetryLimit = brokerDialRetryLimit
-	brokerConf.DialRetryWait = brokerDialRetryWait
-	brokerConf.LeaderRetryLimit = brokerLeaderRetryLimit
-	brokerConf.LeaderRetryWait = brokerLeaderRetryWait
-	brokerConf.AllowTopicCreation = true
-
-	// set up producer of kafka server.
-	sinkProducer, err := setupProducer(kafkaBrokers, brokerConf)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to setup Producer: - %v", err)
+		return nil, err
 	}
 
 	return &kafkaSink{
-		producer:  sinkProducer,
-		dataTopic: topic,
+		KafkaClient: client,
 	}, nil
 }

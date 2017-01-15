@@ -94,14 +94,14 @@ new Heapster more or less compatible with the old one, but eventually (if the nu
 
 ## Custom Metrics Status
 
-Heapster is not a generic solution for gathering arbitrary number of arbitrary-formated custom 
+Heapster is not a generic solution for gathering arbitrary number of arbitrary-formatted custom 
 metrics. The support for custom metrics is focused on auto-scaling and critical functionality 
 monitoring (and potentially scheduling). And Heapster is oriented towards system metrics, not 
 application/business level metrics.
 
 Kubernetes users and application developers will be able to push any number of their custom 
 metrics through our pipeline to the storage but this should be considered as a bonus/best effort 
-functionality. Custom metrics will not influence our performance targets (no extra fine-tunning effort 
+functionality. Custom metrics will not influence our performance targets (no extra fine-tuning effort 
 to support >5 custom metrics per pod). There will be a flag in Kubelet that will limit the 
 number of custom metrics.
 

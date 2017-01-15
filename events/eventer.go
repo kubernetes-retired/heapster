@@ -81,6 +81,10 @@ func main() {
 	// sinks
 	sinksFactory := sinks.NewSinkFactory()
 	sinkList := sinksFactory.BuildAll(argSinks)
+	if len([]flags.Uri(argSinks)) != 0 && len(sinkList) == 0 {
+		glog.Fatal("No available sink to use")
+	}
+
 	for _, sink := range sinkList {
 		glog.Infof("Starting with %s sink", sink.Name())
 	}

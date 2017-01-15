@@ -23,6 +23,7 @@ import (
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/elasticsearch"
 	"k8s.io/heapster/metrics/sinks/gcm"
+	"k8s.io/heapster/metrics/sinks/graphite"
 	"k8s.io/heapster/metrics/sinks/hawkular"
 	"k8s.io/heapster/metrics/sinks/influxdb"
 	"k8s.io/heapster/metrics/sinks/kafka"
@@ -39,8 +40,12 @@ type SinkFactory struct {
 
 func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 	switch uri.Key {
+	case "elasticsearch":
+		return elasticsearch.NewElasticSearchSink(&uri.Val)
 	case "gcm":
 		return gcm.CreateGCMSink(&uri.Val)
+	case "graphite":
+		return graphite.NewGraphiteSink(&uri.Val)
 	case "hawkular":
 		return hawkular.NewHawkularSink(&uri.Val)
 	case "influxdb":
@@ -55,14 +60,12 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 			core.MetricMemoryUsage.MetricDescriptor.Name}), nil
 	case "monasca":
 		return monasca.CreateMonascaSink(&uri.Val)
-	case "riemann":
-		return riemann.CreateRiemannSink(&uri.Val)
 	case "opentsdb":
 		return opentsdb.CreateOpenTSDBSink(&uri.Val)
-	case "elasticsearch":
-		return elasticsearch.NewElasticSearchSink(&uri.Val)
 	case "wavefront":
 		return wavefront.NewWavefrontSink(&uri.Val)
+	case "riemann":
+		return riemann.CreateRiemannSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
@@ -90,6 +93,11 @@ func (this *SinkFactory) BuildAll(uris flags.Uris, historicalUri string) (*metri
 		}
 		result = append(result, sink)
 	}
+
+	if len([]flags.Uri(uris)) != 0 && len(result) == 0 {
+		glog.Fatal("No available sink to use")
+	}
+
 	if metric == nil {
 		uri := flags.Uri{}
 		uri.Set("metric")

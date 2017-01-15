@@ -185,7 +185,9 @@ additional node in the cluster. For example:
 
 Besides this, the following options can be set in query string:
 
-* `Index` - the index for metrics and events. The default is `heapster`
+(*) Note that the keys are case sensitive
+
+* `index` - the index for metrics and events. The default is `heapster`
 * `esUserName` - the username if authentication is enabled
 * `esUserSecret` - the password if authentication is enabled
 * `maxRetries` - the number of retries that the Elastic client will perform
@@ -199,14 +201,16 @@ Besides this, the following options can be set in query string:
   a response from Elasticsearch on startup, i.e. when creating a client. The
   default value is `1`.
 * `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
+* `cluster_name` - cluster name for different Kubernetes clusters. Default value is `default`.
+
 
 Like this:
 
-    --sink="elasticsearch:?nodes=http://127.0.0.1:9200&Index=testMetric"
+    --sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testMetric"
 
 	or
 
-	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&Index=testEvent"
+	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testEvent"
 
 #### AWS Integration
 In order to use AWS Managed Elastic we need to use one of the following methods:
@@ -219,7 +223,7 @@ In order to use AWS Managed Elastic we need to use one of the following methods:
 	1. Configure the ElasticSearch cluster policy with IAM User
 	2. Create a secret that stores the IAM credentials
 	3. Expose the credentials to the environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-	
+
 	```
 	env:
       - name: AWS_ACCESS_KEY_ID
@@ -233,6 +237,36 @@ In order to use AWS Managed Elastic we need to use one of the following methods:
             name: aws-heapster
             key: aws.secret
 	```
+
+### Graphite/Carbon
+This sink supports monitoring metrics only.
+To use the graphite sink add the following flag:
+
+    --sink="graphite:<PROTOCOL>://<HOST>[:<PORT>][<?<OPTIONS>>]"
+
+PROTOCOL must be `tcp` or `udp`, PORT is 2003 by default.
+
+These options are available:
+* `prefix` - Adds specified prefix to all metric paths
+
+For example,
+
+    --sink="graphite:tcp://metrics.example.com:2003?prefix=kubernetes.example"
+
+Metrics are sent to Graphite with this hierarchy:
+* `PREFIX`
+  * `cluster`
+  * `namespaces` 
+    * `NAMESPACE`
+  * `nodes`
+    * `NODE`
+      * `pods`
+        * `NAMESPACE`
+           * `POD`
+             * `containers`
+               * `CONTAINER`
+      * `sys-containers`
+        * `SYS-CONTAINER`
 
 ## Using multiple sinks
 

@@ -108,7 +108,7 @@ following suffixes:
 For requests which simply fetch data points or list available objects, the
 return format will be the same as that used in the Heapster model API.
 
-The the case of aggregations, a different set of types is used: each bucket is
+The case of aggregations, a different set of types is used: each bucket is
 represented by a `MetricAggregationBucket`, which contains the timestamp for
 that bucket (the start of the bucket), the count of entries in that bucket (if
 requested) as an unsigned integer, as well as each of the other requested
@@ -162,7 +162,7 @@ across all metrics sinks, the list can be expanded.
 - Count: `/metrics-aggregated/count`
 
 Note: to support all the existing sinks, the supported percentiles will be
-limitted to 50, 95, and 99.  If additional percentile values later become
+limited to 50, 95, and 99.  If additional percentile values later become
 supported by other sinks, this list may be expanded (see the Sink Support
 section below).
 
