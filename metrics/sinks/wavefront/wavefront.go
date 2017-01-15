@@ -33,7 +33,7 @@ const (
 
 var excludeTagList = [...]string{"namespace_id", "host_id", "pod_id", "hostname"}
 
-type WavefrontSink struct {
+type wavefrontSink struct {
 	Conn              net.Conn
 	ProxyAddress      string
 	ClusterName       string
@@ -42,31 +42,31 @@ type WavefrontSink struct {
 	IncludeContainers bool
 }
 
-func (this *WavefrontSink) Name() string {
+func (wfSink *wavefrontSink) Name() string {
 	return "Wavefront Sink"
 }
 
-func (this *WavefrontSink) Stop() {
+func (wfSink *wavefrontSink) Stop() {
 	// Do nothing.
-	this.Conn.Close()
+	wfSink.Conn.Close()
 }
 
-func (this *WavefrontSink) SendLine(line string) {
+func (wfSink *wavefrontSink) sendLine(line string) {
 	//if the connection was closed or interrupted - don't cause a panic (we'll retry at next interval)
 	defer func() {
 		if r := recover(); r != nil {
 			//we couldn't write the line so something is wrong with the connection
-			this.Conn = nil
+			wfSink.Conn = nil
 		}
 	}()
-	if this.Conn != nil {
-		this.Conn.Write([]byte(line))
+	if wfSink.Conn != nil {
+		wfSink.Conn.Write([]byte(line))
 	}
 }
 
-func (this *WavefrontSink) SendPoint(metricName string, metricValStr string, ts string, source string, tagStr string) {
-	metricLine := fmt.Sprintf("%s %s %s source=\"%s\" %s\n", this.cleanMetricName(metricName), metricValStr, ts, source, tagStr)
-	this.SendLine(metricLine)
+func (wfSink *wavefrontSink) sendPoint(metricName string, metricValStr string, ts string, source string, tagStr string) {
+	metricLine := fmt.Sprintf("%s %s %s source=\"%s\" %s\n", wfSink.cleanMetricName(metricName), metricValStr, ts, source, tagStr)
+	wfSink.sendLine(metricLine)
 }
 
 func tagsToString(tags map[string]string) string {
@@ -89,12 +89,12 @@ func excludeTag(a string) bool {
 	return false
 }
 
-func (this *WavefrontSink) cleanMetricName(metricName string) string {
-	return this.Prefix + strings.Replace(metricName, "/", ".", -1)
+func (wfSink *wavefrontSink) cleanMetricName(metricName string) string {
+	return wfSink.Prefix + strings.Replace(metricName, "/", ".", -1)
 }
 
-func (this *WavefrontSink) addLabelTags(ms *core.MetricSet, tags map[string]string) {
-	if !this.IncludeLabels {
+func (wfSink *wavefrontSink) addLabelTags(ms *core.MetricSet, tags map[string]string) {
+	if !wfSink.IncludeLabels {
 		return
 	}
 	for _, labelName := range sortedLabelKeys(ms.Labels) {
@@ -114,7 +114,7 @@ func (this *WavefrontSink) addLabelTags(ms *core.MetricSet, tags map[string]stri
 
 }
 
-func (this *WavefrontSink) Send(batch *core.DataBatch) {
+func (wfSink *wavefrontSink) send(batch *core.DataBatch) {
 
 	metricCounter := 0
 	for _, key := range sortedMetricSetKeys(batch.MetricSets) {
@@ -122,14 +122,14 @@ func (this *WavefrontSink) Send(batch *core.DataBatch) {
 		// Populate tag map
 		tags := make(map[string]string)
 		// Make sure all metrics are tagged with the cluster name
-		tags["cluster"] = this.ClusterName
+		tags["cluster"] = wfSink.ClusterName
 		// Add pod labels as tags
-		this.addLabelTags(ms, tags)
+		wfSink.addLabelTags(ms, tags)
 		if strings.Contains(tags["container_name"], sysSubContainerName) {
 			//don't send system subcontainers
 			continue
 		}
-		if this.IncludeContainers == false && strings.Contains(tags["type"], "pod_container") {
+		if wfSink.IncludeContainers == false && strings.Contains(tags["type"], "pod_container") {
 			// the user doesn't want to include container metrics (only pod and above)
 			continue
 		}
@@ -149,19 +149,19 @@ func (this *WavefrontSink) Send(batch *core.DataBatch) {
 				stype := tags["type"]
 				source := ""
 				if stype == "cluster" {
-					source = this.ClusterName
+					source = wfSink.ClusterName
 				} else if stype == "ns" {
 					source = tags["namespace_name"] + "-ns"
 				} else {
 					source = tags["hostname"]
 				}
 				tagStr := tagsToString(tags)
-				this.SendPoint(this.cleanMetricName(metricName), metricValStr, ts, source, tagStr)
+				wfSink.sendPoint(wfSink.cleanMetricName(metricName), metricValStr, ts, source, tagStr)
 				metricCounter = metricCounter + 1
 			}
 		}
 		for _, metric := range ms.LabeledMetrics {
-			metricName := this.cleanMetricName(metric.Name)
+			metricName := wfSink.cleanMetricName(metric.Name)
 			metricValStr := ""
 			if core.ValueInt64 == metric.ValueType {
 				metricValStr = fmt.Sprintf("%d", metric.IntValue)
@@ -179,40 +179,40 @@ func (this *WavefrontSink) Send(batch *core.DataBatch) {
 					tagStr += labelName + "=\"" + labelValue + "\" "
 				}
 				metricCounter = metricCounter + 1
-				this.SendPoint(metricName, metricValStr, ts, source, tagStr)
+				wfSink.sendPoint(metricName, metricValStr, ts, source, tagStr)
 			}
 		}
 	}
 
 }
 
-func (this *WavefrontSink) ExportData(batch *core.DataBatch) {
+func (wfSink *wavefrontSink) ExportData(batch *core.DataBatch) {
 	//make sure we're Connected
-	err := this.Connect()
+	err := wfSink.connect()
 	if err != nil {
 		glog.Warning(err)
 	}
 
-	if this.Conn != nil && err == nil {
-		this.Send(batch)
+	if wfSink.Conn != nil && err == nil {
+		wfSink.send(batch)
 	}
 }
 
-func (this *WavefrontSink) Connect() error {
+func (wfSink *wavefrontSink) connect() error {
 	var err error
-	this.Conn, err = net.DialTimeout("tcp", this.ProxyAddress, time.Second*10)
+	wfSink.Conn, err = net.DialTimeout("tcp", wfSink.ProxyAddress, time.Second*10)
 	if err != nil {
-		glog.Warningf("Unable to connect to Wavefront proxy at address: %s", this.ProxyAddress)
+		glog.Warningf("Unable to connect to Wavefront proxy at address: %s", wfSink.ProxyAddress)
 		return err
 	} else {
-		glog.Infof("Connected to Wavefront proxy at address: %s", this.ProxyAddress)
+		glog.Infof("Connected to Wavefront proxy at address: %s", wfSink.ProxyAddress)
 		return nil
 	}
 }
 
 func NewWavefrontSink(uri *url.URL) (core.DataSink, error) {
 
-	storage := &WavefrontSink{
+	storage := &wavefrontSink{
 		ProxyAddress:      uri.Scheme + ":" + uri.Opaque,
 		ClusterName:       "k8s-cluster",
 		Prefix:            "heapster.",
@@ -231,6 +231,7 @@ func NewWavefrontSink(uri *url.URL) (core.DataSink, error) {
 		incLabels := false
 		incLabels, err := strconv.ParseBool(vals["includeLabels"][0])
 		if err != nil {
+			glog.Warning("Unable to parse the includeLabels argument. This argument is a boolean, please pass \"true\" or \"false\"")
 			return nil, err
 		}
 		storage.IncludeLabels = incLabels
@@ -239,6 +240,7 @@ func NewWavefrontSink(uri *url.URL) (core.DataSink, error) {
 		incContainers := false
 		incContainers, err := strconv.ParseBool(vals["includeContainers"][0])
 		if err != nil {
+			glog.Warning("Unable to parse the includeContainers argument. This argument is a boolean, please pass \"true\" or \"false\"")
 			return nil, err
 		}
 		storage.IncludeContainers = incContainers
