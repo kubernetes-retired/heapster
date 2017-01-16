@@ -61,7 +61,7 @@ func (sink *gclSink) ExportEvents(eventBatch *core.EventBatch) {
 	if _, err := sink.gclService.Entries.Write(req).Do(); err != nil {
 		glog.Errorf("Error while exporting events to GCL: %v", err)
 	} else {
-		glog.V(4).Infof("Sucessfully exported %d events", len(entries))
+		glog.V(4).Infof("Successfully exported %d events", len(entries))
 	}
 }
 
