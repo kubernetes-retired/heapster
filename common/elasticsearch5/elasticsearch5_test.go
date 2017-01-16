@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"fmt"
-	"gopkg.in/olivere/elastic.v5"
+	elastic5 "gopkg.in/olivere/elastic.v5"
 )
 
 func TestCreateElasticSearchService(t *testing.T) {
