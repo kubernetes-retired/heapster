@@ -89,5 +89,5 @@ gcr-login:
 ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
 	@echo "If you are pushing to a gcr.io registry, you have to be logged in via 'docker login'; 'gcloud docker push' can't push manifest lists yet."
 	@echo "This script is automatically logging you in now."
-	docker login -u oauth2accesstoken -p "$(gcloud auth print-access-token)" https://gcr.io
+	docker login -u oauth2accesstoken -p "$(shell gcloud auth print-access-token)" https://gcr.io
 endif
