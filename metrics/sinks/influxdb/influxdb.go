@@ -153,7 +153,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	bp := influxdb.BatchPoints{
 		Points:          dataPoints,
 		Database:        sink.c.DbName,
-		RetentionPolicy: "default",
+		RetentionPolicy: sink.c.RetentionPolicy,
 	}
 
 	start := time.Now()
