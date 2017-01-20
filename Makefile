@@ -8,7 +8,7 @@ ML_PLATFORMS=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
 GOLANG_VERSION?=1.7
 TEMP_DIR:=$(shell mktemp -d)
 
-VERSION?=v1.3.0-alpha.0
+VERSION?=v1.3.0-beta.1
 GIT_COMMIT:=$(shell git rev-parse --short HEAD)
 
 # You can set this variable for testing and the built image will also be tagged with this name
