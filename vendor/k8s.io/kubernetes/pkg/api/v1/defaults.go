@@ -17,13 +17,14 @@ limitations under the License.
 package v1
 
 import (
-	"k8s.io/kubernetes/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/util/parsers"
 )
 
 func addDefaultingFuncs(scheme *runtime.Scheme) error {
+	RegisterDefaults(scheme)
 	return scheme.AddDefaultingFuncs(
 		SetDefaults_PodExecOptions,
 		SetDefaults_PodAttachOptions,
@@ -51,7 +52,19 @@ func addDefaultingFuncs(scheme *runtime.Scheme) error {
 		SetDefaults_LimitRangeItem,
 		SetDefaults_ConfigMap,
 		SetDefaults_RBDVolumeSource,
+		SetDefaults_ResourceList,
 	)
+}
+
+func SetDefaults_ResourceList(obj *ResourceList) {
+	for key, val := range *obj {
+		// TODO(#18538): We round up resource values to milli scale to maintain API compatibility.
+		// In the future, we should instead reject values that need rounding.
+		const milliScale = -3
+		val.RoundUp(milliScale)
+
+		(*obj)[ResourceName(key)] = val
+	}
 }
 
 func SetDefaults_PodExecOptions(obj *PodExecOptions) {
@@ -99,7 +112,6 @@ func SetDefaults_Container(obj *Container) {
 		_, tag, _, _ := parsers.ParseImageName(obj.Image)
 
 		// Check image tag
-
 		if tag == "latest" {
 			obj.ImagePullPolicy = PullAlways
 		} else {
@@ -161,6 +173,9 @@ func SetDefaults_PodSpec(obj *PodSpec) {
 	if obj.TerminationGracePeriodSeconds == nil {
 		period := int64(DefaultTerminationGracePeriodSeconds)
 		obj.TerminationGracePeriodSeconds = &period
+	}
+	if obj.SchedulerName == "" {
+		obj.SchedulerName = DefaultSchedulerName
 	}
 }
 func SetDefaults_Probe(obj *Probe) {
