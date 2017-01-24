@@ -27,6 +27,7 @@ List of Owners
 | --------------- | ------------------ | -------------------| --------------------------------------------- | -------------- |
 | ElasticSearch   | :heavy_check_mark: | :heavy_check_mark: | @AlmogBaku / @andyxning / @huangyuqi          | :ok:           |
 | GCM             | :heavy_check_mark: | :x:                | @kubernetes/heapster-maintainers              | :ok:           |
+| Stackdriver     | :heavy_check_mark: | :x:                | @kubernetes/heapster-maintainers              | :ok:    |
 | Hawkular        | :heavy_check_mark: | :x:                | @burmanm / @mwringe                           | :ok:           |
 | InfluxDB        | :heavy_check_mark: | :heavy_check_mark: | @kubernetes/heapster-maintainers / @andyxning | :ok:           |
 | Metric (memory) | :heavy_check_mark: | :x:                | @kubernetes/heapster-maintainers              | :ok:           |
