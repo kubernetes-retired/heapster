@@ -45,10 +45,58 @@ type metricMetadata struct {
 }
 
 var (
+	cpuReservedCoresMD = &metricMetadata{
+		MetricKind: "GAUGE",
+		ValueType:  "DOUBLE",
+		Name:       "container.googleapis.com/container/cpu/reserved_cores",
+	}
+
+	cpuUsageTimeMD = &metricMetadata{
+		MetricKind: "CUMULATIVE",
+		ValueType:  "DOUBLE",
+		Name:       "container.googleapis.com/container/cpu/usage_time",
+	}
+
 	uptimeMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "DOUBLE",
 		Name:       "container.googleapis.com/container/uptime",
+	}
+
+	utilizationMD = &metricMetadata{
+		MetricKind: "GAUGE",
+		ValueType:  "DOUBLE",
+		Name:       "container.googleapis.com/container/cpu/utilization",
+	}
+
+	networkRxMD = &metricMetadata{
+		MetricKind: "CUMULATIVE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/network/received_bytes_count",
+	}
+
+	networkTxMD = &metricMetadata{
+		MetricKind: "CUMULATIVE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/network/sent_bytes_count",
+	}
+
+	memoryLimitMD = &metricMetadata{
+		MetricKind: "GAUGE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/memory/bytes_total",
+	}
+
+	memoryBytesUsedMD = &metricMetadata{
+		MetricKind: "GAUGE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/memory/bytes_used",
+	}
+
+	memoryPageFaultsMD = &metricMetadata{
+		MetricKind: "CUMULATIVE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/memory/page_fault_count",
 	}
 )
 
@@ -62,8 +110,19 @@ func (sink *stackdriverSink) Stop() {
 
 func (sink *stackdriverSink) ExportData(dataBatch *core.DataBatch) {
 	req := getReq()
-
 	for _, metricSet := range dataBatch.MetricSets {
+		switch metricSet.Labels["type"] {
+		case core.MetricSetTypeNode, core.MetricSetTypePod, core.MetricSetTypePodContainer, core.MetricSetTypeSystemContainer:
+		default:
+			continue
+		}
+
+		if metricSet.Labels["type"] == core.MetricSetTypeNode {
+			metricSet.Labels[core.LabelContainerName.Key] = "machine"
+		}
+
+		sink.preprocessMemoryMetrics(metricSet)
+
 		for name, value := range metricSet.MetricValues {
 			point := sink.translateMetric(dataBatch.Timestamp, metricSet.Labels, name, value, metricSet.CreateTime)
 
@@ -75,6 +134,10 @@ func (sink *stackdriverSink) ExportData(dataBatch *core.DataBatch) {
 				req = getReq()
 			}
 		}
+	}
+
+	if len(req.TimeSeries) > 0 {
+		sink.sendRequest(req)
 	}
 }
 
@@ -124,17 +187,66 @@ func (sink *stackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
 	_, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
 	if err != nil {
 		glog.Errorf("Error while sending request to Stackdriver %v", err)
-	} else {
-		glog.V(4).Infof("Successfully sent %v timeseries to Stackdriver", len(req.TimeSeries))
 	}
 }
 
+func (sink *stackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) {
+	usage := metricSet.MetricValues[core.MetricMemoryUsage.MetricDescriptor.Name].IntValue
+	workingSet := metricSet.MetricValues[core.MetricMemoryWorkingSet.MetricDescriptor.Name].IntValue
+	bytesUsed := core.MetricValue{
+		IntValue: usage - workingSet,
+	}
+
+	metricSet.MetricValues["memory/bytes_used"] = bytesUsed
+
+	memoryFaults := metricSet.MetricValues[core.MetricMemoryPageFaults.MetricDescriptor.Name].IntValue
+	majorMemoryFaults := metricSet.MetricValues[core.MetricMemoryMajorPageFaults.MetricDescriptor.Name].IntValue
+
+	minorMemoryFaults := core.MetricValue{
+		IntValue: memoryFaults - majorMemoryFaults,
+	}
+	metricSet.MetricValues["memory/minor_page_faults"] = minorMemoryFaults
+}
+
 func (sink *stackdriverSink) translateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, createTime time.Time) *sd_api.TimeSeries {
+	resourceLabels := sink.getResourceLabels(labels)
 	switch name {
 	case core.MetricUptime.MetricDescriptor.Name:
-		point := sink.uptimePoint(timestamp, createTime, value)
-		resourceLabels := sink.getResourceLabels(labels)
+		doubleValue := float64(value.IntValue) / float64(time.Second/time.Millisecond)
+		point := sink.doublePoint(timestamp, createTime, doubleValue)
 		return createTimeSeries(resourceLabels, uptimeMD, point)
+	case core.MetricCpuLimit.MetricDescriptor.Name:
+		point := sink.doublePoint(timestamp, timestamp, float64(value.FloatValue))
+		return createTimeSeries(resourceLabels, cpuReservedCoresMD, point)
+	case core.MetricCpuUsage.MetricDescriptor.Name:
+		point := sink.doublePoint(timestamp, createTime, float64(value.FloatValue))
+		return createTimeSeries(resourceLabels, cpuUsageTimeMD, point)
+	case core.MetricNetworkRx.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, createTime, value.IntValue)
+		return createTimeSeries(resourceLabels, networkRxMD, point)
+	case core.MetricNetworkTx.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, createTime, value.IntValue)
+		return createTimeSeries(resourceLabels, networkTxMD, point)
+	case core.MetricMemoryLimit.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, value.IntValue)
+		return createTimeSeries(resourceLabels, memoryLimitMD, point)
+	case core.MetricMemoryMajorPageFaults.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, createTime, value.IntValue)
+		ts := createTimeSeries(resourceLabels, memoryPageFaultsMD, point)
+		ts.Metric.Labels = map[string]string{
+			"fault_type": "major",
+		}
+		return ts
+	case "memory/bytes_used":
+		point := sink.intPoint(timestamp, timestamp, value.IntValue)
+		return createTimeSeries(resourceLabels, memoryBytesUsedMD, point)
+	case "memory/minor_page_faults":
+		point := sink.intPoint(timestamp, createTime, value.IntValue)
+		ts := createTimeSeries(resourceLabels, memoryPageFaultsMD, point)
+		ts.Metric.Labels = map[string]string{
+			"fault_type": "minor",
+		}
+		return ts
 	default:
 		return nil
 	}
@@ -167,14 +279,29 @@ func createTimeSeries(resourceLabels map[string]string, metadata *metricMetadata
 	}
 }
 
-func (sink *stackdriverSink) uptimePoint(timestamp time.Time, createTime time.Time, value core.MetricValue) *sd_api.Point {
+func (sink *stackdriverSink) doublePoint(endTime time.Time, startTime time.Time, value float64) *sd_api.Point {
 	return &sd_api.Point{
 		Interval: &sd_api.TimeInterval{
-			EndTime:   timestamp.Format(time.RFC3339),
-			StartTime: createTime.Format(time.RFC3339),
+			EndTime:   endTime.Format(time.RFC3339),
+			StartTime: startTime.Format(time.RFC3339),
 		},
 		Value: &sd_api.TypedValue{
-			DoubleValue: float64(value.IntValue) / float64(time.Second/time.Millisecond),
+			DoubleValue:     value,
+			ForceSendFields: []string{"DoubleValue"},
+		},
+	}
+
+}
+
+func (sink *stackdriverSink) intPoint(endTime time.Time, startTime time.Time, value int64) *sd_api.Point {
+	return &sd_api.Point{
+		Interval: &sd_api.TimeInterval{
+			EndTime:   endTime.Format(time.RFC3339),
+			StartTime: startTime.Format(time.RFC3339),
+		},
+		Value: &sd_api.TypedValue{
+			Int64Value:      value,
+			ForceSendFields: []string{"Int64Value"},
 		},
 	}
 }
