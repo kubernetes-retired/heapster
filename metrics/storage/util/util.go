@@ -17,8 +17,8 @@ package util
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/heapster/metrics/core"
 )
 

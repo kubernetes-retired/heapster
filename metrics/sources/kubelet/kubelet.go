@@ -26,7 +26,10 @@ import (
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	"github.com/prometheus/client_golang/prometheus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	kube_client "k8s.io/client-go/kubernetes"
+	v1listers "k8s.io/client-go/listers/core/v1"
 	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/util"
@@ -254,27 +257,27 @@ func (this *kubeletMetricsSource) scrapeKubelet(client *KubeletClient, host Host
 }
 
 type kubeletProvider struct {
-	nodeLister    *cache.StoreToNodeLister
+	nodeLister    v1listers.NodeLister
 	reflector     *cache.Reflector
 	kubeletClient *KubeletClient
 }
 
 func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 	sources := []MetricsSource{}
-	nodes, err := this.nodeLister.List()
+	nodes, err := this.nodeLister.List(labels.Everything())
 	if err != nil {
 		glog.Errorf("error while listing nodes: %v", err)
 		return sources
 	}
-	if len(nodes.Items) == 0 {
+	if len(nodes) == 0 {
 		glog.Error("No nodes received from APIserver.")
 		return sources
 	}
 
 	nodeNames := make(map[string]bool)
-	for _, node := range nodes.Items {
+	for _, node := range nodes {
 		nodeNames[node.Name] = true
-		hostname, ip, err := getNodeHostnameAndIP(&node)
+		hostname, ip, err := getNodeHostnameAndIP(node)
 		if err != nil {
 			glog.Errorf("%v", err)
 			continue
@@ -329,7 +332,7 @@ func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	}
 
 	// Get nodes to test if the client is configured well. Watch gives less error information.
-	if _, err := kubeClient.Nodes().List(kube_api.ListOptions{}); err != nil {
+	if _, err := kubeClient.Nodes().List(metav1.ListOptions{}); err != nil {
 		glog.Errorf("Failed to load nodes: %v", err)
 	}
 

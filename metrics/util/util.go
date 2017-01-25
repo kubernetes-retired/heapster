@@ -16,9 +16,9 @@ package util
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/fields"
 	kube_client "k8s.io/client-go/kubernetes"
 	kube_api "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 	"sort"
 	"strings"

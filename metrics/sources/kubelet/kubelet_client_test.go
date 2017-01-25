@@ -23,7 +23,7 @@ import (
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	util "k8s.io/kubernetes/pkg/util/testing"
+	util "k8s.io/client-go/util/testing"
 )
 
 func checkContainer(t *testing.T, expected cadvisor_api.ContainerInfo, actual cadvisor_api.ContainerInfo) {

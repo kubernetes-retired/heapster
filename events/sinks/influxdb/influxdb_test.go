@@ -24,9 +24,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kube_api "k8s.io/client-go/pkg/api/v1"
+	util "k8s.io/client-go/util/testing"
 	influxdb_common "k8s.io/heapster/common/influxdb"
 	"k8s.io/heapster/events/core"
-	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 type fakeInfluxDBEventSink struct {

@@ -26,11 +26,11 @@ import (
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/pkg/api/resource"
+	v1listers "k8s.io/client-go/listers/core/v1"
 	kube_v1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/core"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
@@ -38,11 +38,11 @@ import (
 
 type Api struct {
 	metricSink *metricsink.MetricSink
-	podLister  *cache.StoreToPodLister
-	nodeLister *cache.StoreToNodeLister
+	podLister  v1listers.PodLister
+	nodeLister v1listers.NodeLister
 }
 
-func NewApi(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, nodeLister *cache.StoreToNodeLister) *Api {
+func NewApi(metricSink *metricsink.MetricSink, podLister v1listers.PodLister, nodeLister v1listers.NodeLister) *Api {
 	return &Api{
 		metricSink: metricSink,
 		podLister:  podLister,
@@ -101,12 +101,12 @@ func (a *Api) nodeMetricsList(request *restful.Request, response *restful.Respon
 		return
 	}
 
-	nodes, err := a.nodeLister.NodeCondition(func(node *kube_v1.Node) bool {
+	nodes, err := a.nodeLister.ListWithPredicate(func(node *kube_v1.Node) bool {
 		if labelSelector.Empty() {
 			return true
 		}
 		return labelSelector.Matches(labels.Set(node.Labels))
-	}).List()
+	})
 	if err != nil {
 		errMsg := fmt.Errorf("Error while listing nodes: %v", err)
 		glog.Error(errMsg)

@@ -21,7 +21,6 @@ import (
 	"github.com/golang/glog"
 	kube_client "k8s.io/client-go/rest"
 	kube_config "k8s.io/heapster/common/kubernetes"
-	"k8s.io/kubernetes/pkg/client/restclient"
 	kubelet_client "k8s.io/kubernetes/pkg/kubelet/client"
 )
 
@@ -62,21 +61,10 @@ func GetKubeConfigs(uri *url.URL) (*kube_client.Config, *kubelet_client.KubeletC
 	glog.Infof("Using Kubernetes client with master %q and version %+v\n", kubeConfig.Host, kubeConfig.GroupVersion)
 	glog.Infof("Using kubelet port %d", kubeletPort)
 
-	// NB: k8s.io/kubernetes restclient config is not literally the same type as in k8s.io/client-go
-	// rest config, be we can convert, since they have the same fields
-	tlsClientConfig := restclient.TLSClientConfig{
-		CertFile: kubeConfig.TLSClientConfig.CertFile,
-		KeyFile:  kubeConfig.TLSClientConfig.KeyFile,
-		CAFile:   kubeConfig.TLSClientConfig.CAFile,
-		CertData: kubeConfig.TLSClientConfig.CertData,
-		KeyData:  kubeConfig.TLSClientConfig.KeyData,
-		CAData:   kubeConfig.TLSClientConfig.CAData,
-	}
-
 	kubeletConfig := &kubelet_client.KubeletClientConfig{
 		Port:            uint(kubeletPort),
 		EnableHttps:     kubeletHttps,
-		TLSClientConfig: tlsClientConfig,
+		TLSClientConfig: kubeConfig.TLSClientConfig,
 		BearerToken:     kubeConfig.BearerToken,
 	}
 

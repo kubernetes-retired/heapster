@@ -21,14 +21,16 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
+	"k8s.io/apiserver/pkg/registry/rest"
+	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/apis/metrics"
 	_ "k8s.io/heapster/metrics/apis/metrics/install"
 	"k8s.io/heapster/metrics/core"
@@ -39,10 +41,15 @@ import (
 type MetricStorage struct {
 	groupResource schema.GroupResource
 	metricSink    *metricsink.MetricSink
-	podLister     *cache.StoreToPodLister
+	podLister     v1listers.PodLister
 }
 
-func NewStorage(groupResource schema.GroupResource, metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister) *MetricStorage {
+var _ rest.KindProvider = &MetricStorage{}
+var _ rest.Storage = &MetricStorage{}
+var _ rest.Getter = &MetricStorage{}
+var _ rest.Lister = &MetricStorage{}
+
+func NewStorage(groupResource schema.GroupResource, metricSink *metricsink.MetricSink, podLister v1listers.PodLister) *MetricStorage {
 	return &MetricStorage{
 		groupResource: groupResource,
 		metricSink:    metricSink,
@@ -66,7 +73,7 @@ func (m *MetricStorage) NewList() runtime.Object {
 }
 
 // Lister interface
-func (m *MetricStorage) List(ctx genericapirequest.Context, options *api.ListOptions) (runtime.Object, error) {
+func (m *MetricStorage) List(ctx genericapirequest.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
 	labelSelector := labels.Everything()
 	if options != nil && options.LabelSelector != nil {
 		labelSelector = options.LabelSelector
@@ -91,7 +98,7 @@ func (m *MetricStorage) List(ctx genericapirequest.Context, options *api.ListOpt
 }
 
 // Getter interface
-func (m *MetricStorage) Get(ctx genericapirequest.Context, name string) (runtime.Object, error) {
+func (m *MetricStorage) Get(ctx genericapirequest.Context, name string, opts *metav1.GetOptions) (runtime.Object, error) {
 	namespace := genericapirequest.NamespaceValue(ctx)
 
 	pod, err := m.podLister.Pods(namespace).Get(name)

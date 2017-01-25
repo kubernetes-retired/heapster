@@ -26,8 +26,8 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kube_api "k8s.io/client-go/pkg/api/v1"
+	util "k8s.io/client-go/util/testing"
 	"k8s.io/heapster/metrics/core"
-	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 func TestDecodeMetrics1(t *testing.T) {

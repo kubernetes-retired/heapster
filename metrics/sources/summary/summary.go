@@ -24,7 +24,9 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/apimachinery/pkg/labels"
 	kube_client "k8s.io/client-go/kubernetes"
+	v1listers "k8s.io/client-go/listers/core/v1"
 	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/util"
@@ -371,21 +373,21 @@ func (this *summaryMetricsSource) getContainerName(c *stats.ContainerStats) stri
 
 // TODO: The summaryProvider duplicates a lot of code from kubeletProvider, and should be refactored.
 type summaryProvider struct {
-	nodeLister    *cache.StoreToNodeLister
+	nodeLister    v1listers.NodeLister
 	reflector     *cache.Reflector
 	kubeletClient *kubelet.KubeletClient
 }
 
 func (this *summaryProvider) GetMetricsSources() []MetricsSource {
 	sources := []MetricsSource{}
-	nodes, err := this.nodeLister.List()
+	nodes, err := this.nodeLister.List(labels.Everything())
 	if err != nil {
 		glog.Errorf("error while listing nodes: %v", err)
 		return sources
 	}
 
-	for _, node := range nodes.Items {
-		info, err := this.getNodeInfo(&node)
+	for _, node := range nodes {
+		info, err := this.getNodeInfo(node)
 		if err != nil {
 			glog.Errorf("%v", err)
 			continue

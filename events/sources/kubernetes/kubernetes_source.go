@@ -102,7 +102,7 @@ event_loop:
 func (this *KubernetesEventSource) watch() {
 	// Outer loop, for reconnections.
 	for {
-		events, err := this.eventClient.List(kubeapi.ListOptions{})
+		events, err := this.eventClient.List(metav1.ListOptions{})
 		if err != nil {
 			glog.Errorf("Failed to load events: %v", err)
 			time.Sleep(time.Second)
@@ -113,7 +113,7 @@ func (this *KubernetesEventSource) watch() {
 		resourceVersion := events.ResourceVersion
 
 		watcher, err := this.eventClient.Watch(
-			kubeapi.ListOptions{
+			metav1.ListOptions{
 				Watch:           true,
 				ResourceVersion: resourceVersion})
 		if err != nil {
