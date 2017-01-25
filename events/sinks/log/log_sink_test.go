@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	kube_api_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
 
 	"k8s.io/heapster/events/core"
 )
@@ -32,8 +32,8 @@ func TestSimpleWrite(t *testing.T) {
 	event := kube_api.Event{
 		Message:        "bzium",
 		Count:          251,
-		LastTimestamp:  kube_api_unversioned.NewTime(now),
-		FirstTimestamp: kube_api_unversioned.NewTime(now),
+		LastTimestamp:  metav1.NewTime(now),
+		FirstTimestamp: metav1.NewTime(now),
 	}
 	batch := core.EventBatch{
 		Timestamp: now,

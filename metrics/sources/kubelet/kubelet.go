@@ -26,11 +26,10 @@ import (
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	"github.com/prometheus/client_golang/prometheus"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/labels"
+	kube_client "k8s.io/client-go/kubernetes"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/fields"
+	"k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -323,21 +322,19 @@ func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	kubeClient := kube_client.NewForConfigOrDie(kubeConfig)
 	kubeletClient, err := NewKubeletClient(kubeletConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get nodes to test if the client is configured well. Watch gives less error information.
-	if _, err := kubeClient.Nodes().List(kube_api.ListOptions{
-		LabelSelector: labels.Everything(),
-		FieldSelector: fields.Everything()}); err != nil {
+	if _, err := kubeClient.Nodes().List(kube_api.ListOptions{}); err != nil {
 		glog.Errorf("Failed to load nodes: %v", err)
 	}
 
 	// watch nodes
-	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
+	lw := cache.NewListWatchFromClient(kubeClient.Core().RESTClient(), "nodes", kube_api.NamespaceAll, fields.Everything())
 	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
 	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
 	reflector.Run()
