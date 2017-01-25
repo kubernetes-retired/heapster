@@ -26,7 +26,7 @@ import (
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/util/metrics"
 
-	"k8s.io/kubernetes/pkg/client/cache"
+	"k8s.io/client-go/tools/cache"
 )
 
 const pprofBasePath = "/debug/pprof/"

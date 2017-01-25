@@ -21,10 +21,10 @@ import (
 	"net/http"
 	"strings"
 
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+	x509request "k8s.io/apiserver/pkg/authentication/request/x509"
+	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/heapster/metrics/options"
-	"k8s.io/kubernetes/pkg/auth/authenticator"
-	"k8s.io/kubernetes/pkg/auth/user"
-	x509request "k8s.io/kubernetes/plugin/pkg/auth/authenticator/request/x509"
 )
 
 func newAuthHandler(opt *options.HeapsterRunOptions, handler http.Handler) (http.Handler, error) {

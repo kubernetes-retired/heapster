@@ -24,12 +24,12 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+	kube_client "k8s.io/client-go/kubernetes"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/util"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
-	"k8s.io/kubernetes/pkg/version"
+	"k8s.io/kubernetes/pkg/util/version"
 )
 
 var (
@@ -48,7 +48,7 @@ var (
 const VolumeResourcePrefix = "Volume:"
 
 // Earliest kubelet version that serves the summary API.
-var minSummaryKubeletVersion = version.MustParse("v1.2.0-alpha.8")
+var minSummaryKubeletVersion = version.MustParseSemantic("v1.2.0-alpha.8")
 
 func init() {
 	prometheus.MustRegister(summaryRequestLatency)
@@ -121,12 +121,12 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 }
 
 func summarySupported(kubeletVersion string) bool {
-	semver, err := version.Parse(kubeletVersion)
+	semver, err := version.ParseSemantic(kubeletVersion)
 	if err != nil {
 		glog.Errorf("Unable to parse kubelet version: %q", kubeletVersion)
 		return false
 	}
-	return semver.GE(minSummaryKubeletVersion)
+	return semver.AtLeast(minSummaryKubeletVersion)
 }
 
 const (
@@ -443,7 +443,7 @@ func NewSummaryProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	kubeClient := kube_client.NewForConfigOrDie(kubeConfig)
 	kubeletClient, err := kubelet.NewKubeletClient(kubeletConfig)
 	if err != nil {
 		return nil, err

@@ -22,10 +22,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/olivere/elastic.v3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	"k8s.io/heapster/events/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	kube_api_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 type dataSavedToES struct {
@@ -80,14 +80,14 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	event1 := kube_api.Event{
 		Message:        "event1",
 		Count:          100,
-		LastTimestamp:  kube_api_unversioned.NewTime(now),
-		FirstTimestamp: kube_api_unversioned.NewTime(now),
+		LastTimestamp:  metav1.NewTime(now),
+		FirstTimestamp: metav1.NewTime(now),
 	}
 	event2 := kube_api.Event{
 		Message:        "event2",
 		Count:          101,
-		LastTimestamp:  kube_api_unversioned.NewTime(now),
-		FirstTimestamp: kube_api_unversioned.NewTime(now),
+		LastTimestamp:  metav1.NewTime(now),
+		FirstTimestamp: metav1.NewTime(now),
 	}
 	data := core.EventBatch{
 		Timestamp: timestamp,
@@ -106,7 +106,7 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	}
 
 	msgsString := fmt.Sprintf("%s", FakeESSink.savedData)
-	ts, _ := json.Marshal(kube_api_unversioned.NewTime(now).Time.UTC())
+	ts, _ := json.Marshal(metav1.NewTime(now).Time.UTC())
 
 	for _, mgsTemplate := range expectMsgTemplate {
 		expectMsg := fmt.Sprintf(mgsTemplate, ts, ts)

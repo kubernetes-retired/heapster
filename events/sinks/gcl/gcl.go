@@ -15,6 +15,7 @@
 package gcl
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
@@ -48,13 +49,18 @@ func (sink *gclSink) ExportEvents(eventBatch *core.EventBatch) {
 	glog.V(4).Info("Exporting events")
 	entries := make([]*gcl.LogEntry, len(eventBatch.Events))
 	for i, event := range eventBatch.Events {
+		evtJson, err := json.Marshal(event)
+		if err != nil {
+			glog.Errorf("Skipping exporting event due to error while marshaling event %v as JSON: %v", event, err)
+			continue
+		}
 		entries[i] = &gcl.LogEntry{
 			LogName:     fmt.Sprintf("projects/%s/logs/%s", sink.project, url.QueryEscape(logName)),
 			Timestamp:   event.LastTimestamp.Time.UTC().Format(time.RFC3339),
 			Severity:    loggingSeverity,
 			Resource:    &gcl.MonitoredResource{Type: monitoredResourceType},
 			InsertId:    string(event.UID),
-			JsonPayload: *event,
+			JsonPayload: evtJson,
 		}
 	}
 	req := &gcl.WriteLogEntriesRequest{Entries: entries}
