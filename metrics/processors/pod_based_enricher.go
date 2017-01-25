@@ -21,9 +21,9 @@ import (
 
 	"k8s.io/heapster/metrics/util"
 
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
 )
 
 type PodBasedEnricher struct {

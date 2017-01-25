@@ -27,9 +27,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/hawkular/hawkular-client-go/metrics"
 
+	kube_client "k8s.io/client-go/rest"
+	kubeClientCmd "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/heapster/metrics/core"
-	kube_client "k8s.io/kubernetes/pkg/client/restclient"
-	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 )
 
 const (

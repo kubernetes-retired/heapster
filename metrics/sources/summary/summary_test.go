@@ -24,9 +24,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sources/kubelet"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
 	util "k8s.io/kubernetes/pkg/util/testing"
 )
@@ -112,7 +112,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 	summary := stats.Summary{
 		Node: stats.NodeStats{
 			NodeName:  nodeInfo.NodeName,
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 			CPU:       genTestSummaryCPU(seedNode),
 			Memory:    genTestSummaryMemory(seedNode),
 			Network:   genTestSummaryNetwork(seedNode),
@@ -128,7 +128,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				Name:      pName0,
 				Namespace: namespace0,
 			},
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod0),
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName00, seedPod0Container0),
@@ -139,7 +139,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				Name:      pName1,
 				Namespace: namespace0,
 			},
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod1),
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName10, seedPod1Container),
@@ -156,7 +156,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				Name:      pName2,
 				Namespace: namespace1,
 			},
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod2),
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName20, seedPod2Container),
@@ -285,7 +285,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 func genTestSummaryContainer(name string, seed int) stats.ContainerStats {
 	return stats.ContainerStats{
 		Name:      name,
-		StartTime: unversioned.NewTime(startTime),
+		StartTime: metav1.NewTime(startTime),
 		CPU:       genTestSummaryCPU(seed),
 		Memory:    genTestSummaryMemory(seed),
 		Rootfs:    genTestSummaryFsStats(seed),
@@ -295,7 +295,7 @@ func genTestSummaryContainer(name string, seed int) stats.ContainerStats {
 
 func genTestSummaryCPU(seed int) *stats.CPUStats {
 	cpu := stats.CPUStats{
-		Time:                 unversioned.NewTime(scrapeTime),
+		Time:                 metav1.NewTime(scrapeTime),
 		UsageNanoCores:       uint64Val(seed, offsetCPUUsageCores),
 		UsageCoreNanoSeconds: uint64Val(seed, offsetCPUUsageCoreSeconds),
 	}
@@ -305,7 +305,7 @@ func genTestSummaryCPU(seed int) *stats.CPUStats {
 
 func genTestSummaryMemory(seed int) *stats.MemoryStats {
 	return &stats.MemoryStats{
-		Time:            unversioned.NewTime(scrapeTime),
+		Time:            metav1.NewTime(scrapeTime),
 		UsageBytes:      uint64Val(seed, offsetMemUsageBytes),
 		WorkingSetBytes: uint64Val(seed, offsetMemWorkingSetBytes),
 		PageFaults:      uint64Val(seed, offsetMemPageFaults),
@@ -315,7 +315,7 @@ func genTestSummaryMemory(seed int) *stats.MemoryStats {
 
 func genTestSummaryNetwork(seed int) *stats.NetworkStats {
 	return &stats.NetworkStats{
-		Time:     unversioned.NewTime(scrapeTime),
+		Time:     metav1.NewTime(scrapeTime),
 		RxBytes:  uint64Val(seed, offsetNetRxBytes),
 		RxErrors: uint64Val(seed, offsetNetRxErrors),
 		TxBytes:  uint64Val(seed, offsetNetTxBytes),
@@ -359,7 +359,7 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 	summary := stats.Summary{
 		Node: stats.NodeStats{
 			NodeName:  nodeInfo.NodeName,
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 		},
 	}
 	data, err := json.Marshal(&summary)

@@ -22,10 +22,10 @@ import (
 	"sync"
 	"time"
 
+	kube_api "k8s.io/client-go/pkg/api/v1"
 	influxdb_common "k8s.io/heapster/common/influxdb"
 	"k8s.io/heapster/events/core"
 	metrics_core "k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
 
 	"github.com/golang/glog"
 	influxdb "github.com/influxdata/influxdb/client"

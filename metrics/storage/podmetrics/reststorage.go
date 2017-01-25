@@ -20,26 +20,29 @@ import (
 
 	"github.com/golang/glog"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/apis/metrics"
 	_ "k8s.io/heapster/metrics/apis/metrics/install"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/storage/util"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/client/cache"
-	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/runtime"
 )
 
 type MetricStorage struct {
-	groupResource unversioned.GroupResource
+	groupResource schema.GroupResource
 	metricSink    *metricsink.MetricSink
 	podLister     *cache.StoreToPodLister
 }
 
-func NewStorage(groupResource unversioned.GroupResource, metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister) *MetricStorage {
+func NewStorage(groupResource schema.GroupResource, metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister) *MetricStorage {
 	return &MetricStorage{
 		groupResource: groupResource,
 		metricSink:    metricSink,
@@ -63,12 +66,12 @@ func (m *MetricStorage) NewList() runtime.Object {
 }
 
 // Lister interface
-func (m *MetricStorage) List(ctx api.Context, options *api.ListOptions) (runtime.Object, error) {
+func (m *MetricStorage) List(ctx genericapirequest.Context, options *api.ListOptions) (runtime.Object, error) {
 	labelSelector := labels.Everything()
 	if options != nil && options.LabelSelector != nil {
 		labelSelector = options.LabelSelector
 	}
-	namespace := api.NamespaceValue(ctx)
+	namespace := genericapirequest.NamespaceValue(ctx)
 	pods, err := m.podLister.Pods(namespace).List(labelSelector)
 	if err != nil {
 		errMsg := fmt.Errorf("Error while listing pods for selector %v: %v", labelSelector, err)
@@ -88,8 +91,8 @@ func (m *MetricStorage) List(ctx api.Context, options *api.ListOptions) (runtime
 }
 
 // Getter interface
-func (m *MetricStorage) Get(ctx api.Context, name string) (runtime.Object, error) {
-	namespace := api.NamespaceValue(ctx)
+func (m *MetricStorage) Get(ctx genericapirequest.Context, name string) (runtime.Object, error) {
+	namespace := genericapirequest.NamespaceValue(ctx)
 
 	pod, err := m.podLister.Pods(namespace).Get(name)
 	if err != nil {
@@ -108,7 +111,7 @@ func (m *MetricStorage) Get(ctx api.Context, name string) (runtime.Object, error
 	return podMetrics, nil
 }
 
-func (m *MetricStorage) getPodMetrics(pod *api.Pod) *metrics.PodMetrics {
+func (m *MetricStorage) getPodMetrics(pod *v1.Pod) *metrics.PodMetrics {
 	batch := m.metricSink.GetLatestDataBatch()
 	if batch == nil {
 		return nil
@@ -118,10 +121,10 @@ func (m *MetricStorage) getPodMetrics(pod *api.Pod) *metrics.PodMetrics {
 		ObjectMeta: api.ObjectMeta{
 			Name:              pod.Name,
 			Namespace:         pod.Namespace,
-			CreationTimestamp: unversioned.NewTime(time.Now()),
+			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
-		Timestamp:  unversioned.NewTime(batch.Timestamp),
-		Window:     unversioned.Duration{Duration: time.Minute},
+		Timestamp:  metav1.NewTime(batch.Timestamp),
+		Window:     metav1.Duration{Duration: time.Minute},
 		Containers: make([]metrics.ContainerMetrics, 0),
 	}
 
