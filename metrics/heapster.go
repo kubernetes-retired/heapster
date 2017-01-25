@@ -31,6 +31,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/pflag"
 
+	"k8s.io/apiserver/pkg/server/healthz"
+	kube_client "k8s.io/client-go/kubernetes"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/fields"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/common/flags"
 	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/cmd/heapster-apiserver/app"
@@ -43,11 +48,6 @@ import (
 	"k8s.io/heapster/metrics/sources"
 	"k8s.io/heapster/metrics/util"
 	"k8s.io/heapster/version"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/healthz"
 	"k8s.io/kubernetes/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/util/logs"
 )
@@ -121,14 +121,16 @@ func createAndRunAPIServer(opt *options.HeapsterRunOptions, metricSink *metricsi
 		glog.Errorf("Could not create the API server: %v", err)
 		return
 	}
-	healthz.InstallHandler(server.Mux, healthzChecker(metricSink))
+
+	server.AddHealthzChecks(healthzChecker(metricSink))
+
 	runApiServer := func(s *app.HeapsterAPIServer) {
 		if err := s.RunServer(); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
 	}
-	glog.Infof("Starting Heapster API server on port %d", opt.InsecurePort)
+	glog.Infof("Starting Heapster API server...")
 	go runApiServer(server)
 }
 
@@ -213,12 +215,12 @@ func getListersOrDie(kubernetesUrl *url.URL) (*cache.StoreToPodLister, *cache.St
 	return podLister, nodeLister
 }
 
-func createKubeClientOrDie(kubernetesUrl *url.URL) *kube_client.Client {
+func createKubeClientOrDie(kubernetesUrl *url.URL) *kube_client.Clientset {
 	kubeConfig, err := kube_config.GetKubeClientConfig(kubernetesUrl)
 	if err != nil {
 		glog.Fatalf("Failed to get client config: %v", err)
 	}
-	return kube_client.NewOrDie(kubeConfig)
+	return kube_client.NewForConfigOrDie(kubeConfig)
 }
 
 func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister *cache.StoreToPodLister) []core.DataProcessor {
@@ -312,8 +314,8 @@ func getKubernetesAddress(args flags.Uris) (*url.URL, error) {
 	return nil, fmt.Errorf("No kubernetes source found.")
 }
 
-func getPodLister(kubeClient *kube_client.Client) (*cache.StoreToPodLister, error) {
-	lw := cache.NewListWatchFromClient(kubeClient, "pods", kube_api.NamespaceAll, fields.Everything())
+func getPodLister(kubeClient *kube_client.Clientset) (*cache.StoreToPodLister, error) {
+	lw := cache.NewListWatchFromClient(kubeClient.Core().RESTClient(), "pods", kube_api.NamespaceAll, fields.Everything())
 	store := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	podLister := &cache.StoreToPodLister{Indexer: store}
 	reflector := cache.NewReflector(lw, &kube_api.Pod{}, store, time.Hour)

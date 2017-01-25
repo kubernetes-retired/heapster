@@ -20,11 +20,17 @@ import (
 	"github.com/spf13/pflag"
 
 	"k8s.io/heapster/common/flags"
-	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
+	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/server/options"
 )
 
 type HeapsterRunOptions struct {
-	*genericoptions.ServerRunOptions
+	SecureServing  *genericoptions.SecureServingOptions
+	Authentication *genericoptions.DelegatingAuthenticationOptions
+	Authorization  *genericoptions.DelegatingAuthorizationOptions
+
+	// Only to be used to for testing
+	DisableAuthForTesting bool
+
 	MetricResolution time.Duration
 	EnableAPIServer  bool
 	Port             int
@@ -42,14 +48,17 @@ type HeapsterRunOptions struct {
 }
 
 func NewHeapsterRunOptions() *HeapsterRunOptions {
-	opt := genericoptions.NewServerRunOptions()
 	return &HeapsterRunOptions{
-		ServerRunOptions: opt,
+		SecureServing:  genericoptions.NewSecureServingOptions(),
+		Authentication: genericoptions.NewDelegatingAuthenticationOptions(),
+		Authorization:  genericoptions.NewDelegatingAuthorizationOptions(),
 	}
 }
 
 func (h *HeapsterRunOptions) AddFlags(fs *pflag.FlagSet) {
-	h.ServerRunOptions.AddUniversalFlags(pflag.CommandLine)
+	h.SecureServing.AddFlags(fs)
+	h.Authentication.AddFlags(fs)
+	h.Authorization.AddFlags(fs)
 
 	fs.Var(&h.Sources, "source", "source(s) to watch")
 	fs.Var(&h.Sinks, "sink", "external sink(s) that receive data")
