@@ -185,6 +185,7 @@ Besides this, the following options can be set in query string:
 * `startupHealthcheckTimeout` - the time in seconds the healthcheck waits for
   a response from Elasticsearch on startup, i.e. when creating a client. The
   default value is `1`.
+* `ver` - ElasticSearch cluster version, can be either `2` or `5`. The default is `5`
 * `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
 * `cluster_name` - cluster name for different Kubernetes clusters. Default value is `default`.
 

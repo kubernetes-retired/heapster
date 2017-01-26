@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/olivere/elastic.v3"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	"k8s.io/heapster/events/core"
 	kube_api "k8s.io/kubernetes/pkg/api"
@@ -58,7 +57,7 @@ func NewFakeSink() fakeESSink {
 			saveData:  SaveDataIntoES_Stub,
 			flushData: func() error { return nil },
 			esSvc: esCommon.ElasticSearchService{
-				EsClient:    &elastic.Client{},
+				EsClient:    esCommon.NewMockClient(),
 				ClusterName: esCommon.ESClusterName,
 			},
 		},
