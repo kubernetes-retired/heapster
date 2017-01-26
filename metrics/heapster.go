@@ -206,7 +206,7 @@ func getListersOrDie(kubernetesUrl *url.URL) (*cache.StoreToPodLister, *cache.St
 	if err != nil {
 		glog.Fatalf("Failed to create podLister: %v", err)
 	}
-	nodeLister, err := getNodeLister(kubeClient)
+	nodeLister, _, err := util.GetNodeLister(kubeClient)
 	if err != nil {
 		glog.Fatalf("Failed to create nodeLister: %v", err)
 	}
@@ -319,14 +319,6 @@ func getPodLister(kubeClient *kube_client.Client) (*cache.StoreToPodLister, erro
 	reflector := cache.NewReflector(lw, &kube_api.Pod{}, store, time.Hour)
 	reflector.Run()
 	return podLister, nil
-}
-
-func getNodeLister(kubeClient *kube_client.Client) (*cache.StoreToNodeLister, error) {
-	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
-	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
-	reflector.Run()
-	return nodeLister, nil
 }
 
 func validateFlags(opt *options.HeapsterRunOptions) error {
