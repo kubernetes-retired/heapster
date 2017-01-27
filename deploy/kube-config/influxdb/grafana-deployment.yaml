@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: grafana
-        image: gcr.io/google_containers/heapster-grafana:v4.0.2
+        image: gcr.io/google_containers/heapster-grafana:v2.6.0-2
         ports:
           - containerPort: 3000
             protocol: TCP
