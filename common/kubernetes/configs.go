@@ -104,9 +104,19 @@ func GetKubeClientConfig(uri *url.URL) (*kube_client.Config, error) {
 		}
 
 		if authFile != "" {
-			if kubeConfig, err = kubeClientCmd.NewNonInteractiveDeferredLoadingClientConfig(
-				&kubeClientCmd.ClientConfigLoadingRules{ExplicitPath: authFile},
-				configOverrides).ClientConfig(); err != nil {
+			// Load structured kubeconfig data from the given path.
+			loader := &kubeClientCmd.ClientConfigLoadingRules{ExplicitPath: authFile}
+			loadedConfig, err := loader.Load()
+			if err != nil {
+				return nil, err
+			}
+
+			// Flatten the loaded data to a particular restclient.Config based on the current context.
+			if kubeConfig, err = kubeClientCmd.NewNonInteractiveClientConfig(
+				*loadedConfig,
+				loadedConfig.CurrentContext,
+				&kubeClientCmd.ConfigOverrides{},
+				loader).ClientConfig(); err != nil {
 				return nil, err
 			}
 		} else {
