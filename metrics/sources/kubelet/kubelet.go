@@ -26,6 +26,7 @@ import (
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/heapster/metrics/util"
 	kube_api "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
@@ -337,10 +338,7 @@ func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	}
 
 	// watch nodes
-	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
-	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
-	reflector.Run()
+	nodeLister, reflector, _ := util.GetNodeLister(kubeClient)
 
 	return &kubeletProvider{
 		nodeLister:    nodeLister,
