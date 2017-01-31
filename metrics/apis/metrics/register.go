@@ -15,31 +15,31 @@
 package metrics
 
 import (
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/pkg/api"
 )
 
 // GroupName is the group name use in this package
 const GroupName = "metrics"
 
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal}
+var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal}
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind
-func Kind(kind string) unversioned.GroupKind {
+func Kind(kind string) schema.GroupKind {
 	return SchemeGroupVersion.WithKind(kind).GroupKind()
 }
 
 // Resource takes an unqualified resource and returns back a Group qualified GroupResource
-func Resource(resource string) unversioned.GroupResource {
+func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
 }
 
-// Adds the list of known types to api.Scheme.
-func AddToScheme(scheme *runtime.Scheme) error {
-	return addKnownTypes(scheme)
-}
+var (
+	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
+	AddToScheme   = SchemeBuilder.AddToScheme
+)
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
@@ -51,9 +51,3 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	)
 	return nil
 }
-
-func (obj *NodeMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
-func (obj *NodeMetricsList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }
-
-func (obj *PodMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
-func (obj *PodMetricsList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }

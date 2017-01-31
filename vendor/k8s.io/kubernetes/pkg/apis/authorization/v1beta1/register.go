@@ -17,17 +17,22 @@ limitations under the License.
 package v1beta1
 
 import (
-	"k8s.io/kubernetes/pkg/api/unversioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/runtime"
-	versionedwatch "k8s.io/kubernetes/pkg/watch/versioned"
 )
 
 // GroupName is the group name use in this package
 const GroupName = "authorization.k8s.io"
 
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: "v1beta1"}
+var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1beta1"}
+
+// Resource takes an unqualified resource and returns a Group qualified GroupResource
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
 
 var (
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes, addDefaultingFuncs, addConversionFuncs)
@@ -39,16 +44,18 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&v1.ListOptions{},
 		&v1.DeleteOptions{},
+		&metav1.ExportOptions{},
+		&metav1.GetOptions{},
 
 		&SelfSubjectAccessReview{},
 		&SubjectAccessReview{},
 		&LocalSubjectAccessReview{},
 	)
 
-	versionedwatch.AddToGroupVersion(scheme, SchemeGroupVersion)
+	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }
 
-func (obj *LocalSubjectAccessReview) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }
-func (obj *SubjectAccessReview) GetObjectKind() unversioned.ObjectKind      { return &obj.TypeMeta }
-func (obj *SelfSubjectAccessReview) GetObjectKind() unversioned.ObjectKind  { return &obj.TypeMeta }
+func (obj *LocalSubjectAccessReview) GetObjectKind() schema.ObjectKind { return &obj.TypeMeta }
+func (obj *SubjectAccessReview) GetObjectKind() schema.ObjectKind      { return &obj.TypeMeta }
+func (obj *SelfSubjectAccessReview) GetObjectKind() schema.ObjectKind  { return &obj.TypeMeta }

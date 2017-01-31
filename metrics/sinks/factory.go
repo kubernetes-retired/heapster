@@ -29,7 +29,6 @@ import (
 	"k8s.io/heapster/metrics/sinks/kafka"
 	"k8s.io/heapster/metrics/sinks/log"
 	"k8s.io/heapster/metrics/sinks/metric"
-	"k8s.io/heapster/metrics/sinks/monasca"
 	"k8s.io/heapster/metrics/sinks/opentsdb"
 	"k8s.io/heapster/metrics/sinks/riemann"
 )
@@ -57,8 +56,6 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return metricsink.NewMetricSink(140*time.Second, 15*time.Minute, []string{
 			core.MetricCpuUsageRate.MetricDescriptor.Name,
 			core.MetricMemoryUsage.MetricDescriptor.Name}), nil
-	case "monasca":
-		return monasca.CreateMonascaSink(&uri.Val)
 	case "opentsdb":
 		return opentsdb.CreateOpenTSDBSink(&uri.Val)
 	case "riemann":

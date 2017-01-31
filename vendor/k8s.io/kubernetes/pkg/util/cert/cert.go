@@ -90,7 +90,7 @@ func NewSignedCert(cfg Config, key *rsa.PrivateKey, caCert *x509.Certificate, ca
 	certTmpl := x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:   cfg.CommonName,
-			Organization: caCert.Subject.Organization,
+			Organization: cfg.Organization,
 		},
 		DNSNames:     cfg.AltNames.DNSNames,
 		IPAddresses:  cfg.AltNames.IPs,
@@ -126,16 +126,13 @@ func MakeEllipticPrivateKeyPEM() ([]byte, error) {
 	return pem.EncodeToMemory(privateKeyPemBlock), nil
 }
 
-// GenerateSelfSignedCert creates a self-signed certificate and key for the given host.
+// GenerateSelfSignedCertKey creates a self-signed certificate and key for the given host.
 // Host may be an IP or a DNS name
 // You may also specify additional subject alt names (either ip or dns names) for the certificate
-// The certificate will be created with file mode 0644. The key will be created with file mode 0600.
-// If the certificate or key files already exist, they will be overwritten.
-// Any parent directories of the certPath or keyPath will be created as needed with file mode 0755.
-func GenerateSelfSignedCert(host, certPath, keyPath string, alternateIPs []net.IP, alternateDNS []string) error {
+func GenerateSelfSignedCertKey(host string, alternateIPs []net.IP, alternateDNS []string) ([]byte, []byte, error) {
 	priv, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	template := x509.Certificate{
@@ -163,28 +160,48 @@ func GenerateSelfSignedCert(host, certPath, keyPath string, alternateIPs []net.I
 
 	derBytes, err := x509.CreateCertificate(cryptorand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// Generate cert
 	certBuffer := bytes.Buffer{}
 	if err := pem.Encode(&certBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// Generate key
 	keyBuffer := bytes.Buffer{}
 	if err := pem.Encode(&keyBuffer, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)}); err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	if err := WriteCert(certPath, certBuffer.Bytes()); err != nil {
-		return err
-	}
+	return certBuffer.Bytes(), keyBuffer.Bytes(), nil
+}
 
-	if err := WriteKey(keyPath, keyBuffer.Bytes()); err != nil {
-		return err
+// FormatBytesCert receives byte array certificate and formats in human-readable format
+func FormatBytesCert(cert []byte) (string, error) {
+	block, _ := pem.Decode(cert)
+	c, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse certificate [%v]", err)
 	}
+	return FormatCert(c), nil
+}
 
-	return nil
+// FormatCert receives certificate and formats in human-readable format
+func FormatCert(c *x509.Certificate) string {
+	var ips []string
+	for _, ip := range c.IPAddresses {
+		ips = append(ips, ip.String())
+	}
+	altNames := append(ips, c.DNSNames...)
+	res := fmt.Sprintf(
+		"Issuer: CN=%s | Subject: CN=%s | CA: %t\n",
+		c.Issuer.CommonName, c.Subject.CommonName, c.IsCA,
+	)
+	res += fmt.Sprintf("Not before: %s Not After: %s", c.NotBefore, c.NotAfter)
+	if len(altNames) > 0 {
+		res += fmt.Sprintf("\nAlternate Names: %v", altNames)
+	}
+	return res
 }

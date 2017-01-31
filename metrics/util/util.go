@@ -16,10 +16,10 @@ package util
 
 import (
 	"fmt"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/fields"
+	kube_client "k8s.io/client-go/kubernetes"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/fields"
+	"k8s.io/client-go/tools/cache"
 	"sort"
 	"strings"
 	"time"
@@ -58,10 +58,11 @@ func SetLabelSeperator(seperator string) {
 	labelSeperator = seperator
 }
 
-func GetNodeLister(kubeClient *kube_client.Client) (*cache.StoreToNodeLister, *cache.Reflector, error) {
-	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
+func GetNodeLister(kubeClient *kube_client.Clientset) (*cache.StoreToNodeLister, *cache.Reflector, error) {
+	lw := cache.NewListWatchFromClient(kubeClient.Core().RESTClient(), "nodes", kube_api.NamespaceAll, fields.Everything())
 	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
 	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
 	reflector.Run()
+
 	return nodeLister, reflector, nil
 }
