@@ -80,7 +80,7 @@ func TestValidateLines(t *testing.T) {
 		parts := strings.Split(strings.TrimSpace(line), " ")
 
 		//second part should always be the numeric metric value
-		_, err := strconv.ParseInt(parts[1], 0, 64)
+		_, err := strconv.ParseFloat(parts[1], 64)
 		assert.NoError(t, err)
 
 		//third part should always be the epoch timestamp (a count of seconds)
