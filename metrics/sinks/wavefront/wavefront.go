@@ -40,7 +40,7 @@ type wavefrontSink struct {
 	Prefix            string
 	IncludeLabels     bool
 	IncludeContainers bool
-	testMode bool
+	testMode          bool
 	testReceivedLines []string
 }
 
@@ -56,7 +56,7 @@ func (wfSink *wavefrontSink) Stop() {
 func (wfSink *wavefrontSink) sendLine(line string) {
 
 	if wfSink.testMode {
-		wfSink.testReceivedLines = append(wfSink.testReceivedLines,line)
+		wfSink.testReceivedLines = append(wfSink.testReceivedLines, line)
 		glog.Infoln(line)
 		return
 	}
@@ -231,7 +231,7 @@ func NewWavefrontSink(uri *url.URL) (core.DataSink, error) {
 		Prefix:            "heapster.",
 		IncludeLabels:     false,
 		IncludeContainers: true,
-		testMode: false,
+		testMode:          false,
 	}
 
 	vals := uri.Query()

@@ -15,38 +15,38 @@
 package wavefront
 
 import (
-	"net/url"
-	"testing"
-	"time"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/heapster/metrics/core"
-	"strings"
+	"net/url"
 	"strconv"
+	"strings"
+	"testing"
+	"time"
 )
 
 var (
-	fakeNodeIp       = "192.168.1.23"
-	fakePodName      = "redis-test"
-	fakePodUid       = "redis-test-uid"
-	fakeLabel        = map[string]string{
+	fakeNodeIp  = "192.168.1.23"
+	fakePodName = "redis-test"
+	fakePodUid  = "redis-test-uid"
+	fakeLabel   = map[string]string{
 		"name": "redis",
 		"io.kubernetes.pod.name": "default/redis-test",
 		"pod_id":                 fakePodUid,
-		"namespace_name":          "default",
+		"namespace_name":         "default",
 		"pod_name":               fakePodName,
 		"container_name":         "redis",
 		"container_base_image":   "kubernetes/redis:v1",
 		"namespace_id":           "namespace-test-uid",
 		"host_id":                fakeNodeIp,
-		"hostname":		  fakeNodeIp,
+		"hostname":               fakeNodeIp,
 	}
 )
 
 func NewFakeWavefrontSink() *wavefrontSink {
 	return &wavefrontSink{
-		testMode: true,
-		ClusterName: "testCluster",
-		IncludeLabels: false,
+		testMode:          true,
+		ClusterName:       "testCluster",
+		IncludeLabels:     false,
 		IncludeContainers: true,
 	}
 }
@@ -77,28 +77,27 @@ func TestValidateLines(t *testing.T) {
 
 	//validate each line received from the fake batch
 	for _, line := range fakeSink.testReceivedLines {
-		parts := strings.Split(strings.TrimSpace(line)," ")
+		parts := strings.Split(strings.TrimSpace(line), " ")
 
 		//second part should always be the numeric metric value
-		_, err := strconv.ParseInt(parts[1],0,64)
-		assert.NoError(t,err)
+		_, err := strconv.ParseInt(parts[1], 0, 64)
+		assert.NoError(t, err)
 
 		//third part should always be the epoch timestamp (a count of seconds)
-		_, err = strconv.ParseInt(parts[2],0,64)
-		assert.NoError(t,err)
+		_, err = strconv.ParseInt(parts[2], 0, 64)
+		assert.NoError(t, err)
 
 		//the fourth part should be the source tag
-		isSourceTag := strings.HasPrefix(parts[3],"source=")
-		assert.True(t,isSourceTag)
+		isSourceTag := strings.HasPrefix(parts[3], "source=")
+		assert.True(t, isSourceTag)
 
 		//all remaining parts are tags and must be key value pairs (containing "=")
 		tags := parts[4:]
 		for _, v := range tags {
-			assert.True(t,strings.Contains(v,"="))
+			assert.True(t, strings.Contains(v, "="))
 		}
 	}
 }
-
 
 func TestCreateWavefrontSinkWithNoEmptyInputs(t *testing.T) {
 	fakeUrl := "wavefront-proxy:2878?clusterName=testCluster&prefix=testPrefix&includeLabels=true&includeContainers=true"
@@ -110,9 +109,9 @@ func TestCreateWavefrontSinkWithNoEmptyInputs(t *testing.T) {
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "wavefront-proxy:2878", wfSink.ProxyAddress)
 	assert.Equal(t, "testCluster", wfSink.ClusterName)
-	assert.Equal(t,"testPrefix", wfSink.Prefix)
-	assert.Equal(t,true, wfSink.IncludeLabels)
-	assert.Equal(t,true, wfSink.IncludeContainers)
+	assert.Equal(t, "testPrefix", wfSink.Prefix)
+	assert.Equal(t, true, wfSink.IncludeLabels)
+	assert.Equal(t, true, wfSink.IncludeContainers)
 }
 
 func generateFakeBatch() *core.DataBatch {
