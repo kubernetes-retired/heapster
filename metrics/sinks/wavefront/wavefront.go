@@ -40,6 +40,8 @@ type wavefrontSink struct {
 	Prefix            string
 	IncludeLabels     bool
 	IncludeContainers bool
+	testMode bool
+	testReceivedLines []string
 }
 
 func (wfSink *wavefrontSink) Name() string {
@@ -52,6 +54,12 @@ func (wfSink *wavefrontSink) Stop() {
 }
 
 func (wfSink *wavefrontSink) sendLine(line string) {
+
+	if wfSink.testMode {
+		wfSink.testReceivedLines = append(wfSink.testReceivedLines,line)
+		glog.Infoln(line)
+		return
+	}
 	//if the connection was closed or interrupted - don't cause a panic (we'll retry at next interval)
 	defer func() {
 		if r := recover(); r != nil {
@@ -94,12 +102,9 @@ func (wfSink *wavefrontSink) cleanMetricName(metricName string) string {
 }
 
 func (wfSink *wavefrontSink) addLabelTags(ms *core.MetricSet, tags map[string]string) {
-	if !wfSink.IncludeLabels {
-		return
-	}
 	for _, labelName := range sortedLabelKeys(ms.Labels) {
 		labelValue := ms.Labels[labelName]
-		if labelName == "labels" {
+		if labelName == "labels" && wfSink.IncludeLabels {
 			for _, label := range strings.Split(labelValue, ",") {
 				//labels = app:webproxy,version:latest
 				tagParts := strings.SplitN(label, ":", 2)
@@ -187,7 +192,15 @@ func (wfSink *wavefrontSink) send(batch *core.DataBatch) {
 }
 
 func (wfSink *wavefrontSink) ExportData(batch *core.DataBatch) {
-	//make sure we're Connected
+
+	if wfSink.testMode {
+		//clear lines from last batch
+		wfSink.testReceivedLines = wfSink.testReceivedLines[:0]
+		wfSink.send(batch)
+		return
+	}
+
+	//make sure we're Connected before sending a real batch
 	err := wfSink.connect()
 	if err != nil {
 		glog.Warning(err)
@@ -218,6 +231,7 @@ func NewWavefrontSink(uri *url.URL) (core.DataSink, error) {
 		Prefix:            "heapster.",
 		IncludeLabels:     false,
 		IncludeContainers: true,
+		testMode: false,
 	}
 
 	vals := uri.Query()
@@ -244,6 +258,15 @@ func NewWavefrontSink(uri *url.URL) (core.DataSink, error) {
 			return nil, err
 		}
 		storage.IncludeContainers = incContainers
+	}
+	if len(vals["testMode"]) > 0 {
+		testMode := false
+		testMode, err := strconv.ParseBool(vals["testMode"][0])
+		if err != nil {
+			glog.Warning("Unable to parse the testMode argument. This argument is a boolean, please pass \"true\" or \"false\"")
+			return nil, err
+		}
+		storage.testMode = testMode
 	}
 	return storage, nil
 }
