@@ -39,7 +39,7 @@ type InfluxdbConfig struct {
 	DbName          string
 	WithFields      bool
 	RetentionPolicy string
-  InsecureSsl     bool
+	InsecureSsl     bool
 }
 
 func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
@@ -78,7 +78,7 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 		Secure:          false,
 		WithFields:      false,
 		RetentionPolicy: "0",
-    InsecureSsl:     false,
+		InsecureSsl:     false,
 	}
 
 	if len(uri.Host) > 0 {
