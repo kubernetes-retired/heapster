@@ -32,13 +32,14 @@ type InfluxdbClient interface {
 }
 
 type InfluxdbConfig struct {
-	User        string
-	Password    string
-	Secure      bool
-	Host        string
-	DbName      string
-	WithFields  bool
-	InsecureSsl bool
+	User            string
+	Password        string
+	Secure          bool
+	Host            string
+	DbName          string
+	WithFields      bool
+	InsecureSsl     bool
+	RetentionPolicy string
 }
 
 func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
@@ -70,13 +71,14 @@ func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
 
 func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 	config := InfluxdbConfig{
-		User:        "root",
-		Password:    "root",
-		Host:        "localhost:8086",
-		DbName:      "k8s",
-		Secure:      false,
-		WithFields:  false,
-		InsecureSsl: false,
+		User:            "root",
+		Password:        "root",
+		Host:            "localhost:8086",
+		DbName:          "k8s",
+		Secure:          false,
+		WithFields:      false,
+		InsecureSsl:     false,
+		RetentionPolicy: "0",
 	}
 
 	if len(uri.Host) > 0 {
@@ -92,6 +94,9 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 	}
 	if len(opts["db"]) >= 1 {
 		config.DbName = opts["db"][0]
+	}
+	if len(opts["retention"]) >= 1 {
+		config.RetentionPolicy = opts["retention"][0]
 	}
 	if len(opts["withfields"]) >= 1 {
 		val, err := strconv.ParseBool(opts["withfields"][0])
