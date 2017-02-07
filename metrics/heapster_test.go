@@ -30,7 +30,7 @@ import (
 	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/cmd/heapster-apiserver/app"
 	"k8s.io/heapster/metrics/options"
-	"k8s.io/heapster/metrics/sinks/metric"
+	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/cache"
 )

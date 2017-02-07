@@ -27,7 +27,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"k8s.io/heapster/metrics/options"
-	"k8s.io/heapster/metrics/sinks/metric"
+	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/kubernetes/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
