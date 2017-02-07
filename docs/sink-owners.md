@@ -35,7 +35,7 @@ List of Owners
 | OpenTSDB        | :heavy_check_mark: | :x:                | @bluebreezecf                                 | :ok:           |
 | Riemann         | :heavy_check_mark: | :x: :new:          | @jsoriano (temporarily)                       | :no_entry: [2] |
 | Graphite        | :heavy_check_mark: | :x:                | @jsoriano / @theairkit                        | :new: #1341    |
-| Wavefront       | :heavy_check_mark: | :x:                | @ezeev                                        | :new: #1400    |
+| Wavefront       | :heavy_check_mark: | :x:                | @ezeev                                        | :ok:           |
 
 - [1] Monasca now has native support for Kubernetes, so this is no longer needed (see https://github.com/kubernetes/heapster/issues/1407#issuecomment-266008730 and https://github.com/openstack/monasca-agent/blob/master/docs/Plugins.md#docker)
 - [2] The Riemann library has disappeared (see #1419) and users seem to be moving towards using Graphite (see https://github.com/kubernetes/heapster/issues/1407#issuecomment-265850414) or are unresponsive
