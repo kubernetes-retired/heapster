@@ -9,6 +9,10 @@ the local-up-cluster in the Kubernetes repository).
 
 In order to deploy Heapster and InfluxDB, you will need to create the Kubernetes resources
 described by the contents of [deploy/kube-config/influxdb](../deploy/kube-config/influxdb).
+
+If you're running a different architecture than amd64, you should correct the image architecture 
+for the `grafana-deployment.yaml` and the `influxdb-deployment.yaml`.
+
 Ensure that you have a valid checkout of Heapster and are in the root directory of
 the Heapster repository, and then run
 
