@@ -23,7 +23,7 @@ import (
 	"k8s.io/heapster/metrics/api/v1"
 	metricsApi "k8s.io/heapster/metrics/apis/metrics"
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/heapster/metrics/sinks/metric"
+	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/util/metrics"
 
 	"k8s.io/kubernetes/pkg/client/cache"

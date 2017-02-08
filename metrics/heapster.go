@@ -39,7 +39,7 @@ import (
 	"k8s.io/heapster/metrics/options"
 	"k8s.io/heapster/metrics/processors"
 	"k8s.io/heapster/metrics/sinks"
-	"k8s.io/heapster/metrics/sinks/metric"
+	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sources"
 	"k8s.io/heapster/metrics/util"
 	"k8s.io/heapster/version"
