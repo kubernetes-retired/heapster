@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: heapster
-        image: kubernetes/heapster:canary
+        image: gcr.io/google_containers/heapster-amd64:v1.3.0-beta.0
         imagePullPolicy: Always
         command:
         - /heapster

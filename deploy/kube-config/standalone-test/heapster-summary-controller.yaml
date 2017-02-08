@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: heapster-test
-        image: kubernetes/heapster:canary
+        image: gcr.io/google_containers/heapster-amd64:v1.3.0-beta.0
         imagePullPolicy: Always
         command:
         - /heapster
@@ -28,7 +28,7 @@ spec:
           mountPath: /etc/ssl/certs
           readOnly: true
       - name: eventer-test
-        image: kubernetes/heapster:canary
+        image: gcr.io/google_containers/heapster-amd64:v1.3.0-beta.0
         imagePullPolicy: Always
         command:
         - /eventer
