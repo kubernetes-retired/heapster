@@ -142,6 +142,9 @@ func newAPIServer(s *genericoptions.ServerRunOptions) (*genericapiserver.Generic
 	pluginInitializer := admission.NewPluginInitializer(sharedInformers)
 
 	admissionController, err := admission.NewFromPlugins(client, admissionControlPluginNames, s.AdmissionControlConfigFile, pluginInitializer)
+	if err != nil {
+		glog.Errorf("Failed to create admission Controller: %v", err)
+	}
 
 	genericConfig := genericapiserver.NewConfig(s)
 	// TODO: Move the following to generic api server as well.
