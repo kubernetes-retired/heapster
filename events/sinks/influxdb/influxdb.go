@@ -155,6 +155,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 
 	start := time.Now()
 	if _, err := sink.client.Write(bp); err != nil {
+		glog.Errorf("InfluxDB write failed: %v", err)
 		if strings.Contains(err.Error(), dbNotFoundError) {
 			sink.resetConnection()
 		} else if _, _, err := sink.client.Ping(); err != nil {
