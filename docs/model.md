@@ -54,11 +54,11 @@ pairs for the requested namespace-level metric, within the time range specified 
 `/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/metrics/{metric-name}?start=X&end=Y`: Returns a set of (Timestamp, Value) 
 pairs for the requested pod-level metric, within the time range specified by `start` and `end`. 
 
-### Container-level Metrics
+### Container-level Metrics 
 Container metrics and stats are accessible for both containers that belong to
 pods, as well as for free containers running in each node.
 
-`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/`: Returns a list of all available containers under a given pod.
+`/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/`: Returns a list of all available containers under a given pod. Note: Not Supported only in V1.2.0.
 
 `/api/v1/model/namespaces/{namespace-name}/pods/{pod-name}/containers/{container-name}/metrics/`: Returns a list of available container-level metrics
 
