@@ -16,14 +16,14 @@ package wavefront
 
 import (
 	"fmt"
+	"github.com/golang/glog"
+	"k8s.io/heapster/metrics/core"
 	"net"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"github.com/golang/glog"
-	"k8s.io/heapster/metrics/core"
 )
 
 const (
@@ -109,7 +109,7 @@ func (wfSink *wavefrontSink) addLabelTags(ms *core.MetricSet, tags map[string]st
 					//labels = app:webproxy,version:latest
 					tagParts := strings.SplitN(label, ":", 2)
 					if len(tagParts) == 2 {
-						tags["label." + tagParts[0]] = tagParts[1]
+						tags["label."+tagParts[0]] = tagParts[1]
 					}
 				}
 			}

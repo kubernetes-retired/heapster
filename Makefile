@@ -1,6 +1,6 @@
 all: build
 
-PREFIX?=gcr.io/google_containers
+PREFIX?=wavefronthq
 FLAGS=
 ARCH?=amd64
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
@@ -8,7 +8,7 @@ ML_PLATFORMS=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
 GOLANG_VERSION?=1.7
 TEMP_DIR:=$(shell mktemp -d /tmp/heapster.XXXXXX)
 
-VERSION?=v1.3.0-beta.1
+VERSION?=v1.3.0
 GIT_COMMIT:=$(shell git rev-parse --short HEAD)
 REPO_DIR?=$(shell pwd)
 
@@ -78,6 +78,7 @@ container:
 	cd $(TEMP_DIR) && sed -i -e "s|BASEIMAGE|$(BASEIMAGE)|g" Dockerfile
 
 	docker build --pull -t $(PREFIX)/heapster-$(ARCH):$(VERSION) $(TEMP_DIR)
+	docker build --pull -t $(PREFIX)/heapster-$(ARCH):latest $(TEMP_DIR)
 ifneq ($(OVERRIDE_IMAGE_NAME),)
 	docker tag -f $(PREFIX)/heapster-$(ARCH):$(VERSION) $(OVERRIDE_IMAGE_NAME)
 endif
