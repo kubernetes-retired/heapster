@@ -29,22 +29,6 @@ TEST_NAMESPACE=heapster-e2e-tests
 
 HEAPSTER_LDFLAGS=-w -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)
 
-ifeq ($(ARCH),amd64)
-	BASEIMAGE?=busybox
-endif
-ifeq ($(ARCH),arm)
-	BASEIMAGE?=armhf/busybox
-endif
-ifeq ($(ARCH),arm64)
-	BASEIMAGE?=aarch64/busybox
-endif
-ifeq ($(ARCH),ppc64le)
-	BASEIMAGE?=ppc64le/busybox
-endif
-ifeq ($(ARCH),s390x)
-	BASEIMAGE?=s390x/busybox
-endif
-
 fmt:
 	find . -type f -name "*.go" | grep -v "./vendor*" | xargs gofmt -s -w
 
