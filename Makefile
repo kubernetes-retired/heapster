@@ -6,11 +6,19 @@ ARCH?=amd64
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
 ML_PLATFORMS=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
 GOLANG_VERSION?=1.7
+
+ifndef TEMP_DIR
 TEMP_DIR:=$(shell mktemp -d /tmp/heapster.XXXXXX)
+endif
 
 VERSION?=v1.3.0-beta.1
 GIT_COMMIT:=$(shell git rev-parse --short HEAD)
-REPO_DIR?=$(shell pwd)
+
+ifdef REPO_DIR
+DOCKER_IN_DOCKER=1
+else
+REPO_DIR:=$(shell pwd)
+endif
 
 # You can set this variable for testing and the built image will also be tagged with this name
 OVERRIDE_IMAGE_NAME?=
@@ -81,7 +89,10 @@ container:
 ifneq ($(OVERRIDE_IMAGE_NAME),)
 	docker tag -f $(PREFIX)/heapster-$(ARCH):$(VERSION) $(OVERRIDE_IMAGE_NAME)
 endif
+
+ifndef DOCKER_IN_DOCKER
 	rm -rf $(TEMP_DIR)
+endif
 
 do-push:
 	docker push $(PREFIX)/heapster-$(ARCH):$(VERSION)
