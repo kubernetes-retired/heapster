@@ -29,7 +29,7 @@ func (this *ClusterAggregator) Process(batch *core.DataBatch) (*core.DataBatch, 
 	cluster := clusterMetricSet()
 	for _, metricSet := range batch.MetricSets {
 		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; found &&
-			metricSetType == core.MetricSetTypeNode {
+			metricSetType == core.MetricSetTypeNamespace {
 			if err := aggregate(metricSet, cluster, this.MetricsToAggregate); err != nil {
 				return nil, err
 			}
