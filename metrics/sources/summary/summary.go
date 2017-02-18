@@ -31,7 +31,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/util"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
-	"k8s.io/kubernetes/pkg/util/version"
 )
 
 var (
@@ -49,9 +48,6 @@ var (
 // Prefix used for the LabelResourceID for volume metrics.
 const VolumeResourcePrefix = "Volume:"
 
-// Earliest kubelet version that serves the summary API.
-var minSummaryKubeletVersion = version.MustParseSemantic("v1.2.0-alpha.8")
-
 func init() {
 	prometheus.MustRegister(summaryRequestLatency)
 }
@@ -68,18 +64,12 @@ type NodeInfo struct {
 type summaryMetricsSource struct {
 	node          NodeInfo
 	kubeletClient *kubelet.KubeletClient
-
-	// Whether this node requires the fall-back source.
-	useFallback bool
-	fallback    MetricsSource
 }
 
-func NewSummaryMetricsSource(node NodeInfo, client *kubelet.KubeletClient, fallback MetricsSource) MetricsSource {
+func NewSummaryMetricsSource(node NodeInfo, client *kubelet.KubeletClient) MetricsSource {
 	return &summaryMetricsSource{
 		node:          node,
 		kubeletClient: client,
-		useFallback:   !summarySupported(node.KubeletVersion),
-		fallback:      fallback,
 	}
 }
 
@@ -92,10 +82,6 @@ func (this *summaryMetricsSource) String() string {
 }
 
 func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
-	if this.useFallback {
-		return this.fallback.ScrapeMetrics(start, end)
-	}
-
 	result := &DataBatch{
 		Timestamp:  time.Now(),
 		MetricSets: map[string]*MetricSet{},
@@ -108,11 +94,6 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 	}()
 
 	if err != nil {
-		if kubelet.IsNotFoundError(err) {
-			glog.Warningf("Summary not found, using fallback: %v", err)
-			this.useFallback = true
-			return this.fallback.ScrapeMetrics(start, end)
-		}
 		glog.Errorf("error while getting metrics summary from Kubelet %s(%s:%d): %v", this.node.NodeName, this.node.IP, this.node.Port, err)
 		return result
 	}
@@ -120,15 +101,6 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 	result.MetricSets = this.decodeSummary(summary)
 
 	return result
-}
-
-func summarySupported(kubeletVersion string) bool {
-	semver, err := version.ParseSemantic(kubeletVersion)
-	if err != nil {
-		glog.Errorf("Unable to parse kubelet version: %q", kubeletVersion)
-		return false
-	}
-	return semver.AtLeast(minSummaryKubeletVersion)
 }
 
 const (
@@ -392,14 +364,7 @@ func (this *summaryProvider) GetMetricsSources() []MetricsSource {
 			glog.Errorf("%v", err)
 			continue
 		}
-		fallback := kubelet.NewKubeletMetricsSource(
-			info.Host,
-			this.kubeletClient,
-			info.NodeName,
-			info.HostName,
-			info.HostID,
-		)
-		sources = append(sources, NewSummaryMetricsSource(info, this.kubeletClient, fallback))
+		sources = append(sources, NewSummaryMetricsSource(info, this.kubeletClient))
 	}
 	return sources
 }

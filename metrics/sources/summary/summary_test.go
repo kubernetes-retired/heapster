@@ -102,8 +102,6 @@ func testingSummaryMetricsSource() *summaryMetricsSource {
 	return &summaryMetricsSource{
 		node:          nodeInfo,
 		kubeletClient: &kubelet.KubeletClient{},
-		useFallback:   false,
-		fallback:      &fakeSource{},
 	}
 }
 
@@ -380,51 +378,4 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 
 	res := ms.ScrapeMetrics(time.Now(), time.Now())
 	assert.Equal(t, res.MetricSets["node:test"].Labels[core.LabelMetricSetType.Key], core.MetricSetTypeNode)
-}
-
-func TestFallback(t *testing.T) {
-	server := httptest.NewServer(&util.FakeHandler{
-		StatusCode: 404,
-		T:          t,
-	})
-	defer server.Close()
-
-	ms := testingSummaryMetricsSource()
-	split := strings.SplitN(strings.Replace(server.URL, "http://", "", 1), ":", 2)
-	ms.node.IP = split[0]
-	var err error
-	ms.node.Port, err = strconv.Atoi(split[1])
-	require.NoError(t, err)
-	fallback := ms.fallback.(*fakeSource)
-
-	ms.ScrapeMetrics(time.Now(), time.Now())
-	assert.True(t, fallback.scraped)
-	assert.True(t, ms.useFallback)
-
-	server.Close()           // Second request should not hit the server.
-	fallback.scraped = false // reset
-	ms.ScrapeMetrics(time.Now(), time.Now())
-	assert.True(t, fallback.scraped)
-}
-
-func TestSummarySupported(t *testing.T) {
-	tests := []struct {
-		version        string
-		expectFallback bool
-	}{
-		{"v1.2.0-alpha.8", false},
-		{"v1.2.0", false},
-		{"v1.2.0-alpha.6", true},
-		{"v1.3.0-alpha.1", false},
-		{"v1.1.8", true},
-		{"v1.0.6", true},
-		{"v-invalid", true},
-	}
-
-	for _, test := range tests {
-		node := nodeInfo
-		node.KubeletVersion = test.version
-		source := NewSummaryMetricsSource(node, nil, nil).(*summaryMetricsSource)
-		assert.Equal(t, test.expectFallback, source.useFallback, test.version)
-	}
 }
