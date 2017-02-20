@@ -21,13 +21,13 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/heapster/metrics/apis/metrics"
-	_ "k8s.io/heapster/metrics/apis/metrics/install"
-	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/options"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	nodemetricsstorage "k8s.io/heapster/metrics/storage/nodemetrics"
 	podmetricsstorage "k8s.io/heapster/metrics/storage/podmetrics"
+	"k8s.io/metrics/pkg/apis/metrics"
+	_ "k8s.io/metrics/pkg/apis/metrics/install"
+	"k8s.io/metrics/pkg/apis/metrics/v1alpha1"
 )
 
 func installMetricsAPIs(s *options.HeapsterRunOptions, g *genericapiserver.GenericAPIServer,

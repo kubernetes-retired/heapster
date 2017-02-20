@@ -29,13 +29,12 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/heapster/metrics/apis/metrics"
-	_ "k8s.io/heapster/metrics/apis/metrics/install"
 	"k8s.io/heapster/metrics/core"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/storage/util"
+	"k8s.io/metrics/pkg/apis/metrics"
+	_ "k8s.io/metrics/pkg/apis/metrics/install"
 )
 
 type MetricStorage struct {
@@ -126,7 +125,7 @@ func (m *MetricStorage) getNodeMetrics(node string) *metrics.NodeMetrics {
 	}
 
 	return &metrics.NodeMetrics{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:              node,
 			CreationTimestamp: metav1.NewTime(time.Now()),
 		},

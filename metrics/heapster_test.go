@@ -28,10 +28,10 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/cmd/heapster-apiserver/app"
 	"k8s.io/heapster/metrics/options"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/metrics/pkg/apis/metrics/v1alpha1"
 )
 
 var metricsGroupVersion = v1alpha1.SchemeGroupVersion
