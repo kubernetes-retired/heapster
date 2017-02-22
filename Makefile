@@ -124,6 +124,9 @@ push-influxdb:
 push-grafana:
 	PREFIX=$(PREFIX) make -C grafana push
 
+push-override:
+	docker push $(OVERRIDE_IMAGE_NAME)
+
 gcr-login:
 ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
 	@echo "If you are pushing to a gcr.io registry, you have to be logged in via 'docker login'; 'gcloud docker push' can't push manifest lists yet."

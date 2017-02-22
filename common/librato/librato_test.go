@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	util "k8s.io/kubernetes/pkg/util/testing"
+	util "k8s.io/client-go/util/testing"
 )
 
 func TestLibratoClientWrite(t *testing.T) {
@@ -43,7 +43,7 @@ func TestLibratoClientWrite(t *testing.T) {
 	client := NewClient(*config)
 
 	err = client.Write([]Measurement{
-		Measurement{
+		{
 			Name:  "test",
 			Value: 1.4,
 		},
@@ -78,7 +78,7 @@ func TestLibratoClientWriteWithTags(t *testing.T) {
 	client := NewClient(*config)
 
 	err = client.Write([]Measurement{
-		Measurement{
+		{
 			Name:  "test",
 			Value: 1.4,
 			Tags: map[string]string{

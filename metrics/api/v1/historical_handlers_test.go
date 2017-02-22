@@ -196,34 +196,34 @@ func TestAvailableMetrics(t *testing.T) {
 	api, src := prepApi()
 
 	src.metricNames = map[core.HistoricalKey][]string{
-		core.HistoricalKey{
+		{
 			ObjectType: core.MetricSetTypeCluster,
 		}: {"cm1", "cm2"},
 
-		core.HistoricalKey{
+		{
 			ObjectType: core.MetricSetTypeNode,
 			NodeName:   "somenode1",
 		}: {"nm1", "nm2"},
 
-		core.HistoricalKey{
+		{
 			ObjectType:    core.MetricSetTypeNamespace,
 			NamespaceName: "somens1",
 		}: {"nsm1", "nsm2"},
 
-		core.HistoricalKey{
+		{
 			ObjectType:    core.MetricSetTypePod,
 			NamespaceName: "somens1",
 			PodName:       "somepod1",
 		}: {"pm1", "pm2"},
 
-		core.HistoricalKey{
+		{
 			ObjectType:    core.MetricSetTypePodContainer,
 			NamespaceName: "somens1",
 			PodName:       "somepod1",
 			ContainerName: "somecont1",
 		}: {"pcm1", "pcm2"},
 
-		core.HistoricalKey{
+		{
 			ObjectType:    core.MetricSetTypeSystemContainer,
 			NodeName:      "somenode1",
 			ContainerName: "somecont1",

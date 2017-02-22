@@ -16,6 +16,7 @@ package librato
 
 import (
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -38,12 +39,43 @@ const (
 
 	// Maximum number of librato measurements to be sent in one batch.
 	maxSendBatchSize = 1000
+
+	// Librato measurement restrictions
+	// https://www.librato.com/docs/api/#measurement-restrictions
+	maxMeasurementNameLength = 255
+	maxTagNameLength         = 64
+	maxTagValueLength        = 255
+)
+
+var (
+	// Librato measurement restrictions
+	// https://www.librato.com/docs/api/#measurement-restrictions
+	invalidMeasurementNameRegexp = regexp.MustCompile("[^A-Za-z0-9.:-_]")
+	invalidTagNameRegex          = regexp.MustCompile("[^-.:_\\w]")
+	invalidTagValueRegex         = regexp.MustCompile("[^-.:_\\w ]")
 )
 
 func (sink *libratoSink) formatMeasurementName(metricName string) string {
 	measurementName := strings.Replace(metricName, "/", ".", -1)
+	name := sink.c.Prefix + measurementName
 
-	return sink.c.Prefix + measurementName
+	return sink.trunc(invalidMeasurementNameRegexp.ReplaceAllString(name, "_"), maxMeasurementNameLength)
+}
+
+func (sink *libratoSink) formatTagName(tagName string) string {
+	return sink.trunc(invalidTagNameRegex.ReplaceAllString(tagName, "_"), maxTagNameLength)
+}
+
+func (sink *libratoSink) formatTagValue(tagName string) string {
+	return sink.trunc(invalidTagValueRegex.ReplaceAllString(tagName, "_"), maxTagValueLength)
+}
+
+func (sink *libratoSink) trunc(val string, length int) string {
+	if len(val) <= length {
+		return val
+	}
+
+	return val[:length]
 }
 
 func (sink *libratoSink) ExportData(dataBatch *core.DataBatch) {
@@ -66,10 +98,15 @@ func (sink *libratoSink) ExportData(dataBatch *core.DataBatch) {
 			name := sink.formatMeasurementName(metricName)
 			measurement := librato_common.Measurement{
 				Name:  name,
-				Tags:  metricSet.Labels,
+				Tags:  make(map[string]string),
 				Time:  dataBatch.Timestamp.Unix(),
 				Value: value,
 			}
+
+			for key, value := range metricSet.Labels {
+				measurement.Tags[sink.formatTagName(key)] = sink.formatTagValue(value)
+			}
+
 			measurements = append(measurements, measurement)
 			if len(measurements) >= maxSendBatchSize {
 				sink.sendData(measurements)
@@ -97,10 +134,10 @@ func (sink *libratoSink) ExportData(dataBatch *core.DataBatch) {
 				Value: value,
 			}
 			for key, value := range metricSet.Labels {
-				measurement.Tags[key] = value
+				measurement.Tags[sink.formatTagName(key)] = sink.formatTagValue(value)
 			}
 			for key, value := range labeledMetric.Labels {
-				measurement.Tags[key] = value
+				measurement.Tags[sink.formatTagName(key)] = sink.formatTagValue(value)
 			}
 
 			measurements = append(measurements, measurement)
