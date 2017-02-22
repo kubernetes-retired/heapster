@@ -52,6 +52,7 @@ var (
 	namespace              = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
 	maxRetries             = flag.Int("retries", 20, "Number of attempts before failing this test.")
 	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
+	testUser               = flag.String("test_user", "", "GCE user when copy file to host")
 )
 
 func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_api.ReplicationController) error {
@@ -174,7 +175,11 @@ func buildAndPushDockerImages(fm kubeFramework, zone string) error {
 	}
 	hostnames := []string{}
 	for _, node := range nodes {
-		hostnames = append(hostnames, strings.Split(node, ".")[0])
+		nodeHost := strings.Split(node, ".")[0]
+		if *testUser != "" {
+			nodeHost = fmt.Sprintf("jenkins@%s", nodeHost)
+		}
+		hostnames = append(hostnames, nodeHost)
 	}
 
 	return buildAndPushHeapsterImage(hostnames, zone)
