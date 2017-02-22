@@ -25,7 +25,9 @@ import (
 	"time"
 )
 
-var labelSeperator string
+var (
+	labelSeperator = ","
+)
 
 // Concatenates a map of labels into a Seperator-seperated key:value pairs.
 func LabelsToString(labels map[string]string) string {

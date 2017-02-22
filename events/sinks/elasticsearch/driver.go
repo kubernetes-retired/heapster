@@ -23,6 +23,7 @@ import (
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	event_core "k8s.io/heapster/events/core"
 	"k8s.io/heapster/metrics/core"
+	"k8s.io/heapster/metrics/util"
 	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
@@ -50,6 +51,7 @@ type EsSinkPoint struct {
 	Message                  string
 	Reason                   string
 	Type                     string
+	Labels                   string
 	EventTags                map[string]string
 }
 
@@ -61,6 +63,7 @@ func eventToPoint(event *kube_api.Event, clusterName string) (*EsSinkPoint, erro
 		Reason:                   event.Reason,
 		Type:                     event.Type,
 		Count:                    event.Count,
+		Labels:                   util.LabelsToString(event.ObjectMeta.Labels),
 		Metadata:                 event.ObjectMeta,
 		InvolvedObject:           event.InvolvedObject,
 		Source:                   event.Source,
