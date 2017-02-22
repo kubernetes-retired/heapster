@@ -67,6 +67,8 @@ var LabeledMetrics = []Metric{
 	MetricFilesystemUsage,
 	MetricFilesystemLimit,
 	MetricFilesystemAvailable,
+	MetricFilesystemInodes,
+	MetricFilesystemInodesFree,
 }
 
 var NodeAutoscalingMetrics = []Metric{
@@ -94,6 +96,8 @@ var FilesystemMetrics = []Metric{
 	MetricFilesystemAvailable,
 	MetricFilesystemLimit,
 	MetricFilesystemUsage,
+	MetricFilesystemInodes,
+	MetricFilesystemInodesFree,
 }
 var MemoryMetrics = []Metric{
 	MetricMemoryLimit,
@@ -606,6 +610,72 @@ var MetricFilesystemAvailable = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsBytes,
 		Labels:      metricLabels,
+	},
+}
+
+var MetricFilesystemInodes = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/inodes",
+		Description: "Total number of inodes on a filesystem",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := []LabeledMetric{}
+		for _, fs := range stat.Filesystem {
+			if fs.HasInodes {
+				result = append(result, LabeledMetric{
+					Name: "filesystem/inodes",
+					Labels: map[string]string{
+						LabelResourceID.Key: fs.Device,
+					},
+					MetricValue: MetricValue{
+						ValueType:  ValueInt64,
+						MetricType: MetricGauge,
+						IntValue:   int64(fs.Inodes),
+					},
+				})
+			}
+		}
+		return result
+	},
+}
+
+var MetricFilesystemInodesFree = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/inodes_free",
+		Description: "Free number of inodes on a filesystem",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := []LabeledMetric{}
+		for _, fs := range stat.Filesystem {
+			if fs.HasInodes {
+				result = append(result, LabeledMetric{
+					Name: "filesystem/inodes_free",
+					Labels: map[string]string{
+						LabelResourceID.Key: fs.Device,
+					},
+					MetricValue: MetricValue{
+						ValueType:  ValueInt64,
+						MetricType: MetricGauge,
+						IntValue:   int64(fs.InodesFree),
+					},
+				})
+			}
+		}
+		return result
 	},
 }
 

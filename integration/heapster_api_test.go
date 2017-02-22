@@ -350,7 +350,9 @@ func runMetricExportTest(fm kubeFramework, svc *kube_api.Service) error {
 		explicitRequirement := map[string][]string{
 			core.MetricFilesystemUsage.MetricDescriptor.Name: {core.LabelResourceID.Key},
 			core.MetricFilesystemLimit.MetricDescriptor.Name: {core.LabelResourceID.Key},
-			core.MetricFilesystemAvailable.Name:              {core.LabelResourceID.Key}}
+			core.MetricFilesystemAvailable.Name:              {core.LabelResourceID.Key},
+			core.MetricFilesystemInodes.Name:                 {core.LabelResourceID.Key},
+			core.MetricFilesystemInodesFree.Name:             {core.LabelResourceID.Key}}
 
 		for metricName, points := range ts.Metrics {
 			md, exists := mdMap[metricName]
