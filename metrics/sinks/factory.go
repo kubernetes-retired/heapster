@@ -23,7 +23,6 @@ import (
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/elasticsearch"
 	"k8s.io/heapster/metrics/sinks/gcm"
-	"k8s.io/heapster/metrics/sinks/gke"
 	"k8s.io/heapster/metrics/sinks/graphite"
 	"k8s.io/heapster/metrics/sinks/hawkular"
 	"k8s.io/heapster/metrics/sinks/influxdb"
@@ -33,6 +32,7 @@ import (
 	"k8s.io/heapster/metrics/sinks/monasca"
 	"k8s.io/heapster/metrics/sinks/opentsdb"
 	"k8s.io/heapster/metrics/sinks/riemann"
+	"k8s.io/heapster/metrics/sinks/stackdriver"
 	"k8s.io/heapster/metrics/sinks/wavefront"
 )
 
@@ -45,8 +45,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return elasticsearch.NewElasticSearchSink(&uri.Val)
 	case "gcm":
 		return gcm.CreateGCMSink(&uri.Val)
-	case "gke":
-		return gke.CreateGKESink(&uri.Val)
+	case "stackdriver":
+		return stackdriver.CreateGKESink(&uri.Val)
 	case "graphite":
 		return graphite.NewGraphiteSink(&uri.Val)
 	case "hawkular":

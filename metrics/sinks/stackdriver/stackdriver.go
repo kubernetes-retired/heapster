@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gke
+package stackdriver
 
 import (
 	"fmt"
@@ -23,23 +23,25 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	stackdriver "google.golang.org/api/monitoring/v3"
+	sd_api "google.golang.org/api/monitoring/v3"
 	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
 )
 
 const (
-	maxTimeseriesPerRequest = 20
+	maxTimeseriesPerRequest = 200
 )
 
-type gkeSink struct {
+type stackdriverSink struct {
 	project           string
 	zone              string
-	stackdriverClient *stackdriver.Service
+	stackdriverClient *sd_api.Service
 }
 
 type metricMetadata struct {
-	MetricKind, ValueType, Name string
+	MetricKind string
+	ValueType  string
+	Name       string
 }
 
 var (
@@ -50,15 +52,15 @@ var (
 	}
 )
 
-func (sink *gkeSink) Name() string {
+func (sink *stackdriverSink) Name() string {
 	return "GKE Sink"
 }
 
-func (sink *gkeSink) Stop() {
+func (sink *stackdriverSink) Stop() {
 	// nothing needs to be done
 }
 
-func (sink *gkeSink) ExportData(dataBatch *core.DataBatch) {
+func (sink *stackdriverSink) ExportData(dataBatch *core.DataBatch) {
 	req := getReq()
 
 	for _, metricSet := range dataBatch.MetricSets {
@@ -102,12 +104,12 @@ func CreateGKESink(uri *url.URL) (core.DataSink, error) {
 
 	// Create Google Cloud Monitoring service
 	client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
-	stackdriverClient, err := stackdriver.New(client)
+	stackdriverClient, err := sd_api.New(client)
 	if err != nil {
 		return nil, err
 	}
 
-	sink := &gkeSink{
+	sink := &stackdriverSink{
 		project:           projectId,
 		zone:              zone,
 		stackdriverClient: stackdriverClient,
@@ -118,63 +120,61 @@ func CreateGKESink(uri *url.URL) (core.DataSink, error) {
 	return sink, nil
 }
 
-func (sink *gkeSink) sendRequest(req *stackdriver.CreateTimeSeriesRequest) {
+func (sink *stackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
 	_, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
 	if err != nil {
 		glog.Errorf("Error while sending request to Stackdriver %v", err)
 	} else {
-		glog.V(4).Infof("Successfully sent %v timeseries to Stackdriver, project %v", len(req.TimeSeries), sink.project)
+		glog.V(4).Infof("Successfully sent %v timeseries to Stackdriver", len(req.TimeSeries), sink.project)
 	}
 }
 
-func (sink *gkeSink) translateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, createTime time.Time) *stackdriver.TimeSeries {
+func (sink *stackdriverSink) translateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, createTime time.Time) *sd_api.TimeSeries {
 	switch name {
-	case "uptime":
+	case core.MetricUptime.MetricDescriptor.Name:
 		point := sink.uptimePoint(timestamp, createTime, value)
 		resourceLabels := sink.getResourceLabels(labels)
-		//glog.Infof("Uptime for container: %v", resourceLabels["container_name"])
 		return createTimeSeries(resourceLabels, labels, uptimeMD, point)
 	default:
-		//		glog.Warningf("Unknown metric %v", name)
 		return nil
 	}
 }
 
-func (sink *gkeSink) getResourceLabels(labels map[string]string) map[string]string {
+func (sink *stackdriverSink) getResourceLabels(labels map[string]string) map[string]string {
 	return map[string]string{
 		"project_id":     sink.project,
 		"cluster_name":   "",
 		"zone":           sink.zone,
 		"instance_id":    labels[core.LabelHostID.Key],
-		"namespace_id":   "",
+		"namespace_id":   labels[core.LabelPodNamespaceUID.Key],
 		"pod_id":         labels[core.LabelPodId.Key],
 		"container_name": labels[core.LabelContainerName.Key],
 	}
 }
 
-func createTimeSeries(resourceLabels map[string]string, labels map[string]string, metadata *metricMetadata, point *stackdriver.Point) *stackdriver.TimeSeries {
-	return &stackdriver.TimeSeries{
-		Metric: &stackdriver.Metric{
+func createTimeSeries(resourceLabels map[string]string, labels map[string]string, metadata *metricMetadata, point *sd_api.Point) *sd_api.TimeSeries {
+	return &sd_api.TimeSeries{
+		Metric: &sd_api.Metric{
 			Labels: map[string]string{},
 			Type:   metadata.Name,
 		},
 		MetricKind: metadata.MetricKind,
 		ValueType:  metadata.ValueType,
-		Resource: &stackdriver.MonitoredResource{
+		Resource: &sd_api.MonitoredResource{
 			Labels: resourceLabels,
-			Type:   "gke_container",
+			Type:   "stackdriver_container",
 		},
-		Points: []*stackdriver.Point{point},
+		Points: []*sd_api.Point{point},
 	}
 }
 
-func (sink *gkeSink) uptimePoint(timestamp time.Time, createTime time.Time, value core.MetricValue) *stackdriver.Point {
-	return &stackdriver.Point{
-		Interval: &stackdriver.TimeInterval{
+func (sink *stackdriverSink) uptimePoint(timestamp time.Time, createTime time.Time, value core.MetricValue) *sd_api.Point {
+	return &sd_api.Point{
+		Interval: &sd_api.TimeInterval{
 			EndTime:   timestamp.Format(time.RFC3339),
 			StartTime: createTime.Format(time.RFC3339),
 		},
-		Value: &stackdriver.TypedValue{
+		Value: &sd_api.TypedValue{
 			DoubleValue:     float64(value.IntValue) / float64(time.Second/time.Millisecond),
 			ForceSendFields: []string{"DoubleValue"},
 		},
@@ -185,6 +185,6 @@ func fullProjectName(name string) string {
 	return fmt.Sprintf("projects/%s", name)
 }
 
-func getReq() *stackdriver.CreateTimeSeriesRequest {
-	return &stackdriver.CreateTimeSeriesRequest{TimeSeries: make([]*stackdriver.TimeSeries, 0)}
+func getReq() *sd_api.CreateTimeSeriesRequest {
+	return &sd_api.CreateTimeSeriesRequest{TimeSeries: make([]*sd_api.TimeSeries, 0)}
 }
