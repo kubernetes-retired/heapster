@@ -26,6 +26,8 @@ Heapster exports the following metrics to its backends.
 | memory/page_faults_rate | Number of page faults per second. |
 | memory/request | Memory request (the guaranteed amount of resources) in bytes. |
 | memory/usage | Total memory usage. |
+| memory/cache | Cache memory usage. |
+| memory/rss | RSS memory usage. |
 | memory/working_set | Total working set usage. Working set is the memory being used and not easily dropped by the kernel. |
 | network/rx | Cumulative number of bytes received over the network. |
 | network/rx_errors | Cumulative number of errors while receiving over the network. |
