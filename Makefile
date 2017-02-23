@@ -14,8 +14,10 @@ endif
 VERSION?=v1.3.0-beta.1
 GIT_COMMIT:=$(shell git rev-parse --short HEAD)
 
+TESTUSER=
 ifdef REPO_DIR
 DOCKER_IN_DOCKER=1
+TESTUSER=jenkins
 else
 REPO_DIR:=$(shell pwd)
 endif
@@ -72,7 +74,7 @@ test-unit-cov: clean sanitize build
 	hooks/coverage.sh
 
 test-integration: clean build
-	go test -v --timeout=60m ./integration/... --vmodule=*=2 $(FLAGS) --namespace=$(TEST_NAMESPACE) --kube_versions=$(SUPPORTED_KUBE_VERSIONS)
+	go test -v --timeout=60m ./integration/... --vmodule=*=2 $(FLAGS) --namespace=$(TEST_NAMESPACE) --kube_versions=$(SUPPORTED_KUBE_VERSIONS) --test_user=$(TESTUSER)
 
 container:
 	# Run the build in a container in order to have reproducible builds
