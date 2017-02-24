@@ -29,6 +29,7 @@ import (
 	cadvisor "github.com/google/cadvisor/info/v1"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
 	kube_client "k8s.io/kubernetes/pkg/kubelet/client"
+	"strings"
 )
 
 type Host struct {
@@ -86,6 +87,11 @@ func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http
 
 func (self *KubeletClient) parseStat(containerInfo *cadvisor.ContainerInfo) *cadvisor.ContainerInfo {
 	containerInfo.Stats = sampleContainerStats(containerInfo.Stats)
+
+	if strings.HasPrefix(containerInfo.Name, "/system.slice/docker-") {
+		return nil
+	}
+
 	if len(containerInfo.Aliases) > 0 {
 		containerInfo.Name = containerInfo.Aliases[0]
 	}
