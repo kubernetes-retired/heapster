@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/pborman/uuid"
 
-	"gopkg.in/olivere/elastic.v3"
+	elastic2 "gopkg.in/olivere/elastic.v3"
+	elastic5 "gopkg.in/olivere/elastic.v5"
 	"os"
 )
 
@@ -32,10 +32,9 @@ const (
 )
 
 type ElasticSearchService struct {
-	EsClient      *elastic.Client
-	bulkProcessor *elastic.BulkProcessor
-	baseIndex     string
-	ClusterName   string
+	EsClient    *esClient
+	baseIndex   string
+	ClusterName string
 }
 
 func (esSvc *ElasticSearchService) Index(date time.Time) string {
@@ -46,7 +45,7 @@ func (esSvc *ElasticSearchService) IndexAlias(date time.Time, typeName string) s
 }
 
 func (esSvc *ElasticSearchService) FlushData() error {
-	return esSvc.bulkProcessor.Flush()
+	return esSvc.EsClient.FlushBulk()
 }
 
 // SaveDataIntoES save metrics and events to ES by using ES client
@@ -58,44 +57,63 @@ func (esSvc *ElasticSearchService) SaveData(date time.Time, typeName string, sin
 	indexName := esSvc.Index(date)
 
 	// Use the IndexExists service to check if a specified index exists.
-	exists, err := esSvc.EsClient.IndexExists(indexName).Do()
+	exists, err := esSvc.EsClient.IndexExists(indexName)
 	if err != nil {
 		return err
 	}
+
 	if !exists {
 		// Create a new index.
-		createIndex, err := esSvc.EsClient.CreateIndex(indexName).BodyString(mapping).Do()
+		createIndex, err := esSvc.EsClient.CreateIndex(indexName, mapping)
 		if err != nil {
 			return err
 		}
-		if !createIndex.Acknowledged {
+
+		ack := false
+		switch i := createIndex.(type) {
+		case elastic2.IndicesCreateResult:
+			ack = i.Acknowledged
+		case elastic5.IndicesCreateResult:
+			ack = i.Acknowledged
+		}
+		if !ack {
 			return fmt.Errorf("Failed to create Index in ES cluster: %s", err)
 		}
 	}
 
-	aliases, err := esSvc.EsClient.Aliases().Index(indexName).Do()
+	aliases, err := esSvc.EsClient.GetAliases(indexName)
 	if err != nil {
 		return err
 	}
 	aliasName := esSvc.IndexAlias(date, typeName)
-	if !aliases.Indices[indexName].HasAlias(aliasName) {
-		createAlias, err := esSvc.EsClient.Alias().Add(indexName, esSvc.IndexAlias(date, typeName)).Do()
+
+	hasAlias := false
+	switch a := aliases.(type) {
+	case elastic2.AliasesResult:
+		hasAlias = a.Indices[indexName].HasAlias(aliasName)
+	case elastic5.AliasesResult:
+		hasAlias = a.Indices[indexName].HasAlias(aliasName)
+	}
+	if !hasAlias {
+		createAlias, err := esSvc.EsClient.AddAlias(indexName, esSvc.IndexAlias(date, typeName))
 		if err != nil {
 			return err
 		}
-		if !createAlias.Acknowledged {
+
+		ack := false
+		switch i := createAlias.(type) {
+		case elastic2.AliasResult:
+			ack = i.Acknowledged
+		case elastic5.AliasResult:
+			ack = i.Acknowledged
+		}
+		if !ack {
 			return fmt.Errorf("Failed to create Index Alias in ES cluster: %s", err)
 		}
 	}
 
 	for _, data := range sinkData {
-		indexID := uuid.NewUUID()
-		req := elastic.NewBulkIndexRequest().
-			Index(indexName).
-			Type(typeName).
-			Id(indexID.String()).
-			Doc(data)
-		esSvc.bulkProcessor.Add(req)
+		esSvc.EsClient.AddBulkReq(indexName, typeName, data)
 	}
 
 	return nil
@@ -111,6 +129,14 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		return nil, fmt.Errorf("Failed to parser url's query string: %s", err)
 	}
 
+	version := 5
+	if len(opts["ver"]) > 0 {
+		version, err = strconv.Atoi(opts["ver"][0])
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse URL's version value into an int: %v", err)
+		}
+	}
+
 	esSvc.ClusterName = ESClusterName
 	if len(opts["cluster_name"]) > 0 {
 		esSvc.ClusterName = opts["cluster_name"][0]
@@ -122,13 +148,17 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		esSvc.baseIndex = opts["index"][0]
 	}
 
+	var startupFnsV5 []elastic5.ClientOptionFunc
+	var startupFnsV2 []elastic2.ClientOptionFunc
+
 	// Set the URL endpoints of the ES's nodes. Notice that when sniffing is
 	// enabled, these URLs are used to initially sniff the cluster on startup.
-	var startupFns []elastic.ClientOptionFunc
 	if len(opts["nodes"]) > 0 {
-		startupFns = append(startupFns, elastic.SetURL(opts["nodes"]...))
+		startupFnsV2 = append(startupFnsV2, elastic2.SetURL(opts["nodes"]...))
+		startupFnsV5 = append(startupFnsV5, elastic5.SetURL(opts["nodes"]...))
 	} else if uri.Opaque != "" {
-		startupFns = append(startupFns, elastic.SetURL(uri.Opaque))
+		startupFnsV2 = append(startupFnsV2, elastic2.SetURL(uri.Opaque))
+		startupFnsV5 = append(startupFnsV5, elastic5.SetURL(uri.Opaque))
 	} else {
 		return nil, fmt.Errorf("There is no node assigned for connecting ES cluster")
 	}
@@ -136,7 +166,8 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 	// If the ES cluster needs authentication, the username and secret
 	// should be set in sink config.Else, set the Authenticate flag to false
 	if len(opts["esUserName"]) > 0 && len(opts["esUserSecret"]) > 0 {
-		startupFns = append(startupFns, elastic.SetBasicAuth(opts["esUserName"][0], opts["esUserSecret"][0]))
+		startupFnsV2 = append(startupFnsV2, elastic2.SetBasicAuth(opts["esUserName"][0], opts["esUserSecret"][0]))
+		startupFnsV5 = append(startupFnsV5, elastic5.SetBasicAuth(opts["esUserName"][0], opts["esUserSecret"][0]))
 	}
 
 	if len(opts["maxRetries"]) > 0 {
@@ -144,7 +175,8 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Failed to parse URL's maxRetries value into an int")
 		}
-		startupFns = append(startupFns, elastic.SetMaxRetries(maxRetries))
+		startupFnsV2 = append(startupFnsV2, elastic2.SetMaxRetries(maxRetries))
+		startupFnsV5 = append(startupFnsV5, elastic5.SetMaxRetries(maxRetries))
 	}
 
 	if len(opts["healthCheck"]) > 0 {
@@ -152,7 +184,8 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Failed to parse URL's healthCheck value into a bool")
 		}
-		startupFns = append(startupFns, elastic.SetHealthcheck(healthCheck))
+		startupFnsV2 = append(startupFnsV2, elastic2.SetHealthcheck(healthCheck))
+		startupFnsV5 = append(startupFnsV5, elastic5.SetHealthcheck(healthCheck))
 	}
 
 	if len(opts["startupHealthcheckTimeout"]) > 0 {
@@ -160,7 +193,8 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Failed to parse URL's startupHealthcheckTimeout: %s", err.Error())
 		}
-		startupFns = append(startupFns, elastic.SetHealthcheckTimeoutStartup(timeout))
+		startupFnsV2 = append(startupFnsV2, elastic2.SetHealthcheckTimeoutStartup(timeout))
+		startupFnsV5 = append(startupFnsV5, elastic5.SetHealthcheckTimeoutStartup(timeout))
 	}
 
 	if os.Getenv("AWS_ACCESS_KEY_ID") != "" || os.Getenv("AWS_ACCESS_KEY") != "" ||
@@ -172,20 +206,17 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 			return nil, err
 		}
 
-		startupFns = append(startupFns, elastic.SetHttpClient(awsClient), elastic.SetSniff(false))
+		startupFnsV2 = append(startupFnsV2, elastic2.SetHttpClient(awsClient), elastic2.SetSniff(false))
+		startupFnsV5 = append(startupFnsV5, elastic5.SetHttpClient(awsClient), elastic5.SetSniff(false))
 	} else {
 		if len(opts["sniff"]) > 0 {
 			sniff, err := strconv.ParseBool(opts["sniff"][0])
 			if err != nil {
 				return nil, fmt.Errorf("Failed to parse URL's sniff value into a bool")
 			}
-			startupFns = append(startupFns, elastic.SetSniff(sniff))
+			startupFnsV2 = append(startupFnsV2, elastic2.SetSniff(sniff))
+			startupFnsV5 = append(startupFnsV5, elastic5.SetSniff(sniff))
 		}
-	}
-
-	esSvc.EsClient, err = elastic.NewClient(startupFns...)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create ElasticSearch client: %v", err)
 	}
 
 	bulkWorkers := 5
@@ -195,35 +226,20 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 			return nil, fmt.Errorf("Failed to parse URL's bulkWorkers value into an int")
 		}
 	}
-	esSvc.bulkProcessor, err = esSvc.EsClient.BulkProcessor().
-		Name("ElasticSearchWorker").
-		Workers(bulkWorkers).
-		After(bulkAfterCB).
-		BulkActions(1000).               // commit if # requests >= 1000
-		BulkSize(2 << 20).               // commit if size of requests >= 2 MB
-		FlushInterval(10 * time.Second). // commit every 10s
-		Do()
+
+	switch version {
+	case 2:
+		esSvc.EsClient, err = newEsClientV2(startupFnsV2, bulkWorkers)
+	case 5:
+		esSvc.EsClient, err = newEsClientV5(startupFnsV5, bulkWorkers)
+	default:
+		return nil, UnsupportedVersion{}
+	}
 	if err != nil {
-		return nil, fmt.Errorf("Failed to an ElasticSearch Bulk Processor: %v", err)
+		return nil, fmt.Errorf("Failed to create ElasticSearch client: %v", err)
 	}
 
 	glog.V(2).Infof("ElasticSearch sink configure successfully")
 
 	return &esSvc, nil
-}
-
-func bulkAfterCB(executionId int64, requests []elastic.BulkableRequest, response *elastic.BulkResponse, err error) {
-	if err != nil {
-		glog.Warningf("Failed to execute bulk operation to ElasticSearch: %v", err)
-	}
-
-	if response.Errors {
-		for _, list := range response.Items {
-			for name, itm := range list {
-				if itm.Error != nil {
-					glog.V(3).Infof("Failed to execute bulk operation to ElasticSearch on %s: %v", name, itm.Error)
-				}
-			}
-		}
-	}
 }
