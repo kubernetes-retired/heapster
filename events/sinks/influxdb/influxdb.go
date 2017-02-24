@@ -144,7 +144,7 @@ func (sink *influxdbSink) ExportEvents(eventBatch *core.EventBatch) {
 
 func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	if err := sink.createDatabase(); err != nil {
-		glog.Errorf("Failed to create infuxdb: %v", err)
+		glog.Errorf("Failed to create influxdb: %v", err)
 		return
 	}
 	bp := influxdb.BatchPoints{
