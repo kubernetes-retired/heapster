@@ -169,7 +169,7 @@ The following options are available:
 * `tags` - FIXME. Default. `none`
 * `storeEvents` - Control storage of events. Default: `true`
 
-### Elasticsearch
+### Elasticsearch 2
 This sink supports monitoring metrics and events. To use the ElasticSearch
 sink add the following flag:
 ```
@@ -213,6 +213,53 @@ Like this:
 	or
 
 	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testEvent"
+
+### Elasticsearch 5
+This sink supports monitoring metrics and events. To use the ElasticSearch 5
+sink add the following flag:
+```
+    --sink=elasticsearch5:<ES_SERVER_URL>[?<OPTIONS>]
+```
+Normally an ElasticSearch cluster has multiple nodes or a proxy, so these need
+to be configured for the ElasticSearch sink. To do this, you can set
+`ES_SERVER_URL` to a dummy value, and use the `?nodes=` query value for each
+additional node in the cluster. For example:
+```
+  --sink=elasticsearch5:?nodes=http://foo.com:9200&nodes=http://bar.com:9200
+```
+(*) Notice that using the `?nodes` notation will override the `ES_SERVER_URL`
+
+
+Besides this, the following options can be set in query string:
+
+(*) Note that the keys are case sensitive
+
+* `index` - the index for metrics and events. The default is `heapster`
+* `esUserName` - the username if authentication is enabled
+* `esUserSecret` - the password if authentication is enabled
+* `maxRetries` - the number of retries that the Elastic client will perform
+  for a single request after before giving up and return an error. It is `0`
+  by default, so retry is disabled by default.
+* `healthCheck` - specifies if healthchecks are enabled by default. It is enabled
+  by default. To disable, provide a negative boolean value like `0` or `false`.
+* `sniff` - specifies if the sniffer is enabled by default. It is enabled
+  by default. To disable, provide a negative boolean value like `0` or `false`.
+* `startupHealthcheckTimeout` - the time in seconds the healthcheck waits for
+  a response from Elasticsearch on startup, i.e. when creating a client. The
+  default value is `1`.
+* `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
+* `cluster_name` - cluster name for different Kubernetes clusters. Default value is `default`.
+
+
+Like this:
+
+    --sink="elasticsearch5:?nodes=http://127.0.0.1:9200&index=testMetric"
+
+	or
+
+	--sink="elasticsearch5:?nodes=http://127.0.0.1:9200&index=testEvent"
+
+
 
 #### AWS Integration
 In order to use AWS Managed Elastic we need to use one of the following methods:

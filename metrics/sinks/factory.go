@@ -22,6 +22,7 @@ import (
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/elasticsearch"
+	"k8s.io/heapster/metrics/sinks/elasticsearch5"
 	"k8s.io/heapster/metrics/sinks/gcm"
 	"k8s.io/heapster/metrics/sinks/graphite"
 	"k8s.io/heapster/metrics/sinks/hawkular"
@@ -43,6 +44,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 	switch uri.Key {
 	case "elasticsearch":
 		return elasticsearch.NewElasticSearchSink(&uri.Val)
+	case "elasticsearch5":
+		return elasticsearch5.NewElasticSearchSink(&uri.Val)
 	case "gcm":
 		return gcm.CreateGCMSink(&uri.Val)
 	case "stackdriver":
