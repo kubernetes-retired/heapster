@@ -64,7 +64,7 @@ This separation leads to an idea of splitting Heapster into 3 binaries:
 
 ## Reduction of Responsibility
 
-With 3 possible node sources (Kuberentes API Server, flat file, CoreOS Fleet), 2 metrics 
+With 3 possible node sources (Kubernetes API Server, flat file, CoreOS Fleet), 2 metrics 
 sources (cAdvisor and Kubelet) and constantly growing number of sinks we have to separate 
 the stuff that the core Heapster/K8S team is responsible for and what is provided as a 
 plugin/addition and doesn’t come in the main release package. 
