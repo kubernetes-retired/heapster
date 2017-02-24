@@ -289,6 +289,24 @@ For example,
 
 The librato sink currently only works with accounts, which support [tagged metrics](https://www.librato.com/docs/kb/faq/account_questions/tags_or_sources/).
 
+### Honeycomb
+
+This sink supports both monitoring metrics and events.
+
+To use the Honeycomb sink add the following flag:
+
+    --sink="honeycomb:<?<OPTIONS>>"
+
+Options can be set in query string, like this:
+
+* `dataset` - Honeycomb Dataset to which to publish metrics/events
+* `writekey` - Honeycomb Write Key for your account
+* `apihost` - Option to send metrics to a different host (default: https://api.honeycomb.com) (optional)
+
+For example,
+
+    --sink="honeycomb:?dataset=mydataset&writekey=secretwritekey"
+
 ## Using multiple sinks
 
 Heapster can be configured to send k8s metrics and events to multiple sinks by specifying the`--sink=...` flag multiple times.
