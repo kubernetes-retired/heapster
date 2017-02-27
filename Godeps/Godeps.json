@@ -320,12 +320,12 @@
 			"Rev": "454a56f35412459b5e684fd5ec0f9211b94f002a"
 		},
 		{
-			"ImportPath": "github.com/rikatz/goryman",
-			"Rev": "8c8d07c1fe9b7331498287804b68a17cd66be8bd"
+			"ImportPath": "github.com/riemann/riemann-go-client",
+			"Rev": "a47101952fc2c860c631b68711b7737324201438"
 		},
 		{
-			"ImportPath": "github.com/rikatz/goryman/proto",
-			"Rev": "8c8d07c1fe9b7331498287804b68a17cd66be8bd"
+			"ImportPath": "github.com/riemann/riemann-go-client/proto",
+			"Rev": "a47101952fc2c860c631b68711b7737324201438"
 		},
 		{
 			"ImportPath": "github.com/smartystreets/go-aws-auth",
