@@ -135,16 +135,20 @@ For example,
 
 ### Riemann
 This sink supports metrics only.
-To use the reimann sink add the following flag:
+To use the Riemann sink add the following flag:
 
 	--sink="riemann:<RIEMANN_SERVER_URL>[?<OPTIONS>]"
 
 The following options are available:
 
 * `ttl` - TTL for writes to Riemann. Default: `60 seconds`
-* `state` - FIXME. Default: `""`
-* `tags` - FIXME. Default. `none`
-* `storeEvents` - Control storage of events. Default: `true`
+* `state` - Default: `""`
+* `tags` - Default. `heapster`
+* `batchsize` - The Riemann sink sends batch of events. The default size is `1000`
+
+For example,
+
+--sink=riemann:http://localhost:5555?ttl=120&state=ok&tags=foobar&batchsize=150
 
 ### Elasticsearch
 This sink supports monitoring metrics and events. To use the ElasticSearch

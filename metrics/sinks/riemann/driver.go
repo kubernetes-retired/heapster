@@ -16,57 +16,48 @@ package riemann
 
 import (
 	"net/url"
-	"reflect"
 	"runtime"
 	"strconv"
 	"sync"
-
 	"time"
 
 	"github.com/golang/glog"
-	riemann_api "github.com/rikatz/goryman"
+	"github.com/riemann/riemann-go-client"
 	"k8s.io/heapster/metrics/core"
 )
 
-// Abstracted for testing: this package works against any client that obeys the
-// interface contract exposed by the goryman Riemann client
-
-type riemannClient interface {
-	Connect() error
-	Close() error
-	SendEvent(e *riemann_api.Event) error
+// Used to store the Riemann configuration specified in the Heapster cli
+type riemannConfig struct {
+	host      string
+	ttl       float32
+	state     string
+	tags      []string
+	batchSize int
 }
 
+// contains the riemann client, the riemann configuration, and a RWMutex
 type riemannSink struct {
-	client riemannClient
+	client riemanngo.Client
 	config riemannConfig
 	sync.RWMutex
 }
 
-type riemannConfig struct {
-	host  string
-	ttl   float32
-	state string
-	tags  []string
-}
-
-const (
-	// Maximum number of riemann Events to be sent in one batch.
-	maxSendBatchSize = 10000
-	max_retries      = 2
-)
-
+// creates a Riemann sink. Returns a riemannSink
 func CreateRiemannSink(uri *url.URL) (core.DataSink, error) {
+	// Default configuration
 	c := riemannConfig{
-		host:  "riemann-heapster:5555",
-		ttl:   60.0,
-		state: "",
-		tags:  make([]string, 0),
+		host:      "riemann-heapster:5555",
+		ttl:       60.0,
+		state:     "",
+		tags:      make([]string, 0),
+		batchSize: 1000,
 	}
+	// check host
 	if len(uri.Host) > 0 {
 		c.host = uri.Host
 	}
 	options := uri.Query()
+	// check ttl
 	if len(options["ttl"]) > 0 {
 		var ttl, err = strconv.ParseFloat(options["ttl"][0], 32)
 		if err != nil {
@@ -74,11 +65,23 @@ func CreateRiemannSink(uri *url.URL) (core.DataSink, error) {
 		}
 		c.ttl = float32(ttl)
 	}
+	// check batch size
+	if len(options["batchsize"]) > 0 {
+		var batchSize, err = strconv.Atoi(options["batchsize"][0])
+		if err != nil {
+			return nil, err
+		}
+		c.batchSize = batchSize
+	}
+	// check state
 	if len(options["state"]) > 0 {
 		c.state = options["state"][0]
 	}
+	// check tags
 	if len(options["tags"]) > 0 {
 		c.tags = options["tags"]
+	} else {
+		c.tags = []string{"heapster"}
 	}
 
 	glog.Infof("Riemann sink URI: '%+v', host: '%+v', options: '%+v', ", uri, c.host, options)
@@ -86,19 +89,22 @@ func CreateRiemannSink(uri *url.URL) (core.DataSink, error) {
 		client: nil,
 		config: c,
 	}
-
-	err := rs.setupRiemannClient()
+	// connect the client
+	err := rs.connectRiemannClient()
 	if err != nil {
 		glog.Warningf("Riemann sink not connected: %v", err)
-		// Warn but return the sink.
+		// Warn but return the sink => the client in the sink can be nil
 	}
 	return rs, nil
 }
 
-func (rs *riemannSink) setupRiemannClient() error {
-	client := riemann_api.NewGorymanClient(rs.config.host)
-	runtime.SetFinalizer(client, func(c riemannClient) { c.Close() })
-	err := client.Connect()
+// Receives a sink, connect the riemann client.
+func (rs *riemannSink) connectRiemannClient() error {
+	glog.Infof("Connect Riemann client...")
+	client := riemanngo.NewTcpClient(rs.config.host)
+	runtime.SetFinalizer(client, func(c riemanngo.Client) { c.Close() })
+	// 5 seconds timeout
+	err := client.Connect(5)
 	if err != nil {
 		return err
 	}
@@ -115,52 +121,53 @@ func (sink *riemannSink) Stop() {
 	// nothing needs to be done.
 }
 
+// Receives a list of riemanngo.Event, the sink, and parameters.
+// Creates a new event using the parameters and the sink config, and add it into the Event list.
+// Can send events if events is full
+// Return the list.
+func appendEvent(events []riemanngo.Event, sink *riemannSink, host, name string, value interface{}, labels map[string]string, timestamp int64) []riemanngo.Event {
+	event := riemanngo.Event{
+		Time:        timestamp,
+		Service:     name,
+		Host:        host,
+		Description: "",
+		Attributes:  labels,
+		Metric:      value,
+		Ttl:         sink.config.ttl,
+		State:       sink.config.state,
+		Tags:        sink.config.tags,
+	}
+	// state everywhere
+	events = append(events, event)
+	if len(events) >= sink.config.batchSize {
+		sink.sendData(events)
+		events = nil
+	}
+	return events
+}
+
 // ExportData Send a collection of Timeseries to Riemann
 func (sink *riemannSink) ExportData(dataBatch *core.DataBatch) {
 	sink.Lock()
 	defer sink.Unlock()
 
 	if sink.client == nil {
-		if err := sink.setupRiemannClient(); err != nil {
+		// the client could be nil here, so we reconnect
+		if err := sink.connectRiemannClient(); err != nil {
 			glog.Warningf("Riemann sink not connected: %v", err)
 			return
 		}
 	}
 
-	var dataEvents []riemann_api.Event
-	appendMetric := func(host, name string, value interface{}, labels map[string]string) {
-		event := riemann_api.Event{
-			Time:        dataBatch.Timestamp.Unix(),
-			Service:     name,
-			Host:        host,
-			Description: "", //no description - waste of bandwidth.
-			Attributes:  labels,
-			Metric:      value,
-			Ttl:         sink.config.ttl,
-			State:       sink.config.state,
-			Tags:        sink.config.tags,
-		}
-
-		dataEvents = append(dataEvents, event)
-		if len(dataEvents) >= maxSendBatchSize {
-			sink.sendData(dataEvents)
-			dataEvents = nil
-		}
-	}
-
-	riemannValue := func(value interface{}) interface{} {
-		// Workaround for error from goryman: "Metric of invalid type (type int64)"
-		if reflect.TypeOf(value).Kind() == reflect.Int64 {
-			return int(value.(int64))
-		}
-		return value
-	}
+	var events []riemanngo.Event
 
 	for _, metricSet := range dataBatch.MetricSets {
 		host := metricSet.Labels[core.LabelHostname.Key]
 		for metricName, metricValue := range metricSet.MetricValues {
 			if value := metricValue.GetValue(); value != nil {
-				appendMetric(host, metricName, riemannValue(value), metricSet.Labels)
+				timestamp := dataBatch.Timestamp.Unix()
+				// creates and event and add it to dataEvent
+				events = appendEvent(events, sink, host, metricName, value, metricSet.Labels, timestamp)
 			}
 		}
 		for _, metric := range metricSet.LabeledMetrics {
@@ -172,42 +179,33 @@ func (sink *riemannSink) ExportData(dataBatch *core.DataBatch) {
 				for k, v := range metric.Labels {
 					labels[k] = v
 				}
-				appendMetric(host, metric.Name, riemannValue(value), labels)
+				timestamp := dataBatch.Timestamp.Unix()
+				// creates and event and add it to dataEvent
+				appendEvent(events, sink, host, metric.Name, value, labels, timestamp)
 			}
 		}
 	}
-
-	if len(dataEvents) > 0 {
-		sink.sendData(dataEvents)
+	// Send events to Riemann if dataEvents is not empty
+	if len(events) > 0 {
+		sink.sendData(events)
 	}
 }
 
-func (sink *riemannSink) sendData(dataEvents []riemann_api.Event) {
+// Send Events to Riemann using the client from the sink.
+func (sink *riemannSink) sendData(events []riemanngo.Event) {
+	// do nothing of we are not connected
 	if sink.client == nil {
+		glog.Warningf("Riemann sink not connected")
 		return
 	}
-
 	start := time.Now()
-	errors := 0
-	for _, event := range dataEvents {
-		glog.V(8).Infof("Sending event to Riemann:  %+v", event)
-		var err error
-		for try := 0; try < max_retries; try++ {
-			err = sink.client.SendEvent(&event)
-			if err == nil {
-				break
-			}
-		}
-		if err != nil {
-			errors++
-			glog.V(4).Infof("Failed to send event to Riemann: %+v: %+v", event, err)
-		}
-	}
+	_, err := riemanngo.SendEvents(sink.client, &events)
 	end := time.Now()
-	if errors > 0 {
-		glog.V(2).Info("There were errors sending events to Riemman, forcing reconnection")
-		sink.client.Close()
+	if err == nil {
+		glog.V(4).Infof("Exported %d events to riemann in %s", len(events), end.Sub(start))
+	} else {
+		glog.Warningf("There were errors sending events to Riemman, forcing reconnection. Error : %+v", err)
+		// client will reconnect later
 		sink.client = nil
 	}
-	glog.V(4).Infof("Exported %d events to riemann in %s", len(dataEvents)-errors, end.Sub(start))
 }
