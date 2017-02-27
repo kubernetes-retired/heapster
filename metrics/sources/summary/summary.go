@@ -24,12 +24,13 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/apimachinery/pkg/labels"
+	kube_client "k8s.io/client-go/kubernetes"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/util"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
-	"k8s.io/kubernetes/pkg/version"
 )
 
 var (
@@ -47,9 +48,6 @@ var (
 // Prefix used for the LabelResourceID for volume metrics.
 const VolumeResourcePrefix = "Volume:"
 
-// Earliest kubelet version that serves the summary API.
-var minSummaryKubeletVersion = version.MustParse("v1.2.0-alpha.8")
-
 func init() {
 	prometheus.MustRegister(summaryRequestLatency)
 }
@@ -66,18 +64,12 @@ type NodeInfo struct {
 type summaryMetricsSource struct {
 	node          NodeInfo
 	kubeletClient *kubelet.KubeletClient
-
-	// Whether this node requires the fall-back source.
-	useFallback bool
-	fallback    MetricsSource
 }
 
-func NewSummaryMetricsSource(node NodeInfo, client *kubelet.KubeletClient, fallback MetricsSource) MetricsSource {
+func NewSummaryMetricsSource(node NodeInfo, client *kubelet.KubeletClient) MetricsSource {
 	return &summaryMetricsSource{
 		node:          node,
 		kubeletClient: client,
-		useFallback:   !summarySupported(node.KubeletVersion),
-		fallback:      fallback,
 	}
 }
 
@@ -90,10 +82,6 @@ func (this *summaryMetricsSource) String() string {
 }
 
 func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
-	if this.useFallback {
-		return this.fallback.ScrapeMetrics(start, end)
-	}
-
 	result := &DataBatch{
 		Timestamp:  time.Now(),
 		MetricSets: map[string]*MetricSet{},
@@ -106,11 +94,6 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 	}()
 
 	if err != nil {
-		if kubelet.IsNotFoundError(err) {
-			glog.Warningf("Summary not found, using fallback: %v", err)
-			this.useFallback = true
-			return this.fallback.ScrapeMetrics(start, end)
-		}
 		glog.Errorf("error while getting metrics summary from Kubelet %s(%s:%d): %v", this.node.NodeName, this.node.IP, this.node.Port, err)
 		return result
 	}
@@ -118,15 +101,6 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 	result.MetricSets = this.decodeSummary(summary)
 
 	return result
-}
-
-func summarySupported(kubeletVersion string) bool {
-	semver, err := version.Parse(kubeletVersion)
-	if err != nil {
-		glog.Errorf("Unable to parse kubelet version: %q", kubeletVersion)
-		return false
-	}
-	return semver.GE(minSummaryKubeletVersion)
 }
 
 const (
@@ -371,33 +345,26 @@ func (this *summaryMetricsSource) getContainerName(c *stats.ContainerStats) stri
 
 // TODO: The summaryProvider duplicates a lot of code from kubeletProvider, and should be refactored.
 type summaryProvider struct {
-	nodeLister    *cache.StoreToNodeLister
+	nodeLister    v1listers.NodeLister
 	reflector     *cache.Reflector
 	kubeletClient *kubelet.KubeletClient
 }
 
 func (this *summaryProvider) GetMetricsSources() []MetricsSource {
 	sources := []MetricsSource{}
-	nodes, err := this.nodeLister.List()
+	nodes, err := this.nodeLister.List(labels.Everything())
 	if err != nil {
 		glog.Errorf("error while listing nodes: %v", err)
 		return sources
 	}
 
-	for _, node := range nodes.Items {
-		info, err := this.getNodeInfo(&node)
+	for _, node := range nodes {
+		info, err := this.getNodeInfo(node)
 		if err != nil {
 			glog.Errorf("%v", err)
 			continue
 		}
-		fallback := kubelet.NewKubeletMetricsSource(
-			info.Host,
-			this.kubeletClient,
-			info.NodeName,
-			info.HostName,
-			info.HostID,
-		)
-		sources = append(sources, NewSummaryMetricsSource(info, this.kubeletClient, fallback))
+		sources = append(sources, NewSummaryMetricsSource(info, this.kubeletClient))
 	}
 	return sources
 }
@@ -443,7 +410,7 @@ func NewSummaryProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	kubeClient := kube_client.NewForConfigOrDie(kubeConfig)
 	kubeletClient, err := kubelet.NewKubeletClient(kubeletConfig)
 	if err != nil {
 		return nil, err

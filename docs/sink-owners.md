@@ -31,10 +31,7 @@ List of Owners
 | InfluxDB        | :heavy_check_mark: | :heavy_check_mark: | @kubernetes/heapster-maintainers / @andyxning | :ok:           |
 | Metric (memory) | :heavy_check_mark: | :x:                | @kubernetes/heapster-maintainers              | :ok:           |
 | Kafka           | :heavy_check_mark: | :x:                | @huangyuqi                                    | :ok:           |
-| Monasca         | :heavy_check_mark: | :x:                |                                               | :no_entry: [1] |
 | OpenTSDB        | :heavy_check_mark: | :x:                | @bluebreezecf                                 | :ok:           |
 | Riemann         | :heavy_check_mark: | :x: :new:          | @jamtur01 @mcorbin                            | :ok:           |
 | Graphite        | :heavy_check_mark: | :x:                | @jsoriano / @theairkit                        | :new: #1341    |
 | Wavefront       | :heavy_check_mark: | :x:                | @ezeev                                        | :ok:           |
-
-- [1] Monasca now has native support for Kubernetes, so this is no longer needed (see https://github.com/kubernetes/heapster/issues/1407#issuecomment-266008730 and https://github.com/openstack/monasca-agent/blob/master/docs/Plugins.md#docker)

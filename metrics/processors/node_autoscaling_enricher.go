@@ -15,17 +15,20 @@
 package processors
 
 import (
+	"net/url"
+
+	"k8s.io/apimachinery/pkg/labels"
+	kube_client "k8s.io/client-go/kubernetes"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
 	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/util"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	"net/url"
 )
 
 type NodeAutoscalingEnricher struct {
-	nodeLister *cache.StoreToNodeLister
+	nodeLister v1listers.NodeLister
 	reflector  *cache.Reflector
 }
 
@@ -34,11 +37,11 @@ func (this *NodeAutoscalingEnricher) Name() string {
 }
 
 func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataBatch, error) {
-	nodes, err := this.nodeLister.List()
+	nodes, err := this.nodeLister.List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
-	for _, node := range nodes.Items {
+	for _, node := range nodes {
 		if metricSet, found := batch.MetricSets[core.NodeKey(node.Name)]; found {
 			metricSet.Labels[core.LabelLabels.Key] = util.LabelsToString(node.Labels)
 			capacityCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
@@ -89,7 +92,7 @@ func NewNodeAutoscalingEnricher(url *url.URL) (*NodeAutoscalingEnricher, error) 
 	if err != nil {
 		return nil, err
 	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	kubeClient := kube_client.NewForConfigOrDie(kubeConfig)
 
 	// watch nodes
 	nodeLister, reflector, _ := util.GetNodeLister(kubeClient)

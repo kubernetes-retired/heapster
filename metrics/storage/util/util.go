@@ -17,9 +17,9 @@ package util
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/resource"
 )
 
 func ParseResourceList(ms *core.MetricSet) (api.ResourceList, error) {

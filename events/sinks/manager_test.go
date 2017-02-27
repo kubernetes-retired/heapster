@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	kube_api "k8s.io/kubernetes/pkg/api"
+	kube_api "k8s.io/client-go/pkg/api/v1"
 
 	"k8s.io/heapster/events/core"
 	"k8s.io/heapster/events/util"

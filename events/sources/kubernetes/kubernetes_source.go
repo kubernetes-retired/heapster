@@ -21,14 +21,13 @@ import (
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubewatch "k8s.io/apimachinery/pkg/watch"
+	kubeclient "k8s.io/client-go/kubernetes"
+	kubev1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	kubeapi "k8s.io/client-go/pkg/api/v1"
 	kubeconfig "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/events/core"
-	kubeapi "k8s.io/kubernetes/pkg/api"
-	kubeapiunv "k8s.io/kubernetes/pkg/api/unversioned"
-	kubeclient "k8s.io/kubernetes/pkg/client/unversioned"
-	kubefields "k8s.io/kubernetes/pkg/fields"
-	kubelabels "k8s.io/kubernetes/pkg/labels"
-	kubewatch "k8s.io/kubernetes/pkg/watch"
 )
 
 const (
@@ -74,7 +73,7 @@ type KubernetesEventSource struct {
 
 	stopChannel chan struct{}
 
-	eventClient kubeclient.EventInterface
+	eventClient kubev1core.EventInterface
 }
 
 func (this *KubernetesEventSource) GetNewEvents() *core.EventBatch {
@@ -103,10 +102,7 @@ event_loop:
 func (this *KubernetesEventSource) watch() {
 	// Outer loop, for reconnections.
 	for {
-		events, err := this.eventClient.List(kubeapi.ListOptions{
-			LabelSelector: kubelabels.Everything(),
-			FieldSelector: kubefields.Everything(),
-		})
+		events, err := this.eventClient.List(metav1.ListOptions{})
 		if err != nil {
 			glog.Errorf("Failed to load events: %v", err)
 			time.Sleep(time.Second)
@@ -117,9 +113,7 @@ func (this *KubernetesEventSource) watch() {
 		resourceVersion := events.ResourceVersion
 
 		watcher, err := this.eventClient.Watch(
-			kubeapi.ListOptions{
-				LabelSelector:   kubelabels.Everything(),
-				FieldSelector:   kubefields.Everything(),
+			metav1.ListOptions{
 				Watch:           true,
 				ResourceVersion: resourceVersion})
 		if err != nil {
@@ -140,7 +134,7 @@ func (this *KubernetesEventSource) watch() {
 				}
 
 				if watchUpdate.Type == kubewatch.Error {
-					if status, ok := watchUpdate.Object.(*kubeapiunv.Status); ok {
+					if status, ok := watchUpdate.Object.(*metav1.Status); ok {
 						glog.Errorf("Error during watch: %#v", status)
 						break inner_loop
 					}
@@ -180,7 +174,7 @@ func NewKubernetesSource(uri *url.URL) (*KubernetesEventSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubeClient, err := kubeclient.New(kubeConfig)
+	kubeClient, err := kubeclient.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, err
 	}

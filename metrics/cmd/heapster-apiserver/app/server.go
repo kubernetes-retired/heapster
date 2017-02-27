@@ -18,64 +18,38 @@
 package app
 
 import (
-	"strings"
-	"time"
+	"fmt"
 
-	"github.com/golang/glog"
-	"github.com/pborman/uuid"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-
+	"k8s.io/apimachinery/pkg/util/wait"
+	genericapiserver "k8s.io/apiserver/pkg/server"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/heapster/metrics/options"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
-	"k8s.io/kubernetes/pkg/admission"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apiserver/authenticator"
-	"k8s.io/kubernetes/pkg/client/cache"
-	"k8s.io/kubernetes/pkg/controller/informers"
-	"k8s.io/kubernetes/pkg/genericapiserver"
-	genericauthorizer "k8s.io/kubernetes/pkg/genericapiserver/authorizer"
-	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
-	"k8s.io/kubernetes/pkg/registry/cachesize"
 )
-
-// NewAPIServerCommand creates a *cobra.Command object with default parameters
-func NewAPIServerCommand() *cobra.Command {
-	s := genericoptions.NewServerRunOptions()
-	s.AddUniversalFlags(pflag.CommandLine)
-	cmd := &cobra.Command{
-		Use:  "heapster-apiserver",
-		Long: `heapster apiserver`,
-		Run: func(cmd *cobra.Command, args []string) {
-		},
-	}
-
-	return cmd
-}
 
 type HeapsterAPIServer struct {
 	*genericapiserver.GenericAPIServer
 	options    *options.HeapsterRunOptions
 	metricSink *metricsink.MetricSink
-	nodeLister *cache.StoreToNodeLister
+	nodeLister v1listers.NodeLister
 }
 
 // Run runs the specified APIServer. This should never exit.
 func (h *HeapsterAPIServer) RunServer() error {
-	h.Run(h.options.ServerRunOptions)
+	h.PrepareRun().Run(wait.NeverStop)
 	return nil
 }
 
 func NewHeapsterApiServer(s *options.HeapsterRunOptions, metricSink *metricsink.MetricSink,
-	nodeLister *cache.StoreToNodeLister, podLister *cache.StoreToPodLister) (*HeapsterAPIServer, error) {
+	nodeLister v1listers.NodeLister, podLister v1listers.PodLister) (*HeapsterAPIServer, error) {
 
-	server, err := newAPIServer(s.ServerRunOptions)
+	server, err := newAPIServer(s)
 	if err != nil {
 		return &HeapsterAPIServer{}, err
 	}
 
-	installMetricsAPIs(s.ServerRunOptions, server, metricSink, nodeLister, podLister)
+	installMetricsAPIs(s, server, metricSink, nodeLister, podLister)
 
 	return &HeapsterAPIServer{
 		GenericAPIServer: server,
@@ -85,81 +59,28 @@ func NewHeapsterApiServer(s *options.HeapsterRunOptions, metricSink *metricsink.
 	}, nil
 }
 
-func newAPIServer(s *genericoptions.ServerRunOptions) (*genericapiserver.GenericAPIServer, error) {
-	genericapiserver.DefaultAndValidateRunOptions(s)
-
-	resourceConfig := genericapiserver.NewResourceConfig()
-
-	storageGroupsToEncodingVersion, err := s.StorageGroupsToEncodingVersion()
-	if err != nil {
-		glog.Fatalf("error generating storage version map: %s", err)
-	}
-	storageFactory, err := genericapiserver.BuildDefaultStorageFactory(
-		s.StorageConfig, s.DefaultStorageMediaType, api.Codecs,
-		genericapiserver.NewDefaultResourceEncodingConfig(), storageGroupsToEncodingVersion,
-		[]unversioned.GroupVersionResource{}, resourceConfig, s.RuntimeConfig)
-	if err != nil {
-		glog.Fatalf("error in initializing storage factory: %s", err)
+func newAPIServer(s *options.HeapsterRunOptions) (*genericapiserver.GenericAPIServer, error) {
+	if err := s.SecureServing.MaybeDefaultWithSelfSignedCerts("heapster.kube-system"); err != nil {
+		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
 	}
 
-	authn, err := authenticator.New(authenticator.AuthenticatorConfig{
-		BasicAuthFile:     s.BasicAuthFile,
-		ClientCAFile:      s.ClientCAFile,
-		TokenAuthFile:     s.TokenAuthFile,
-		OIDCIssuerURL:     s.OIDCIssuerURL,
-		OIDCClientID:      s.OIDCClientID,
-		OIDCCAFile:        s.OIDCCAFile,
-		OIDCUsernameClaim: s.OIDCUsernameClaim,
-		OIDCGroupsClaim:   s.OIDCGroupsClaim,
-		KeystoneURL:       s.KeystoneURL,
-	})
-	if err != nil {
-		glog.Fatalf("Invalid Authentication Config: %v", err)
+	serverConfig := genericapiserver.NewConfig().
+		WithSerializer(api.Codecs)
+
+	if err := s.SecureServing.ApplyTo(serverConfig); err != nil {
+		return nil, err
 	}
 
-	authorizationModeNames := strings.Split(s.AuthorizationMode, ",")
-	authorizationConfig := genericauthorizer.AuthorizationConfig{
-		PolicyFile:                  s.AuthorizationPolicyFile,
-		WebhookConfigFile:           s.AuthorizationWebhookConfigFile,
-		WebhookCacheAuthorizedTTL:   s.AuthorizationWebhookCacheAuthorizedTTL,
-		WebhookCacheUnauthorizedTTL: s.AuthorizationWebhookCacheUnauthorizedTTL,
-		RBACSuperUser:               s.AuthorizationRBACSuperUser,
-	}
-	authorizer, err := genericauthorizer.NewAuthorizerFromAuthorizationConfig(authorizationModeNames, authorizationConfig)
-	if err != nil {
-		glog.Fatalf("Invalid Authorization Config: %v", err)
+	if !s.DisableAuthForTesting {
+		if err := s.Authentication.ApplyTo(serverConfig); err != nil {
+			return nil, err
+		}
+		if err := s.Authorization.ApplyTo(serverConfig); err != nil {
+			return nil, err
+		}
 	}
 
-	admissionControlPluginNames := strings.Split(s.AdmissionControl, ",")
-	privilegedLoopbackToken := uuid.NewRandom().String()
+	serverConfig.SwaggerConfig = genericapiserver.DefaultSwaggerConfig()
 
-	client, err := s.NewSelfClient(privilegedLoopbackToken)
-	if err != nil {
-		glog.Errorf("Failed to create clientset: %v", err)
-	}
-
-	sharedInformers := informers.NewSharedInformerFactory(client, 10*time.Minute)
-	pluginInitializer := admission.NewPluginInitializer(sharedInformers)
-
-	admissionController, err := admission.NewFromPlugins(client, admissionControlPluginNames, s.AdmissionControlConfigFile, pluginInitializer)
-	if err != nil {
-		glog.Errorf("Failed to create admission Controller: %v", err)
-	}
-
-	genericConfig := genericapiserver.NewConfig(s)
-	// TODO: Move the following to generic api server as well.
-	genericConfig.Authenticator = authn
-	genericConfig.SupportsBasicAuth = len(s.BasicAuthFile) > 0
-	genericConfig.Authorizer = authorizer
-	genericConfig.AdmissionControl = admissionController
-	genericConfig.APIResourceConfigSource = storageFactory.APIResourceConfigSource
-	genericConfig.MasterServiceNamespace = s.MasterServiceNamespace
-	genericConfig.Serializer = api.Codecs
-
-	// TODO: Move this to generic api server (Need to move the command line flag).
-	if s.EnableWatchCache {
-		cachesize.SetWatchCacheSizes(s.WatchCacheSizes)
-	}
-
-	return genericConfig.New()
+	return serverConfig.Complete().New()
 }

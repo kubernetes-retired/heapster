@@ -26,12 +26,12 @@ import (
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/util/metrics"
 
-	"k8s.io/kubernetes/pkg/client/cache"
+	v1listers "k8s.io/client-go/listers/core/v1"
 )
 
 const pprofBasePath = "/debug/pprof/"
 
-func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, nodeLister *cache.StoreToNodeLister, historicalSource core.HistoricalSource) http.Handler {
+func setupHandlers(metricSink *metricsink.MetricSink, podLister v1listers.PodLister, nodeLister v1listers.NodeLister, historicalSource core.HistoricalSource) http.Handler {
 
 	runningInKubernetes := true
 

@@ -19,9 +19,9 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
+	kube_client "k8s.io/client-go/rest"
 	kube_config "k8s.io/heapster/common/kubernetes"
-	kube_client "k8s.io/kubernetes/pkg/client/restclient"
-	kubelet_client "k8s.io/kubernetes/pkg/kubelet/client"
+	kubelet_client "k8s.io/heapster/metrics/sources/kubelet/util"
 )
 
 const (

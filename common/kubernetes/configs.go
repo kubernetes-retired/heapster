@@ -20,10 +20,10 @@ import (
 	"net/url"
 	"strconv"
 
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	kube_client "k8s.io/kubernetes/pkg/client/restclient"
-	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	kubeClientCmdApi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	kube_rest "k8s.io/client-go/rest"
+	kubeClientCmd "k8s.io/client-go/tools/clientcmd"
+	kubeClientCmdApi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 const (
@@ -63,9 +63,9 @@ func getConfigOverrides(uri *url.URL) (*kubeClientCmd.ConfigOverrides, error) {
 	return &kubeConfigOverride, nil
 }
 
-func GetKubeClientConfig(uri *url.URL) (*kube_client.Config, error) {
+func GetKubeClientConfig(uri *url.URL) (*kube_rest.Config, error) {
 	var (
-		kubeConfig *kube_client.Config
+		kubeConfig *kube_rest.Config
 		err        error
 	)
 
@@ -84,7 +84,7 @@ func GetKubeClientConfig(uri *url.URL) (*kube_client.Config, error) {
 	}
 
 	if inClusterConfig {
-		kubeConfig, err = kube_client.InClusterConfig()
+		kubeConfig, err = kube_rest.InClusterConfig()
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func GetKubeClientConfig(uri *url.URL) (*kube_client.Config, error) {
 		if configOverrides.ClusterInfo.Server != "" {
 			kubeConfig.Host = configOverrides.ClusterInfo.Server
 		}
-		kubeConfig.GroupVersion = &unversioned.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion}
+		kubeConfig.GroupVersion = &schema.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion}
 		kubeConfig.Insecure = configOverrides.ClusterInfo.InsecureSkipTLSVerify
 		if configOverrides.ClusterInfo.InsecureSkipTLSVerify {
 			kubeConfig.TLSClientConfig.CAFile = ""
@@ -120,11 +120,11 @@ func GetKubeClientConfig(uri *url.URL) (*kube_client.Config, error) {
 				return nil, err
 			}
 		} else {
-			kubeConfig = &kube_client.Config{
+			kubeConfig = &kube_rest.Config{
 				Host:     configOverrides.ClusterInfo.Server,
 				Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
 			}
-			kubeConfig.GroupVersion = &unversioned.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion}
+			kubeConfig.GroupVersion = &schema.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion}
 		}
 	}
 	if len(kubeConfig.Host) == 0 {

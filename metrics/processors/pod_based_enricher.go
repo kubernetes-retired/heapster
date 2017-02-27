@@ -21,13 +21,13 @@ import (
 
 	"k8s.io/heapster/metrics/util"
 
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
 )
 
 type PodBasedEnricher struct {
-	podLister *cache.StoreToPodLister
+	podLister v1listers.PodLister
 }
 
 func (this *PodBasedEnricher) Name() string {
@@ -185,7 +185,7 @@ func intValue(value int64) core.MetricValue {
 	}
 }
 
-func NewPodBasedEnricher(podLister *cache.StoreToPodLister) (*PodBasedEnricher, error) {
+func NewPodBasedEnricher(podLister v1listers.PodLister) (*PodBasedEnricher, error) {
 	return &PodBasedEnricher{
 		podLister: podLister,
 	}, nil

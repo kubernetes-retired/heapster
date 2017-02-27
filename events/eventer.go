@@ -25,12 +25,12 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/events/manager"
 	"k8s.io/heapster/events/sinks"
 	"k8s.io/heapster/events/sources"
 	"k8s.io/heapster/version"
-	"k8s.io/kubernetes/pkg/util/logs"
 )
 
 var (
