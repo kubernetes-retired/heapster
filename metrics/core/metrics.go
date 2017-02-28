@@ -155,9 +155,9 @@ var MetricMemoryUsagePercentage = Metric{
 	},
 	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
 		return MetricValue{
-			ValueType:  ValueInt64,
+			ValueType: ValueFloat ,
 			MetricType: MetricGauge,
-			FloatValue:   float32(float64(stat.Memory.Usage)/float64(spec.Memory.Limit))}
+			FloatValue:   float32(float64(stat.Memory.Usage * 100)/float64(spec.Memory.Limit))}
 	},
 }
 
@@ -523,7 +523,7 @@ var MetricFilesystemUsagePercentage = Metric{
 				MetricValue: MetricValue{
 					ValueType:  ValueFloat,
 					MetricType: MetricGauge,
-					FloatValue:   float32(float64(fs.Usage)/float64(fs.Limit)),
+					FloatValue:   float32(float64(fs.Usage * 100)/float64(fs.Limit)),
 				},
 			})
 		}
