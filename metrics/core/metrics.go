@@ -35,7 +35,10 @@ var StandardMetrics = []Metric{
 	MetricNetworkRx,
 	MetricNetworkRxErrors,
 	MetricNetworkTx,
-	MetricNetworkTxErrors}
+	MetricNetworkTxErrors,
+	// add some metric percentage support
+	MetricMemoryUsagePercentage,
+}
 
 // Metrics computed based on cluster state using Kubernetes API.
 var AdditionalMetrics = []Metric{
@@ -136,6 +139,25 @@ var MetricMemoryUsage = Metric{
 			ValueType:  ValueInt64,
 			MetricType: MetricGauge,
 			IntValue:   int64(stat.Memory.Usage)}
+	},
+}
+
+var MetricMemoryUsagePercentage = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/usagepercentage",
+		Description: "Total memory usage percentage",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsBytes,
+	},
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasMemory
+	},
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricGauge,
+			FloatValue:   float32(float64(stat.Memory.Usage)/float64(spec.Memory.Limit))}
 	},
 }
 
@@ -271,6 +293,7 @@ var MetricNetworkTxErrors = Metric{
 			IntValue:   int64(stat.Network.TxErrors)}
 	},
 }
+
 
 // Definition of Additional Metrics.
 var MetricCpuRequest = Metric{
@@ -470,6 +493,37 @@ var MetricFilesystemUsage = Metric{
 					ValueType:  ValueInt64,
 					MetricType: MetricGauge,
 					IntValue:   int64(fs.Usage),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemUsagePercentage = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/usagePercentage",
+		Description: "Total number of bytes consumed on a filesystem",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/usagePercentage",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueFloat,
+					MetricType: MetricGauge,
+					IntValue:   float32(float64(fs.Usage)/float64(fs.Limit)),
 				},
 			})
 		}

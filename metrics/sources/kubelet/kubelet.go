@@ -98,10 +98,12 @@ func (this *kubeletMetricsSource) handleSystemContainer(c *cadvisor.ContainerInf
 
 func (this *kubeletMetricsSource) handleKubernetesContainer(cName, ns, podName string, c *cadvisor.ContainerInfo, cMetrics *MetricSet) string {
 	var metricSetKey string
+	// 如果 容器名 等于 "POD"
 	if cName == infraContainerName {
 		metricSetKey = PodKey(ns, podName)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePod
 	} else {
+		//namespace:%s/pod:%s/container:%s
 		metricSetKey = PodContainerKey(ns, podName, cName)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePodContainer
 		cMetrics.Labels[LabelContainerName.Key] = cName
@@ -116,10 +118,13 @@ func (this *kubeletMetricsSource) handleKubernetesContainer(cName, ns, podName s
 }
 
 func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (string, *MetricSet) {
+	// 如果 stats is nil, return
 	if len(c.Stats) == 0 {
 		return "", nil
 	}
 
+	// CreateTime: container 创建时间
+	// ScrapteTime: metric 抓取时间
 	var metricSetKey string
 	cMetrics := &MetricSet{
 		CreateTime:   c.Spec.CreationTime,
@@ -132,10 +137,19 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		},
 		LabeledMetrics: []LabeledMetric{},
 	}
+
+	// 通过 scope name 等于'/'
+	// LabelMetricSetType.Key = 'node'
 	if isNode(c) {
 		metricSetKey = NodeKey(this.nodename)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
 	} else {
+		//	infraContainerName = "POD"
+		// TODO: following constants are copied from k8s, change to use them directly
+		//kubernetesPodNameLabel      = "io.kubernetes.pod.name"
+		//kubernetesPodNamespaceLabel = "io.kubernetes.pod.namespace"
+		//kubernetesPodUID            = "io.kubernetes.pod.uid"
+		//kubernetesContainerLabel    = "io.kubernetes.container.name"
 		cName := c.Spec.Labels[kubernetesContainerLabel]
 		ns := c.Spec.Labels[kubernetesPodNamespaceLabel]
 		podName := c.Spec.Labels[kubernetesPodNameLabel]
@@ -169,12 +183,28 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		}
 	}
 
+	/*
+	MetricUptime,
+	MetricCpuUsage,
+	MetricMemoryUsage,
+	MetricMemoryWorkingSet,
+	MetricMemoryPageFaults,
+	MetricMemoryMajorPageFaults,
+	MetricNetworkRx,
+	MetricNetworkRxErrors,
+	MetricNetworkTx,
+	MetricNetworkTxErrors,
+	 */
 	for _, metric := range StandardMetrics {
 		if metric.HasValue != nil && metric.HasValue(&c.Spec) {
 			cMetrics.MetricValues[metric.Name] = metric.GetValue(&c.Spec, c.Stats[0])
 		}
 	}
-
+	/*
+	MetricFilesystemUsage,
+	MetricFilesystemLimit,
+	MetricFilesystemAvailable,
+ 	*/
 	for _, metric := range LabeledMetrics {
 		if metric.HasLabeledMetric != nil && metric.HasLabeledMetric(&c.Spec) {
 			labeledMetrics := metric.GetLabeledMetric(&c.Spec, c.Stats[0])
@@ -182,6 +212,17 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		}
 	}
 
+	/*
+	add node file system usage percentage
+	 */
+	if isNode(c) {
+		if MetricFilesystemUsagePercentage.HasLabeledMetric != nil && MetricFilesystemUsagePercentage.HasLabeledMetric(&c.Spec) {
+			labeledMetrics := MetricFilesystemUsagePercentage.GetLabeledMetric(&c.Spec, c.Stats[0])
+			cMetrics.LabeledMetrics = append(cMetrics.LabeledMetrics, labeledMetrics...)
+		}
+	}
+
+	// false 不需要关注
 	if c.Spec.HasCustomMetrics {
 	metricloop:
 		for _, spec := range c.Spec.CustomMetrics {

@@ -88,6 +88,7 @@ func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http
 func (self *KubeletClient) parseStat(containerInfo *cadvisor.ContainerInfo) *cadvisor.ContainerInfo {
 	containerInfo.Stats = sampleContainerStats(containerInfo.Stats)
 
+	// 移除 /system.slice/docker- 避免数据不正确
 	if strings.HasPrefix(containerInfo.Name, "/system.slice/docker-") {
 		return nil
 	}
@@ -185,6 +186,7 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 	if client == nil {
 		client = http.DefaultClient
 	}
+	//获得完整子容器表的，字符串-对象 map
 	err = self.postRequestAndGetValue(client, req, &containers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all container stats from Kubelet URL %q: %v", url, err)
