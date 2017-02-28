@@ -523,7 +523,7 @@ var MetricFilesystemUsagePercentage = Metric{
 				MetricValue: MetricValue{
 					ValueType:  ValueFloat,
 					MetricType: MetricGauge,
-					IntValue:   float32(float64(fs.Usage)/float64(fs.Limit)),
+					FloatValue:   float32(float64(fs.Usage)/float64(fs.Limit)),
 				},
 			})
 		}
