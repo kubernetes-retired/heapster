@@ -40,21 +40,6 @@ func LabelsToString(labels map[string]string) string {
 	return strings.Join(output, labelSeperator)
 }
 
-func CopyLabels(labels map[string]string) map[string]string {
-	c := make(map[string]string, len(labels))
-	for key, val := range labels {
-		c[key] = val
-	}
-	return c
-}
-
-func GetLatest(a, b time.Time) time.Time {
-	if a.After(b) {
-		return a
-	}
-	return b
-}
-
 func SetLabelSeperator(seperator string) {
 	labelSeperator = seperator
 }
