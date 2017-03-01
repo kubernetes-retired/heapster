@@ -130,9 +130,6 @@ func TestCreateElasticSearchServiceSingleDnsEntrypoint(t *testing.T) {
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
 		t.Fatal("basicAuthUsername is not equal")
 	}
-	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
-		t.Fatal("basicAuthUsername is not equal")
-	}
 	if actualClientRefl.FieldByName("maxRetries").Int() != expectedClientRefl.FieldByName("maxRetries").Int() {
 		t.Fatal("maxRetries is not equal")
 	}
