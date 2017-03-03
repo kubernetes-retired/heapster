@@ -98,6 +98,18 @@ var (
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/memory/page_fault_count",
 	}
+
+	diskBytesUsedMD = &metricMetadata{
+		MetricKind: "GAUGE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/disk/bytes_used",
+	}
+
+	diskBytesTotalMD = &metricMetadata{
+		MetricKind: "GAUGE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/disk/bytes_total",
+	}
 )
 
 func (sink *stackdriverSink) Name() string {
@@ -125,6 +137,18 @@ func (sink *stackdriverSink) ExportData(dataBatch *core.DataBatch) {
 
 		for name, value := range metricSet.MetricValues {
 			point := sink.translateMetric(dataBatch.Timestamp, metricSet.Labels, name, value, metricSet.CreateTime)
+
+			if point != nil {
+				req.TimeSeries = append(req.TimeSeries, point)
+			}
+			if len(req.TimeSeries) >= maxTimeseriesPerRequest {
+				sink.sendRequest(req)
+				req = getReq()
+			}
+		}
+
+		for _, metric := range metricSet.LabeledMetrics {
+			point := sink.translateLabeledMetric(dataBatch.Timestamp, metricSet.Labels, metric, metricSet.CreateTime)
 
 			if point != nil {
 				req.TimeSeries = append(req.TimeSeries, point)
@@ -206,6 +230,28 @@ func (sink *stackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) 
 		IntValue: memoryFaults - majorMemoryFaults,
 	}
 	metricSet.MetricValues["memory/minor_page_faults"] = minorMemoryFaults
+}
+
+func (sink *stackdriverSink) translateLabeledMetric(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *sd_api.TimeSeries {
+	resourceLabels := sink.getResourceLabels(labels)
+	switch metric.Name {
+	case core.MetricFilesystemUsage.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+		ts := createTimeSeries(resourceLabels, diskBytesUsedMD, point)
+		ts.Metric.Labels = map[string]string{
+			"device_name": metric.Labels[core.LabelResourceID.Key],
+		}
+		return ts
+	case core.MetricFilesystemLimit.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+		ts := createTimeSeries(resourceLabels, diskBytesTotalMD, point)
+		ts.Metric.Labels = map[string]string{
+			"device_name": metric.Labels[core.LabelResourceID.Key],
+		}
+		return ts
+	default:
+		return nil
+	}
 }
 
 func (sink *stackdriverSink) translateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, createTime time.Time) *sd_api.TimeSeries {
