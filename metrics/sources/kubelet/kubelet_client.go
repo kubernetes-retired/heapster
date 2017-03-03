@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	kubelet_client "k8s.io/heapster/metrics/sources/kubelet/util"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
@@ -77,6 +78,13 @@ func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http
 	} else if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("request failed - %q, response: %q", response.Status, string(body))
 	}
+
+	kubeletAddr := "[unknown]"
+	if req.URL != nil {
+		kubeletAddr = req.URL.Host
+	}
+	glog.V(10).Infof("Raw response from Kubelet at %s: %s", kubeletAddr, string(body))
+
 	err = json.Unmarshal(body, value)
 	if err != nil {
 		return fmt.Errorf("failed to parse output. Response: %q. Error: %v", string(body), err)
