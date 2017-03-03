@@ -70,6 +70,16 @@ func TestName(t *testing.T) {
 	assert.Equal(t, name, "Wavefront Sink")
 }
 
+func TestNewMetricName(t *testing.T) {
+	fakeSink := NewFakeWavefrontSink()
+	batch := generateFakeBatch()
+	fakeSink.ExportData(batch)
+	name := "cpu/usage"
+	mtype := "pod_container"
+	newName := fakeSink.cleanMetricName(mtype, name)
+	assert.Equal(t, "pod_container.cpu.usage", newName)
+}
+
 func TestValidateLines(t *testing.T) {
 	fakeSink := NewFakeWavefrontSink()
 	batch := generateFakeBatch()

@@ -16,15 +16,14 @@ package wavefront
 
 import (
 	"fmt"
+	"github.com/golang/glog"
+	"k8s.io/heapster/metrics/core"
 	"net"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/golang/glog"
-	"k8s.io/heapster/metrics/core"
 )
 
 const (
@@ -54,7 +53,6 @@ func (wfSink *wavefrontSink) Stop() {
 }
 
 func (wfSink *wavefrontSink) sendLine(line string) {
-
 	if wfSink.testMode {
 		wfSink.testReceivedLines = append(wfSink.testReceivedLines, line)
 		glog.Infoln(line)
@@ -73,7 +71,7 @@ func (wfSink *wavefrontSink) sendLine(line string) {
 }
 
 func (wfSink *wavefrontSink) sendPoint(metricName string, metricValStr string, ts string, source string, tagStr string) {
-	metricLine := fmt.Sprintf("%s %s %s source=\"%s\" %s\n", wfSink.cleanMetricName(metricName), metricValStr, ts, source, tagStr)
+	metricLine := fmt.Sprintf("%s %s %s source=\"%s\" %s\n", metricName, metricValStr, ts, source, tagStr)
 	wfSink.sendLine(metricLine)
 }
 
@@ -97,19 +95,22 @@ func excludeTag(a string) bool {
 	return false
 }
 
-func (wfSink *wavefrontSink) cleanMetricName(metricName string) string {
-	return wfSink.Prefix + strings.Replace(metricName, "/", ".", -1)
+func (wfSink *wavefrontSink) cleanMetricName(metricType string, metricName string) string {
+	return wfSink.Prefix + metricType + "." + strings.Replace(metricName, "/", ".", -1)
 }
 
 func (wfSink *wavefrontSink) addLabelTags(ms *core.MetricSet, tags map[string]string) {
 	for _, labelName := range sortedLabelKeys(ms.Labels) {
 		labelValue := ms.Labels[labelName]
-		if labelName == "labels" && wfSink.IncludeLabels {
-			for _, label := range strings.Split(labelValue, ",") {
-				//labels = app:webproxy,version:latest
-				tagParts := strings.SplitN(label, ":", 2)
-				if len(tagParts) == 2 {
-					tags["label."+tagParts[0]] = tagParts[1]
+		if labelName == "labels" {
+			//only parse labels if IncludeLabels == true
+			if wfSink.IncludeLabels {
+				for _, label := range strings.Split(labelValue, ",") {
+					//labels = app:webproxy,version:latest
+					tagParts := strings.SplitN(label, ":", 2)
+					if len(tagParts) == 2 {
+						tags["label."+tagParts[0]] = tagParts[1]
+					}
 				}
 			}
 		} else {
@@ -122,19 +123,22 @@ func (wfSink *wavefrontSink) addLabelTags(ms *core.MetricSet, tags map[string]st
 func (wfSink *wavefrontSink) send(batch *core.DataBatch) {
 
 	metricCounter := 0
+
 	for _, key := range sortedMetricSetKeys(batch.MetricSets) {
 		ms := batch.MetricSets[key]
+
 		// Populate tag map
 		tags := make(map[string]string)
 		// Make sure all metrics are tagged with the cluster name
 		tags["cluster"] = wfSink.ClusterName
 		// Add pod labels as tags
 		wfSink.addLabelTags(ms, tags)
+		metricType := tags["type"]
 		if strings.Contains(tags["container_name"], sysSubContainerName) {
 			//don't send system subcontainers
 			continue
 		}
-		if wfSink.IncludeContainers == false && strings.Contains(tags["type"], "pod_container") {
+		if wfSink.IncludeContainers == false && strings.Contains(metricType, "pod_container") {
 			// the user doesn't want to include container metrics (only pod and above)
 			continue
 		}
@@ -151,22 +155,21 @@ func (wfSink *wavefrontSink) send(batch *core.DataBatch) {
 			}
 			if metricValStr != "" {
 				ts := strconv.FormatInt(batch.Timestamp.Unix(), 10)
-				stype := tags["type"]
 				source := ""
-				if stype == "cluster" {
+				if metricType == "cluster" {
 					source = wfSink.ClusterName
-				} else if stype == "ns" {
+				} else if metricType == "ns" {
 					source = tags["namespace_name"] + "-ns"
 				} else {
 					source = tags["hostname"]
 				}
 				tagStr := tagsToString(tags)
-				wfSink.sendPoint(wfSink.cleanMetricName(metricName), metricValStr, ts, source, tagStr)
+				wfSink.sendPoint(wfSink.cleanMetricName(metricType, metricName), metricValStr, ts, source, tagStr)
 				metricCounter = metricCounter + 1
 			}
 		}
 		for _, metric := range ms.LabeledMetrics {
-			metricName := wfSink.cleanMetricName(metric.Name)
+			metricName := wfSink.cleanMetricName(metricType, metric.Name)
 			metricValStr := ""
 			if core.ValueInt64 == metric.ValueType {
 				metricValStr = fmt.Sprintf("%d", metric.IntValue)
