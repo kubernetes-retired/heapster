@@ -19,14 +19,18 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/golang/glog"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/heapster/common/flags"
+	"k8s.io/heapster/events/api"
 	"k8s.io/heapster/events/manager"
 	"k8s.io/heapster/events/sinks"
 	"k8s.io/heapster/events/sources"
@@ -39,6 +43,8 @@ var (
 	argSources   flags.Uris
 	argSinks     flags.Uris
 	argVersion   bool
+	argIP        = flag.String("ip", "0.0.0.0", "ip eventer http service uses")
+	argPort      = flag.Uint("port", 8084, "port eventer http service listens on")
 )
 
 func main() {
@@ -98,16 +104,34 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Failed to create main manager: %v", err)
 	}
-	manager.Start()
 
+	manager.Start()
 	glog.Infof("Starting eventer")
+
+	go startHTTPServer()
+
 	<-quitChannel
 }
 
+func startHTTPServer() {
+	glog.Info("Starting eventer http service")
+
+	glog.Fatal(http.ListenAndServe(net.JoinHostPort(*argIP, strconv.Itoa(int(*argPort))), nil))
+}
+
 func validateFlags() error {
-	if *argFrequency < 5*time.Second {
-		return fmt.Errorf("frequency needs to be greater than 5 seconds - %d", *argFrequency)
+	var minFrequency = 5 * time.Second
+
+	if *argFrequency < minFrequency {
+		return fmt.Errorf("frequency needs to be greater than %s, supplied %s", minFrequency,
+			*argFrequency)
 	}
+
+	if *argFrequency > api.MaxEventsScrapeDelay {
+		return fmt.Errorf("frequency needs to be smaller than %s, supplied %s",
+			api.MaxEventsScrapeDelay, *argFrequency)
+	}
+
 	return nil
 }
 
