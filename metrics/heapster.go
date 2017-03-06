@@ -197,7 +197,7 @@ func createAndInitSinksOrDie(sinkAddresses flags.Uris, historicalSource string) 
 	}
 	sinkManager, err := sinks.NewDataSinkManager(sinkList, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
 	if err != nil {
-		glog.Fatalf("Failed to created sink manager: %v", err)
+		glog.Fatalf("Failed to create sink manager: %v", err)
 	}
 	return sinkManager, metricSink, histSource
 }
