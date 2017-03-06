@@ -5,20 +5,20 @@ Heapster can store data into different backends (sinks). These are specified on 
 via the `--sink` flag. The flag takes an argument of the form `PREFIX:CONFIG[?OPTIONS]`.
 Options (optional!) are specified as URL query parameters, separated by `&` as normal.
 This allows each source to have custom configuration passed to it without needing to
-continually add new flags to Heapster as new sinks are added. This also means
-heapster can store data into multiple sinks at once.
+continually add new flags to Heapster as new sinks are added. Heapster can 
+store data into multiple sinks at once if multiple `--sink` flags are specified.
 
 ## Current sinks
 
 ### Log
 
-This sinks writes all data to the standard output which is particularly useful for debugging.
+This sink writes all data to the standard output which is particularly useful for debugging.
 
    --sink=log
 
 ### InfluxDB
 This sink supports both monitoring metrics and events.
-*Supports InfluxDB versions v0.9 and above*
+*This sink supports InfluxDB versions v0.9 and above*.
 To use the InfluxDB sink add the following flag:
 
 	--sink=influxdb:<INFLUXDB_URL>[?<INFLUXDB_OPTIONS>]
@@ -42,7 +42,7 @@ To use the GCM sink add the following flag:
 
 	--sink=gcm
 
-*Note: This sink works only on a Google Compute Enginer VM as of now*
+*Note: This sink works only on a Google Compute Engine VM as of now*
 
 GCM has one option - `metrics` that can be set to:
 * all - the sink exports all metrics
@@ -50,17 +50,17 @@ GCM has one option - `metrics` that can be set to:
 
 ### Google Cloud Logging
 This sink supports events only.
-To use the InfluxDB sink add the following flag:
+To use the GCL sink add the following flag:
 
 	--sink=gcl
 
 *Notes:*
- * This sink works only on a Google Compute Enginer VM as of now
+ * This sink works only on a Google Compute Engine VM as of now
  * GCE instance must have “https://www.googleapis.com/auth/logging.write” auth scope
  * GCE instance must have Logging API enabled for the project in Google Developer Console
  * GCL Logs are accessible via:
     * `https://console.developers.google.com/project/<project_ID>/logs?service=custom.googleapis.com`
-    * Where `project_ID` is the project ID of the Google Cloud Platform project ID.
+    * Where `project_ID` is the project ID of the Google Cloud Platform project.
     * Select `kubernetes.io/events` from the `All logs` drop down menu.
 
 ### Hawkular-Metrics
@@ -105,13 +105,13 @@ The following options are available:
 
 
 ### OpenTSDB
-This sink supports monitoring metrics and events.
-To use the opentsdb sink add the following flag:
+This sink supports both monitoring metrics and events.
+To use the OpenTSDB sink add the following flag:
 
     --sink=opentsdb:<OPENTSDB_SERVER_URL>
 
-Currently, accessing opentsdb via its rest apis doesn't need any authentication, so you
-can enable opentsdb sink like this:
+Currently, accessing OpenTSDB via its rest apis doesn't need any authentication, so you
+can enable OpenTSDB sink like this:
 
     --sink=opentsdb:http://192.168.1.8:4242
 
@@ -135,25 +135,25 @@ For example,
 
 ### Riemann
 This sink supports metrics only.
-To use the reimann sink add the following flag:
+To use the Riemann sink add the following flag:
 
 	--sink="riemann:<RIEMANN_SERVER_URL>[?<OPTIONS>]"
 
 The following options are available:
 
-* `ttl` - TTL for writes to Riemann. Default: `60 seconds`
+* `ttl` - TTL for writing to Riemann. Default: `60 seconds`
 * `state` - FIXME. Default: `""`
 * `tags` - FIXME. Default. `none`
 * `storeEvents` - Control storage of events. Default: `true`
 
 ### Elasticsearch
-This sink supports monitoring metrics and events. To use the ElasticSearch
+This sink supports monitoring metrics and events. To use the Elasticsearch
 sink add the following flag:
 ```
     --sink=elasticsearch:<ES_SERVER_URL>[?<OPTIONS>]
 ```
-Normally an ElasticSearch cluster has multiple nodes or a proxy, so these need
-to be configured for the ElasticSearch sink. To do this, you can set
+Normally an Elasticsearch cluster has multiple nodes or a proxy, so these need
+to be configured for the Elasticsearch sink. To do this, you can set
 `ES_SERVER_URL` to a dummy value, and use the `?nodes=` query value for each
 additional node in the cluster. For example:
 ```
@@ -194,12 +194,12 @@ Like this:
 #### AWS Integration
 In order to use AWS Managed Elastic we need to use one of the following methods:
 
-1. Making sure the public IPs of the Heapster are allowed on the ElasticSearch's Access Policy
+1. Making sure the public IPs of the Heapster are allowed on the Elasticsearch's Access Policy
 
 -OR-
 
 2. Configuring an Access Policy with IAM
-	1. Configure the ElasticSearch cluster policy with IAM User
+	1. Configure the Elasticsearch cluster policy with IAM User
 	2. Create a secret that stores the IAM credentials
 	3. Expose the credentials to the environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
 
