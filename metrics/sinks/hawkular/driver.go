@@ -43,6 +43,9 @@ const (
 
 	nodeId string = "labelNodeId"
 
+	labelTagPrefix        = "labelTagPrefix"
+	labelTagPrefixDefault = "labels."
+
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
@@ -210,6 +213,12 @@ func (h *hawkularSink) init() error {
 
 	if v, found := opts["labelToTenant"]; found {
 		h.labelTenant = v[0]
+	}
+
+	if v, found := opts[labelTagPrefix]; found {
+		h.labelTagPrefix = v[0]
+	} else {
+		h.labelTagPrefix = labelTagPrefixDefault
 	}
 
 	if v, found := opts[nodeId]; found {
