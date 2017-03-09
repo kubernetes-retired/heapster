@@ -53,10 +53,11 @@ type hawkularSink struct {
 
 	uri *url.URL
 
-	labelTenant string
-	labelNodeId string
-	modifiers   []metrics.Modifier
-	filters     []Filter
+	labelTenant    string
+	labelNodeId    string
+	labelTagPrefix string
+	modifiers      []metrics.Modifier
+	filters        []Filter
 
 	batchSize int
 }

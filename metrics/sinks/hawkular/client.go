@@ -174,6 +174,17 @@ func (h *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric cor
 			// Set tag values
 			for k, v := range ms.Labels {
 				mdd.Tags[k] = v
+				if k == core.LabelLabels.Key {
+					labels := strings.Split(v, ",")
+					for _, label := range labels {
+						labelKeyValue := strings.Split(label, ":")
+						if len(labelKeyValue) != 2 {
+							glog.V(4).Infof("Could not split the label %v into its key and value pair. This label will not be added as a tag in Hawkular Metrics.", label)
+						} else {
+							mdd.Tags[h.labelTagPrefix+labelKeyValue[0]] = labelKeyValue[1]
+						}
+					}
+				}
 			}
 
 			// Set the labeled values
