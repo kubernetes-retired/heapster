@@ -34,8 +34,8 @@ import (
 )
 
 var (
-	argFrequency = flag.Duration("frequency", 30*time.Second, "The resolution at which Eventer pushes events to sinks")
-	argMaxProcs  = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
+	argFrequency = flag.Duration("frequency", 30*time.Second, "The frequency at which Eventer pushes events to sinks")
+	argMaxProcs  = flag.Int("max_procs", 0, "Max number of logical CPUs that can be used simultaneously, default to number of logical CPUs available on the machine when not specified or less than 1")
 	argSources   flags.Uris
 	argSinks     flags.Uris
 	argVersion   bool
