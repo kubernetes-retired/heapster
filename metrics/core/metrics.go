@@ -29,6 +29,8 @@ var StandardMetrics = []Metric{
 	MetricUptime,
 	MetricCpuUsage,
 	MetricMemoryUsage,
+	MetricMemoryRSS,
+	MetricMemoryCache,
 	MetricMemoryWorkingSet,
 	MetricMemoryPageFaults,
 	MetricMemoryMajorPageFaults,
@@ -103,6 +105,8 @@ var MemoryMetrics = []Metric{
 	MetricMemoryPageFaultsRate,
 	MetricMemoryRequest,
 	MetricMemoryUsage,
+	MetricMemoryRSS,
+	MetricMemoryCache,
 	MetricMemoryWorkingSet,
 	MetricNodeMemoryAllocatable,
 	MetricNodeMemoryCapacity,
@@ -206,6 +210,44 @@ var MetricMemoryUsage = Metric{
 			ValueType:  ValueInt64,
 			MetricType: MetricGauge,
 			IntValue:   int64(stat.Memory.Usage)}
+	},
+}
+
+var MetricMemoryCache = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/cache",
+		Description: "Cache memory",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasMemory
+	},
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricGauge,
+			IntValue:   int64(stat.Memory.Cache)}
+	},
+}
+
+var MetricMemoryRSS = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/rss",
+		Description: "RSS memory",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+	HasValue: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasMemory
+	},
+	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
+		return MetricValue{
+			ValueType:  ValueInt64,
+			MetricType: MetricGauge,
+			IntValue:   int64(stat.Memory.RSS)}
 	},
 }
 
