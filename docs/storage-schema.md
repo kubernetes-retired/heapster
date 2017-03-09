@@ -15,6 +15,8 @@ Heapster exports the following metrics to its backends.
 | filesystem/usage | Total number of bytes consumed on a filesystem. |
 | filesystem/limit | The total size of filesystem in bytes. |
 | filesystem/available | The number of available bytes remaining in a the filesystem |
+| filesystem/inodes | The number of available inodes in a the filesystem |
+| filesystem/inodes_free | The number of free inodes remaining in a the filesystem |
 | memory/limit | Memory hard limit in bytes. |
 | memory/major_page_faults | Number of major page faults. |
 | memory/major_page_faults_rate | Number of major page faults per second. |
