@@ -69,6 +69,17 @@ var LabeledMetrics = []Metric{
 	MetricFilesystemUsage,
 	MetricFilesystemLimit,
 	MetricFilesystemAvailable,
+	MetricFilesystemReadsCompleted,
+	MetricFilesystemReadsMerged,
+	MetricFilesystemSectorsRead,
+	MetricFilesystemReadTime,
+	MetricFilesystemWritesCompleted,
+	MetricFilesystemWritesMerged,
+	MetricFilesystemSectorsWritten,
+	MetricFilesystemWriteTime,
+	MetricFilesystemIoInProgress,
+	MetricFilesystemIoTime,
+	MetricFilesystemWeightedIoTime,
 }
 
 var NodeAutoscalingMetrics = []Metric{
@@ -648,6 +659,347 @@ var MetricFilesystemAvailable = Metric{
 		ValueType:   ValueInt64,
 		Units:       UnitsBytes,
 		Labels:      metricLabels,
+	},
+}
+
+var MetricFilesystemReadsCompleted = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/reads_completed",
+		Description: "The total number of reads completed",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/reads_completed",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.ReadsCompleted),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemReadsMerged = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/reads_merged",
+		Description: "The total number of reads merged",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/reads_merged",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.ReadsMerged),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemSectorsRead = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/sectors_read",
+		Description: "The total number of sectors read",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/sectors_read",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.SectorsRead),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemReadTime = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/read_time",
+		Description: "The total number of milliseconds spent by all reads",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsMilliseconds,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/read_time",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.ReadTime),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemWritesCompleted = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/writes_completed",
+		Description: "The total number of writes completed",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/writes_completed",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.WritesCompleted),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemWritesMerged = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/writes_merged",
+		Description: "The total number of writes merged",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/writes_merged",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.WritesMerged),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemSectorsWritten = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/sectors_written",
+		Description: "The total number of sectors written",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/sectors_written",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.SectorsWritten),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemWriteTime = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/write_time",
+		Description: "The total number of milliseconds spent by all writes",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsMilliseconds,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/write_time",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricCumulative,
+					IntValue:   int64(fs.WriteTime),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemIoInProgress = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/io_in_progress",
+		Description: "Number of I/Os currently in progress",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/io_in_progress",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricGauge,
+					IntValue:   int64(fs.IoInProgress),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemIoTime = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/io_time",
+		Description: "Number of milliseconds spent doing I/Os",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsMilliseconds,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/io_time",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricGauge,
+					IntValue:   int64(fs.IoTime),
+				},
+			})
+		}
+		return result
+	},
+}
+
+var MetricFilesystemWeightedIoTime = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "filesystem/weighted_io_time",
+		Description: "Number of weighted milliseconds spent doing I/Os",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsMilliseconds,
+		Labels:      metricLabels,
+	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/weighted_io_time",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricGauge,
+					IntValue:   int64(fs.WeightedIoTime),
+				},
+			})
+		}
+		return result
 	},
 }
 
