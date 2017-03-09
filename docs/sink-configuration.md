@@ -42,7 +42,7 @@ To use the GCM sink add the following flag:
 
 	--sink=gcm
 
-*Note: This sink works only on a Google Compute Enginer VM as of now*
+*Note: This sink works only on a Google Compute Engine VM as of now*
 
 GCM has one option - `metrics` that can be set to:
 * all - the sink exports all metrics
