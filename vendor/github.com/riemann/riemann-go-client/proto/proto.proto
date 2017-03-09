@@ -1,5 +1,3 @@
-option java_package = "com.aphyr.riemann";
-option java_outer_classname = "Proto";
 
 message State {
   optional int64 time = 1;
@@ -10,7 +8,6 @@ message State {
   optional bool once = 6;
   repeated string tags = 7;
   optional float ttl = 8;
-  optional float metric_f = 15;
 }
 
 message Event {
@@ -21,6 +18,10 @@ message Event {
   optional string description = 5;
   repeated string tags = 7;
   optional float ttl = 8;
+  repeated Attribute attributes = 9;
+
+  optional sint64 metric_sint64 = 13;
+  optional double metric_d = 14;
   optional float metric_f = 15;
 }
 
@@ -34,4 +35,9 @@ message Msg {
   repeated State states = 4;
   optional Query query = 5;
   repeated Event events = 6;
+}
+
+message Attribute {
+  required string key = 1;
+  optional string value = 2;
 }
