@@ -19,14 +19,18 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/golang/glog"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/heapster/common/flags"
+	"k8s.io/heapster/events/api"
 	"k8s.io/heapster/events/manager"
 	"k8s.io/heapster/events/sinks"
 	"k8s.io/heapster/events/sources"
@@ -34,11 +38,13 @@ import (
 )
 
 var (
-	argFrequency = flag.Duration("frequency", 30*time.Second, "The frequency at which Eventer pushes events to sinks")
-	argMaxProcs  = flag.Int("max_procs", 0, "Max number of logical CPUs that can be used simultaneously, default to number of logical CPUs available on the machine when not specified or less than 1")
-	argSources   flags.Uris
-	argSinks     flags.Uris
-	argVersion   bool
+	argFrequency   = flag.Duration("frequency", 30*time.Second, "The resolution at which Eventer pushes events to sinks")
+	argMaxProcs    = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
+	argSources     flags.Uris
+	argSinks       flags.Uris
+	argVersion     bool
+	argHealthzIP   = flag.String("healthz-ip", "0.0.0.0", "ip eventer health check service uses")
+	argHealthzPort = flag.Uint("healthz-port", 8084, "port eventer health check listens on")
 )
 
 func main() {
@@ -98,16 +104,34 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Failed to create main manager: %v", err)
 	}
-	manager.Start()
 
+	manager.Start()
 	glog.Infof("Starting eventer")
+
+	go startHTTPServer()
+
 	<-quitChannel
 }
 
+func startHTTPServer() {
+	glog.Info("Starting eventer http service")
+
+	glog.Fatal(http.ListenAndServe(net.JoinHostPort(*argHealthzIP, strconv.Itoa(int(*argHealthzPort))), nil))
+}
+
 func validateFlags() error {
-	if *argFrequency < 5*time.Second {
-		return fmt.Errorf("frequency needs to be greater than 5 seconds - %d", *argFrequency)
+	var minFrequency = 5 * time.Second
+
+	if *argFrequency < minFrequency {
+		return fmt.Errorf("frequency needs to be greater than %s, supplied %s", minFrequency,
+			*argFrequency)
 	}
+
+	if *argFrequency > api.MaxEventsScrapeDelay {
+		return fmt.Errorf("frequency needs to be smaller than %s, supplied %s",
+			api.MaxEventsScrapeDelay, *argFrequency)
+	}
+
 	return nil
 }
 
