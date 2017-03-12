@@ -75,7 +75,7 @@ container:
 	cp deploy/docker/Dockerfile $(TEMP_DIR)
 	docker build --pull -t $(PREFIX)/heapster-$(ARCH):$(VERSION) $(TEMP_DIR)
 ifneq ($(OVERRIDE_IMAGE_NAME),)
-	docker tag -f $(PREFIX)/heapster-$(ARCH):$(VERSION) $(OVERRIDE_IMAGE_NAME)
+	docker tag $(PREFIX)/heapster-$(ARCH):$(VERSION) $(OVERRIDE_IMAGE_NAME)
 endif
 
 ifndef DOCKER_IN_DOCKER
@@ -109,6 +109,9 @@ push-influxdb:
 
 push-grafana:
 	PREFIX=$(PREFIX) make -C grafana push
+
+push-override:
+	docker push $(OVERRIDE_IMAGE_NAME)
 
 gcr-login:
 ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)

@@ -36,3 +36,4 @@ List of Owners
 | Riemann         | :heavy_check_mark: | :x: :new:          | @jamtur01 @mcorbin                            | :ok:           |
 | Graphite        | :heavy_check_mark: | :x:                | @jsoriano / @theairkit                        | :new: #1341    |
 | Wavefront       | :heavy_check_mark: | :x:                | @ezeev                                        | :ok:           |
+| Librato         | :heavy_check_mark: | :x:                | @johanneswuerbach                             | :ok:           |

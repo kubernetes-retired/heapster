@@ -240,7 +240,7 @@ For example,
 Metrics are sent to Graphite with this hierarchy:
 * `PREFIX`
   * `cluster`
-  * `namespaces` 
+  * `namespaces`
     * `NAMESPACE`
   * `nodes`
     * `NODE`
@@ -251,6 +251,28 @@ Metrics are sent to Graphite with this hierarchy:
                * `CONTAINER`
       * `sys-containers`
         * `SYS-CONTAINER`
+
+### Librato
+
+This sink supports monitoring metrics only.
+
+To use the librato sink add the following flag:
+
+    --sink="librato:<?<OPTIONS>>"
+
+Options can be set in query string, like this:
+
+* `username` - Librato user email address (https://www.librato.com/docs/api/#authentication).
+* `token` - Librato API token
+* `prefix` - Prefix for all measurement names
+* `tags` - By default provided tags (comma separated list)
+* `tag_{name}` - Value for the tag `name`
+
+For example,
+
+    --sink="librato:?username=xyz&token=secret&prefix=k8s&tags=cluster&tag_cluster=staging"
+
+The librato sink currently only works with accounts, which support [tagged metrics](https://www.librato.com/docs/kb/faq/account_questions/tags_or_sources/).
 
 ## Using multiple sinks
 
