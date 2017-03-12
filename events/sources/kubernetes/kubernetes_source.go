@@ -96,6 +96,7 @@ event_loop:
 	}
 
 	totalEventsNum.Add(float64(len(result.Events)))
+
 	return &result
 }
 
