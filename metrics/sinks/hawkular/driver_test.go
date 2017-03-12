@@ -457,6 +457,106 @@ func TestStoreTimeseries(t *testing.T) {
 	assert.NotEqual(t, ids[0], ids[1])
 }
 
+func TestTags(t *testing.T) {
+	m := &sync.Mutex{}
+	calls := make([]string, 0, 2)
+	// how many times tags have been updated
+	tagsUpdated := 0
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m.Lock()
+		defer m.Unlock()
+		calls = append(calls, r.RequestURI)
+		w.Header().Set("Content-Type", "application/json")
+
+		defer r.Body.Close()
+		b, err := ioutil.ReadAll(r.Body)
+		assert.NoError(t, err)
+
+		if strings.HasSuffix(r.RequestURI, "/tags") {
+			tags := make(map[string]string)
+			err := json.Unmarshal(b, &tags)
+			assert.NoError(t, err)
+
+			assert.Equal(t, 10, len(tags))
+			assert.Equal(t, "test-label", tags["projectId"])
+			assert.Equal(t, "test-container", tags[core.LabelContainerName.Key])
+			assert.Equal(t, "test-podid", tags[core.LabelPodId.Key])
+			assert.Equal(t, "test-container/test/metric/A", tags["group_id"])
+			assert.Equal(t, "test/metric/A", tags["descriptor_name"])
+			assert.Equal(t, "XYZ", tags[core.LabelResourceID.Key])
+			assert.Equal(t, "bytes", tags["units"])
+
+			assert.Equal(t, "testLabelA:testValueA,testLabelB:testValueB", tags[core.LabelLabels.Key])
+			assert.Equal(t, "testValueA", tags["labels.testLabelA"])
+			assert.Equal(t, "testValueB", tags["labels.testLabelB"])
+
+			tagsUpdated++
+		}
+	}))
+	defer s.Close()
+
+	hSink, err := integSink(s.URL + "?tenant=test-heapster&labelToTenant=projectId")
+	assert.NoError(t, err)
+
+	l := make(map[string]string)
+	l["projectId"] = "test-label"
+	l[core.LabelContainerName.Key] = "test-container"
+	l[core.LabelPodId.Key] = "test-podid"
+	l[core.LabelLabels.Key] = "testLabelA:testValueA,testLabelB:testValueB"
+
+	labeledMetric := core.LabeledMetric{
+		Name: "test/metric/A",
+		Labels: map[string]string{
+			core.LabelResourceID.Key: "XYZ",
+		},
+		MetricValue: core.MetricValue{
+			MetricType: core.MetricGauge,
+			FloatValue: 124.456,
+		},
+	}
+
+	metricSet := core.MetricSet{
+		Labels:         l,
+		LabeledMetrics: []core.LabeledMetric{labeledMetric},
+		MetricValues: map[string]core.MetricValue{
+			"test/metric/A": {
+				ValueType:  core.ValueInt64,
+				MetricType: core.MetricCumulative,
+				IntValue:   123456,
+			},
+		},
+	}
+
+	smd := core.MetricDescriptor{
+		Name:      "test/metric/A",
+		Units:     core.UnitsBytes,
+		ValueType: core.ValueInt64,
+		Type:      core.MetricGauge,
+		Labels:    []core.LabelDescriptor{},
+	}
+
+	//register the metric definitions
+	hSink.Register([]core.MetricDescriptor{smd})
+	//register the metrics themselves
+	hSink.registerLabeledIfNecessary(&metricSet, labeledMetric)
+
+	assert.Equal(t, 1, tagsUpdated)
+
+	tags := hSink.reg["test-container/test-podid/test/metric/A/XYZ"].Tags
+	assert.Equal(t, 10, len(tags))
+	assert.Equal(t, "test-label", tags["projectId"])
+	assert.Equal(t, "test-container", tags[core.LabelContainerName.Key])
+	assert.Equal(t, "test-podid", tags[core.LabelPodId.Key])
+	assert.Equal(t, "test-container/test/metric/A", tags["group_id"])
+	assert.Equal(t, "test/metric/A", tags["descriptor_name"])
+	assert.Equal(t, "XYZ", tags[core.LabelResourceID.Key])
+	assert.Equal(t, "bytes", tags["units"])
+
+	assert.Equal(t, "testLabelA:testValueA,testLabelB:testValueB", tags[core.LabelLabels.Key])
+	assert.Equal(t, "testValueA", tags["labels.testLabelA"])
+	assert.Equal(t, "testValueB", tags["labels.testLabelB"])
+}
+
 func TestUserPass(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Authorization", r.Header.Get("Authorization"))
