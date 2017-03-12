@@ -274,6 +274,13 @@ func (sink *stackdriverSink) translateMetric(timestamp time.Time, labels map[str
 		point := sink.intPoint(timestamp, createTime, value.IntValue)
 		return createTimeSeries(resourceLabels, networkTxMD, point)
 	case core.MetricMemoryLimit.MetricDescriptor.Name:
+		// omit nodes, using memory/node_allocatable instead
+		if labels["type"] == core.MetricSetTypeNode {
+			return nil
+		}
+		point := sink.intPoint(timestamp, timestamp, value.IntValue)
+		return createTimeSeries(resourceLabels, memoryLimitMD, point)
+	case core.MetricNodeMemoryAllocatable.MetricDescriptor.Name:
 		point := sink.intPoint(timestamp, timestamp, value.IntValue)
 		return createTimeSeries(resourceLabels, memoryLimitMD, point)
 	case core.MetricMemoryMajorPageFaults.MetricDescriptor.Name:
