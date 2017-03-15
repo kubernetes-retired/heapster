@@ -24,6 +24,7 @@ import (
 	"gopkg.in/olivere/elastic.v3"
 )
 
+
 func TestCreateElasticSearchService(t *testing.T) {
 	clusterName := "sandbox"
 	esURI := fmt.Sprintf("?nodes=https://foo.com:20468&nodes=https://bar.com:20468&"+
