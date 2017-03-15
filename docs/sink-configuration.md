@@ -258,7 +258,7 @@ This sink supports monitoring metrics only.
 
 To use the librato sink add the following flag:
 
-    --sink="librato:<?<OPTIONS>>"
+    --sink=librato:<?<OPTIONS>>
 
 Options can be set in query string, like this:
 
@@ -270,7 +270,7 @@ Options can be set in query string, like this:
 
 For example,
 
-    --sink="librato:?username=xyz&token=secret&prefix=k8s&tags=cluster&tag_cluster=staging"
+    --sink=librato:?username=xyz&token=secret&prefix=k8s&tags=cluster&tag_cluster=staging
 
 The librato sink currently only works with accounts, which support [tagged metrics](https://www.librato.com/docs/kb/faq/account_questions/tags_or_sources/).
 
