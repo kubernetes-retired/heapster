@@ -21,7 +21,6 @@ import (
 	"time"
 
 	opentsdb "github.com/bluebreezecf/opentsdb-goclient/client"
-	opentsdbcfg "github.com/bluebreezecf/opentsdb-goclient/config"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/heapster/metrics/core"
 )
@@ -31,6 +30,7 @@ var (
 	fakeNodeIp       = "192.168.1.23"
 	fakePodName      = "redis-test"
 	fakePodUid       = "redis-test-uid"
+	fakeClusterName  = "fakeClusterName"
 	fakeLabel        = map[string]string{
 		"name": "redis",
 		"io.kubernetes.pod.name": "default/redis-test",
@@ -82,11 +82,10 @@ func NewFakeOpenTSDBSink(successfulPing, successfulPut bool) fakeOpenTSDBSink {
 		successfulPing: successfulPing,
 		successfulPut:  successfulPut,
 	}
-	cfg := opentsdbcfg.OpenTSDBConfig{OpentsdbHost: fakeOpenTSDBHost}
 	return fakeOpenTSDBSink{
 		&openTSDBSink{
-			client: client,
-			config: cfg,
+			client:      client,
+			clusterName: fakeClusterName,
 		},
 		client,
 	}
@@ -125,9 +124,9 @@ func TestStoreTimeseriesSingleTimeserieInput(t *testing.T) {
 	fakeSink.ExportData(&batch)
 	assert.Equal(t, 1, len(fakeSink.fakeClient.receivedDataPoints))
 	assert.Equal(t, "cpu_limit_gauge", fakeSink.fakeClient.receivedDataPoints[0].Metric)
-	//tsdbSink.secureTags() add a default tag key and value pair
+	//make sure at least one tag is set
 	assert.Equal(t, 1, len(fakeSink.fakeClient.receivedDataPoints[0].Tags))
-	assert.Equal(t, defaultTagValue, fakeSink.fakeClient.receivedDataPoints[0].Tags[defaultTagName])
+	assert.Equal(t, fakeClusterName, fakeSink.fakeClient.receivedDataPoints[0].Tags[clusterNameTagName])
 }
 
 func TestStoreTimeseriesMultipleTimeseriesInput(t *testing.T) {
@@ -142,31 +141,31 @@ func TestName(t *testing.T) {
 	assert.Equal(t, name, opentsdbSinkName)
 }
 
-func TestDebugInfo(t *testing.T) {
-	fakeSink := NewFakeOpenTSDBSink(true, true)
-	debugInfo := fakeSink.DebugInfo()
-	assert.Contains(t, debugInfo, "Sink Type: OpenTSDB")
-	assert.Contains(t, debugInfo, "client: Host "+fakeOpenTSDBHost)
-	assert.Contains(t, debugInfo, "Number of write failures:")
-}
-
-func TestCreateOpenTSDBSinkWithEmptyInputs(t *testing.T) {
+func TestCreateOpenTSDBSinkWithDefaultValues(t *testing.T) {
 	sink, err := CreateOpenTSDBSink(&url.URL{})
-	assert.NoError(t, err)
-	assert.NotNil(t, sink)
-	tsdbSink, ok := sink.(*openTSDBSink)
-	assert.Equal(t, true, ok)
-	assert.Equal(t, defaultOpentsdbHost, tsdbSink.config.OpentsdbHost)
+
+	if v, ok := sink.(*openTSDBSink); ok {
+		assert.NoError(t, err)
+		assert.Equal(t, defaultClusterName, v.clusterName)
+		assert.Equal(t, defaultOpentsdbHost, v.host)
+	} else {
+		t.FailNow()
+	}
 }
 
-func TestCreateOpenTSDBSinkWithNoEmptyInputs(t *testing.T) {
+func TestCreateOpenTSDBSinkWithCustomValues(t *testing.T) {
+	customClusterName := "customCluster"
 	fakeOpentsdbHost := "192.168.8.23:4242"
-	sink, err := CreateOpenTSDBSink(&url.URL{Host: fakeOpentsdbHost})
-	assert.NoError(t, err)
-	assert.NotNil(t, sink)
-	tsdbSink, ok := sink.(*openTSDBSink)
-	assert.Equal(t, true, ok)
-	assert.Equal(t, fakeOpentsdbHost, tsdbSink.config.OpentsdbHost)
+
+	sink, err := CreateOpenTSDBSink(&url.URL{Host: fakeOpentsdbHost, RawQuery: "cluster=" + customClusterName})
+
+	if v, ok := sink.(*openTSDBSink); ok {
+		assert.NoError(t, err)
+		assert.Equal(t, customClusterName, v.clusterName)
+		assert.Equal(t, fakeOpentsdbHost, v.host)
+	} else {
+		t.FailNow()
+	}
 }
 
 func generateFakeBatch() *core.DataBatch {
