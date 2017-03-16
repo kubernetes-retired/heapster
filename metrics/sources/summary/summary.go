@@ -117,6 +117,7 @@ var systemNameMap = map[string]string{
 
 // decodeSummary translates the kubelet stats.Summary API into the flattened heapster MetricSet API.
 func (this *summaryMetricsSource) decodeSummary(summary *stats.Summary) map[string]*MetricSet {
+	glog.V(9).Infof("Begin summary decode")
 	result := map[string]*MetricSet{}
 
 	labels := map[string]string{
@@ -130,6 +131,7 @@ func (this *summaryMetricsSource) decodeSummary(summary *stats.Summary) map[stri
 		this.decodePodStats(result, labels, &pod)
 	}
 
+	glog.V(9).Infof("End summary decode")
 	return result
 }
 
@@ -143,6 +145,7 @@ func (this *summaryMetricsSource) cloneLabels(labels map[string]string) map[stri
 }
 
 func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet, labels map[string]string, node *stats.NodeStats) {
+	glog.V(9).Infof("Decoding node stats for node %s...", node.NodeName)
 	nodeMetrics := &MetricSet{
 		Labels:         this.cloneLabels(labels),
 		MetricValues:   map[string]MetricValue{},
@@ -168,6 +171,7 @@ func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet,
 }
 
 func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, nodeLabels map[string]string, pod *stats.PodStats) {
+	glog.V(9).Infof("Decoding pod stats for pod %s/%s (%s)...", pod.PodRef.Namespace, pod.PodRef.Name, pod.PodRef.UID)
 	podMetrics := &MetricSet{
 		Labels:         this.cloneLabels(nodeLabels),
 		MetricValues:   map[string]MetricValue{},
@@ -197,6 +201,7 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 }
 
 func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *stats.ContainerStats) *MetricSet {
+	glog.V(9).Infof("Decoding container stats stats for container %s...", container.Name)
 	containerMetrics := &MetricSet{
 		Labels:         this.cloneLabels(podLabels),
 		MetricValues:   map[string]MetricValue{},
@@ -219,6 +224,7 @@ func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]stri
 
 func (this *summaryMetricsSource) decodeUptime(metrics *MetricSet, startTime time.Time) {
 	if startTime.IsZero() {
+		glog.V(9).Infof("missing start time!")
 		return
 	}
 
@@ -228,6 +234,7 @@ func (this *summaryMetricsSource) decodeUptime(metrics *MetricSet, startTime tim
 
 func (this *summaryMetricsSource) decodeCPUStats(metrics *MetricSet, cpu *stats.CPUStats) {
 	if cpu == nil {
+		glog.V(9).Infof("missing cpu usage metric!")
 		return
 	}
 
@@ -236,6 +243,7 @@ func (this *summaryMetricsSource) decodeCPUStats(metrics *MetricSet, cpu *stats.
 
 func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *stats.MemoryStats) {
 	if memory == nil {
+		glog.V(9).Infof("missing memory metrics!")
 		return
 	}
 
@@ -247,6 +255,7 @@ func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *
 
 func (this *summaryMetricsSource) decodeNetworkStats(metrics *MetricSet, network *stats.NetworkStats) {
 	if network == nil {
+		glog.V(9).Infof("missing network metrics!")
 		return
 	}
 
@@ -258,6 +267,7 @@ func (this *summaryMetricsSource) decodeNetworkStats(metrics *MetricSet, network
 
 func (this *summaryMetricsSource) decodeFsStats(metrics *MetricSet, fsKey string, fs *stats.FsStats) {
 	if fs == nil {
+		glog.V(9).Infof("missing fs metrics!")
 		return
 	}
 
@@ -307,6 +317,7 @@ func (this *summaryMetricsSource) getScrapeTime(cpu *stats.CPUStats, memory *sta
 // addIntMetric is a convenience method for adding the metric and value to the metric set.
 func (this *summaryMetricsSource) addIntMetric(metrics *MetricSet, metric *Metric, value *uint64) {
 	if value == nil {
+		glog.V(9).Infof("skipping metric %s because the value was nil", metric.Name)
 		return
 	}
 	val := MetricValue{
@@ -320,6 +331,7 @@ func (this *summaryMetricsSource) addIntMetric(metrics *MetricSet, metric *Metri
 // addLabeledIntMetric is a convenience method for adding the labeled metric and value to the metric set.
 func (this *summaryMetricsSource) addLabeledIntMetric(metrics *MetricSet, metric *Metric, labels map[string]string, value *uint64) {
 	if value == nil {
+		glog.V(9).Infof("skipping labeled metric %s (%v) because the value was nil", metric.Name, labels)
 		return
 	}
 
