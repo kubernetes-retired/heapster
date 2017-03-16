@@ -135,10 +135,10 @@ func testAPIGroupList(t *testing.T, serverIP string) {
 		t.Fatalf("Error in unmarshalling response from server %s: %v", serverURL, err)
 	}
 	assert.Equal(t, 1, len(apiGroupList.Groups))
-	assert.Equal(t, apiGroupList.Groups[0].Name, metricsGroupVersion.Group)
+	assert.Equal(t, metricsGroupVersion.Group, apiGroupList.Groups[0].Name)
 	assert.Equal(t, 1, len(apiGroupList.Groups[0].Versions))
-	assert.Equal(t, apiGroupList.Groups[0].Versions[0], metricsGroupVersionForDiscovery)
-	assert.Equal(t, apiGroupList.Groups[0].PreferredVersion, metricsGroupVersionForDiscovery)
+	assert.Equal(t, metricsGroupVersionForDiscovery, apiGroupList.Groups[0].Versions[0])
+	assert.Equal(t, metricsGroupVersionForDiscovery, apiGroupList.Groups[0].PreferredVersion)
 }
 
 func testAPIGroup(t *testing.T, serverIP string) {
@@ -152,12 +152,12 @@ func testAPIGroup(t *testing.T, serverIP string) {
 	if err != nil {
 		t.Fatalf("Error in unmarshalling response from server %s: %v", serverURL, err)
 	}
-	assert.Equal(t, apiGroup.APIVersion, "v1")
+	assert.Equal(t, "v1", apiGroup.APIVersion)
 	assert.Equal(t, apiGroup.Name, metricsGroupVersion.Group)
 	assert.Equal(t, 1, len(apiGroup.Versions))
-	assert.Equal(t, apiGroup.Versions[0].GroupVersion, metricsGroupVersion.String())
-	assert.Equal(t, apiGroup.Versions[0].Version, metricsGroupVersion.Version)
-	assert.Equal(t, apiGroup.Versions[0], apiGroup.PreferredVersion)
+	assert.Equal(t, metricsGroupVersion.String(), apiGroup.Versions[0].GroupVersion)
+	assert.Equal(t, metricsGroupVersion.Version, apiGroup.Versions[0].Version)
+	assert.Equal(t, apiGroup.PreferredVersion, apiGroup.Versions[0])
 }
 
 func testAPIResourceList(t *testing.T, serverIP string) {
@@ -171,13 +171,13 @@ func testAPIResourceList(t *testing.T, serverIP string) {
 	if err != nil {
 		t.Fatalf("Error in unmarshalling response from server %s: %v", serverURL, err)
 	}
-	assert.Equal(t, apiResourceList.APIVersion, "v1")
-	assert.Equal(t, apiResourceList.GroupVersion, metricsGroupVersion.String())
+	assert.Equal(t, "v1", apiResourceList.APIVersion)
+	assert.Equal(t, metricsGroupVersion.String(), apiResourceList.GroupVersion)
 	assert.Equal(t, 2, len(apiResourceList.APIResources))
-	assert.Equal(t, apiResourceList.APIResources[0].Name, "nodes")
+	assert.Equal(t, "nodes", apiResourceList.APIResources[0].Name)
 	assert.False(t, apiResourceList.APIResources[0].Namespaced)
-	assert.Equal(t, apiResourceList.APIResources[0].Kind, "NodeMetrics")
-	assert.Equal(t, apiResourceList.APIResources[1].Name, "pods")
+	assert.Equal(t, "NodeMetrics", apiResourceList.APIResources[0].Kind)
+	assert.Equal(t, "pods", apiResourceList.APIResources[1].Name)
 	assert.True(t, apiResourceList.APIResources[1].Namespaced)
-	assert.Equal(t, apiResourceList.APIResources[1].Kind, "PodMetrics")
+	assert.Equal(t, "PodMetrics", apiResourceList.APIResources[1].Kind)
 }
