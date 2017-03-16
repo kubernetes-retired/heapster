@@ -184,6 +184,11 @@ additional node in the cluster. For example:
 ```
 (*) Notice that using the `?nodes` notation will override the `ES_SERVER_URL`
 
+If you run your ElasticSearch cluster behind a loadbalancer (or otherwise do
+not want to specify multiple nodes) then you can do the following:
+```
+  --sink=elasticsearch:http://elasticsearch.example.com:9200?sniff=false
+```
 
 Besides this, the following options can be set in query string:
 
