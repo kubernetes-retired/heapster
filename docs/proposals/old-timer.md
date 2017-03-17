@@ -48,6 +48,8 @@ When used simply to retrieve historical data points, Oldtimer will return the
 same types as the model API.  When the used to retrieve aggregations, Oldtimer
 will return special data types detailed under the "Return Types" section.
 
+Oltimer API can be enabled by passing --historical_source with one of the URIs used in the --sink argument.
+
 ### Paths
 
 `/api/v1/historical/{prefix}/metrics/`: Returns a list of all available
