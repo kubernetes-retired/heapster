@@ -18,6 +18,7 @@ import (
 	"time"
 
 	restful "github.com/emicklei/go-restful"
+	"github.com/golang/glog"
 
 	"k8s.io/heapster/metrics/api/v1/types"
 	"k8s.io/heapster/metrics/core"
@@ -30,10 +31,15 @@ type Api struct {
 	historicalSource    core.HistoricalSource
 	gkeMetrics          map[string]core.MetricDescriptor
 	gkeLabels           map[string]core.LabelDescriptor
+	disabled            bool
 }
 
+var (
+	emptyMetricsResponse = make([]*types.Timeseries, 0)
+)
+
 // Create a new Api to serve from the specified cache.
-func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink, historicalSource core.HistoricalSource) *Api {
+func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink, historicalSource core.HistoricalSource, disableMetricExport bool) *Api {
 	gkeMetrics := make(map[string]core.MetricDescriptor)
 	gkeLabels := make(map[string]core.LabelDescriptor)
 	for _, val := range core.StandardMetrics {
@@ -61,6 +67,7 @@ func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink, histori
 		historicalSource:    historicalSource,
 		gkeMetrics:          gkeMetrics,
 		gkeLabels:           gkeLabels,
+		disabled:            disableMetricExport,
 	}
 }
 
@@ -184,7 +191,18 @@ func (a *Api) exportMetricsSchema(_ *restful.Request, response *restful.Response
 
 func (a *Api) exportMetrics(_ *restful.Request, response *restful.Response) {
 	response.PrettyPrint(false)
-	response.WriteEntity(a.processMetricsRequest(a.metricSink.GetShortStore()))
+	err := response.WriteEntity(a.getMetricsResponse())
+	if err != nil {
+		glog.V(4).Infof("Error writing response: %v", err)
+	}
+}
+
+func (a *Api) getMetricsResponse() []*types.Timeseries {
+	if a.disabled {
+		return emptyMetricsResponse
+	} else {
+		return a.processMetricsRequest(a.metricSink.GetShortStore())
+	}
 }
 
 func (a *Api) processMetricsRequest(shortStorage []*core.DataBatch) []*types.Timeseries {
