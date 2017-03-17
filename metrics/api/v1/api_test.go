@@ -28,7 +28,7 @@ import (
 
 func TestApiFactory(t *testing.T) {
 	metricSink := metricsink.MetricSink{}
-	api := NewApi(false, &metricSink, nil)
+	api := NewApi(false, &metricSink, nil, false)
 	as := assert.New(t)
 	for _, metric := range core.StandardMetrics {
 		val, exists := api.gkeMetrics[metric.Name]
@@ -56,7 +56,7 @@ func TestApiFactory(t *testing.T) {
 }
 
 func TestFuzzInput(t *testing.T) {
-	api := NewApi(false, nil, nil)
+	api := NewApi(false, nil, nil, false)
 	data := []*core.DataBatch{}
 	fuzz.New().NilChance(0).Fuzz(&data)
 	_ = api.processMetricsRequest(data)
@@ -103,7 +103,7 @@ func generateMetricSet(objectType string, labels []core.LabelDescriptor) *core.M
 }
 
 func TestRealInput(t *testing.T) {
-	api := NewApi(false, nil, nil)
+	api := NewApi(false, nil, nil, false)
 	dataBatch := []*core.DataBatch{
 		{
 			Timestamp:  time.Now(),

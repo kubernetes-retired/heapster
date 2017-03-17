@@ -33,20 +33,21 @@ type HeapsterRunOptions struct {
 	// Only to be used to for testing
 	DisableAuthForTesting bool
 
-	MetricResolution time.Duration
-	EnableAPIServer  bool
-	Port             int
-	Ip               string
-	MaxProcs         int
-	TLSCertFile      string
-	TLSKeyFile       string
-	TLSClientCAFile  string
-	AllowedUsers     string
-	Sources          flags.Uris
-	Sinks            flags.Uris
-	HistoricalSource string
-	Version          bool
-	LabelSeperator   string
+	MetricResolution    time.Duration
+	EnableAPIServer     bool
+	Port                int
+	Ip                  string
+	MaxProcs            int
+	TLSCertFile         string
+	TLSKeyFile          string
+	TLSClientCAFile     string
+	AllowedUsers        string
+	Sources             flags.Uris
+	Sinks               flags.Uris
+	HistoricalSource    string
+	Version             bool
+	LabelSeperator      string
+	DisableMetricExport bool
 }
 
 func NewHeapsterRunOptions() *HeapsterRunOptions {
@@ -82,4 +83,5 @@ func (h *HeapsterRunOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&h.HistoricalSource, "historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
 	fs.BoolVar(&h.Version, "version", false, "print version info and exit")
 	fs.StringVar(&h.LabelSeperator, "label_seperator", ",", "seperator used for joining labels")
+	fs.BoolVar(&h.DisableMetricExport, "disable_export", false, "Disable exporting metrics in api/v1/")
 }

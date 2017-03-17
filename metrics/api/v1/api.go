@@ -30,10 +30,15 @@ type Api struct {
 	historicalSource    core.HistoricalSource
 	gkeMetrics          map[string]core.MetricDescriptor
 	gkeLabels           map[string]core.LabelDescriptor
+	disabled            bool
 }
 
+var (
+	emptyMetricsResponse = make([]*types.Timeseries, 0)
+)
+
 // Create a new Api to serve from the specified cache.
-func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink, historicalSource core.HistoricalSource) *Api {
+func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink, historicalSource core.HistoricalSource, disableMetricExport bool) *Api {
 	gkeMetrics := make(map[string]core.MetricDescriptor)
 	gkeLabels := make(map[string]core.LabelDescriptor)
 	for _, val := range core.StandardMetrics {
@@ -61,6 +66,7 @@ func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink, histori
 		historicalSource:    historicalSource,
 		gkeMetrics:          gkeMetrics,
 		gkeLabels:           gkeLabels,
+		disabled:            disableMetricExport,
 	}
 }
 
@@ -184,7 +190,11 @@ func (a *Api) exportMetricsSchema(_ *restful.Request, response *restful.Response
 
 func (a *Api) exportMetrics(_ *restful.Request, response *restful.Response) {
 	response.PrettyPrint(false)
-	response.WriteEntity(a.processMetricsRequest(a.metricSink.GetShortStore()))
+	if a.disabled {
+		response.WriteEntity(emptyMetricsResponse)
+	} else {
+		response.WriteEntity(a.processMetricsRequest(a.metricSink.GetShortStore()))
+	}
 }
 
 func (a *Api) processMetricsRequest(shortStorage []*core.DataBatch) []*types.Timeseries {
