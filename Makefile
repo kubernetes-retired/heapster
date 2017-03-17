@@ -34,7 +34,7 @@ ifeq ($(INTERACTIVE), 1)
 	TTY=-t
 endif
 
-SUPPORTED_KUBE_VERSIONS=1.4.6
+SUPPORTED_KUBE_VERSIONS=1.5.4
 TEST_NAMESPACE=heapster-e2e-tests
 
 HEAPSTER_LDFLAGS=-w -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)
@@ -62,7 +62,7 @@ test-unit-cov: clean sanitize build
 	hooks/coverage.sh
 
 test-integration: clean build
-	go test -v --timeout=60m ./integration/... --vmodule=*=2 $(FLAGS) --namespace=$(TEST_NAMESPACE) --kube_versions=$(SUPPORTED_KUBE_VERSIONS) --test_user=$(TESTUSER)
+	go test -v --timeout=60m ./integration/... --vmodule=*=2 $(FLAGS) --namespace=$(TEST_NAMESPACE) --kube_versions=$(SUPPORTED_KUBE_VERSIONS) --test_user=$(TESTUSER) --logtostderr
 
 container:
 	# Run the build in a container in order to have reproducible builds
@@ -75,7 +75,7 @@ container:
 	cp deploy/docker/Dockerfile $(TEMP_DIR)
 	docker build --pull -t $(PREFIX)/heapster-$(ARCH):$(VERSION) $(TEMP_DIR)
 ifneq ($(OVERRIDE_IMAGE_NAME),)
-	docker tag $(PREFIX)/heapster-$(ARCH):$(VERSION) $(OVERRIDE_IMAGE_NAME)
+	docker tag -f $(PREFIX)/heapster-$(ARCH):$(VERSION) $(OVERRIDE_IMAGE_NAME)
 endif
 
 ifndef DOCKER_IN_DOCKER
@@ -109,9 +109,6 @@ push-influxdb:
 
 push-grafana:
 	PREFIX=$(PREFIX) make -C grafana push
-
-push-override:
-	docker push $(OVERRIDE_IMAGE_NAME)
 
 gcr-login:
 ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)

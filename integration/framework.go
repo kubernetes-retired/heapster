@@ -282,6 +282,9 @@ func downloadAndSetupCluster(version string) (baseDir string, err error) {
 
 	// Setup kube cluster
 	glog.V(1).Infof("Setting up new kubernetes cluster version: %s", version)
+	if err := os.Setenv("KUBERNETES_SKIP_CONFIRM", "y"); err != nil {
+		return "", err
+	}
 	if err := setupNewCluster(kubeBaseDir); err != nil {
 		// Cluster setup failed for some reason.
 		// Attempting to validate the cluster to see if it failed in the validate phase.
