@@ -55,6 +55,15 @@ func TestStoreDataEmptyInput(t *testing.T) {
 	assert.Equal(t, 0, len(fakeSink.fakeDbClient.Pnts))
 }
 
+func TestRetentionConfiguredOnDatabase(t *testing.T) {
+	fakeSink := NewFakeSink()
+	dataBatch := core.DataBatch{}
+	fakeSink.ExportData(&dataBatch)
+	retentionParameters := fmt.Sprintf("DURATION %s", influxdb_common.Config.RetentionPolicy)
+	databaseCreationQuery := fakeSink.fakeDbClient.Queries[0]
+	assert.Contains(t, databaseCreationQuery.Command, retentionParameters)
+}
+
 func TestStoreMultipleDataInput(t *testing.T) {
 	fakeSink := NewFakeSink()
 	timestamp := time.Now()

@@ -198,36 +198,21 @@ func (sink *influxdbSink) createDatabase() error {
 	if sink.dbExists {
 		return nil
 	}
+
 	q := influxdb.Query{
-		Command: fmt.Sprintf(`CREATE DATABASE %s WITH NAME "default"`, sink.c.DbName),
+		Command: fmt.Sprintf(`CREATE DATABASE %s WITH DURATION %s REPLICATION 1 NAME "default"`, sink.c.DbName, sink.c.RetentionPolicy),
 	}
 
-	if resp, err := sink.client.Query(q); err != nil {
-		if !(resp != nil && resp.Err != nil && strings.Contains(resp.Err.Error(), "already exists")) {
-			err := sink.createRetentionPolicy()
-			if err != nil {
-				return err
-			}
+	if resp, err := sink.client.Query(q); err != nil || resp.Error() != nil {
+		if err != nil {
+			return err
+		} else {
+			return resp.Error()
 		}
 	}
 
 	sink.dbExists = true
 	glog.Infof("Created database %q on influxDB server at %q", sink.c.DbName, sink.c.Host)
-	return nil
-}
-
-func (sink *influxdbSink) createRetentionPolicy() error {
-	q := influxdb.Query{
-		Command: fmt.Sprintf(`CREATE RETENTION POLICY "default" ON %s DURATION %s REPLICATION 1 DEFAULT`, sink.c.DbName, sink.c.RetentionPolicy),
-	}
-
-	if resp, err := sink.client.Query(q); err != nil {
-		if !(resp != nil && resp.Err != nil) {
-			return fmt.Errorf("Retention Policy creation failed: %v", err)
-		}
-	}
-
-	glog.Infof("Created retention policy 'default' in database %q on influxDB server at %q", sink.c.DbName, sink.c.Host)
 	return nil
 }
 
