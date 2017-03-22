@@ -17,12 +17,15 @@ package stackdriver
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	gce "cloud.google.com/go/compute/metadata"
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	googleapi "google.golang.org/api/googleapi"
 	sd_api "google.golang.org/api/monitoring/v3"
 	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
@@ -45,6 +48,8 @@ type metricMetadata struct {
 }
 
 var (
+	// Known metrics metadata
+
 	cpuReservedCoresMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "DOUBLE",
@@ -110,6 +115,28 @@ var (
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/disk/bytes_total",
 	}
+
+	// Sink performance metrics
+
+	requestsSent = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "heapster",
+			Subsystem: "stackdriver",
+			Name:      "requests_count",
+			Help:      "Number of requests with return codes",
+		},
+		[]string{"code"},
+	)
+
+	timeseriesSent = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "heapster",
+			Subsystem: "stackdriver",
+			Name:      "timeseries_count",
+			Help:      "Number of Timeseries sent with return codes",
+		},
+		[]string{"code"},
+	)
 )
 
 func (sink *stackdriverSink) Name() string {
@@ -202,16 +229,30 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		stackdriverClient: stackdriverClient,
 	}
 
+	// Register sink metrics
+	prometheus.MustRegister(requestsSent)
+	prometheus.MustRegister(timeseriesSent)
+
 	glog.Infof("Created Stackdriver sink")
 
 	return sink, nil
 }
 
 func (sink *stackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
-	_, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
+	empty, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
+
+	var responseCode int
 	if err != nil {
 		glog.Errorf("Error while sending request to Stackdriver %v", err)
+		responseCode = err.(*googleapi.Error).Code
+	} else {
+		responseCode = empty.ServerResponse.HTTPStatusCode
 	}
+
+	requestsSent.WithLabelValues(strconv.Itoa(responseCode)).Inc()
+	timeseriesSent.
+		WithLabelValues(strconv.Itoa(responseCode)).
+		Add(float64(len(req.TimeSeries)))
 }
 
 func (sink *stackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) {
