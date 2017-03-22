@@ -23,15 +23,15 @@ import (
 )
 
 func TestFlow(t *testing.T) {
-	source := util.NewDummyMetricsSource("src", time.Millisecond)
+	source := util.NewDummyMetricsSource("src", 500*time.Millisecond)
 	sink := util.NewDummySink("sink", time.Millisecond)
-	processor := util.NewDummyDataProcessor(time.Millisecond)
+	processor := util.NewDummyDataProcessor(500 * time.Millisecond)
 
-	manager, _ := NewManager(source, []core.DataProcessor{processor}, sink, time.Second, time.Millisecond, 1)
+	manager, _ := NewManager(source, []core.DataProcessor{processor}, sink, MinMetricResolution, time.Millisecond, 1)
 	manager.Start()
 
-	// 4-5 cycles
-	time.Sleep(time.Millisecond * 4500)
+	// 4.5 * MinMetricResolution, about 4-5 cycles
+	time.Sleep(4500 * 30 * time.Millisecond)
 	manager.Stop()
 
 	if sink.GetExportCount() < 4 || sink.GetExportCount() > 5 {
@@ -40,15 +40,15 @@ func TestFlow(t *testing.T) {
 }
 
 func TestThrottling(t *testing.T) {
-	source := util.NewDummyMetricsSource("src", time.Millisecond)
-	sink := util.NewDummySink("sink", 4*time.Second)
-	processor := util.NewDummyDataProcessor(5 * time.Millisecond)
+	source := util.NewDummyMetricsSource("src", 500*time.Millisecond)
+	sink := util.NewDummySink("sink", 4*MinMetricResolution)
+	processor := util.NewDummyDataProcessor(500 * time.Millisecond)
 
-	manager, _ := NewManager(source, []core.DataProcessor{processor}, sink, time.Second, time.Millisecond, 1)
+	manager, _ := NewManager(source, []core.DataProcessor{processor}, sink, MinMetricResolution, time.Millisecond, 1)
 	manager.Start()
 
-	// 4-5 cycles
-	time.Sleep(time.Millisecond * 9500)
+	// housekeep func will run 10 cycles, but some of them will timeout waiting for previous one to be finished.
+	time.Sleep(MinMetricResolution * 10)
 	manager.Stop()
 
 	if sink.GetExportCount() < 2 || sink.GetExportCount() > 3 {
