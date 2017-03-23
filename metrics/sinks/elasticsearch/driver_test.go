@@ -204,6 +204,4 @@ func TestStoreMultipleDataInput(t *testing.T) {
 		expectMsg := fmt.Sprintf(mgsTemplate, timeStr)
 		assert.Contains(t, msgsString, expectMsg)
 	}
-
-	FakeESSink = NewFakeSink()
 }
