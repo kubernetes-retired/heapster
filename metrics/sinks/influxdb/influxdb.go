@@ -165,6 +165,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 			glog.Errorf("InfluxDB ping failed: %v", err)
 			sink.resetConnection()
 		}
+		return
 	}
 	end := time.Now()
 	glog.V(4).Infof("Exported %d data to influxDB in %s", len(dataPoints), end.Sub(start))
