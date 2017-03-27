@@ -109,12 +109,16 @@ The following options are available:
 This sink supports both monitoring metrics and events.
 To use the OpenTSDB sink add the following flag:
 
-    --sink=opentsdb:<OPENTSDB_SERVER_URL>
+    --sink=opentsdb:<OPENTSDB_SERVER_URL>[?<OPTIONS>]
 
 Currently, accessing OpenTSDB via its rest apis doesn't need any authentication, so you
 can enable OpenTSDB sink like this:
 
-    --sink=opentsdb:http://192.168.1.8:4242
+    --sink=opentsdb:http://192.168.1.8:4242?cluster=k8s-cluster
+
+The following options are available:
+
+* `cluster` - The name of the Kubernetes cluster being monitored. This will be added as a tag called `cluster` to metrics in OpenTSDB (default: `k8s-cluster`)
 
 ### Kafka
 This sink supports monitoring metrics only.
