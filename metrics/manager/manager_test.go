@@ -27,7 +27,7 @@ func TestFlow(t *testing.T) {
 	sink := util.NewDummySink("sink", time.Millisecond)
 	processor := util.NewDummyDataProcessor(time.Millisecond)
 
-	manager, _ := NewManager(source, []core.DataProcessor{processor}, sink, time.Second, time.Millisecond, 1)
+	manager, _ := NewManager(source, []core.DataProcessor{processor}, sink, time.Second, time.Millisecond, 1, []string{})
 	manager.Start()
 
 	// 4-5 cycles
@@ -44,7 +44,7 @@ func TestThrottling(t *testing.T) {
 	sink := util.NewDummySink("sink", 4*time.Second)
 	processor := util.NewDummyDataProcessor(5 * time.Millisecond)
 
-	manager, _ := NewManager(source, []core.DataProcessor{processor}, sink, time.Second, time.Millisecond, 1)
+	manager, _ := NewManager(source, []core.DataProcessor{processor}, sink, time.Second, time.Millisecond, 1, []string{})
 	manager.Start()
 
 	// 4-5 cycles

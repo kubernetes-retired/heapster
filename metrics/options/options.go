@@ -42,6 +42,7 @@ type HeapsterRunOptions struct {
 	TLSKeyFile       string
 	TLSClientCAFile  string
 	AllowedUsers     string
+	IgnoredLabels    string
 	Sources          flags.Uris
 	Sinks            flags.Uris
 	HistoricalSource string
@@ -79,6 +80,7 @@ func (h *HeapsterRunOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&h.TLSKeyFile, "tls_key", "", "file containing TLS key")
 	fs.StringVar(&h.TLSClientCAFile, "tls_client_ca", "", "file containing TLS client CA for client cert validation")
 	fs.StringVar(&h.AllowedUsers, "allowed_users", "", "comma-separated list of allowed users")
+	fs.StringVar(&h.IgnoredLabels, "ignored_labels", "", "comma-separated list of ignored namespaces")
 	fs.StringVar(&h.HistoricalSource, "historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
 	fs.BoolVar(&h.Version, "version", false, "print version info and exit")
 	fs.StringVar(&h.LabelSeperator, "label_seperator", ",", "seperator used for joining labels")
