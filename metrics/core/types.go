@@ -117,14 +117,20 @@ func (this *LabeledMetric) GetValue() interface{} {
 	}
 }
 
+//all the metrics from single resource (like pod or container)
 type MetricSet struct {
-	CreateTime     time.Time
-	ScrapeTime     time.Time
-	MetricValues   map[string]MetricValue
-	Labels         map[string]string
+	//time when measured resource was created
+	CreateTime time.Time
+	ScrapeTime time.Time
+	//standard metrics of resource, mapped by metric name from metrics.go
+	MetricValues map[string]MetricValue
+	//labels for entire object (not single value)
+	Labels map[string]string
+	//metrics for sub-resources (like disks)
 	LabeledMetrics []LabeledMetric
 }
 
+//Representation of all the metrics from single "scrape"
 type DataBatch struct {
 	Timestamp time.Time
 	// Should use key functions from ms_keys.go
