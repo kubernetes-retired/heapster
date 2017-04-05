@@ -252,7 +252,7 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	assert.Equal(t, 5, len(fakeSink.fakeRiemannClient.events))
 
 	var expectedEvents = []*proto.Event{
-		&proto.Event{
+		{
 			Host:         pb.String("riemann"),
 			Time:         pb.Int64(timeValue),
 			Ttl:          pb.Float32(60),
@@ -278,7 +278,7 @@ func TestStoreMultipleDataInput(t *testing.T) {
 				},
 			},
 		},
-		&proto.Event{
+		{
 			Host:         pb.String("riemann"),
 			Time:         pb.Int64(timeValue),
 			Ttl:          pb.Float32(60),
@@ -304,7 +304,7 @@ func TestStoreMultipleDataInput(t *testing.T) {
 				},
 			},
 		},
-		&proto.Event{
+		{
 			Host:         pb.String("riemann"),
 			Time:         pb.Int64(timeValue),
 			Ttl:          pb.Float32(60),
@@ -326,7 +326,7 @@ func TestStoreMultipleDataInput(t *testing.T) {
 				},
 			},
 		},
-		&proto.Event{
+		{
 			Host:         pb.String("riemann"),
 			Time:         pb.Int64(timeValue),
 			Ttl:          pb.Float32(60),
@@ -348,7 +348,7 @@ func TestStoreMultipleDataInput(t *testing.T) {
 				},
 			},
 		},
-		&proto.Event{
+		{
 			Host:         pb.String("riemann"),
 			Time:         pb.Int64(timeValue),
 			Ttl:          pb.Float32(60),

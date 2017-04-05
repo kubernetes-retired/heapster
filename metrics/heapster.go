@@ -99,7 +99,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	promHandler := prometheus.Handler()
-	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource)
+	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource, opt.DisableMetricExport)
 	healthz.InstallHandler(mux, healthzChecker(metricSink))
 
 	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
