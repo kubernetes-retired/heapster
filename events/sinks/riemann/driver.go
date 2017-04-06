@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@ package riemann
 import (
 	"github.com/golang/glog"
 	"github.com/riemann/riemann-go-client"
+	kube_api "k8s.io/client-go/pkg/api/v1"
 	riemannCommon "k8s.io/heapster/common/riemann"
-	"k8s.io/heapster/metrics/core"
+	"k8s.io/heapster/events/core"
 	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -31,7 +34,7 @@ type RiemannSink struct {
 }
 
 // creates a Riemann sink. Returns a riemannSink
-func CreateRiemannSink(uri *url.URL) (core.DataSink, error) {
+func CreateRiemannSink(uri *url.URL) (core.EventSink, error) {
 	var sink, err = riemannCommon.CreateRiemannSink(uri)
 	if err != nil {
 		glog.Warningf("Error creating the Riemann metrics sink: %v", err)
@@ -50,27 +53,52 @@ func (sink *RiemannSink) Name() string {
 }
 
 func (sink *RiemannSink) Stop() {
-	// nothing needs to be done.
+	sink.client.Close()
 }
 
-// Receives a list of riemanngo.Event, the sink, and parameters.
-// Creates a new event using the parameters and the sink config, and add it into the Event list.
-// Can send events if events is full
-// Return the list.
-func appendEvent(events []riemanngo.Event, sink *RiemannSink, host, name string, value interface{}, labels map[string]string, timestamp int64) []riemanngo.Event {
-	event := riemanngo.Event{
-		Time:        timestamp,
-		Service:     name,
-		Host:        host,
-		Description: "",
-		Attributes:  labels,
-		Metric:      value,
-		Ttl:         sink.config.Ttl,
-		State:       sink.config.State,
-		Tags:        sink.config.Tags,
+func getEventState(event *kube_api.Event) string {
+	switch event.Type {
+	case "Normal":
+		return "ok"
+	case "Warning":
+		return "warning"
+	default:
+		return "warning"
 	}
-	// state everywhere
-	events = append(events, event)
+}
+
+func appendEvent(events []riemanngo.Event, sink *RiemannSink, event *kube_api.Event, timestamp int64) []riemanngo.Event {
+	firstTimestamp := ""
+	lastTimestamp := ""
+	if !event.FirstTimestamp.IsZero() {
+		firstTimestamp = strconv.FormatInt(event.FirstTimestamp.Unix(), 10)
+	}
+	if !event.LastTimestamp.IsZero() {
+		lastTimestamp = strconv.FormatInt(event.LastTimestamp.Unix(), 10)
+	}
+	riemannEvent := riemanngo.Event{
+		Time:        timestamp,
+		Service:     strings.Join([]string{event.InvolvedObject.Kind, event.Reason}, "."),
+		Host:        event.Source.Host,
+		Description: event.Message,
+		Attributes: map[string]string{
+			"namespace":        event.InvolvedObject.Namespace,
+			"uid":              string(event.InvolvedObject.UID),
+			"name":             event.InvolvedObject.Name,
+			"api-version":      event.InvolvedObject.APIVersion,
+			"resource-version": event.InvolvedObject.ResourceVersion,
+			"field-path":       event.InvolvedObject.FieldPath,
+			"component":        event.Source.Component,
+			"last-timestamp":   lastTimestamp,
+			"first-timestamp":  firstTimestamp,
+		},
+		Metric: event.Count,
+		Ttl:    sink.config.Ttl,
+		State:  getEventState(event),
+		Tags:   sink.config.Tags,
+	}
+
+	events = append(events, riemannEvent)
 	if len(events) >= sink.config.BatchSize {
 		err := riemannCommon.SendData(sink.client, events)
 		if err != nil {
@@ -83,8 +111,7 @@ func appendEvent(events []riemanngo.Event, sink *RiemannSink, host, name string,
 	return events
 }
 
-// ExportData Send a collection of Timeseries to Riemann
-func (sink *RiemannSink) ExportData(dataBatch *core.DataBatch) {
+func (sink *RiemannSink) ExportEvents(eventBatch *core.EventBatch) {
 	sink.Lock()
 	defer sink.Unlock()
 
@@ -100,31 +127,12 @@ func (sink *RiemannSink) ExportData(dataBatch *core.DataBatch) {
 
 	var events []riemanngo.Event
 
-	for _, metricSet := range dataBatch.MetricSets {
-		host := metricSet.Labels[core.LabelHostname.Key]
-		for metricName, metricValue := range metricSet.MetricValues {
-			if value := metricValue.GetValue(); value != nil {
-				timestamp := dataBatch.Timestamp.Unix()
-				// creates an event and add it to dataEvent
-				events = appendEvent(events, sink, host, metricName, value, metricSet.Labels, timestamp)
-			}
-		}
-		for _, metric := range metricSet.LabeledMetrics {
-			if value := metric.GetValue(); value != nil {
-				labels := make(map[string]string)
-				for k, v := range metricSet.Labels {
-					labels[k] = v
-				}
-				for k, v := range metric.Labels {
-					labels[k] = v
-				}
-				timestamp := dataBatch.Timestamp.Unix()
-				// creates an event and add it to dataEvent
-				events = appendEvent(events, sink, host, metric.Name, value, labels, timestamp)
-			}
-		}
+	for _, event := range eventBatch.Events {
+		timestamp := eventBatch.Timestamp.Unix()
+		// creates an event and add it to dataEvent
+		events = appendEvent(events, sink, event, timestamp)
 	}
-	// Send events to Riemann if events is not empty
+
 	if len(events) > 0 {
 		err := riemannCommon.SendData(sink.client, events)
 		if err != nil {
@@ -132,5 +140,6 @@ func (sink *RiemannSink) ExportData(dataBatch *core.DataBatch) {
 			// client will reconnect later
 			sink.client = nil
 		}
+		events = nil
 	}
 }

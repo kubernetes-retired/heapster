@@ -7,13 +7,17 @@ A Go client library for [Riemann](https://github.com/riemann/riemann).
 Features:
 * Idiomatic concurrency
 * Sending events, queries.
-* Support tcp and udp client.
+* Support TCP, UDP, TLS clients.
 
 This client is a fork of Goryman, a Riemann go client written by Christopher Gilbert. Thanks and full credit to him!
 
 The initial [Goryman repository](https://github.com/bigdatadev/goryman) has been deleted. We've used [@rikatz's fork](https://github.com/rikatz/goryman/) to create this repository.
 
 We've also renamed the client to `riemanngo` instead of `goryman` to make its purpose clearer.
+
+## Build Status
+
+[![Build Status](https://travis-ci.org/riemann/riemann-go-client.svg?branch=master)](https://travis-ci.org/riemann/riemann-go-client)
 
 ## Installation
 
@@ -60,6 +64,18 @@ if err != nil {
 }
 ```
 
+You can also create a TLS client.
+The second parameter is the path to your client certificate, the third parameter the path to your client key. The last parameter allows you to create an insecure connection (insecure certificate check).
+You can find more informations about how to configure TLS in Riemann [here](http://riemann.io/howto.html#securing-traffic-using-tls).
+
+```go
+c := riemanngo.NewTlsClient("127.0.0.1:5554", "/path/to/cert.pem", "/path/to/key.key", true)
+err := c.Connect(5)
+if err != nil {
+    panic(err)
+}
+```
+
 Don't forget to close the client connection when you're done:
 
 ```go
@@ -95,10 +111,10 @@ riemanngo.Event{
 }
 ```
 
-You can also query the Riemann index (using the TCP client):
+You can also query the Riemann index (using the TCP or TLS client):
 
 ```go
-events, err := c.QueryEvents("service = \"hello\"")
+events, err := c.QueryIndex("service = \"hello\"")
 if err != nil {
     panic(err)
 }
