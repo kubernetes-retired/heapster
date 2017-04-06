@@ -22,6 +22,7 @@ import (
 	"github.com/riemann/riemann-go-client"
 	"github.com/riemann/riemann-go-client/proto"
 	"github.com/stretchr/testify/assert"
+	riemannCommon "k8s.io/heapster/common/riemann"
 	"k8s.io/heapster/metrics/core"
 )
 
@@ -58,16 +59,16 @@ func (client *fakeRiemannClient) Send(e *proto.Msg) (*proto.Msg, error) {
 // Returns a fake Riemann sink.
 func NewFakeSink() fakeRiemannSink {
 	riemannClient := NewFakeRiemannClient()
-	c := riemannConfig{
-		host:      "riemann-heapster:5555",
-		ttl:       60.0,
-		state:     "",
-		tags:      []string{"heapster"},
-		batchSize: 1000,
+	c := riemannCommon.RiemannConfig{
+		Host:      "riemann-heapster:5555",
+		Ttl:       60.0,
+		State:     "",
+		Tags:      []string{"heapster"},
+		BatchSize: 1000,
 	}
 
 	return fakeRiemannSink{
-		&riemannSink{
+		&RiemannSink{
 			client: riemannClient,
 			config: c,
 		},
@@ -76,14 +77,14 @@ func NewFakeSink() fakeRiemannSink {
 }
 
 func TestAppendEvent(t *testing.T) {
-	c := riemannConfig{
-		host:      "riemann-heapster:5555",
-		ttl:       60.0,
-		state:     "",
-		tags:      make([]string, 0),
-		batchSize: 1000,
+	c := riemannCommon.RiemannConfig{
+		Host:      "riemann-heapster:5555",
+		Ttl:       60.0,
+		State:     "",
+		Tags:      make([]string, 0),
+		BatchSize: 1000,
 	}
-	sink := &riemannSink{
+	sink := &RiemannSink{
 		client: nil,
 		config: c,
 	}
@@ -120,14 +121,14 @@ func TestAppendEvent(t *testing.T) {
 
 func TestAppendEventFull(t *testing.T) {
 	riemannClient := NewFakeRiemannClient()
-	c := riemannConfig{
-		host:      "riemann-heapster:5555",
-		ttl:       60.0,
-		state:     "",
-		tags:      make([]string, 0),
-		batchSize: 1000,
+	c := riemannCommon.RiemannConfig{
+		Host:      "riemann-heapster:5555",
+		Ttl:       60.0,
+		State:     "",
+		Tags:      make([]string, 0),
+		BatchSize: 1000,
 	}
-	fakeSink := riemannSink{
+	fakeSink := RiemannSink{
 		client: riemannClient,
 		config: c,
 	}
@@ -180,6 +181,12 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	l5[core.LabelHostname.Key] = "riemann"
 	l5[core.LabelPodId.Key] = "aaaa-bbbb-cccc-dddd"
 
+	metricValue := core.MetricValue{
+		IntValue:   int64(10),
+		FloatValue: 10.0,
+		MetricType: 1,
+		ValueType:  0,
+	}
 	metricSet1 := core.MetricSet{
 		Labels: l,
 		MetricValues: map[string]core.MetricValue{
@@ -189,8 +196,16 @@ func TestStoreMultipleDataInput(t *testing.T) {
 				IntValue:   123456,
 			},
 		},
+		LabeledMetrics: []core.LabeledMetric{
+			{
+				"labeledmetric",
+				map[string]string{
+					"foo": "bar",
+				},
+				metricValue,
+			},
+		},
 	}
-
 	metricSet2 := core.MetricSet{
 		Labels: l2,
 		MetricValues: map[string]core.MetricValue{
@@ -249,9 +264,38 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	timeValue := timestamp.Unix()
 	fakeSink.ExportData(&data)
 
-	assert.Equal(t, 5, len(fakeSink.fakeRiemannClient.events))
-
+	assert.Equal(t, 6, len(fakeSink.fakeRiemannClient.events))
 	var expectedEvents = []*proto.Event{
+		{
+			Host:         pb.String("riemann"),
+			Time:         pb.Int64(timeValue),
+			Ttl:          pb.Float32(60),
+			MetricSint64: pb.Int64(10),
+			Service:      pb.String("labeledmetric"),
+			Tags:         []string{"heapster"},
+			Attributes: []*proto.Attribute{
+				{
+					Key:   pb.String("container_name"),
+					Value: pb.String("/system.slice/-.mount"),
+				},
+				{
+					Key:   pb.String("foo"),
+					Value: pb.String("bar"),
+				},
+				{
+					Key:   pb.String("hostname"),
+					Value: pb.String("riemann"),
+				},
+				{
+					Key:   pb.String("namespace_id"),
+					Value: pb.String("123"),
+				},
+				{
+					Key:   pb.String("pod_id"),
+					Value: pb.String("aaaa-bbbb-cccc-dddd"),
+				},
+			},
+		},
 		{
 			Host:         pb.String("riemann"),
 			Time:         pb.Int64(timeValue),

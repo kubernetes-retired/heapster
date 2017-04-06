@@ -49,10 +49,7 @@ func (t *UdpClient) Send(message *proto.Msg) (*proto.Msg, error) {
 func (t *UdpClient) Close() error {
 	close(t.requestQueue)
 	err := t.conn.Close()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // runRequestQueue services the UdpClient request queue
