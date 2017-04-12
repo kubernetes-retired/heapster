@@ -3,58 +3,87 @@ package riemanngo
 import (
 	"bytes"
 	"encoding/binary"
-	"io"
+	"crypto/tls"
+	"io/ioutil"
+	"crypto/x509"
 	"net"
 	"time"
+	"strings"
 
 	pb "github.com/golang/protobuf/proto"
 	"github.com/riemann/riemann-go-client/proto"
 )
 
-// TcpClient is a type that implements the Client interface
-type TcpClient struct {
-	addr         string
-	conn         net.Conn
+// TlsClient is a type that implements the Client interface
+type TlsClient struct {
+	addr          string
+	tlsConfig     tls.Config
+	conn          net.Conn
 	requestQueue chan request
 }
 
-// NewTcpClient - Factory
-func NewTcpClient(addr string) *TcpClient {
-	t := &TcpClient{
+// NewTlsClient - Factory
+func NewTlsClient(addr string, certPath string, keyPath string, insecure bool) (*TlsClient, error) {
+	certFile, err := ioutil.ReadFile(certPath)
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return nil, err
+	}
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AppendCertsFromPEM(certFile)
+
+	config := tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      clientCertPool,
+		InsecureSkipVerify: insecure}
+
+	if !insecure {
+		serverName := strings.Split(addr, ":")[0]
+		config.ServerName = serverName
+	}
+
+	t := &TlsClient{
 		addr:         addr,
+		tlsConfig:    config,
 		requestQueue: make(chan request),
 	}
 	go t.runRequestQueue()
-	return t
+	return t, nil
 }
 
-// connect the TcpClient
-func (c *TcpClient) Connect(timeout int32) error {
+// connect the TlsClient
+func (c *TlsClient) Connect(timeout int32) error {
 	tcp, err := net.DialTimeout("tcp", c.addr, time.Second*time.Duration(timeout))
 	if err != nil {
 		return err
 	}
-	c.conn = tcp
+	tlsConn := tls.Client(tcp, &c.tlsConfig)
+	c.conn = tlsConn
 	return nil
 }
 
-// TcpClient implementation of Send, queues a request to send a message to the server
-func (t *TcpClient) Send(message *proto.Msg) (*proto.Msg, error) {
+
+// TlsClient implementation of Send, queues a request to send a message to the server
+func (t *TlsClient) Send(message *proto.Msg) (*proto.Msg, error) {
 	response_ch := make(chan response)
 	t.requestQueue <- request{message, response_ch}
 	r := <-response_ch
 	return r.message, r.err
 }
 
-// Close will close the TcpClient
-func (t *TcpClient) Close() error {
+// Close will close the TlsClient
+func (t *TlsClient) Close() error {
 	close(t.requestQueue)
 	err := t.conn.Close()
 	return err
 }
 
-// runRequestQueue services the TcpClient request queue
-func (t *TcpClient) runRequestQueue() {
+// runRequestQueue services the TlsClient request queue
+func (t *TlsClient) runRequestQueue() {
 	for req := range t.requestQueue {
 		message := req.message
 		response_ch := req.response_ch
@@ -65,8 +94,8 @@ func (t *TcpClient) runRequestQueue() {
 	}
 }
 
-// execRequest will send a TCP message to Riemann
-func (t *TcpClient) execRequest(message *proto.Msg) (*proto.Msg, error) {
+// execRequest will send a TCP message (using tls) to Riemann
+func (t *TlsClient) execRequest(message *proto.Msg) (*proto.Msg, error) {
 	msg := &proto.Msg{}
 	data, err := pb.Marshal(message)
 	if err != nil {
@@ -98,20 +127,8 @@ func (t *TcpClient) execRequest(message *proto.Msg) (*proto.Msg, error) {
 	return msg, nil
 }
 
-// readMessages will read Riemann messages from the TCP connection
-func readMessages(r io.Reader, p []byte) error {
-	for len(p) > 0 {
-		n, err := r.Read(p)
-		p = p[n:]
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Query the server for events using the client
-func (c *TcpClient) QueryIndex(q string) ([]Event, error) {
+func (c *TlsClient) QueryIndex(q string) ([]Event, error) {
 	query := &proto.Query{}
 	query.String_ = pb.String(q)
 

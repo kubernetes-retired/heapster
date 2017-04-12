@@ -54,7 +54,7 @@ func EventToProtocolBuffer(event *Event) (*proto.Event, error) {
 	}
 
 	switch reflect.TypeOf(event.Metric).Kind() {
-	case reflect.Int, reflect.Int64:
+	case reflect.Int, reflect.Int32, reflect.Int64:
 		e.MetricSint64 = pb.Int64((reflect.ValueOf(event.Metric).Int()))
 	case reflect.Float32:
 		e.MetricD = pb.Float64((reflect.ValueOf(event.Metric).Float()))

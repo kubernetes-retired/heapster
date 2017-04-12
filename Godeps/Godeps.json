@@ -321,11 +321,11 @@
 		},
 		{
 			"ImportPath": "github.com/riemann/riemann-go-client",
-			"Rev": "a47101952fc2c860c631b68711b7737324201438"
+			"Rev": "0f94ab135508410abf50704b72197d664eb2bee3"
 		},
 		{
 			"ImportPath": "github.com/riemann/riemann-go-client/proto",
-			"Rev": "a47101952fc2c860c631b68711b7737324201438"
+			"Rev": "0f94ab135508410abf50704b72197d664eb2bee3"
 		},
 		{
 			"ImportPath": "github.com/smartystreets/go-aws-auth",
