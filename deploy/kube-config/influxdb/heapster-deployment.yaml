@@ -19,3 +19,5 @@ spec:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
         - --sink=influxdb:http://monitoring-influxdb:8086
+      serviceAccount: heapster
+      serviceAccountName: heapster
