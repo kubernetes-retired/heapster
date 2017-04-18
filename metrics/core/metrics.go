@@ -39,6 +39,23 @@ var StandardMetrics = []Metric{
 	MetricNetworkTx,
 	MetricNetworkTxErrors}
 
+// ReplicasMetrics
+var ReplicasMetrics = []Metric{
+	MetricScheduledReplicas,
+	MetricDesiredReplicas,
+	MetricUpdatedReplicas,
+	MetricAvailableReplicas,
+	MetricUnavailableReplicas,
+	MetricFullyLabeledReplicas,
+}
+
+// DeamonSets Metrics
+var DaemonSetsMetrics = []Metric{
+	MetricCurrentNumberScheduledDS,
+	MetricNumberMisscheduledDS,
+	MetricDesiredNumberScheduledDS,
+}
+
 // Metrics computed based on cluster state using Kubernetes API.
 var AdditionalMetrics = []Metric{
 	MetricCpuRequest,
@@ -385,6 +402,98 @@ var MetricNetworkTxErrors = Metric{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
 			IntValue:   int64(stat.Network.TxErrors)}
+	},
+}
+
+// Definition of Replicas Metrics
+var MetricScheduledReplicas = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "replicas/scheduled",
+		Description: "Total number of non-terminated pods targeted by this deployment (their labels match the selector).",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricDesiredReplicas = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "replicas/desired",
+		Description: "Number of desired pods.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricUpdatedReplicas = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "replicas/updated",
+		Description: "Total number of non-terminated pods targeted by this deployment that have the desired template spec.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricAvailableReplicas = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "replicas/available",
+		Description: "Total number of available pods (ready for at least minReadySeconds) targeted by this deployment.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricUnavailableReplicas = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "replicas/unavailable",
+		Description: "Total number of unavailable pods targeted by this deployment.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricFullyLabeledReplicas = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "replicas/fullylabeled",
+		Description: "The number of pods that have labels matching the labels of the pod template of the replicaset.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+// DaemonSet
+var MetricCurrentNumberScheduledDS = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "replicas/currentnumberscheduled",
+		Description: "CurrentNumberScheduled is the number of nodes that are running at least 1 daemon pod and are supposed to run the daemon pod.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNumberMisscheduledDS = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "replicas/numbermisscheduled",
+		Description: "NumberMisscheduled is the number of nodes that are running the daemon pod, but are not supposed to run the daemon pod.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricDesiredNumberScheduledDS = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "replicas/desirednumberscheduled",
+		Description: "DesiredNumberScheduled is the total number of nodes that should be running the daemon pod (including nodes correctly running the daemon pod).",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
 	},
 }
 
