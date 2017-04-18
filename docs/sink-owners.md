@@ -33,7 +33,7 @@ List of Owners
 | Metric (memory) | :heavy_check_mark: | :x:                | @kubernetes/heapster-maintainers              | :ok:           |
 | Kafka           | :heavy_check_mark: | :x:                | @huangyuqi                                    | :ok:           |
 | OpenTSDB        | :heavy_check_mark: | :x:                | @bluebreezecf                                 | :ok:           |
-| Riemann         | :heavy_check_mark: | :x: :new:          | @jamtur01 @mcorbin                            | :ok:           |
+| Riemann         | :heavy_check_mark: | :heavy_check_mark: | @jamtur01 @mcorbin                            | :ok:           |
 | Graphite        | :heavy_check_mark: | :x:                | @jsoriano / @theairkit                        | :new: #1341    |
 | Wavefront       | :heavy_check_mark: | :x:                | @ezeev                                        | :ok:           |
 | Librato         | :heavy_check_mark: | :x:                | @johanneswuerbach                             | :ok:           |
