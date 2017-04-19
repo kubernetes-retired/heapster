@@ -66,7 +66,7 @@ func NewFakeSink() fakeESSink {
 }
 
 func TestStoreDataEmptyInput(t *testing.T) {
-	FakeESSink := NewFakeSink()
+	FakeESSink = NewFakeSink()
 	dataBatch := core.DataBatch{}
 	FakeESSink.ExportData(&dataBatch)
 	assert.Equal(t, 0, len(FakeESSink.savedData))
