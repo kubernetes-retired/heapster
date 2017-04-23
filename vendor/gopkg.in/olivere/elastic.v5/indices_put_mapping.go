@@ -5,11 +5,10 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -17,7 +16,7 @@ import (
 // IndicesPutMappingService allows to register specific mapping definition
 // for a specific type.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-put-mapping.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-put-mapping.html
 // for details.
 type IndicesPutMappingService struct {
 	client            *Client

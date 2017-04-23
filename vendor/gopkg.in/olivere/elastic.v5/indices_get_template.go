@@ -5,17 +5,16 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // IndicesGetTemplateService returns an index template.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/1.4/indices-templates.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-templates.html.
 type IndicesGetTemplateService struct {
 	client       *Client
 	pretty       bool
@@ -122,6 +121,7 @@ func (s *IndicesGetTemplateService) Do(ctx context.Context) (map[string]*Indices
 // IndicesGetTemplateResponse is the response of IndicesGetTemplateService.Do.
 type IndicesGetTemplateResponse struct {
 	Order    int                    `json:"order,omitempty"`
+	Version  int                    `json:"version,omitempty"`
 	Template string                 `json:"template,omitempty"`
 	Settings map[string]interface{} `json:"settings,omitempty"`
 	Mappings map[string]interface{} `json:"mappings,omitempty"`

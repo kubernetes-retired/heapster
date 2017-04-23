@@ -5,12 +5,11 @@
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -18,7 +17,7 @@ import (
 // GetService allows to get a typed JSON document from the index based
 // on its id.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-get.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-get.html
 // for details.
 type GetService struct {
 	client                        *Client

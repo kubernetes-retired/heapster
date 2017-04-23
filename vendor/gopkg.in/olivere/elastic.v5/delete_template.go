@@ -5,16 +5,15 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // DeleteTemplateService deletes a search template. More information can
-// be found at http://www.elasticsearch.org/guide/en/elasticsearch/reference/master/search-template.html.
+// be found at https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-template.html.
 type DeleteTemplateService struct {
 	client      *Client
 	pretty      bool

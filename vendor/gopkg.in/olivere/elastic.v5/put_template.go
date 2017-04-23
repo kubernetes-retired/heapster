@@ -5,17 +5,16 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // PutTemplateService creates or updates a search template.
 // The documentation can be found at
-// http://www.elasticsearch.org/guide/en/elasticsearch/reference/master/search-template.html.
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-template.html.
 type PutTemplateService struct {
 	client      *Client
 	pretty      bool

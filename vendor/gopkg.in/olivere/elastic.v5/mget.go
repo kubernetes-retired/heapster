@@ -5,11 +5,10 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 )
 
 // MgetService allows to get multiple documents based on an index,
@@ -17,7 +16,7 @@ import (
 // a docs array with all the fetched documents, each element similar
 // in structure to a document provided by the Get API.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/5.0/docs-multi-get.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-multi-get.html
 // for details.
 type MgetService struct {
 	client       *Client

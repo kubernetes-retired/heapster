@@ -6,11 +6,10 @@ package elastic
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -24,7 +23,7 @@ import (
 // reuse BulkService to send many batches. You do not have to create a new
 // BulkService for each batch.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/5.0/docs-bulk.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-bulk.html
 // for more details.
 type BulkService struct {
 	client *Client
@@ -304,7 +303,7 @@ type BulkResponseItem struct {
 	Index   string        `json:"_index,omitempty"`
 	Type    string        `json:"_type,omitempty"`
 	Id      string        `json:"_id,omitempty"`
-	Version int           `json:"_version,omitempty"`
+	Version int64         `json:"_version,omitempty"`
 	Status  int           `json:"status,omitempty"`
 	Found   bool          `json:"found,omitempty"`
 	Error   *ErrorDetails `json:"error,omitempty"`

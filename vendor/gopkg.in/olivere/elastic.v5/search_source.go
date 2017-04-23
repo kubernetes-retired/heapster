@@ -20,6 +20,7 @@ type SearchSource struct {
 	version                  *bool
 	sorters                  []Sorter
 	trackScores              bool
+	searchAfterSortValues    []interface{}
 	minScore                 *float64
 	timeout                  string
 	terminateAfter           *int
@@ -36,6 +37,8 @@ type SearchSource struct {
 	indexBoosts              map[string]float64
 	stats                    []string
 	innerHits                map[string]*InnerHit
+	collapse                 *CollapseBuilder
+	profile                  bool
 }
 
 // NewSearchSource initializes a new SearchSource.
@@ -56,6 +59,13 @@ func (s *SearchSource) Query(query Query) *SearchSource {
 	return s
 }
 
+// Profile specifies that this search source should activate the
+// Profile API for queries made on it.
+func (s *SearchSource) Profile(profile bool) *SearchSource {
+	s.profile = profile
+	return s
+}
+
 // PostFilter will be executed after the query has been executed and
 // only affects the search hits, not the aggregations.
 // This filter is always executed as the last filtering mechanism.
@@ -67,7 +77,7 @@ func (s *SearchSource) PostFilter(postFilter Query) *SearchSource {
 // Slice allows partitioning the documents in multiple slices.
 // It is e.g. used to slice a scroll operation, supported in
 // Elasticsearch 5.0 or later.
-// See https://www.elastic.co/guide/en/elasticsearch/reference/5.0/search-request-scroll.html#sliced-scroll
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-request-scroll.html#sliced-scroll
 // for details.
 func (s *SearchSource) Slice(sliceQuery Query) *SearchSource {
 	s.sliceQuery = sliceQuery
@@ -152,6 +162,15 @@ func (s *SearchSource) hasSort() bool {
 // tracked as well. Defaults to false.
 func (s *SearchSource) TrackScores(trackScores bool) *SearchSource {
 	s.trackScores = trackScores
+	return s
+}
+
+// SearchAfter allows a different form of pagination by using a live cursor,
+// using the results of the previous page to help the retrieval of the next.
+//
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-request-search-after.html
+func (s *SearchSource) SearchAfter(sortValues ...interface{}) *SearchSource {
+	s.searchAfterSortValues = append(s.searchAfterSortValues, sortValues...)
 	return s
 }
 
@@ -291,6 +310,12 @@ func (s *SearchSource) InnerHit(name string, innerHit *InnerHit) *SearchSource {
 	return s
 }
 
+// Collapse adds field collapsing.
+func (s *SearchSource) Collapse(collapse *CollapseBuilder) *SearchSource {
+	s.collapse = collapse
+	return s
+}
+
 // Source returns the serializable JSON for the source builder.
 func (s *SearchSource) Source() (interface{}, error) {
 	source := make(map[string]interface{})
@@ -336,6 +361,16 @@ func (s *SearchSource) Source() (interface{}, error) {
 	}
 	if s.explain != nil {
 		source["explain"] = *s.explain
+	}
+	if s.profile {
+		source["profile"] = s.profile
+	}
+	if s.collapse != nil {
+		src, err := s.collapse.Source()
+		if err != nil {
+			return nil, err
+		}
+		source["collapse"] = src
 	}
 	if s.fetchSourceContext != nil {
 		src, err := s.fetchSourceContext.Source()
@@ -384,6 +419,10 @@ func (s *SearchSource) Source() (interface{}, error) {
 
 	if s.trackScores {
 		source["track_scores"] = s.trackScores
+	}
+
+	if len(s.searchAfterSortValues) > 0 {
+		source["search_after"] = s.searchAfterSortValues
 	}
 
 	if len(s.indexBoosts) > 0 {

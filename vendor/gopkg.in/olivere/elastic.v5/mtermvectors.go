@@ -5,12 +5,11 @@
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -19,7 +18,7 @@ import (
 // fields of a particular document. The document could be stored in the
 // index or artificially provided by the user.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-multi-termvectors.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-multi-termvectors.html
 // for documentation.
 type MultiTermvectorService struct {
 	client          *Client

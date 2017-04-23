@@ -5,13 +5,12 @@
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"reflect"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -22,6 +21,7 @@ type SearchService struct {
 	searchSource      *SearchSource
 	source            interface{}
 	pretty            bool
+	filterPath        []string
 	searchType        string
 	index             []string
 	typ               []string
@@ -58,20 +58,22 @@ func (s *SearchService) Source(source interface{}) *SearchService {
 	return s
 }
 
+// FilterPath allows reducing the response, a mechanism known as
+// response filtering and described here:
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/common-options.html#common-options-response-filtering.
+func (s *SearchService) FilterPath(filterPath ...string) *SearchService {
+	s.filterPath = append(s.filterPath, filterPath...)
+	return s
+}
+
 // Index sets the names of the indices to use for search.
 func (s *SearchService) Index(index ...string) *SearchService {
-	if s.index == nil {
-		s.index = make([]string, 0)
-	}
 	s.index = append(s.index, index...)
 	return s
 }
 
 // Types adds search restrictions for a list of types.
 func (s *SearchService) Type(typ ...string) *SearchService {
-	if s.typ == nil {
-		s.typ = make([]string, 0)
-	}
 	s.typ = append(s.typ, typ...)
 	return s
 }
@@ -88,6 +90,20 @@ func (s *SearchService) Timeout(timeout string) *SearchService {
 	return s
 }
 
+// Profile sets the Profile API flag on the search source.
+// When enabled, a search executed by this service will return query
+// profiling data.
+func (s *SearchService) Profile(profile bool) *SearchService {
+	s.searchSource = s.searchSource.Profile(profile)
+	return s
+}
+
+// Collapse adds field collapsing.
+func (s *SearchService) Collapse(collapse *CollapseBuilder) *SearchService {
+	s.searchSource = s.searchSource.Collapse(collapse)
+	return s
+}
+
 // TimeoutInMillis sets the timeout in milliseconds.
 func (s *SearchService) TimeoutInMillis(timeoutInMillis int) *SearchService {
 	s.searchSource = s.searchSource.TimeoutInMillis(timeoutInMillis)
@@ -97,7 +113,7 @@ func (s *SearchService) TimeoutInMillis(timeoutInMillis int) *SearchService {
 // SearchType sets the search operation type. Valid values are:
 // "query_then_fetch", "query_and_fetch", "dfs_query_then_fetch",
 // "dfs_query_and_fetch", "count", "scan".
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-search-type.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-request-search-type.html
 // for details.
 func (s *SearchService) SearchType(searchType string) *SearchService {
 	s.searchType = searchType
@@ -252,6 +268,15 @@ func (s *SearchService) StoredFields(fields ...string) *SearchService {
 	return s
 }
 
+// SearchAfter allows a different form of pagination by using a live cursor,
+// using the results of the previous page to help the retrieval of the next.
+//
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-request-search-after.html
+func (s *SearchService) SearchAfter(sortValues ...interface{}) *SearchService {
+	s.searchSource = s.searchSource.SearchAfter(sortValues...)
+	return s
+}
+
 // IgnoreUnavailable indicates whether the specified concrete indices
 // should be ignored when unavailable (missing or closed).
 func (s *SearchService) IgnoreUnavailable(ignoreUnavailable bool) *SearchService {
@@ -325,6 +350,9 @@ func (s *SearchService) buildURL() (string, url.Values, error) {
 	if s.ignoreUnavailable != nil {
 		params.Set("ignore_unavailable", fmt.Sprintf("%v", *s.ignoreUnavailable))
 	}
+	if len(s.filterPath) > 0 {
+		params.Set("filter_path", strings.Join(s.filterPath, ","))
+	}
 	return path, params, nil
 }
 
@@ -372,15 +400,15 @@ func (s *SearchService) Do(ctx context.Context) (*SearchResult, error) {
 
 // SearchResult is the result of a search in Elasticsearch.
 type SearchResult struct {
-	TookInMillis int64         `json:"took"`         // search time in milliseconds
-	ScrollId     string        `json:"_scroll_id"`   // only used with Scroll and Scan operations
-	Hits         *SearchHits   `json:"hits"`         // the actual search hits
-	Suggest      SearchSuggest `json:"suggest"`      // results from suggesters
-	Aggregations Aggregations  `json:"aggregations"` // results from aggregations
-	TimedOut     bool          `json:"timed_out"`    // true if the search timed out
-	//Error        string        `json:"error,omitempty"` // used in MultiSearch only
-	// TODO double-check that MultiGet now returns details error information
-	Error *ErrorDetails `json:"error,omitempty"` // only used in MultiGet
+	TookInMillis int64          `json:"took"`              // search time in milliseconds
+	ScrollId     string         `json:"_scroll_id"`        // only used with Scroll and Scan operations
+	Hits         *SearchHits    `json:"hits"`              // the actual search hits
+	Suggest      SearchSuggest  `json:"suggest"`           // results from suggesters
+	Aggregations Aggregations   `json:"aggregations"`      // results from aggregations
+	TimedOut     bool           `json:"timed_out"`         // true if the search timed out
+	Error        *ErrorDetails  `json:"error,omitempty"`   // only used in MultiGet
+	Profile      *SearchProfile `json:"profile,omitempty"` // profiling results, if optional Profile API was active for this search
+	Shards       *shardsInfo    `json:"_shards,omitempty"` // shard information
 }
 
 // TotalHits is a convenience function to return the number of hits for
@@ -445,7 +473,7 @@ type SearchHitInnerHits struct {
 }
 
 // SearchExplanation explains how the score for a hit was computed.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-request-explain.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-request-explain.html.
 type SearchExplanation struct {
 	Value       float64             `json:"value"`             // e.g. 1.0
 	Description string              `json:"description"`       // e.g. "boost" or "ConstantScore(*:*), product of:"
@@ -455,11 +483,11 @@ type SearchExplanation struct {
 // Suggest
 
 // SearchSuggest is a map of suggestions.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-suggesters.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-suggesters.html.
 type SearchSuggest map[string][]SearchSuggestion
 
 // SearchSuggestion is a single search suggestion.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-suggesters.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-suggesters.html.
 type SearchSuggestion struct {
 	Text    string                   `json:"text"`
 	Offset  int                      `json:"offset"`
@@ -468,7 +496,7 @@ type SearchSuggestion struct {
 }
 
 // SearchSuggestionOption is an option of a SearchSuggestion.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-suggesters.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-suggesters.html.
 type SearchSuggestionOption struct {
 	Text   string           `json:"text"`
 	Index  string           `json:"_index"`
@@ -478,11 +506,56 @@ type SearchSuggestionOption struct {
 	Source *json.RawMessage `json:"_source"`
 }
 
+// SearchProfile is a list of shard profiling data collected during
+// query execution in the "profile" section of a SearchResult
+type SearchProfile struct {
+	Shards []SearchProfileShardResult `json:"shards"`
+}
+
+// SearchProfileShardResult returns the profiling data for a single shard
+// accessed during the search query or aggregation.
+type SearchProfileShardResult struct {
+	ID           string                    `json:"id"`
+	Searches     []QueryProfileShardResult `json:"searches"`
+	Aggregations []ProfileResult           `json:"aggregations"`
+}
+
+// QueryProfileShardResult is a container class to hold the profile results
+// for a single shard in the request. It comtains a list of query profiles,
+// a collector tree and a total rewrite tree.
+type QueryProfileShardResult struct {
+	Query       []ProfileResult `json:"query,omitempty"`
+	RewriteTime int64           `json:"rewrite_time,omitempty"`
+	Collector   []interface{}   `json:"collector,omitempty"`
+}
+
+// CollectorResult holds the profile timings of the collectors used in the
+// search. Children's CollectorResults may be embedded inside of a parent
+// CollectorResult.
+type CollectorResult struct {
+	Name      string            `json:"name,omitempty"`
+	Reason    string            `json:"reason,omitempty"`
+	Time      string            `json:"time,omitempty"`
+	TimeNanos int64             `json:"time_in_nanos,omitempty"`
+	Children  []CollectorResult `json:"children,omitempty"`
+}
+
+// ProfileResult is the internal representation of a profiled query,
+// corresponding to a single node in the query tree.
+type ProfileResult struct {
+	Type          string           `json:"type"`
+	Description   string           `json:"description,omitempty"`
+	NodeTime      string           `json:"time,omitempty"`
+	NodeTimeNanos int64            `json:"time_in_nanos,omitempty"`
+	Breakdown     map[string]int64 `json:"breakdown,omitempty"`
+	Children      []ProfileResult  `json:"children,omitempty"`
+}
+
 // Aggregations (see search_aggs.go)
 
 // Highlighting
 
 // SearchHitHighlight is the highlight information of a search hit.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-request-highlighting.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-request-highlighting.html
 // for a general discussion of highlighting.
 type SearchHitHighlight map[string][]string

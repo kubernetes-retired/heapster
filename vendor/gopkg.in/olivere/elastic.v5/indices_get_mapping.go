@@ -5,11 +5,10 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -17,7 +16,7 @@ import (
 // IndicesGetMappingService retrieves the mapping definitions for an index or
 // index/type.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-get-mapping.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-get-mapping.html
 // for details.
 type IndicesGetMappingService struct {
 	client            *Client

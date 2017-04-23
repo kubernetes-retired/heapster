@@ -2,10 +2,10 @@
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
-// This file is (c) 2014 Cenk Altı and governed by the MIT license.
+// This file is based on code (c) 2014 Cenk Altı and governed by the MIT license.
 // See https://github.com/cenkalti/backoff for original source.
 
-package backoff
+package elastic
 
 import "time"
 
@@ -13,12 +13,12 @@ import "time"
 // The operation will be retried using a backoff policy if it returns an error.
 type Operation func() error
 
-// Notify is a notify-on-error function. It receives an operation error and
-// backoff delay if the operation failed (with an error).
+// Notify is a notify-on-error function. It receives error returned
+// from an operation.
 //
-// NOTE that if the backoff policy stated to stop retrying,
+// Notice that if the backoff policy stated to stop retrying,
 // the notify function isn't called.
-type Notify func(error, time.Duration)
+type Notify func(error)
 
 // Retry the function f until it does not return error or BackOff stops.
 // f is guaranteed to be run at least once.
@@ -32,22 +32,25 @@ func Retry(o Operation, b Backoff) error { return RetryNotify(o, b, nil) }
 // for each failed attempt before sleep.
 func RetryNotify(operation Operation, b Backoff, notify Notify) error {
 	var err error
-	var next time.Duration
+	var wait time.Duration
+	var retry bool
+	var n int
 
-	b.Reset()
 	for {
 		if err = operation(); err == nil {
 			return nil
 		}
 
-		if next = b.Next(); next == Stop {
+		n++
+		wait, retry = b.Next(n)
+		if !retry {
 			return err
 		}
 
 		if notify != nil {
-			notify(err, next)
+			notify(err)
 		}
 
-		time.Sleep(next)
+		time.Sleep(wait)
 	}
 }

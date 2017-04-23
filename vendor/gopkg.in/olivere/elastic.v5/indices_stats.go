@@ -5,17 +5,16 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // IndicesStatsService provides stats on various metrics of one or more
-// indices. See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/indices-stats.html.
+// indices. See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-stats.html.
 type IndicesStatsService struct {
 	client           *Client
 	pretty           bool
