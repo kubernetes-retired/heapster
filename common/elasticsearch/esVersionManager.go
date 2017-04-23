@@ -52,7 +52,7 @@ func newEsClientV5(startupFns []elastic5.ClientOptionFunc, bulkWorkers int) (*es
 		BulkActions(1000).               // commit if # requests >= 1000
 		BulkSize(2 << 20).               // commit if size of requests >= 2 MB
 		FlushInterval(10 * time.Second). // commit every 10s
-		Do()
+		Do(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("Failed to an ElasticSearch Bulk Processor: %v", err)
 	}
