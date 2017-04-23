@@ -24,6 +24,7 @@ import (
 	elastic2 "gopkg.in/olivere/elastic.v3"
 	elastic5 "gopkg.in/olivere/elastic.v5"
 	"os"
+	"errors"
 )
 
 const (
@@ -108,7 +109,7 @@ func (esSvc *ElasticSearchService) SaveData(date time.Time, typeName string, sin
 			ack = i.Acknowledged
 		}
 		if !ack {
-			return fmt.Errorf("Failed to create Index Alias in ES cluster: %s", err)
+			return errors.New("Failed to acknoledge index alias creation")
 		}
 	}
 
@@ -160,7 +161,7 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		startupFnsV2 = append(startupFnsV2, elastic2.SetURL(uri.Opaque))
 		startupFnsV5 = append(startupFnsV5, elastic5.SetURL(uri.Opaque))
 	} else {
-		return nil, fmt.Errorf("There is no node assigned for connecting ES cluster")
+		return nil, errors.New("There is no node assigned for connecting ES cluster")
 	}
 
 	// If the ES cluster needs authentication, the username and secret
@@ -173,7 +174,7 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 	if len(opts["maxRetries"]) > 0 {
 		maxRetries, err := strconv.Atoi(opts["maxRetries"][0])
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse URL's maxRetries value into an int")
+			return nil, errors.New("Failed to parse URL's maxRetries value into an int")
 		}
 		startupFnsV2 = append(startupFnsV2, elastic2.SetMaxRetries(maxRetries))
 		startupFnsV5 = append(startupFnsV5, elastic5.SetMaxRetries(maxRetries))
@@ -182,7 +183,7 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 	if len(opts["healthCheck"]) > 0 {
 		healthCheck, err := strconv.ParseBool(opts["healthCheck"][0])
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse URL's healthCheck value into a bool")
+			return nil, errors.New("Failed to parse URL's healthCheck value into a bool")
 		}
 		startupFnsV2 = append(startupFnsV2, elastic2.SetHealthcheck(healthCheck))
 		startupFnsV5 = append(startupFnsV5, elastic5.SetHealthcheck(healthCheck))
@@ -212,7 +213,7 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		if len(opts["sniff"]) > 0 {
 			sniff, err := strconv.ParseBool(opts["sniff"][0])
 			if err != nil {
-				return nil, fmt.Errorf("Failed to parse URL's sniff value into a bool")
+				return nil, errors.New("Failed to parse URL's sniff value into a bool")
 			}
 			startupFnsV2 = append(startupFnsV2, elastic2.SetSniff(sniff))
 			startupFnsV5 = append(startupFnsV5, elastic5.SetSniff(sniff))
@@ -223,7 +224,7 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 	if len(opts["bulkWorkers"]) > 0 {
 		bulkWorkers, err = strconv.Atoi(opts["bulkWorkers"][0])
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse URL's bulkWorkers value into an int")
+			return nil, errors.New("Failed to parse URL's bulkWorkers value into an int")
 		}
 	}
 
