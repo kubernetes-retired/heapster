@@ -5,18 +5,17 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // ClusterStateService allows to get a comprehensive state information of the whole cluster.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-state.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/cluster-state.html
 // for details.
 type ClusterStateService struct {
 	client            *Client
@@ -260,7 +259,7 @@ type shardRouting struct {
 	RelocatingNode string          `json:"relocating_node"`
 	Shard          int             `json:"shard"`
 	Index          string          `json:"index"`
-	Version        int64           `json:"state"`
+	Version        int64           `json:"version"`
 	RestoreSource  *RestoreSource  `json:"restore_source"`
 	AllocationId   *allocationId   `json:"allocation_id"`
 	UnassignedInfo *unassignedInfo `json:"unassigned_info"`

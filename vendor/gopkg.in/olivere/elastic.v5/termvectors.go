@@ -5,11 +5,10 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -18,7 +17,7 @@ import (
 // fields of a particular document. The document could be stored in the
 // index or artificially provided by the user.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/2.1/docs-termvectors.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-termvectors.html
 // for documentation.
 type TermvectorsService struct {
 	client           *Client
@@ -334,7 +333,7 @@ func (s *TermvectorsService) Do(ctx context.Context) (*TermvectorsResponse, erro
 
 // TermvectorsFilterSettings adds additional filters to a Termsvector request.
 // It allows to filter terms based on their tf-idf scores.
-// See https://www.elastic.co/guide/en/elasticsearch/reference/2.1/docs-termvectors.html#_terms_filtering
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-termvectors.html#_terms_filtering
 // for more information.
 type TermvectorsFilterSettings struct {
 	maxNumTerms   *int64

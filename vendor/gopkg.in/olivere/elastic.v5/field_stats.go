@@ -5,12 +5,11 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -23,7 +22,7 @@ const (
 // FieldStatsService allows finding statistical properties of a field without executing a search,
 // but looking up measurements that are natively available in the Lucene index.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/search-field-stats.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-field-stats.html
 // for details
 type FieldStatsService struct {
 	client            *Client

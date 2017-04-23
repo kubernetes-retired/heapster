@@ -5,18 +5,17 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // IndicesGetService retrieves information about one or more indices.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-get-index.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-get-index.html
 // for more details.
 type IndicesGetService struct {
 	client            *Client

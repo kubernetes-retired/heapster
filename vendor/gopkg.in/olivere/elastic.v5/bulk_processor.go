@@ -5,13 +5,10 @@
 package elastic
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"golang.org/x/net/context"
-
-	"gopkg.in/olivere/elastic.v5/backoff"
 )
 
 // BulkProcessorService allows to easily process bulk requests. It allows setting
@@ -131,9 +128,14 @@ func (s *BulkProcessorService) Stats(wantStats bool) *BulkProcessorService {
 // You can interoperate with the BulkProcessor returned by Do, e.g. Start and
 // Stop (or Close) it.
 //
+// Context is an optional context that is passed into the bulk request
+// service calls. In contrast to other operations, this context is used in
+// a long running process. You could use it to pass e.g. loggers, but you
+// shouldn't use it for cancellation.
+//
 // Calling Do several times returns new BulkProcessors. You probably don't
 // want to do this. BulkProcessorService implements just a builder pattern.
-func (s *BulkProcessorService) Do() (*BulkProcessor, error) {
+func (s *BulkProcessorService) Do(ctx context.Context) (*BulkProcessor, error) {
 	p := newBulkProcessor(
 		s.c,
 		s.beforeFn,
@@ -147,7 +149,7 @@ func (s *BulkProcessorService) Do() (*BulkProcessor, error) {
 		s.initialTimeout,
 		s.maxTimeout)
 
-	err := p.Start()
+	err := p.Start(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +274,7 @@ func newBulkProcessor(
 
 // Start starts the bulk processor. If the processor is already started,
 // nil is returned.
-func (p *BulkProcessor) Start() error {
+func (p *BulkProcessor) Start(ctx context.Context) error {
 	p.startedMu.Lock()
 	defer p.startedMu.Unlock()
 
@@ -294,7 +296,7 @@ func (p *BulkProcessor) Start() error {
 	for i := 0; i < p.numWorkers; i++ {
 		p.workerWg.Add(1)
 		p.workers[i] = newBulkWorker(p, i)
-		go p.workers[i].work()
+		go p.workers[i].work(ctx)
 	}
 
 	// Start the ticker for flush (if enabled)
@@ -422,7 +424,7 @@ func newBulkWorker(p *BulkProcessor, i int) *bulkWorker {
 
 // work waits for bulk requests and manual flush calls on the respective
 // channels and is invoked as a goroutine when the bulk processor is started.
-func (w *bulkWorker) work() {
+func (w *bulkWorker) work(ctx context.Context) {
 	defer func() {
 		w.p.workerWg.Done()
 		close(w.flushAckC)
@@ -437,20 +439,20 @@ func (w *bulkWorker) work() {
 				// Received a new request
 				w.service.Add(req)
 				if w.commitRequired() {
-					w.commit() // TODO swallow errors here?
+					w.commit(ctx) // TODO swallow errors here?
 				}
 			} else {
 				// Channel closed: Stop.
 				stop = true
 				if w.service.NumberOfActions() > 0 {
-					w.commit() // TODO swallow errors here?
+					w.commit(ctx) // TODO swallow errors here?
 				}
 			}
 
 		case <-w.flushC:
 			// Commit outstanding requests
 			if w.service.NumberOfActions() > 0 {
-				w.commit() // TODO swallow errors here?
+				w.commit(ctx) // TODO swallow errors here?
 			}
 			w.flushAckC <- struct{}{}
 		}
@@ -459,19 +461,19 @@ func (w *bulkWorker) work() {
 
 // commit commits the bulk requests in the given service,
 // invoking callbacks as specified.
-func (w *bulkWorker) commit() error {
+func (w *bulkWorker) commit(ctx context.Context) error {
 	var res *BulkResponse
 
 	// commitFunc will commit bulk requests and, on failure, be retried
 	// via exponential backoff
 	commitFunc := func() error {
 		var err error
-		res, err = w.service.Do(context.Background())
+		res, err = w.service.Do(ctx)
 		return err
 	}
 	// notifyFunc will be called if retry fails
-	notifyFunc := func(err error, d time.Duration) {
-		w.p.c.errorf("elastic: bulk processor %q failed but will retry in %v: %v", w.p.name, d, err)
+	notifyFunc := func(err error) {
+		w.p.c.errorf("elastic: bulk processor %q failed but will retry: %v", w.p.name, err)
 	}
 
 	id := atomic.AddInt64(&w.p.executionId, 1)
@@ -492,8 +494,8 @@ func (w *bulkWorker) commit() error {
 	}
 
 	// Commit bulk requests
-	policy := backoff.NewExponentialBackoff(w.p.initialTimeout, w.p.maxTimeout).SendStop(true)
-	err := backoff.RetryNotify(commitFunc, policy, notifyFunc)
+	policy := NewExponentialBackoff(w.p.initialTimeout, w.p.maxTimeout)
+	err := RetryNotify(commitFunc, policy, notifyFunc)
 	w.updateStats(res)
 	if err != nil {
 		w.p.c.errorf("elastic: bulk processor %q failed: %v", w.p.name, err)

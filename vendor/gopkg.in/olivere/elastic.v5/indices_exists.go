@@ -5,19 +5,18 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // IndicesExistsService checks if an index or indices exist or not.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-exists.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-exists.html
 // for details.
 type IndicesExistsService struct {
 	client            *Client

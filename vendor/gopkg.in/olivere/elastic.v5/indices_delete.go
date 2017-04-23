@@ -5,18 +5,17 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // IndicesDeleteService allows to delete existing indices.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-delete-index.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-delete-index.html
 // for details.
 type IndicesDeleteService struct {
 	client        *Client

@@ -5,16 +5,15 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // GetTemplateService reads a search template.
-// It is documented at http://www.elasticsearch.org/guide/en/elasticsearch/reference/master/search-template.html.
+// It is documented at https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-template.html.
 type GetTemplateService struct {
 	client      *Client
 	pretty      bool

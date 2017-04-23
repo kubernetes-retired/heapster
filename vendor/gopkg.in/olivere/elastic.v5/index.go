@@ -5,10 +5,9 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -16,7 +15,7 @@ import (
 // IndexService adds or updates a typed JSON document in a specified index,
 // making it searchable.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/5.0/docs-index_.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-index_.html
 // for details.
 type IndexService struct {
 	client              *Client
@@ -173,7 +172,7 @@ func (s *IndexService) buildURL() (string, string, url.Values, error) {
 		})
 	} else {
 		// Automatic ID generation
-		// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html#index-creation
+		// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-index_.html#index-creation
 		method = "POST"
 		path, err = uritemplates.Expand("/{index}/{type}/", map[string]string{
 			"index": s.index,

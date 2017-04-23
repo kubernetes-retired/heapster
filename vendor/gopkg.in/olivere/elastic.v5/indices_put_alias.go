@@ -5,11 +5,10 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 )
 
 // -- Actions --
@@ -193,7 +192,7 @@ func (a *AliasRemoveAction) Source() (interface{}, error) {
 // -- Service --
 
 // AliasService enables users to add or remove an alias.
-// See https://www.elastic.co/guide/en/elasticsearch/reference/2.3/indices-aliases.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-aliases.html
 // for details.
 type AliasService struct {
 	client  *Client

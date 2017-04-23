@@ -10,7 +10,7 @@ import "errors"
 // a bounding box.
 //
 // For more details, see:
-// https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-bounding-box-query.html
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/query-dsl-geo-bounding-box-query.html
 type GeoBoundingBoxQuery struct {
 	name      string
 	top       *float64
@@ -83,7 +83,7 @@ func (q *GeoBoundingBoxQuery) QueryName(queryName string) *GeoBoundingBoxQuery {
 // Source returns JSON for the function score query.
 func (q *GeoBoundingBoxQuery) Source() (interface{}, error) {
 	// {
-	//   "geo_bbox" : {
+	//   "geo_bounding_box" : {
 	//     ...
 	//   }
 	// }
@@ -103,7 +103,7 @@ func (q *GeoBoundingBoxQuery) Source() (interface{}, error) {
 
 	source := make(map[string]interface{})
 	params := make(map[string]interface{})
-	source["geo_bbox"] = params
+	source["geo_bounding_box"] = params
 
 	box := make(map[string]interface{})
 	box["top_left"] = []float64{*q.left, *q.top}

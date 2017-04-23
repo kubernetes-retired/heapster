@@ -1,7 +1,7 @@
 {
 	"ImportPath": "k8s.io/heapster",
-	"GoVersion": "go1.7",
-	"GodepVersion": "v76",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
 	],
@@ -9,7 +9,7 @@
 		{
 			"ImportPath": "bitbucket.org/ww/goautoneg",
 			"Comment": "null-5",
-			"Rev": "'75cd24fc2f2c2a2088577d12123ddee5f54e0675'"
+			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 		},
 		{
 			"ImportPath": "cloud.google.com/go/compute/metadata",
@@ -1190,18 +1190,13 @@
 		},
 		{
 			"ImportPath": "gopkg.in/olivere/elastic.v5",
-			"Comment": "v5.0.18",
-			"Rev": "f27a28dd68c359eb20ce5918a7d976f34c18cf03"
-		},
-		{
-			"ImportPath": "gopkg.in/olivere/elastic.v5/backoff",
-			"Comment": "v5.0.18",
-			"Rev": "f27a28dd68c359eb20ce5918a7d976f34c18cf03"
+			"Comment": "v5.0.36",
+			"Rev": "6f76abde0f1f149b7d6fc47aee4c54366844f775"
 		},
 		{
 			"ImportPath": "gopkg.in/olivere/elastic.v5/uritemplates",
-			"Comment": "v5.0.18",
-			"Rev": "f27a28dd68c359eb20ce5918a7d976f34c18cf03"
+			"Comment": "v5.0.36",
+			"Rev": "6f76abde0f1f149b7d6fc47aee4c54366844f775"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",

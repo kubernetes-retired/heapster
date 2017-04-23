@@ -5,11 +5,10 @@
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -18,7 +17,7 @@ import (
 // new index with fewer primary shards.
 //
 // For further details, see
-// https://www.elastic.co/guide/en/elasticsearch/reference/5.0/indices-shrink-index.html.
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-shrink-index.html.
 type IndicesShrinkService struct {
 	client              *Client
 	pretty              bool

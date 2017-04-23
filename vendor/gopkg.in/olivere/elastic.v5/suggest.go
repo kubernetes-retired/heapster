@@ -5,18 +5,17 @@
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"golang.org/x/net/context"
-
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // SuggestService returns suggestions for text.
-// See https://www.elastic.co/guide/en/elasticsearch/reference/master/search-suggesters.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-suggesters.html.
 type SuggestService struct {
 	client     *Client
 	pretty     bool

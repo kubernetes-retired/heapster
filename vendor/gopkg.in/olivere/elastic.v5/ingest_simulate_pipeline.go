@@ -1,15 +1,14 @@
-// Copyright 2012-2016 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -18,7 +17,7 @@ import (
 // documents provided in the body of the request.
 //
 // The API is documented at
-// https://www.elastic.co/guide/en/elasticsearch/reference/5.0/simulate-pipeline-api.html.
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/simulate-pipeline-api.html.
 type IngestSimulatePipelineService struct {
 	client     *Client
 	pretty     bool

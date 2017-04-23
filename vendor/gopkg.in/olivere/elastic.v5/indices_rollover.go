@@ -5,11 +5,10 @@
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -18,7 +17,7 @@ import (
 // existing index is considered to be too large or too old.
 //
 // It is documented at
-// https://www.elastic.co/guide/en/elasticsearch/reference/5.0/indices-rollover-index.html.
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-rollover-index.html.
 type IndicesRolloverService struct {
 	client              *Client
 	pretty              bool

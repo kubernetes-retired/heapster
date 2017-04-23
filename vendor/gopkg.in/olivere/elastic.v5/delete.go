@@ -5,10 +5,9 @@
 package elastic
 
 import (
+	"context"
 	"fmt"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
@@ -16,7 +15,7 @@ import (
 // DeleteService allows to delete a typed JSON document from a specified
 // index based on its id.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/5.0/docs-delete.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-delete.html
 // for details.
 type DeleteService struct {
 	client              *Client
