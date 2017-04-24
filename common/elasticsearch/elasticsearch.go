@@ -21,10 +21,10 @@ import (
 
 	"github.com/golang/glog"
 
+	"errors"
 	elastic2 "gopkg.in/olivere/elastic.v3"
 	elastic5 "gopkg.in/olivere/elastic.v5"
 	"os"
-	"errors"
 )
 
 const (
@@ -72,13 +72,13 @@ func (esSvc *ElasticSearchService) SaveData(date time.Time, typeName string, sin
 
 		ack := false
 		switch i := createIndex.(type) {
-		case elastic2.IndicesCreateResult:
+		case *elastic2.IndicesCreateResult:
 			ack = i.Acknowledged
-		case elastic5.IndicesCreateResult:
+		case *elastic5.IndicesCreateResult:
 			ack = i.Acknowledged
 		}
 		if !ack {
-			return fmt.Errorf("Failed to create Index in ES cluster: %s", err)
+			return errors.New("Failed to acknoledge index creation")
 		}
 	}
 
@@ -90,9 +90,9 @@ func (esSvc *ElasticSearchService) SaveData(date time.Time, typeName string, sin
 
 	hasAlias := false
 	switch a := aliases.(type) {
-	case elastic2.AliasesResult:
+	case *elastic2.AliasesResult:
 		hasAlias = a.Indices[indexName].HasAlias(aliasName)
-	case elastic5.AliasesResult:
+	case *elastic5.AliasesResult:
 		hasAlias = a.Indices[indexName].HasAlias(aliasName)
 	}
 	if !hasAlias {
@@ -103,9 +103,9 @@ func (esSvc *ElasticSearchService) SaveData(date time.Time, typeName string, sin
 
 		ack := false
 		switch i := createAlias.(type) {
-		case elastic2.AliasResult:
+		case *elastic2.AliasResult:
 			ack = i.Acknowledged
-		case elastic5.AliasResult:
+		case *elastic5.AliasResult:
 			ack = i.Acknowledged
 		}
 		if !ack {
