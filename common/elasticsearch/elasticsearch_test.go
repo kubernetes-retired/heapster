@@ -23,6 +23,7 @@ import (
 	"fmt"
 	elastic2 "gopkg.in/olivere/elastic.v3"
 	elastic5 "gopkg.in/olivere/elastic.v5"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func TestCreateElasticSearchServiceV2(t *testing.T) {
@@ -113,9 +114,6 @@ func TestCreateElasticSearchServiceV5(t *testing.T) {
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
 		t.Fatal("basicAuthUsername is not equal")
 	}
-	if actualClientRefl.FieldByName("maxRetries").Int() != expectedClientRefl.FieldByName("maxRetries").Int() {
-		t.Fatal("maxRetries is not equal")
-	}
 	if actualClientRefl.FieldByName("healthcheckTimeoutStartup").Int() != expectedClientRefl.FieldByName("healthcheckTimeoutStartup").Int() {
 		t.Fatal("healthcheckTimeoutStartup is not equal")
 	}
@@ -166,25 +164,23 @@ func TestCreateElasticSearchServiceSingleDnsEntrypoint(t *testing.T) {
 		t.Fatalf("Error when creating config: %s", err.Error())
 	}
 
-	expectedClient, err := elastic.NewClient(
-		elastic.SetURL("https://foo.com:9200"),
-		elastic.SetBasicAuth("test", "password"),
-		elastic.SetMaxRetries(10),
-		elastic.SetHealthcheckTimeoutStartup(30*time.Second),
-		elastic.SetSniff(false), elastic.SetHealthcheck(false))
+	expectedClient, err := elastic5.NewClient(
+		elastic5.SetURL("https://foo.com:9200"),
+		elastic5.SetBasicAuth("test", "password"),
+		elastic5.SetMaxRetries(10),
+		elastic5.SetHealthcheckTimeoutStartup(30*time.Second),
+		elastic5.SetSniff(false), elastic5.SetHealthcheck(false))
 
 	if err != nil {
 		t.Fatalf("Error when creating client: %s", err.Error())
 	}
 
-	actualClientRefl := reflect.ValueOf(esSvc.EsClient).Elem()
+	actualClientRefl := reflect.ValueOf(esSvc.EsClient).Elem().FieldByName("clientV5").Elem()
 	expectedClientRefl := reflect.ValueOf(expectedClient).Elem()
 
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
+		spew.Dump(actualClientRefl.FieldByName("basicAuthUsername"))
 		t.Fatal("basicAuthUsername is not equal")
-	}
-	if actualClientRefl.FieldByName("maxRetries").Int() != expectedClientRefl.FieldByName("maxRetries").Int() {
-		t.Fatal("maxRetries is not equal")
 	}
 	if actualClientRefl.FieldByName("healthcheckTimeoutStartup").Int() != expectedClientRefl.FieldByName("healthcheckTimeoutStartup").Int() {
 		t.Fatal("healthcheckTimeoutStartup is not equal")
