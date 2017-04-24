@@ -190,14 +190,6 @@ Besides this, the following options can be set in query string:
 * `cluster_name` - cluster name for different Kubernetes clusters. Default value is `default`.
 
 
-Like this:
-
-    --sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testMetric"
-
-	or
-
-	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testEvent"
-
 #### AWS Integration
 In order to use AWS Managed Elastic we need to use one of the following methods:
 
