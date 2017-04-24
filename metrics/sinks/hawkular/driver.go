@@ -27,9 +27,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/hawkular/hawkular-client-go/metrics"
 
+	kube_client "k8s.io/client-go/rest"
+	kubeClientCmd "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/heapster/metrics/core"
-	kube_client "k8s.io/kubernetes/pkg/client/restclient"
-	kubeClientCmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 )
 
 const (
@@ -42,6 +42,9 @@ const (
 	concurrencyDefault = 5
 
 	nodeId string = "labelNodeId"
+
+	labelTagPrefixOpts    = "labelTagPrefix"
+	labelTagPrefixDefault = "labels."
 
 	defaultServiceAccountFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
@@ -210,6 +213,12 @@ func (h *hawkularSink) init() error {
 
 	if v, found := opts["labelToTenant"]; found {
 		h.labelTenant = v[0]
+	}
+
+	if v, found := opts[labelTagPrefixOpts]; found {
+		h.labelTagPrefix = v[0]
+	} else {
+		h.labelTagPrefix = labelTagPrefixDefault
 	}
 
 	if v, found := opts[nodeId]; found {

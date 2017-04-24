@@ -11,5 +11,4 @@ import "google.golang.org/appengine"
 func init() {
 	appengineVM = true
 	appengineTokenFunc = appengine.AccessToken
-	appengineAppIDFunc = appengine.AppID
 }

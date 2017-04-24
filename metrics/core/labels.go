@@ -83,11 +83,11 @@ var (
 		Description: "User-defined name of the exported custom metric",
 	}
 	LabelGCEResourceID = LabelDescriptor{
-		Key:         "compute.googleapis.com/resource_id",
+		Key:         "resource_id",
 		Description: "Resource id for nodes specific for GCE.",
 	}
 	LabelGCEResourceType = LabelDescriptor{
-		Key:         "compute.googleapis.com/resource_type",
+		Key:         "resource_type",
 		Description: "Resource types for nodes specific for GCE.",
 	}
 )

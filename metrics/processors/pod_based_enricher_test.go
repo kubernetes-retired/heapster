@@ -22,9 +22,11 @@ import (
 
 	"k8s.io/heapster/metrics/core"
 
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/resource"
-	"k8s.io/kubernetes/pkg/client/cache"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 var batches = []*core.DataBatch{
@@ -82,7 +84,7 @@ var batches = []*core.DataBatch{
 
 func TestPodEnricher(t *testing.T) {
 	pod := kube_api.Pod{
-		ObjectMeta: kube_api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod1",
 			Namespace: "ns1",
 		},
@@ -118,8 +120,8 @@ func TestPodEnricher(t *testing.T) {
 	}
 
 	store := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-	podLister := &cache.StoreToPodLister{Indexer: store}
-	podLister.Indexer.Add(&pod)
+	podLister := v1listers.NewPodLister(store)
+	store.Add(&pod)
 	podBasedEnricher := PodBasedEnricher{podLister: podLister}
 
 	var err error

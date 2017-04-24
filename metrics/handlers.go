@@ -23,15 +23,15 @@ import (
 	"k8s.io/heapster/metrics/api/v1"
 	metricsApi "k8s.io/heapster/metrics/apis/metrics"
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/heapster/metrics/sinks/metric"
+	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/util/metrics"
 
-	"k8s.io/kubernetes/pkg/client/cache"
+	v1listers "k8s.io/client-go/listers/core/v1"
 )
 
 const pprofBasePath = "/debug/pprof/"
 
-func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, nodeLister *cache.StoreToNodeLister, historicalSource core.HistoricalSource) http.Handler {
+func setupHandlers(metricSink *metricsink.MetricSink, podLister v1listers.PodLister, nodeLister v1listers.NodeLister, historicalSource core.HistoricalSource, disableMetricExport bool) http.Handler {
 
 	runningInKubernetes := true
 
@@ -39,7 +39,7 @@ func setupHandlers(metricSink *metricsink.MetricSink, podLister *cache.StoreToPo
 	wsContainer := restful.NewContainer()
 	wsContainer.EnableContentEncoding(true)
 	wsContainer.Router(restful.CurlyRouter{})
-	a := v1.NewApi(runningInKubernetes, metricSink, historicalSource)
+	a := v1.NewApi(runningInKubernetes, metricSink, historicalSource, disableMetricExport)
 	a.Register(wsContainer)
 	// Metrics API
 	m := metricsApi.NewApi(metricSink, podLister, nodeLister)

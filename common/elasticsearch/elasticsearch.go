@@ -157,9 +157,9 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 	if len(opts["nodes"]) > 0 {
 		startupFnsV2 = append(startupFnsV2, elastic2.SetURL(opts["nodes"]...))
 		startupFnsV5 = append(startupFnsV5, elastic5.SetURL(opts["nodes"]...))
-	} else if uri.Opaque != "" {
-		startupFnsV2 = append(startupFnsV2, elastic2.SetURL(uri.Opaque))
-		startupFnsV5 = append(startupFnsV5, elastic5.SetURL(uri.Opaque))
+	} else if uri.Scheme != "" && uri.Host != "" {
+		startupFnsV2 = append(startupFnsV2, elastic2.SetURL(uri.Scheme+"://"+uri.Host))
+		startupFnsV5 = append(startupFnsV5, elastic5.SetURL(uri.Scheme+"://"+uri.Host))
 	} else {
 		return nil, errors.New("There is no node assigned for connecting ES cluster")
 	}

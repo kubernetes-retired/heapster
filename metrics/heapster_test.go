@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -27,60 +26,35 @@ import (
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/assert"
 
-	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/heapster/metrics/cmd/heapster-apiserver/app"
 	"k8s.io/heapster/metrics/options"
-	"k8s.io/heapster/metrics/sinks/metric"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/client/cache"
+	metricsink "k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/metrics/pkg/apis/metrics/v1alpha1"
 )
 
 var metricsGroupVersion = v1alpha1.SchemeGroupVersion
 
-var metricsGroupVersionForDiscovery = unversioned.GroupVersionForDiscovery{
+var metricsGroupVersionForDiscovery = metav1.GroupVersionForDiscovery{
 	GroupVersion: metricsGroupVersion.String(),
 	Version:      metricsGroupVersion.Version,
 }
 
 var emptyMetricSink = &metricsink.MetricSink{}
-var emptyNodeLister = &cache.StoreToNodeLister{}
-var emptyPodLister = &cache.StoreToPodLister{}
+var emptyNodeLister = v1listers.NewNodeLister(nil)
+var emptyPodLister = v1listers.NewPodLister(nil)
 
-var testInsecurePort = 8080
 var testSecurePort = 6443
-
-func TestRunServer(t *testing.T) {
-	serverIP := fmt.Sprintf("http://localhost:%d", testInsecurePort)
-
-	go func() {
-		opt := getServerOptions()
-		opt.InsecurePort = testInsecurePort
-
-		server, err := app.NewHeapsterApiServer(opt, emptyMetricSink, emptyNodeLister, emptyPodLister)
-		if err != nil {
-			t.Fatalf("Could not create the API server: %v", err)
-		}
-		if err := server.RunServer(); err != nil {
-			t.Fatalf("Error in bringing up the server: %v", err)
-		}
-	}()
-	if err := waitForApiserverUp(serverIP); err != nil {
-		t.Fatalf("%v", err)
-	}
-	testSwaggerSpec(t, serverIP)
-	testAPIGroupList(t, serverIP)
-	testAPIGroup(t, serverIP)
-	testAPIResourceList(t, serverIP)
-}
 
 func TestRunSecureServer(t *testing.T) {
 	serverIP := fmt.Sprintf("https://localhost:%d", testSecurePort)
 
 	go func() {
 		opt := getServerOptions()
-		opt.InsecurePort = 0
-		opt.SecurePort = testSecurePort
-		opt.CertDirectory = "/tmp"
+		opt.SecureServing.ServingOptions.BindPort = testSecurePort
+		opt.SecureServing.ServerCert.CertDirectory = "/tmp"
+		opt.DisableAuthForTesting = true
 
 		server, err := app.NewHeapsterApiServer(opt, emptyMetricSink, emptyNodeLister, emptyPodLister)
 		if err != nil {
@@ -101,8 +75,6 @@ func TestRunSecureServer(t *testing.T) {
 
 func getServerOptions() *options.HeapsterRunOptions {
 	opt := options.NewHeapsterRunOptions()
-	_, ipRange, _ := net.ParseCIDR("10.10.0.0/24")
-	opt.ServiceClusterIPRange = *ipRange
 	return opt
 }
 
@@ -157,16 +129,16 @@ func testAPIGroupList(t *testing.T, serverIP string) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	var apiGroupList unversioned.APIGroupList
+	var apiGroupList metav1.APIGroupList
 	err = json.Unmarshal(contents, &apiGroupList)
 	if err != nil {
 		t.Fatalf("Error in unmarshalling response from server %s: %v", serverURL, err)
 	}
 	assert.Equal(t, 1, len(apiGroupList.Groups))
-	assert.Equal(t, apiGroupList.Groups[0].Name, metricsGroupVersion.Group)
+	assert.Equal(t, metricsGroupVersion.Group, apiGroupList.Groups[0].Name)
 	assert.Equal(t, 1, len(apiGroupList.Groups[0].Versions))
-	assert.Equal(t, apiGroupList.Groups[0].Versions[0], metricsGroupVersionForDiscovery)
-	assert.Equal(t, apiGroupList.Groups[0].PreferredVersion, metricsGroupVersionForDiscovery)
+	assert.Equal(t, metricsGroupVersionForDiscovery, apiGroupList.Groups[0].Versions[0])
+	assert.Equal(t, metricsGroupVersionForDiscovery, apiGroupList.Groups[0].PreferredVersion)
 }
 
 func testAPIGroup(t *testing.T, serverIP string) {
@@ -175,17 +147,17 @@ func testAPIGroup(t *testing.T, serverIP string) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	var apiGroup unversioned.APIGroup
+	var apiGroup metav1.APIGroup
 	err = json.Unmarshal(contents, &apiGroup)
 	if err != nil {
 		t.Fatalf("Error in unmarshalling response from server %s: %v", serverURL, err)
 	}
-	assert.Equal(t, apiGroup.APIVersion, "v1")
+	assert.Equal(t, "v1", apiGroup.APIVersion)
 	assert.Equal(t, apiGroup.Name, metricsGroupVersion.Group)
 	assert.Equal(t, 1, len(apiGroup.Versions))
-	assert.Equal(t, apiGroup.Versions[0].GroupVersion, metricsGroupVersion.String())
-	assert.Equal(t, apiGroup.Versions[0].Version, metricsGroupVersion.Version)
-	assert.Equal(t, apiGroup.Versions[0], apiGroup.PreferredVersion)
+	assert.Equal(t, metricsGroupVersion.String(), apiGroup.Versions[0].GroupVersion)
+	assert.Equal(t, metricsGroupVersion.Version, apiGroup.Versions[0].Version)
+	assert.Equal(t, apiGroup.PreferredVersion, apiGroup.Versions[0])
 }
 
 func testAPIResourceList(t *testing.T, serverIP string) {
@@ -194,18 +166,18 @@ func testAPIResourceList(t *testing.T, serverIP string) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	var apiResourceList unversioned.APIResourceList
+	var apiResourceList metav1.APIResourceList
 	err = json.Unmarshal(contents, &apiResourceList)
 	if err != nil {
 		t.Fatalf("Error in unmarshalling response from server %s: %v", serverURL, err)
 	}
-	assert.Equal(t, apiResourceList.APIVersion, "v1")
-	assert.Equal(t, apiResourceList.GroupVersion, metricsGroupVersion.String())
+	assert.Equal(t, "v1", apiResourceList.APIVersion)
+	assert.Equal(t, metricsGroupVersion.String(), apiResourceList.GroupVersion)
 	assert.Equal(t, 2, len(apiResourceList.APIResources))
-	assert.Equal(t, apiResourceList.APIResources[0].Name, "nodes")
+	assert.Equal(t, "nodes", apiResourceList.APIResources[0].Name)
 	assert.False(t, apiResourceList.APIResources[0].Namespaced)
-	assert.Equal(t, apiResourceList.APIResources[0].Kind, "NodeMetrics")
-	assert.Equal(t, apiResourceList.APIResources[1].Name, "pods")
+	assert.Equal(t, "NodeMetrics", apiResourceList.APIResources[0].Kind)
+	assert.Equal(t, "pods", apiResourceList.APIResources[1].Name)
 	assert.True(t, apiResourceList.APIResources[1].Namespaced)
-	assert.Equal(t, apiResourceList.APIResources[1].Kind, "PodMetrics")
+	assert.Equal(t, "PodMetrics", apiResourceList.APIResources[1].Kind)
 }

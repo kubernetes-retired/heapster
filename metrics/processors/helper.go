@@ -29,7 +29,7 @@ func aggregate(src, dst *core.MetricSet, metricsToAggregate []string) error {
 		aggregatedValue, found := dst.MetricValues[metricName]
 		if found {
 			if aggregatedValue.ValueType != metricValue.ValueType {
-				return fmt.Errorf("NamespaceAggregator: type not supported in %s", metricName)
+				return fmt.Errorf("Aggregator: type not supported in %s", metricName)
 			}
 
 			if aggregatedValue.ValueType == core.ValueInt64 {
@@ -37,7 +37,7 @@ func aggregate(src, dst *core.MetricSet, metricsToAggregate []string) error {
 			} else if aggregatedValue.ValueType == core.ValueFloat {
 				aggregatedValue.FloatValue += metricValue.FloatValue
 			} else {
-				return fmt.Errorf("NamespaceAggregator: type not supported in %s", metricName)
+				return fmt.Errorf("Aggregator: type not supported in %s", metricName)
 			}
 		} else {
 			aggregatedValue = metricValue

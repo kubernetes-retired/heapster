@@ -27,11 +27,13 @@ import (
 	"k8s.io/heapster/metrics/sinks/hawkular"
 	"k8s.io/heapster/metrics/sinks/influxdb"
 	"k8s.io/heapster/metrics/sinks/kafka"
-	"k8s.io/heapster/metrics/sinks/log"
-	"k8s.io/heapster/metrics/sinks/metric"
-	"k8s.io/heapster/metrics/sinks/monasca"
+	"k8s.io/heapster/metrics/sinks/librato"
+	logsink "k8s.io/heapster/metrics/sinks/log"
+	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sinks/opentsdb"
 	"k8s.io/heapster/metrics/sinks/riemann"
+	"k8s.io/heapster/metrics/sinks/stackdriver"
+	"k8s.io/heapster/metrics/sinks/wavefront"
 )
 
 type SinkFactory struct {
@@ -43,6 +45,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return elasticsearch.NewElasticSearchSink(&uri.Val)
 	case "gcm":
 		return gcm.CreateGCMSink(&uri.Val)
+	case "stackdriver":
+		return stackdriver.CreateStackdriverSink(&uri.Val)
 	case "graphite":
 		return graphite.NewGraphiteSink(&uri.Val)
 	case "hawkular":
@@ -51,16 +55,18 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return influxdb.CreateInfluxdbSink(&uri.Val)
 	case "kafka":
 		return kafka.NewKafkaSink(&uri.Val)
+	case "librato":
+		return librato.CreateLibratoSink(&uri.Val)
 	case "log":
 		return logsink.NewLogSink(), nil
 	case "metric":
 		return metricsink.NewMetricSink(140*time.Second, 15*time.Minute, []string{
 			core.MetricCpuUsageRate.MetricDescriptor.Name,
 			core.MetricMemoryUsage.MetricDescriptor.Name}), nil
-	case "monasca":
-		return monasca.CreateMonascaSink(&uri.Val)
 	case "opentsdb":
 		return opentsdb.CreateOpenTSDBSink(&uri.Val)
+	case "wavefront":
+		return wavefront.NewWavefrontSink(&uri.Val)
 	case "riemann":
 		return riemann.CreateRiemannSink(&uri.Val)
 	default:

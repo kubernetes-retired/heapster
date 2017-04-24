@@ -26,9 +26,10 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
+	kubelet_client "k8s.io/heapster/metrics/sources/kubelet/util"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
-	kube_client "k8s.io/kubernetes/pkg/kubelet/client"
 )
 
 type Host struct {
@@ -38,7 +39,7 @@ type Host struct {
 }
 
 type KubeletClient struct {
-	config *kube_client.KubeletClientConfig
+	config *kubelet_client.KubeletClientConfig
 	client *http.Client
 }
 
@@ -77,6 +78,13 @@ func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http
 	} else if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("request failed - %q, response: %q", response.Status, string(body))
 	}
+
+	kubeletAddr := "[unknown]"
+	if req.URL != nil {
+		kubeletAddr = req.URL.Host
+	}
+	glog.V(10).Infof("Raw response from Kubelet at %s: %s", kubeletAddr, string(body))
+
 	err = json.Unmarshal(body, value)
 	if err != nil {
 		return fmt.Errorf("failed to parse output. Response: %q. Error: %v", string(body), err)
@@ -104,11 +112,11 @@ type statsRequest struct {
 	NumStats int `json:"num_stats,omitempty"`
 
 	// Start time for which to query information.
-	// If ommitted, the beginning of time is assumed.
+	// If omitted, the beginning of time is assumed.
 	Start time.Time `json:"start,omitempty"`
 
 	// End time for which to query information.
-	// If ommitted, current time is assumed.
+	// If omitted, current time is assumed.
 	End time.Time `json:"end,omitempty"`
 
 	// Whether to also include information from subcontainers.
@@ -194,8 +202,8 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 	return result, nil
 }
 
-func NewKubeletClient(kubeletConfig *kube_client.KubeletClientConfig) (*KubeletClient, error) {
-	transport, err := kube_client.MakeTransport(kubeletConfig)
+func NewKubeletClient(kubeletConfig *kubelet_client.KubeletClientConfig) (*KubeletClient, error) {
+	transport, err := kubelet_client.MakeTransport(kubeletConfig)
 	if err != nil {
 		return nil, err
 	}

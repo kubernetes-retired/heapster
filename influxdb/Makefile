@@ -63,20 +63,22 @@ build:
 
 	rm -rf $(TEMP_DIR)
 
-push: ./manifest-tool gcr-login $(addprefix sub-push-,$(ALL_ARCHITECTURES))
-	./manifest-tool push from-args --platforms $(ML_PLATFORMS) --template $(PREFIX)/heapster-influxdb-ARCH:$(VERSION) --target $(PREFIX)/heapster-influxdb:$(VERSION)
+# Should depend on target: ./manifest-tool
+push: gcr-login $(addprefix sub-push-,$(ALL_ARCHITECTURES))
+#	./manifest-tool push from-args --platforms $(ML_PLATFORMS) --template $(PREFIX)/heapster-influxdb-ARCH:$(VERSION) --target $(PREFIX)/heapster-influxdb:$(VERSION)
 
 sub-push-%:
 	$(MAKE) ARCH=$* PREFIX=$(PREFIX) VERSION=$(VERSION) build
-	docker push $(PREFIX)/heapster-influxdb-$*:$(VERSION)
+	docker push $(PREFIX)/heapster-influxdb-$(ARCH):$(VERSION)
 
 gcr-login:
 ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
 	@echo "If you are pushing to a gcr.io registry, you have to be logged in via 'docker login'; 'gcloud docker push' can't push manifest lists yet."
 	@echo "This script is automatically logging you in now."
-	docker login -u oauth2accesstoken -p "$(gcloud auth print-access-token)" https://gcr.io
+	gcloud docker -a
 endif
 
-./manifest-tool:
-	curl -sSL https://github.com/luxas/manifest-tool/releases/download/v0.3.0/manifest-tool > manifest-tool
-	chmod +x manifest-tool
+# TODO(luxas): As soon as it's working to push fat manifests to gcr.io, reenable this code
+#./manifest-tool:
+#	curl -sSL https://github.com/luxas/manifest-tool/releases/download/v0.3.0/manifest-tool > manifest-tool
+#	chmod +x manifest-tool

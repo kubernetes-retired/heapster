@@ -26,15 +26,14 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
+	kube_v1 "k8s.io/client-go/pkg/api/v1"
 	api_v1 "k8s.io/heapster/metrics/api/v1/types"
 	metrics_api "k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	apiErrors "k8s.io/kubernetes/pkg/api/errors"
-	kube_api_unv "k8s.io/kubernetes/pkg/api/unversioned"
-	kube_v1 "k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/util/sets"
 )
 
 const (
@@ -52,9 +51,10 @@ var (
 	namespace              = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
 	maxRetries             = flag.Int("retries", 20, "Number of attempts before failing this test.")
 	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
+	testUser               = flag.String("test_user", "", "GCE user when copy file to host")
 )
 
-func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_api.ReplicationController) error {
+func deleteAll(fm kubeFramework, ns string, service *kube_v1.Service, rc *kube_v1.ReplicationController) error {
 	glog.V(2).Infof("Deleting ns %s...", ns)
 	err := fm.DeleteNs(ns)
 	if err != nil {
@@ -65,14 +65,14 @@ func deleteAll(fm kubeFramework, ns string, service *kube_api.Service, rc *kube_
 	return nil
 }
 
-func createAll(fm kubeFramework, ns string, service **kube_api.Service, rc **kube_api.ReplicationController) error {
+func createAll(fm kubeFramework, ns string, service **kube_v1.Service, rc **kube_v1.ReplicationController) error {
 	glog.V(2).Infof("Creating ns %s...", ns)
-	namespace := kube_api.Namespace{
-		TypeMeta: kube_api_unv.TypeMeta{
+	namespace := kube_v1.Namespace{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       "Namespace",
 			APIVersion: "v1",
 		},
-		ObjectMeta: kube_api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: ns,
 		},
 	}
@@ -143,7 +143,7 @@ func buildAndPushHeapsterImage(hostnames []string, zone string) error {
 	return os.Chdir(curwd)
 }
 
-func getHeapsterRcAndSvc(fm kubeFramework) (*kube_api.Service, *kube_api.ReplicationController, error) {
+func getHeapsterRcAndSvc(fm kubeFramework) (*kube_v1.Service, *kube_v1.ReplicationController, error) {
 	// Add test docker image
 	rc, err := fm.ParseRC(*heapsterControllerFile)
 	if err != nil {
@@ -151,9 +151,9 @@ func getHeapsterRcAndSvc(fm kubeFramework) (*kube_api.Service, *kube_api.Replica
 	}
 	for i := range rc.Spec.Template.Spec.Containers {
 		rc.Spec.Template.Spec.Containers[i].Image = *heapsterImage
-		rc.Spec.Template.Spec.Containers[i].ImagePullPolicy = kube_api.PullNever
+		rc.Spec.Template.Spec.Containers[i].ImagePullPolicy = kube_v1.PullNever
 		// increase logging level
-		rc.Spec.Template.Spec.Containers[i].Env = append(rc.Spec.Template.Spec.Containers[0].Env, kube_api.EnvVar{Name: "FLAGS", Value: "--vmodule=*=3"})
+		rc.Spec.Template.Spec.Containers[i].Env = append(rc.Spec.Template.Spec.Containers[0].Env, kube_v1.EnvVar{Name: "FLAGS", Value: "--vmodule=*=3"})
 	}
 
 	svc, err := fm.ParseService(*heapsterServiceFile)
@@ -174,7 +174,11 @@ func buildAndPushDockerImages(fm kubeFramework, zone string) error {
 	}
 	hostnames := []string{}
 	for _, node := range nodes {
-		hostnames = append(hostnames, strings.Split(node, ".")[0])
+		nodeHost := strings.Split(node, ".")[0]
+		if *testUser != "" {
+			nodeHost = fmt.Sprintf("%s@%s", *testUser, nodeHost)
+		}
+		hostnames = append(hostnames, nodeHost)
 	}
 
 	return buildAndPushHeapsterImage(hostnames, zone)
@@ -185,8 +189,8 @@ const (
 	metricsSchemaEndpoint = "/api/v1/metric-export-schema"
 )
 
-func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*api_v1.Timeseries, error) {
-	body, err := fm.Client().Get().
+func getTimeseries(fm kubeFramework, svc *kube_v1.Service) ([]*api_v1.Timeseries, error) {
+	body, err := fm.Client().Core().RESTClient().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
 		Resource("services").
@@ -204,8 +208,8 @@ func getTimeseries(fm kubeFramework, svc *kube_api.Service) ([]*api_v1.Timeserie
 	return timeseries, nil
 }
 
-func getSchema(fm kubeFramework, svc *kube_api.Service) (*api_v1.TimeseriesSchema, error) {
-	body, err := fm.Client().Get().
+func getSchema(fm kubeFramework, svc *kube_v1.Service) (*api_v1.TimeseriesSchema, error) {
+	body, err := fm.Client().Core().RESTClient().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
 		Resource("services").
@@ -242,7 +246,7 @@ func isContainerBaseImageExpected(ts *api_v1.Timeseries) bool {
 	return !exists
 }
 
-func runMetricExportTest(fm kubeFramework, svc *kube_api.Service) error {
+func runMetricExportTest(fm kubeFramework, svc *kube_v1.Service) error {
 	podList, err := fm.GetPodsRunningOnNodes()
 	if err != nil {
 		return err
@@ -350,7 +354,9 @@ func runMetricExportTest(fm kubeFramework, svc *kube_api.Service) error {
 		explicitRequirement := map[string][]string{
 			core.MetricFilesystemUsage.MetricDescriptor.Name: {core.LabelResourceID.Key},
 			core.MetricFilesystemLimit.MetricDescriptor.Name: {core.LabelResourceID.Key},
-			core.MetricFilesystemAvailable.Name:              {core.LabelResourceID.Key}}
+			core.MetricFilesystemAvailable.Name:              {core.LabelResourceID.Key},
+			core.MetricFilesystemInodes.Name:                 {core.LabelResourceID.Key},
+			core.MetricFilesystemInodesFree.Name:             {core.LabelResourceID.Key}}
 
 		for metricName, points := range ts.Metrics {
 			md, exists := mdMap[metricName]
@@ -421,9 +427,9 @@ func getErrorCauses(err error) string {
 
 var labelSelectorEverything = labels.Everything()
 
-func getDataFromProxy(fm kubeFramework, svc *kube_api.Service, url string) ([]byte, error) {
+func getDataFromProxy(fm kubeFramework, svc *kube_v1.Service, url string) ([]byte, error) {
 	glog.V(2).Infof("Querying heapster: %s", url)
-	return fm.Client().Get().
+	return fm.Client().Core().RESTClient().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
 		Resource("services").
@@ -432,9 +438,9 @@ func getDataFromProxy(fm kubeFramework, svc *kube_api.Service, url string) ([]by
 		Do().Raw()
 }
 
-func getDataFromProxyWithSelector(fm kubeFramework, svc *kube_api.Service, url string, labelSelector *labels.Selector) ([]byte, error) {
+func getDataFromProxyWithSelector(fm kubeFramework, svc *kube_v1.Service, url string, labelSelector *labels.Selector) ([]byte, error) {
 	glog.V(2).Infof("Querying heapster: %s", url)
-	return fm.Client().Get().
+	return fm.Client().Core().RESTClient().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
 		Resource("services").
@@ -443,7 +449,7 @@ func getDataFromProxyWithSelector(fm kubeFramework, svc *kube_api.Service, url s
 		Do().Raw()
 }
 
-func getMetricResultList(fm kubeFramework, svc *kube_api.Service, url string) (*api_v1.MetricResultList, error) {
+func getMetricResultList(fm kubeFramework, svc *kube_v1.Service, url string) (*api_v1.MetricResultList, error) {
 	body, err := getDataFromProxy(fm, svc, url)
 	if err != nil {
 		return nil, err
@@ -459,7 +465,7 @@ func getMetricResultList(fm kubeFramework, svc *kube_api.Service, url string) (*
 	return &data, nil
 }
 
-func getMetricResult(fm kubeFramework, svc *kube_api.Service, url string) (*api_v1.MetricResult, error) {
+func getMetricResult(fm kubeFramework, svc *kube_v1.Service, url string) (*api_v1.MetricResult, error) {
 	body, err := getDataFromProxy(fm, svc, url)
 	if err != nil {
 		return nil, err
@@ -475,7 +481,7 @@ func getMetricResult(fm kubeFramework, svc *kube_api.Service, url string) (*api_
 	return &data, nil
 }
 
-func getStringResult(fm kubeFramework, svc *kube_api.Service, url string) ([]string, error) {
+func getStringResult(fm kubeFramework, svc *kube_v1.Service, url string) ([]string, error) {
 	body, err := getDataFromProxy(fm, svc, url)
 	if err != nil {
 		return nil, err
@@ -528,7 +534,7 @@ func checkMetricResultListSanity(metrics *api_v1.MetricResultList) error {
 	return nil
 }
 
-func runModelTest(fm kubeFramework, svc *kube_api.Service) error {
+func runModelTest(fm kubeFramework, svc *kube_v1.Service) error {
 	podList, err := fm.GetPodsRunningOnNodes()
 	if err != nil {
 		return err
@@ -648,7 +654,7 @@ func checkUsage(res kube_v1.ResourceList) error {
 	return nil
 }
 
-func getPodMetrics(fm kubeFramework, svc *kube_api.Service, pod kube_api.Pod) (*metrics_api.PodMetrics, error) {
+func getPodMetrics(fm kubeFramework, svc *kube_v1.Service, pod kube_v1.Pod) (*metrics_api.PodMetrics, error) {
 	url := fmt.Sprintf("%s/namespaces/%s/pods/%s", baseMetricsUrl, pod.Namespace, pod.Name)
 	body, err := getDataFromProxy(fm, svc, url)
 	if err != nil {
@@ -662,23 +668,23 @@ func getPodMetrics(fm kubeFramework, svc *kube_api.Service, pod kube_api.Pod) (*
 	return &data, nil
 }
 
-func getAllPodsInNamespaceMetrics(fm kubeFramework, svc *kube_api.Service, namespace string) (metrics_api.PodMetricsList, error) {
+func getAllPodsInNamespaceMetrics(fm kubeFramework, svc *kube_v1.Service, namespace string) (metrics_api.PodMetricsList, error) {
 	url := fmt.Sprintf("%s/namespaces/%s/pods/", baseMetricsUrl, namespace)
 	return getPodMetricsList(fm, svc, url, &labelSelectorEverything)
 }
 
-func getAllPodsMetrics(fm kubeFramework, svc *kube_api.Service) (metrics_api.PodMetricsList, error) {
+func getAllPodsMetrics(fm kubeFramework, svc *kube_v1.Service) (metrics_api.PodMetricsList, error) {
 	url := fmt.Sprintf("%s/pods/", baseMetricsUrl)
 	selector := labels.Everything()
 	return getPodMetricsList(fm, svc, url, &selector)
 }
 
-func getLabelSelectedPodMetrics(fm kubeFramework, svc *kube_api.Service, namespace string, labelSelector *labels.Selector) (metrics_api.PodMetricsList, error) {
+func getLabelSelectedPodMetrics(fm kubeFramework, svc *kube_v1.Service, namespace string, labelSelector *labels.Selector) (metrics_api.PodMetricsList, error) {
 	url := fmt.Sprintf("%s/namespaces/%s/pods/", baseMetricsUrl, namespace)
 	return getPodMetricsList(fm, svc, url, labelSelector)
 }
 
-func getPodMetricsList(fm kubeFramework, svc *kube_api.Service, url string, labelSelector *labels.Selector) (metrics_api.PodMetricsList, error) {
+func getPodMetricsList(fm kubeFramework, svc *kube_v1.Service, url string, labelSelector *labels.Selector) (metrics_api.PodMetricsList, error) {
 	body, err := getDataFromProxyWithSelector(fm, svc, url, labelSelector)
 	if err != nil {
 		return metrics_api.PodMetricsList{}, err
@@ -691,7 +697,7 @@ func getPodMetricsList(fm kubeFramework, svc *kube_api.Service, url string, labe
 	return data, nil
 }
 
-func checkSinglePodMetrics(metrics *metrics_api.PodMetrics, pod *kube_api.Pod) error {
+func checkSinglePodMetrics(metrics *metrics_api.PodMetrics, pod *kube_v1.Pod) error {
 	if metrics.Name != pod.Name {
 		return fmt.Errorf("Wrong pod name: expected %v, got %v", pod.Name, metrics.Name)
 	}
@@ -709,7 +715,7 @@ func checkSinglePodMetrics(metrics *metrics_api.PodMetrics, pod *kube_api.Pod) e
 	return nil
 }
 
-func getSingleNodeMetrics(fm kubeFramework, svc *kube_api.Service, node string) (*metrics_api.NodeMetrics, error) {
+func getSingleNodeMetrics(fm kubeFramework, svc *kube_v1.Service, node string) (*metrics_api.NodeMetrics, error) {
 	url := fmt.Sprintf("%s/nodes/%s", baseMetricsUrl, node)
 	body, err := getDataFromProxy(fm, svc, url)
 	if err != nil {
@@ -723,7 +729,7 @@ func getSingleNodeMetrics(fm kubeFramework, svc *kube_api.Service, node string) 
 	return &data, nil
 }
 
-func getNodeMetricsList(fm kubeFramework, svc *kube_api.Service, url string, labelSelector *labels.Selector) (metrics_api.NodeMetricsList, error) {
+func getNodeMetricsList(fm kubeFramework, svc *kube_v1.Service, url string, labelSelector *labels.Selector) (metrics_api.NodeMetricsList, error) {
 	body, err := getDataFromProxyWithSelector(fm, svc, url, labelSelector)
 	if err != nil {
 		return metrics_api.NodeMetricsList{}, err
@@ -736,18 +742,18 @@ func getNodeMetricsList(fm kubeFramework, svc *kube_api.Service, url string, lab
 	return data, nil
 }
 
-func getLabelSelectedNodeMetrics(fm kubeFramework, svc *kube_api.Service, labelSelector *labels.Selector) (metrics_api.NodeMetricsList, error) {
+func getLabelSelectedNodeMetrics(fm kubeFramework, svc *kube_v1.Service, labelSelector *labels.Selector) (metrics_api.NodeMetricsList, error) {
 	url := fmt.Sprintf("%s/nodes", baseMetricsUrl)
 	return getNodeMetricsList(fm, svc, url, labelSelector)
 }
 
-func getAllNodeMetrics(fm kubeFramework, svc *kube_api.Service) (metrics_api.NodeMetricsList, error) {
+func getAllNodeMetrics(fm kubeFramework, svc *kube_v1.Service) (metrics_api.NodeMetricsList, error) {
 	url := fmt.Sprintf("%s/nodes", baseMetricsUrl)
 	selector := labels.Everything()
 	return getNodeMetricsList(fm, svc, url, &selector)
 }
 
-func runSingleNodeMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runSingleNodeMetricsApiTest(fm kubeFramework, svc *kube_v1.Service) error {
 	nodeList, err := fm.GetNodeNames()
 	if err != nil {
 		return err
@@ -771,7 +777,7 @@ func runSingleNodeMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error 
 	return nil
 }
 
-func runLabelSelectorNodeMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runLabelSelectorNodeMetricsApiTest(fm kubeFramework, svc *kube_v1.Service) error {
 	nodeList, err := fm.GetNodes()
 	if err != nil {
 		return err
@@ -779,12 +785,12 @@ func runLabelSelectorNodeMetricsApiTest(fm kubeFramework, svc *kube_api.Service)
 	if len(nodeList.Items) == 0 {
 		return fmt.Errorf("empty node list")
 	}
-	labelMap := make(map[string]map[string]kube_api.Node)
+	labelMap := make(map[string]map[string]kube_v1.Node)
 	for _, n := range nodeList.Items {
 		for label, value := range n.Labels {
 			selector := label + "=" + value
 			if _, found := labelMap[selector]; !found {
-				labelMap[selector] = make(map[string]kube_api.Node)
+				labelMap[selector] = make(map[string]kube_v1.Node)
 			}
 			labelMap[selector][n.Name] = n
 		}
@@ -815,7 +821,7 @@ func runLabelSelectorNodeMetricsApiTest(fm kubeFramework, svc *kube_api.Service)
 	return nil
 }
 
-func runAllNodesMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runAllNodesMetricsApiTest(fm kubeFramework, svc *kube_v1.Service) error {
 	nodeList, err := fm.GetNodeNames()
 	if err != nil {
 		return err
@@ -844,7 +850,7 @@ func runAllNodesMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	return nil
 }
 
-func runSinglePodMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runSinglePodMetricsApiTest(fm kubeFramework, svc *kube_v1.Service) error {
 	podList, err := fm.GetAllRunningPods()
 	if err != nil {
 		return err
@@ -865,7 +871,7 @@ func runSinglePodMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	return nil
 }
 
-func runAllPodsInNamespaceMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runAllPodsInNamespaceMetricsApiTest(fm kubeFramework, svc *kube_v1.Service) error {
 	podList, err := fm.GetAllRunningPods()
 	if err != nil {
 		return err
@@ -873,10 +879,10 @@ func runAllPodsInNamespaceMetricsApiTest(fm kubeFramework, svc *kube_api.Service
 	if len(podList) == 0 {
 		return fmt.Errorf("empty pod list")
 	}
-	nsToPods := make(map[string]map[string]kube_api.Pod)
+	nsToPods := make(map[string]map[string]kube_v1.Pod)
 	for _, pod := range podList {
 		if _, found := nsToPods[pod.Namespace]; !found {
-			nsToPods[pod.Namespace] = make(map[string]kube_api.Pod)
+			nsToPods[pod.Namespace] = make(map[string]kube_v1.Pod)
 		}
 		nsToPods[pod.Namespace][pod.Name] = pod
 	}
@@ -901,7 +907,7 @@ func runAllPodsInNamespaceMetricsApiTest(fm kubeFramework, svc *kube_api.Service
 	return nil
 }
 
-func runAllPodsMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runAllPodsMetricsApiTest(fm kubeFramework, svc *kube_v1.Service) error {
 	podList, err := fm.GetAllRunningPods()
 	if err != nil {
 		return err
@@ -909,7 +915,7 @@ func runAllPodsMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	if len(podList) == 0 {
 		return fmt.Errorf("empty pod list")
 	}
-	pods := make(map[string]kube_api.Pod)
+	pods := make(map[string]kube_v1.Pod)
 	for _, p := range podList {
 		pods[p.Namespace+"/"+p.Name] = p
 	}
@@ -932,7 +938,7 @@ func runAllPodsMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
 	return nil
 }
 
-func runLabelSelectorPodMetricsApiTest(fm kubeFramework, svc *kube_api.Service) error {
+func runLabelSelectorPodMetricsApiTest(fm kubeFramework, svc *kube_v1.Service) error {
 	podList, err := fm.GetAllRunningPods()
 	if err != nil {
 		return err
@@ -940,18 +946,18 @@ func runLabelSelectorPodMetricsApiTest(fm kubeFramework, svc *kube_api.Service) 
 	if len(podList) == 0 {
 		return fmt.Errorf("empty pod list")
 	}
-	nsToPods := make(map[string][]kube_api.Pod)
+	nsToPods := make(map[string][]kube_v1.Pod)
 	for _, pod := range podList {
 		nsToPods[pod.Namespace] = append(nsToPods[pod.Namespace], pod)
 	}
 
 	for ns, podsInNamespace := range nsToPods {
-		labelMap := make(map[string]map[string]kube_api.Pod)
+		labelMap := make(map[string]map[string]kube_v1.Pod)
 		for _, p := range podsInNamespace {
 			for label, name := range p.Labels {
 				selector := label + "=" + name
 				if _, found := labelMap[selector]; !found {
-					labelMap[selector] = make(map[string]kube_api.Pod)
+					labelMap[selector] = make(map[string]kube_v1.Pod)
 				}
 				labelMap[selector][p.Name] = p
 			}

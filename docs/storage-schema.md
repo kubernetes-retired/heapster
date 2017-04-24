@@ -15,6 +15,8 @@ Heapster exports the following metrics to its backends.
 | filesystem/usage | Total number of bytes consumed on a filesystem. |
 | filesystem/limit | The total size of filesystem in bytes. |
 | filesystem/available | The number of available bytes remaining in a the filesystem |
+| filesystem/inodes | The number of available inodes in a the filesystem |
+| filesystem/inodes_free | The number of free inodes remaining in a the filesystem |
 | memory/limit | Memory hard limit in bytes. |
 | memory/major_page_faults | Number of major page faults. |
 | memory/major_page_faults_rate | Number of major page faults per second. |
@@ -26,6 +28,8 @@ Heapster exports the following metrics to its backends.
 | memory/page_faults_rate | Number of page faults per second. |
 | memory/request | Memory request (the guaranteed amount of resources) in bytes. |
 | memory/usage | Total memory usage. |
+| memory/cache | Cache memory usage. |
+| memory/rss | RSS memory usage. |
 | memory/working_set | Total working set usage. Working set is the memory being used and not easily dropped by the kernel. |
 | network/rx | Cumulative number of bytes received over the network. |
 | network/rx_errors | Cumulative number of errors while receiving over the network. |

@@ -147,7 +147,7 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 
 func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	if err := sink.createDatabase(); err != nil {
-		glog.Errorf("Failed to create infuxdb: %v", err)
+		glog.Errorf("Failed to create influxdb: %v", err)
 		return
 	}
 	bp := influxdb.BatchPoints{
@@ -158,12 +158,14 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 
 	start := time.Now()
 	if _, err := sink.client.Write(bp); err != nil {
+		glog.Errorf("InfluxDB write failed: %v", err)
 		if strings.Contains(err.Error(), dbNotFoundError) {
 			sink.resetConnection()
 		} else if _, _, err := sink.client.Ping(); err != nil {
 			glog.Errorf("InfluxDB ping failed: %v", err)
 			sink.resetConnection()
 		}
+		return
 	}
 	end := time.Now()
 	glog.V(4).Infof("Exported %d data to influxDB in %s", len(dataPoints), end.Sub(start))
@@ -197,7 +199,6 @@ func (sink *influxdbSink) createDatabase() error {
 	if sink.dbExists {
 		return nil
 	}
-
 	q := influxdb.Query{
 		Command: fmt.Sprintf(`CREATE DATABASE %s WITH NAME "default"`, sink.c.DbName),
 	}
@@ -218,7 +219,7 @@ func (sink *influxdbSink) createDatabase() error {
 
 func (sink *influxdbSink) createRetentionPolicy() error {
 	q := influxdb.Query{
-		Command: fmt.Sprintf(`CREATE RETENTION POLICY "default" ON %s DURATION 0d REPLICATION 1 DEFAULT`, sink.c.DbName),
+		Command: fmt.Sprintf(`CREATE RETENTION POLICY "default" ON %s DURATION %s REPLICATION 1 DEFAULT`, sink.c.DbName, sink.c.RetentionPolicy),
 	}
 
 	if resp, err := sink.client.Query(q); err != nil {

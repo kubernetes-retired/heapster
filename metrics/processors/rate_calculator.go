@@ -31,6 +31,7 @@ func (this *RateCalculator) Name() string {
 
 func (this *RateCalculator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
 	if this.previousBatch == nil {
+		glog.V(4).Infof("Skipping rate calculation entirely - no previous batch found")
 		this.previousBatch = batch
 		return batch, nil
 	}
@@ -45,6 +46,7 @@ func (this *RateCalculator) Process(batch *core.DataBatch) (*core.DataBatch, err
 		if oldMs, found := this.previousBatch.MetricSets[key]; found {
 			if !newMs.ScrapeTime.After(oldMs.ScrapeTime) {
 				// New must be strictly after old.
+				glog.V(4).Infof("Skipping rate calculations for %s - new batch (%s) was not scraped strictly after old batch (%s)", key, newMs.ScrapeTime, oldMs.ScrapeTime)
 				continue
 			}
 			if !newMs.CreateTime.Equal(oldMs.CreateTime) {
@@ -78,6 +80,8 @@ func (this *RateCalculator) Process(batch *core.DataBatch) (*core.DataBatch, err
 							FloatValue: newVal,
 						}
 					}
+				} else if foundNew && !foundOld || !foundNew && foundOld {
+					glog.V(4).Infof("Skipping rates for %s in %s: metric not found in one of old (%v) or new (%v)", metricName, key, foundOld, foundNew)
 				}
 			}
 		}

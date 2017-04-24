@@ -24,9 +24,10 @@ import (
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	util "k8s.io/client-go/util/testing"
 	"k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 func TestDecodeMetrics1(t *testing.T) {
@@ -298,7 +299,7 @@ func TestDecodeMetrics6(t *testing.T) {
 
 var nodes = []kube_api.Node{
 	{
-		ObjectMeta: kube_api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "testNode",
 		},
 		Status: kube_api.NodeStatus{
@@ -321,7 +322,7 @@ var nodes = []kube_api.Node{
 		},
 	},
 	{
-		ObjectMeta: kube_api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "testNode",
 		},
 		Status: kube_api.NodeStatus{
@@ -344,7 +345,7 @@ var nodes = []kube_api.Node{
 		},
 	},
 	{
-		ObjectMeta: kube_api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "testNode",
 		},
 		Status: kube_api.NodeStatus{

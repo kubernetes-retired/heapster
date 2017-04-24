@@ -24,12 +24,13 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
+	kube_client "k8s.io/client-go/kubernetes"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/heapster/metrics/util"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
-	"k8s.io/kubernetes/pkg/version"
 )
 
 var (
@@ -47,9 +48,6 @@ var (
 // Prefix used for the LabelResourceID for volume metrics.
 const VolumeResourcePrefix = "Volume:"
 
-// Earliest kubelet version that serves the summary API.
-var minSummaryKubeletVersion = version.MustParse("v1.2.0-alpha.8")
-
 func init() {
 	prometheus.MustRegister(summaryRequestLatency)
 }
@@ -66,18 +64,12 @@ type NodeInfo struct {
 type summaryMetricsSource struct {
 	node          NodeInfo
 	kubeletClient *kubelet.KubeletClient
-
-	// Whether this node requires the fall-back source.
-	useFallback bool
-	fallback    MetricsSource
 }
 
-func NewSummaryMetricsSource(node NodeInfo, client *kubelet.KubeletClient, fallback MetricsSource) MetricsSource {
+func NewSummaryMetricsSource(node NodeInfo, client *kubelet.KubeletClient) MetricsSource {
 	return &summaryMetricsSource{
 		node:          node,
 		kubeletClient: client,
-		useFallback:   !summarySupported(node.KubeletVersion),
-		fallback:      fallback,
 	}
 }
 
@@ -90,10 +82,6 @@ func (this *summaryMetricsSource) String() string {
 }
 
 func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
-	if this.useFallback {
-		return this.fallback.ScrapeMetrics(start, end)
-	}
-
 	result := &DataBatch{
 		Timestamp:  time.Now(),
 		MetricSets: map[string]*MetricSet{},
@@ -106,11 +94,6 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 	}()
 
 	if err != nil {
-		if kubelet.IsNotFoundError(err) {
-			glog.Warningf("Summary not found, using fallback: %v", err)
-			this.useFallback = true
-			return this.fallback.ScrapeMetrics(start, end)
-		}
 		glog.Errorf("error while getting metrics summary from Kubelet %s(%s:%d): %v", this.node.NodeName, this.node.IP, this.node.Port, err)
 		return result
 	}
@@ -118,15 +101,6 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 	result.MetricSets = this.decodeSummary(summary)
 
 	return result
-}
-
-func summarySupported(kubeletVersion string) bool {
-	semver, err := version.Parse(kubeletVersion)
-	if err != nil {
-		glog.Errorf("Unable to parse kubelet version: %q", kubeletVersion)
-		return false
-	}
-	return semver.GE(minSummaryKubeletVersion)
 }
 
 const (
@@ -143,6 +117,7 @@ var systemNameMap = map[string]string{
 
 // decodeSummary translates the kubelet stats.Summary API into the flattened heapster MetricSet API.
 func (this *summaryMetricsSource) decodeSummary(summary *stats.Summary) map[string]*MetricSet {
+	glog.V(9).Infof("Begin summary decode")
 	result := map[string]*MetricSet{}
 
 	labels := map[string]string{
@@ -156,6 +131,7 @@ func (this *summaryMetricsSource) decodeSummary(summary *stats.Summary) map[stri
 		this.decodePodStats(result, labels, &pod)
 	}
 
+	glog.V(9).Infof("End summary decode")
 	return result
 }
 
@@ -169,6 +145,7 @@ func (this *summaryMetricsSource) cloneLabels(labels map[string]string) map[stri
 }
 
 func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet, labels map[string]string, node *stats.NodeStats) {
+	glog.V(9).Infof("Decoding node stats for node %s...", node.NodeName)
 	nodeMetrics := &MetricSet{
 		Labels:         this.cloneLabels(labels),
 		MetricValues:   map[string]MetricValue{},
@@ -194,6 +171,7 @@ func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet,
 }
 
 func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, nodeLabels map[string]string, pod *stats.PodStats) {
+	glog.V(9).Infof("Decoding pod stats for pod %s/%s (%s)...", pod.PodRef.Namespace, pod.PodRef.Name, pod.PodRef.UID)
 	podMetrics := &MetricSet{
 		Labels:         this.cloneLabels(nodeLabels),
 		MetricValues:   map[string]MetricValue{},
@@ -223,6 +201,7 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 }
 
 func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *stats.ContainerStats) *MetricSet {
+	glog.V(9).Infof("Decoding container stats stats for container %s...", container.Name)
 	containerMetrics := &MetricSet{
 		Labels:         this.cloneLabels(podLabels),
 		MetricValues:   map[string]MetricValue{},
@@ -245,6 +224,7 @@ func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]stri
 
 func (this *summaryMetricsSource) decodeUptime(metrics *MetricSet, startTime time.Time) {
 	if startTime.IsZero() {
+		glog.V(9).Infof("missing start time!")
 		return
 	}
 
@@ -254,6 +234,7 @@ func (this *summaryMetricsSource) decodeUptime(metrics *MetricSet, startTime tim
 
 func (this *summaryMetricsSource) decodeCPUStats(metrics *MetricSet, cpu *stats.CPUStats) {
 	if cpu == nil {
+		glog.V(9).Infof("missing cpu usage metric!")
 		return
 	}
 
@@ -262,6 +243,7 @@ func (this *summaryMetricsSource) decodeCPUStats(metrics *MetricSet, cpu *stats.
 
 func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *stats.MemoryStats) {
 	if memory == nil {
+		glog.V(9).Infof("missing memory metrics!")
 		return
 	}
 
@@ -273,6 +255,7 @@ func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *
 
 func (this *summaryMetricsSource) decodeNetworkStats(metrics *MetricSet, network *stats.NetworkStats) {
 	if network == nil {
+		glog.V(9).Infof("missing network metrics!")
 		return
 	}
 
@@ -284,6 +267,7 @@ func (this *summaryMetricsSource) decodeNetworkStats(metrics *MetricSet, network
 
 func (this *summaryMetricsSource) decodeFsStats(metrics *MetricSet, fsKey string, fs *stats.FsStats) {
 	if fs == nil {
+		glog.V(9).Infof("missing fs metrics!")
 		return
 	}
 
@@ -333,6 +317,7 @@ func (this *summaryMetricsSource) getScrapeTime(cpu *stats.CPUStats, memory *sta
 // addIntMetric is a convenience method for adding the metric and value to the metric set.
 func (this *summaryMetricsSource) addIntMetric(metrics *MetricSet, metric *Metric, value *uint64) {
 	if value == nil {
+		glog.V(9).Infof("skipping metric %s because the value was nil", metric.Name)
 		return
 	}
 	val := MetricValue{
@@ -346,6 +331,7 @@ func (this *summaryMetricsSource) addIntMetric(metrics *MetricSet, metric *Metri
 // addLabeledIntMetric is a convenience method for adding the labeled metric and value to the metric set.
 func (this *summaryMetricsSource) addLabeledIntMetric(metrics *MetricSet, metric *Metric, labels map[string]string, value *uint64) {
 	if value == nil {
+		glog.V(9).Infof("skipping labeled metric %s (%v) because the value was nil", metric.Name, labels)
 		return
 	}
 
@@ -371,33 +357,26 @@ func (this *summaryMetricsSource) getContainerName(c *stats.ContainerStats) stri
 
 // TODO: The summaryProvider duplicates a lot of code from kubeletProvider, and should be refactored.
 type summaryProvider struct {
-	nodeLister    *cache.StoreToNodeLister
+	nodeLister    v1listers.NodeLister
 	reflector     *cache.Reflector
 	kubeletClient *kubelet.KubeletClient
 }
 
 func (this *summaryProvider) GetMetricsSources() []MetricsSource {
 	sources := []MetricsSource{}
-	nodes, err := this.nodeLister.List()
+	nodes, err := this.nodeLister.List(labels.Everything())
 	if err != nil {
 		glog.Errorf("error while listing nodes: %v", err)
 		return sources
 	}
 
-	for _, node := range nodes.Items {
-		info, err := this.getNodeInfo(&node)
+	for _, node := range nodes {
+		info, err := this.getNodeInfo(node)
 		if err != nil {
 			glog.Errorf("%v", err)
 			continue
 		}
-		fallback := kubelet.NewKubeletMetricsSource(
-			info.Host,
-			this.kubeletClient,
-			info.NodeName,
-			info.HostName,
-			info.HostID,
-		)
-		sources = append(sources, NewSummaryMetricsSource(info, this.kubeletClient, fallback))
+		sources = append(sources, NewSummaryMetricsSource(info, this.kubeletClient))
 	}
 	return sources
 }
@@ -443,16 +422,13 @@ func NewSummaryProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	kubeClient := kube_client.NewForConfigOrDie(kubeConfig)
 	kubeletClient, err := kubelet.NewKubeletClient(kubeletConfig)
 	if err != nil {
 		return nil, err
 	}
 	// watch nodes
-	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
-	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
-	reflector.Run()
+	nodeLister, reflector, _ := util.GetNodeLister(kubeClient)
 
 	return &summaryProvider{
 		nodeLister:    nodeLister,

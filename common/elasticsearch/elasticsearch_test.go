@@ -149,3 +149,53 @@ func TestCreateElasticSearchServiceForDefaultClusterName(t *testing.T) {
 		t.Fatalf("cluster name is not equal. Expected: %s, Got: %s", ESClusterName, esSvc.ClusterName)
 	}
 }
+
+func TestCreateElasticSearchServiceSingleDnsEntrypoint(t *testing.T) {
+	clusterName := "sandbox"
+	esURI := fmt.Sprintf("https://foo.com:9200?"+
+		"esUserName=test&esUserSecret=password&maxRetries=10&startupHealthcheckTimeout=30&"+
+		"sniff=false&healthCheck=false&cluster_name=%s", clusterName)
+
+	url, err := url.Parse(esURI)
+	if err != nil {
+		t.Fatalf("Error when parsing URL: %s", err.Error())
+	}
+
+	esSvc, err := CreateElasticSearchService(url)
+	if err != nil {
+		t.Fatalf("Error when creating config: %s", err.Error())
+	}
+
+	expectedClient, err := elastic.NewClient(
+		elastic.SetURL("https://foo.com:9200"),
+		elastic.SetBasicAuth("test", "password"),
+		elastic.SetMaxRetries(10),
+		elastic.SetHealthcheckTimeoutStartup(30*time.Second),
+		elastic.SetSniff(false), elastic.SetHealthcheck(false))
+
+	if err != nil {
+		t.Fatalf("Error when creating client: %s", err.Error())
+	}
+
+	actualClientRefl := reflect.ValueOf(esSvc.EsClient).Elem()
+	expectedClientRefl := reflect.ValueOf(expectedClient).Elem()
+
+	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
+		t.Fatal("basicAuthUsername is not equal")
+	}
+	if actualClientRefl.FieldByName("maxRetries").Int() != expectedClientRefl.FieldByName("maxRetries").Int() {
+		t.Fatal("maxRetries is not equal")
+	}
+	if actualClientRefl.FieldByName("healthcheckTimeoutStartup").Int() != expectedClientRefl.FieldByName("healthcheckTimeoutStartup").Int() {
+		t.Fatal("healthcheckTimeoutStartup is not equal")
+	}
+	if actualClientRefl.FieldByName("snifferEnabled").Bool() != expectedClientRefl.FieldByName("snifferEnabled").Bool() {
+		t.Fatal("snifferEnabled is not equal")
+	}
+	if actualClientRefl.FieldByName("healthcheckEnabled").Bool() != expectedClientRefl.FieldByName("healthcheckEnabled").Bool() {
+		t.Fatal("healthcheckEnabled is not equal")
+	}
+	if esSvc.ClusterName != clusterName {
+		t.Fatal("cluster name is not equal")
+	}
+}

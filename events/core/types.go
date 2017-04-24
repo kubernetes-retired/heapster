@@ -17,7 +17,7 @@ package core
 import (
 	"time"
 
-	kube_api "k8s.io/kubernetes/pkg/api"
+	kube_api "k8s.io/client-go/pkg/api/v1"
 )
 
 type EventBatch struct {

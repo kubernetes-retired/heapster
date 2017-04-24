@@ -27,7 +27,8 @@ LDFLAGS=-w -X main.version=$(VERSION) -X main.commit=unknown-dev -X main.timesta
 DEB_BUILD=4.0.2-1481203731
 KUBE_CROSS_IMAGE=gcr.io/google_containers/kube-cross:v1.7.3-0
 
-ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
+# s390x
+ALL_ARCHITECTURES=amd64 arm arm64 ppc64le
 ML_PLATFORMS=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
 
 # Set default base image dynamically for each arch
@@ -74,20 +75,22 @@ build:
 
 	rm -rf $(TEMP_DIR)
 
-push: ./manifest-tool gcr-login $(addprefix sub-push-,$(ALL_ARCHITECTURES))
-	./manifest-tool push from-args --platforms $(ML_PLATFORMS) --template $(PREFIX)/heapster-grafana-ARCH:$(VERSION) --target $(PREFIX)/heapster-grafana:$(VERSION)
+# Should depend on target: ./manifest-tool
+push: gcr-login $(addprefix sub-push-,$(ALL_ARCHITECTURES))
+#	./manifest-tool push from-args --platforms $(ML_PLATFORMS) --template $(PREFIX)/heapster-grafana-ARCH:$(VERSION) --target $(PREFIX)/heapster-grafana:$(VERSION)
 
 sub-push-%:
 	$(MAKE) ARCH=$* PREFIX=$(PREFIX) VERSION=$(VERSION) build
 	docker push $(PREFIX)/heapster-grafana-$*:$(VERSION)
 
-./manifest-tool:
-	curl -sSL https://github.com/luxas/manifest-tool/releases/download/v0.3.0/manifest-tool > manifest-tool
-	chmod +x manifest-tool
+# TODO(luxas): As soon as it's working to push fat manifests to gcr.io, reenable this code
+#./manifest-tool:
+#	curl -sSL https://github.com/luxas/manifest-tool/releases/download/v0.3.0/manifest-tool > manifest-tool
+#	chmod +x manifest-tool
 
 gcr-login:
 ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
 	@echo "If you are pushing to a gcr.io registry, you have to be logged in via 'docker login'; 'gcloud docker push' can't push manifest lists yet."
 	@echo "This script is automatically logging you in now."
-	docker login -u oauth2accesstoken -p "$(gcloud auth print-access-token)" https://gcr.io
+	gcloud docker -a
 endif

@@ -15,7 +15,6 @@
 package opentsdb
 
 import (
-	"bytes"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -38,6 +37,8 @@ const (
 	sinkRegisterName    = "opentsdb"
 	defaultOpentsdbHost = "127.0.0.1:4242"
 	batchSize           = 1000
+	defaultClusterName  = "k8s-cluster"
+	clusterNameTagName  = "cluster"
 )
 
 var (
@@ -56,7 +57,8 @@ type openTSDBSink struct {
 	client openTSDBClient
 	sync.RWMutex
 	writeFailures int
-	config        opentsdbcfg.OpenTSDBConfig
+	clusterName   string
+	host          string
 }
 
 func (tsdbSink *openTSDBSink) ExportData(data *core.DataBatch) {
@@ -87,15 +89,6 @@ func (tsdbSink *openTSDBSink) ExportData(data *core.DataBatch) {
 			return
 		}
 	}
-}
-
-func (tsdbSink *openTSDBSink) DebugInfo() string {
-	buf := bytes.Buffer{}
-	buf.WriteString("Sink Type: OpenTSDB\n")
-	buf.WriteString(fmt.Sprintf("\tclient: Host %s", tsdbSink.config.OpentsdbHost))
-	buf.WriteString(tsdbSink.getState())
-	buf.WriteString("\n")
-	return buf.String()
 }
 
 func (tsdbSink *openTSDBSink) Name() string {
@@ -148,19 +141,15 @@ func (tsdbSink *openTSDBSink) metricToPoint(name string, value core.MetricValue,
 		}
 	}
 
-	tsdbSink.secureTags(&datapoint)
+	tsdbSink.putDefaultTags(&datapoint)
 	return datapoint
 }
 
-// secureTags just fills in the default key-value pair for the tags, if there is no tags for
-// current datapoint. Otherwise, the opentsdb will return error and the operation of putting
+// putDefaultTags just fills in the default key-value pair for the tags.
+// OpenTSDB requires at least one non-empty tag otherwise the OpenTSDB will return error and the operation of putting
 // datapoint will be failed.
-func (tsdbSink *openTSDBSink) secureTags(datapoint *opentsdbclient.DataPoint) {
-
-	glog.Warningf("%#v", datapoint)
-	if len(datapoint.Tags) == 0 {
-		datapoint.Tags[defaultTagName] = defaultTagValue
-	}
+func (tsdbSink *openTSDBSink) putDefaultTags(datapoint *opentsdbclient.DataPoint) {
+	datapoint.Tags[clusterNameTagName] = tsdbSink.clusterName
 }
 
 func (tsdbSink *openTSDBSink) recordWriteFailure() {
@@ -183,27 +172,29 @@ func (tsdbSink *openTSDBSink) setupClient() error {
 	return nil
 }
 
-func new(opentsdbHost string) (*openTSDBSink, error) {
-	cfg := opentsdbcfg.OpenTSDBConfig{OpentsdbHost: opentsdbHost}
-	opentsdbClient, err := opentsdbclient.NewClient(cfg)
-	if err != nil {
-		return nil, err
-	}
-	return &openTSDBSink{
-		client: opentsdbClient,
-		config: cfg,
-	}, nil
-}
-
 func CreateOpenTSDBSink(uri *url.URL) (core.DataSink, error) {
+	clusterName := defaultClusterName
+	if len(uri.Query()[clusterNameTagName]) > 0 {
+		clusterName = uri.Query()[clusterNameTagName][0]
+	}
+
 	host := defaultOpentsdbHost
-	if len(uri.Host) > 0 {
+	if uri.Host != "" {
 		host = uri.Host
 	}
-	tsdbSink, err := new(host)
+
+	config := opentsdbcfg.OpenTSDBConfig{OpentsdbHost: host}
+	opentsdbClient, err := opentsdbclient.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
-	glog.Infof("created opentsdb sink with host: %v", host)
-	return tsdbSink, nil
+
+	sink := &openTSDBSink{
+		client:      opentsdbClient,
+		clusterName: clusterName,
+		host:        host,
+	}
+
+	glog.Infof("created opentsdb sink with host: %v, clusterName: %v", host, clusterName)
+	return sink, nil
 }

@@ -15,22 +15,27 @@
 package v1alpha1
 
 import (
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/runtime"
-	versionedwatch "k8s.io/kubernetes/pkg/watch/versioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 // GroupName is the group name use in this package
 const GroupName = "metrics"
 
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: "v1alpha1"}
+var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha1"}
 
-// Adds the list of known types to api.Scheme.
-func AddToScheme(scheme *runtime.Scheme) error {
-	return addKnownTypes(scheme)
+// Resource takes an unqualified resource and returns a Group qualified GroupResource
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
 }
+
+var (
+	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
+	AddToScheme   = SchemeBuilder.AddToScheme
+)
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
@@ -40,12 +45,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&PodMetricsList{},
 		&v1.ListOptions{},
 	)
-	versionedwatch.AddToGroupVersion(scheme, SchemeGroupVersion)
+	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }
-
-func (obj *NodeMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
-func (obj *NodeMetricsList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }
-
-func (obj *PodMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
-func (obj *PodMetricsList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }
