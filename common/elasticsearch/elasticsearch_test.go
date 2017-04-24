@@ -80,7 +80,7 @@ func TestCreateElasticSearchServiceV2(t *testing.T) {
 func TestCreateElasticSearchServiceV5(t *testing.T) {
 	clusterName := "sandbox"
 	esURI := fmt.Sprintf("?nodes=https://foo.com:20468&nodes=https://bar.com:20468&"+
-		"esUserName=test&esUserSecret=password&maxRetries=10&startupHealthcheckTimeout=30&"+
+		"esUserName=test&esUserSecret=password&startupHealthcheckTimeout=30&"+
 		"sniff=false&healthCheck=false&ver=5&cluster_name=%s", clusterName)
 
 	url, err := url.Parse(esURI)
@@ -96,7 +96,6 @@ func TestCreateElasticSearchServiceV5(t *testing.T) {
 	expectedClient, err := elastic5.NewClient(
 		elastic5.SetURL("https://foo.com:20468", "https://bar.com:20468"),
 		elastic5.SetBasicAuth("test", "password"),
-		elastic5.SetMaxRetries(10),
 		elastic5.SetHealthcheckTimeoutStartup(30*time.Second),
 		elastic5.SetSniff(false), elastic5.SetHealthcheck(false))
 
@@ -147,10 +146,10 @@ func TestCreateElasticSearchServiceForDefaultClusterName(t *testing.T) {
 	}
 }
 
-func TestCreateElasticSearchServiceSingleDnsEntrypoint(t *testing.T) {
+func TestCreateElasticSearchServiceSingleDnsEntrypointV5(t *testing.T) {
 	clusterName := "sandbox"
 	esURI := fmt.Sprintf("https://foo.com:9200?"+
-		"esUserName=test&esUserSecret=password&maxRetries=10&startupHealthcheckTimeout=30&"+
+		"esUserName=test&esUserSecret=password&startupHealthcheckTimeout=30&"+
 		"sniff=false&healthCheck=false&cluster_name=%s", clusterName)
 
 	url, err := url.Parse(esURI)
@@ -166,7 +165,6 @@ func TestCreateElasticSearchServiceSingleDnsEntrypoint(t *testing.T) {
 	expectedClient, err := elastic5.NewClient(
 		elastic5.SetURL("https://foo.com:9200"),
 		elastic5.SetBasicAuth("test", "password"),
-		elastic5.SetMaxRetries(10),
 		elastic5.SetHealthcheckTimeoutStartup(30*time.Second),
 		elastic5.SetSniff(false), elastic5.SetHealthcheck(false))
 
@@ -175,6 +173,50 @@ func TestCreateElasticSearchServiceSingleDnsEntrypoint(t *testing.T) {
 	}
 
 	actualClientRefl := reflect.ValueOf(esSvc.EsClient).Elem().FieldByName("clientV5").Elem()
+	expectedClientRefl := reflect.ValueOf(expectedClient).Elem()
+
+	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
+		t.Fatal("basicAuthUsername is not equal")
+	}
+	if actualClientRefl.FieldByName("healthcheckTimeoutStartup").Int() != expectedClientRefl.FieldByName("healthcheckTimeoutStartup").Int() {
+		t.Fatal("healthcheckTimeoutStartup is not equal")
+	}
+	if actualClientRefl.FieldByName("snifferEnabled").Bool() != expectedClientRefl.FieldByName("snifferEnabled").Bool() {
+		t.Fatal("snifferEnabled is not equal")
+	}
+	if actualClientRefl.FieldByName("healthcheckEnabled").Bool() != expectedClientRefl.FieldByName("healthcheckEnabled").Bool() {
+		t.Fatal("healthcheckEnabled is not equal")
+	}
+	if esSvc.ClusterName != clusterName {
+		t.Fatal("cluster name is not equal")
+	}
+}
+func TestCreateElasticSearchServiceSingleDnsEntrypointV2(t *testing.T) {
+	clusterName := "sandbox"
+	esURI := fmt.Sprintf("https://foo.com:9200?"+
+		"esUserName=test&esUserSecret=password&startupHealthcheckTimeout=30&"+
+		"sniff=false&healthCheck=false&ver=2&cluster_name=%s", clusterName)
+
+	url, err := url.Parse(esURI)
+	if err != nil {
+		t.Fatalf("Error when parsing URL: %s", err.Error())
+	}
+	esSvc, err := CreateElasticSearchService(url)
+	if err != nil {
+		t.Fatalf("Error when creating config: %s", err.Error())
+	}
+
+	expectedClient, err := elastic2.NewClient(
+		elastic2.SetURL("https://foo.com:9200"),
+		elastic2.SetBasicAuth("test", "password"),
+		elastic2.SetHealthcheckTimeoutStartup(30*time.Second),
+		elastic2.SetSniff(false), elastic2.SetHealthcheck(false))
+
+	if err != nil {
+		t.Fatalf("Error when creating client: %s", err.Error())
+	}
+
+	actualClientRefl := reflect.ValueOf(esSvc.EsClient).Elem().FieldByName("clientV2").Elem()
 	expectedClientRefl := reflect.ValueOf(expectedClient).Elem()
 
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
