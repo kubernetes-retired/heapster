@@ -23,7 +23,6 @@ import (
 	"fmt"
 	elastic2 "gopkg.in/olivere/elastic.v3"
 	elastic5 "gopkg.in/olivere/elastic.v5"
-	"github.com/davecgh/go-spew/spew"
 )
 
 func TestCreateElasticSearchServiceV2(t *testing.T) {
@@ -179,7 +178,6 @@ func TestCreateElasticSearchServiceSingleDnsEntrypoint(t *testing.T) {
 	expectedClientRefl := reflect.ValueOf(expectedClient).Elem()
 
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
-		spew.Dump(actualClientRefl.FieldByName("basicAuthUsername"))
 		t.Fatal("basicAuthUsername is not equal")
 	}
 	if actualClientRefl.FieldByName("healthcheckTimeoutStartup").Int() != expectedClientRefl.FieldByName("healthcheckTimeoutStartup").Int() {
