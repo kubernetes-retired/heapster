@@ -68,12 +68,6 @@ var (
 		Name:       "container.googleapis.com/container/uptime",
 	}
 
-	utilizationMD = &metricMetadata{
-		MetricKind: "GAUGE",
-		ValueType:  "DOUBLE",
-		Name:       "container.googleapis.com/container/cpu/utilization",
-	}
-
 	networkRxMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "INT64",
@@ -303,10 +297,11 @@ func (sink *stackdriverSink) translateMetric(timestamp time.Time, labels map[str
 		point := sink.doublePoint(timestamp, createTime, doubleValue)
 		return createTimeSeries(resourceLabels, uptimeMD, point)
 	case core.MetricCpuLimit.MetricDescriptor.Name:
-		point := sink.doublePoint(timestamp, timestamp, float64(value.FloatValue))
+		// converting from millicores to cores
+		point := sink.doublePoint(timestamp, timestamp, float64(value.IntValue)/1000)
 		return createTimeSeries(resourceLabels, cpuReservedCoresMD, point)
 	case core.MetricCpuUsage.MetricDescriptor.Name:
-		point := sink.doublePoint(timestamp, createTime, float64(value.FloatValue))
+		point := sink.doublePoint(timestamp, createTime, float64(value.IntValue)/float64(time.Second/time.Nanosecond))
 		return createTimeSeries(resourceLabels, cpuUsageTimeMD, point)
 	case core.MetricNetworkRx.MetricDescriptor.Name:
 		point := sink.intPoint(timestamp, createTime, value.IntValue)
