@@ -146,7 +146,7 @@ func TestCreateElasticSearchServiceForDefaultClusterName(t *testing.T) {
 	}
 }
 
-func TestCreateElasticSearchServiceWithIgnestPipeline(t *testing.T) {
+func TestCreateElasticSearchServiceWithIngestPipeline(t *testing.T) {
 	const pipeline = "test"
 
 	esURI := "?nodes=https://foo.com:20468&nodes=https://bar.com:20468&" +
@@ -164,7 +164,7 @@ func TestCreateElasticSearchServiceWithIgnestPipeline(t *testing.T) {
 	}
 
 	if esSvc.EsClient.pipeline != pipeline {
-		t.Fatalf("Ignest pipline is not equal. Expected: %s, Got: %s", pipeline, esSvc.EsClient.pipeline)
+		t.Fatalf("Ingest pipline is not equal. Expected: %s, Got: %s", pipeline, esSvc.EsClient.pipeline)
 	}
 
 	if esSvc.EsClient.version < 5 {

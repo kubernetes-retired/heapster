@@ -196,7 +196,7 @@ Besides this, the following options can be set in query string:
 * `ver` - ElasticSearch cluster version, can be either `2` or `5`. The default is `5`
 * `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
 * `cluster_name` - cluster name for different Kubernetes clusters. Default value is `default`.
-* `pipeline` - (optional; >ES5) Ignest Pipeline to process the documents. The default is disabled(empty value)
+* `pipeline` - (optional; >ES5) Ingest Pipeline to process the documents. The default is disabled(empty value)
 
 #### AWS Integration
 In order to use AWS Managed Elastic we need to use one of the following methods:
