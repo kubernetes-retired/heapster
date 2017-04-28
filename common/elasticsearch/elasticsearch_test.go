@@ -168,7 +168,7 @@ func TestCreateElasticSearchServiceWithIngestPipeline(t *testing.T) {
 	}
 
 	if esSvc.EsClient.version < 5 {
-		t.Fatalf("ElasticSearch client not using version 5+ (required for pipeline). Got: %s", esSvc.EsClient.version)
+		t.Fatalf("ElasticSearch client not using version 5+ (required for pipeline). Got: %d", esSvc.EsClient.version)
 	}
 }
 
