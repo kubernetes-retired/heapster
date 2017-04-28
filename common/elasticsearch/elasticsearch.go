@@ -228,11 +228,16 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		}
 	}
 
+	pipeline := ""
+	if len(opts["pipeline"]) > 0 {
+		pipeline = opts["pipeline"][0]
+	}
+
 	switch version {
 	case 2:
 		esSvc.EsClient, err = newEsClientV2(startupFnsV2, bulkWorkers)
 	case 5:
-		esSvc.EsClient, err = newEsClientV5(startupFnsV5, bulkWorkers)
+		esSvc.EsClient, err = newEsClientV5(startupFnsV5, bulkWorkers, pipeline)
 	default:
 		return nil, UnsupportedVersion{}
 	}
