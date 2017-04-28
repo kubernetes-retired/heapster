@@ -131,7 +131,7 @@ func (es *esClient) AddBulkReq(index, typeName string, data interface{}) error {
 			Doc(data))
 		return nil
 	case 5:
-		es.bulkProcessorV5.Add(elastic2.NewBulkIndexRequest().
+		es.bulkProcessorV5.Add(elastic5.NewBulkIndexRequest().
 			Index(index).
 			Type(typeName).
 			Id(uuid.NewUUID().String()).
