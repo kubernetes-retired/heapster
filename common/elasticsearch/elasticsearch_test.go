@@ -150,7 +150,7 @@ func TestCreateElasticSearchServiceWithIgnestPipeline(t *testing.T) {
 	const pipeline = "test"
 
 	esURI := "?nodes=https://foo.com:20468&nodes=https://bar.com:20468&" +
-		"pipeline="+pipeline+"&"+
+		"pipeline=" + pipeline + "&" +
 		"sniff=false&healthCheck=false"
 
 	url, err := url.Parse(esURI)
