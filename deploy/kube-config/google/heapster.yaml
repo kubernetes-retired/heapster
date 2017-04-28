@@ -25,6 +25,18 @@ spec:
         command:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
+        - --sink=gcm
+        - --sink=gcl
+        - --poll_duration=2m
+        - --stats_resolution=1m
+        volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: ssl-certs
+          readOnly: true
+      volumes:
+      - name: ssl-certs
+        hostPath:
+          path: /etc/ssl/certs
 ---
 apiVersion: v1
 kind: Service
