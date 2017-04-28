@@ -35,7 +35,7 @@ const (
 	maxTimeseriesPerRequest = 200
 )
 
-type stackdriverSink struct {
+type StackdriverSink struct {
 	project           string
 	zone              string
 	stackdriverClient *sd_api.Service
@@ -133,15 +133,15 @@ var (
 	)
 )
 
-func (sink *stackdriverSink) Name() string {
+func (sink *StackdriverSink) Name() string {
 	return "Stackdriver Sink"
 }
 
-func (sink *stackdriverSink) Stop() {
+func (sink *StackdriverSink) Stop() {
 	// nothing needs to be done
 }
 
-func (sink *stackdriverSink) ExportData(dataBatch *core.DataBatch) {
+func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 	req := getReq()
 	for _, metricSet := range dataBatch.MetricSets {
 		switch metricSet.Labels["type"] {
@@ -157,7 +157,7 @@ func (sink *stackdriverSink) ExportData(dataBatch *core.DataBatch) {
 		sink.preprocessMemoryMetrics(metricSet)
 
 		for name, value := range metricSet.MetricValues {
-			point := sink.translateMetric(dataBatch.Timestamp, metricSet.Labels, name, value, metricSet.CreateTime)
+			point := sink.TranslateMetric(dataBatch.Timestamp, metricSet.Labels, name, value, metricSet.CreateTime)
 
 			if point != nil {
 				req.TimeSeries = append(req.TimeSeries, point)
@@ -169,7 +169,7 @@ func (sink *stackdriverSink) ExportData(dataBatch *core.DataBatch) {
 		}
 
 		for _, metric := range metricSet.LabeledMetrics {
-			point := sink.translateLabeledMetric(dataBatch.Timestamp, metricSet.Labels, metric, metricSet.CreateTime)
+			point := sink.TranslateLabeledMetric(dataBatch.Timestamp, metricSet.Labels, metric, metricSet.CreateTime)
 
 			if point != nil {
 				req.TimeSeries = append(req.TimeSeries, point)
@@ -217,7 +217,7 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 
-	sink := &stackdriverSink{
+	sink := &StackdriverSink{
 		project:           projectId,
 		zone:              zone,
 		stackdriverClient: stackdriverClient,
@@ -232,7 +232,7 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 	return sink, nil
 }
 
-func (sink *stackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
+func (sink *StackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
 	empty, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
 
 	var responseCode int
@@ -249,7 +249,7 @@ func (sink *stackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
 		Add(float64(len(req.TimeSeries)))
 }
 
-func (sink *stackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) {
+func (sink *StackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) {
 	usage := metricSet.MetricValues[core.MetricMemoryUsage.MetricDescriptor.Name].IntValue
 	workingSet := metricSet.MetricValues[core.MetricMemoryWorkingSet.MetricDescriptor.Name].IntValue
 	bytesUsed := core.MetricValue{
@@ -267,7 +267,7 @@ func (sink *stackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) 
 	metricSet.MetricValues["memory/minor_page_faults"] = minorMemoryFaults
 }
 
-func (sink *stackdriverSink) translateLabeledMetric(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *sd_api.TimeSeries {
+func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *sd_api.TimeSeries {
 	resourceLabels := sink.getResourceLabels(labels)
 	switch metric.Name {
 	case core.MetricFilesystemUsage.MetricDescriptor.Name:
@@ -289,7 +289,7 @@ func (sink *stackdriverSink) translateLabeledMetric(timestamp time.Time, labels 
 	}
 }
 
-func (sink *stackdriverSink) translateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, createTime time.Time) *sd_api.TimeSeries {
+func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, createTime time.Time) *sd_api.TimeSeries {
 	resourceLabels := sink.getResourceLabels(labels)
 	switch name {
 	case core.MetricUptime.MetricDescriptor.Name:
@@ -341,7 +341,7 @@ func (sink *stackdriverSink) translateMetric(timestamp time.Time, labels map[str
 	}
 }
 
-func (sink *stackdriverSink) getResourceLabels(labels map[string]string) map[string]string {
+func (sink *StackdriverSink) getResourceLabels(labels map[string]string) map[string]string {
 	return map[string]string{
 		"project_id":     sink.project,
 		"cluster_name":   "",
@@ -368,7 +368,7 @@ func createTimeSeries(resourceLabels map[string]string, metadata *metricMetadata
 	}
 }
 
-func (sink *stackdriverSink) doublePoint(endTime time.Time, startTime time.Time, value float64) *sd_api.Point {
+func (sink *StackdriverSink) doublePoint(endTime time.Time, startTime time.Time, value float64) *sd_api.Point {
 	return &sd_api.Point{
 		Interval: &sd_api.TimeInterval{
 			EndTime:   endTime.Format(time.RFC3339),
@@ -382,7 +382,7 @@ func (sink *stackdriverSink) doublePoint(endTime time.Time, startTime time.Time,
 
 }
 
-func (sink *stackdriverSink) intPoint(endTime time.Time, startTime time.Time, value int64) *sd_api.Point {
+func (sink *StackdriverSink) intPoint(endTime time.Time, startTime time.Time, value int64) *sd_api.Point {
 	return &sd_api.Point{
 		Interval: &sd_api.TimeInterval{
 			EndTime:   endTime.Format(time.RFC3339),
