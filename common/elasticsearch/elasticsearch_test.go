@@ -146,6 +146,32 @@ func TestCreateElasticSearchServiceForDefaultClusterName(t *testing.T) {
 	}
 }
 
+func TestCreateElasticSearchServiceWithIgnestPipeline(t *testing.T) {
+	const pipeline = "test"
+
+	esURI := "?nodes=https://foo.com:20468&nodes=https://bar.com:20468&" +
+		"pipeline="+pipeline+"&"+
+		"sniff=false&healthCheck=false"
+
+	url, err := url.Parse(esURI)
+	if err != nil {
+		t.Fatalf("Error when parsing URL: %s", err.Error())
+	}
+
+	esSvc, err := CreateElasticSearchService(url)
+	if err != nil {
+		t.Fatalf("Error when creating config: %s", err.Error())
+	}
+
+	if esSvc.EsClient.pipeline != pipeline {
+		t.Fatalf("Ignest pipline is not equal. Expected: %s, Got: %s", pipeline, esSvc.EsClient.pipeline)
+	}
+
+	if esSvc.EsClient.version < 5 {
+		t.Fatalf("ElasticSearch client not using version 5+ (required for pipeline). Got: %s", esSvc.EsClient.version)
+	}
+}
+
 func TestCreateElasticSearchServiceSingleDnsEntrypointV5(t *testing.T) {
 	clusterName := "sandbox"
 	esURI := fmt.Sprintf("https://foo.com:9200?"+

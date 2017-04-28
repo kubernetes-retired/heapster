@@ -35,12 +35,13 @@ type esClient struct {
 	clientV5        *elastic5.Client
 	bulkProcessorV2 *elastic2.BulkProcessor
 	bulkProcessorV5 *elastic5.BulkProcessor
+	pipeline        string
 }
 
 func NewMockClient() *esClient {
 	return &esClient{}
 }
-func newEsClientV5(startupFns []elastic5.ClientOptionFunc, bulkWorkers int) (*esClient, error) {
+func newEsClientV5(startupFns []elastic5.ClientOptionFunc, bulkWorkers int, pipeline string) (*esClient, error) {
 	client, err := elastic5.NewClient(startupFns...)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to an ElasticSearch Client: %v", err)
@@ -56,7 +57,7 @@ func newEsClientV5(startupFns []elastic5.ClientOptionFunc, bulkWorkers int) (*es
 	if err != nil {
 		return nil, fmt.Errorf("Failed to an ElasticSearch Bulk Processor: %v", err)
 	}
-	return &esClient{version: 5, clientV5: client, bulkProcessorV5: bps}, nil
+	return &esClient{version: 5, clientV5: client, bulkProcessorV5: bps, pipeline: pipeline}, nil
 }
 func newEsClientV2(startupFns []elastic2.ClientOptionFunc, bulkWorkers int) (*esClient, error) {
 	client, err := elastic2.NewClient(startupFns...)
@@ -131,11 +132,16 @@ func (es *esClient) AddBulkReq(index, typeName string, data interface{}) error {
 			Doc(data))
 		return nil
 	case 5:
-		es.bulkProcessorV5.Add(elastic5.NewBulkIndexRequest().
+		req := elastic5.NewBulkIndexRequest().
 			Index(index).
 			Type(typeName).
 			Id(uuid.NewUUID().String()).
-			Doc(data))
+			Doc(data)
+		if es.pipeline != "" {
+			req.Pipeline(es.pipeline)
+		}
+
+		es.bulkProcessorV5.Add(req)
 		return nil
 	default:
 		return UnsupportedVersion{}
