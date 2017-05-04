@@ -201,3 +201,23 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 	as.Equal(len(ts.Points), 1)
 	as.Equal(ts.Points[0].Value.Int64Value, int64(30000))
 }
+
+// Test PreprocessMemoryMetrics
+
+func TestPreprocessMemoryMetrics(t *testing.T) {
+	as := assert.New(t)
+
+	metricSet := &core.MetricSet{
+		MetricValues: map[string]core.MetricValue{
+			core.MetricMemoryUsage.MetricDescriptor.Name:           generateIntMetric(128),
+			core.MetricMemoryWorkingSet.MetricDescriptor.Name:      generateIntMetric(32),
+			core.MetricMemoryPageFaults.MetricDescriptor.Name:      generateIntMetric(42),
+			core.MetricMemoryMajorPageFaults.MetricDescriptor.Name: generateIntMetric(29),
+		},
+	}
+
+	computedMetrics := sink.preprocessMemoryMetrics(metricSet)
+
+	as.Equal(int64(96), computedMetrics.MetricValues["memory/bytes_used"].IntValue)
+	as.Equal(int64(13), computedMetrics.MetricValues["memory/minor_page_faults"].IntValue)
+}
