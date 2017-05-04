@@ -82,11 +82,16 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 
 			point := influxdb.Point{
 				Measurement: measurementName,
-				Tags:        metricSet.Labels,
+				Tags:        make(map[string]string),
 				Fields: map[string]interface{}{
 					fieldName: value,
 				},
 				Time: dataBatch.Timestamp.UTC(),
+			}
+			for key, value := range metricSet.Labels {
+				if value != "" {
+					point.Tags[key] = value
+				}
 			}
 			dataPoints = append(dataPoints, point)
 			if len(dataPoints) >= maxSendBatchSize {
@@ -127,10 +132,14 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 				Time: dataBatch.Timestamp.UTC(),
 			}
 			for key, value := range metricSet.Labels {
-				point.Tags[key] = value
+				if value != "" {
+					point.Tags[key] = value
+				}
 			}
 			for key, value := range labeledMetric.Labels {
-				point.Tags[key] = value
+				if value != "" {
+					point.Tags[key] = value
+				}
 			}
 
 			dataPoints = append(dataPoints, point)
