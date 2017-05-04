@@ -23,7 +23,7 @@ spec:
         env:
         - name: INFLUXDB_HOST
           value: monitoring-influxdb
-        - name: GRAFANA_PORT
+        - name: GF_SERVER_HTTP_PORT
           value: "3000"
           # The following env variables are required to make Grafana accessible via
           # the kubernetes api-server proxy. On production clusters, we recommend

@@ -43,19 +43,19 @@ type grafanaConfig struct {
 func main() {
 
 	envParams := map[string]string{
-		"grafana_user":              "admin",
-		"grafana_passwd":            "admin",
-		"grafana_port":              "3000",
-		"influxdb_host":             "monitoring-influxdb",
-		"influxdb_port":             "8086",
-		"influxdb_database":         "k8s",
-		"influxdb_user":             "root",
-		"influxdb_password":         "root",
-		"influxdb_service_url":      "",
-		"dashboard_location":        "/dashboards",
-		"gf_auth_anonymous_enabled": "true",
-		"gf_server_protocol":        "http",
-		"backend_access_mode":       "proxy",
+		"influxdb_host":              "monitoring-influxdb",
+		"influxdb_port":              "8086",
+		"influxdb_database":          "k8s",
+		"influxdb_user":              "root",
+		"influxdb_password":          "root",
+		"influxdb_service_url":       "",
+		"dashboard_location":         "/dashboards",
+		"gf_auth_anonymous_enabled":  "true",
+		"gf_security_admin_user":     "admin",
+		"gf_security_admin_password": "admin",
+		"gf_server_http_port":        "3000",
+		"gf_server_protocol":         "http",
+		"backend_access_mode":        "proxy",
 	}
 
 	for k := range envParams {
@@ -79,7 +79,7 @@ func main() {
 		Database:  envParams["influxdb_database"],
 	}
 
-	grafanaURL := fmt.Sprintf("%s://%s:%s@localhost:%s", envParams["gf_server_protocol"], envParams["grafana_user"], envParams["grafana_passwd"], envParams["grafana_port"])
+	grafanaURL := fmt.Sprintf("%s://%s:%s@localhost:%s", envParams["gf_server_protocol"], envParams["gf_security_admin_user"], envParams["gf_security_admin_password"], envParams["gf_server_http_port"])
 
 	for {
 		res, err := http.Get(grafanaURL + "/api/org")
