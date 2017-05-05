@@ -14,7 +14,7 @@ store data into multiple sinks at once if multiple `--sink` flags are specified.
 
 This sink writes all data to the standard output which is particularly useful for debugging.
 
-   --sink=log
+    --sink=log
 
 ### InfluxDB
 This sink supports both monitoring metrics and events.
