@@ -63,9 +63,11 @@ func deepCopy(source map[string]string) map[string]string {
 func testTranslateMetric(as *assert.Assertions, value int64, name string, labels map[string]string, expectedName string) *sd_api.TypedValue {
 	metricValue := generateIntMetric(value)
 	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, labels, name, metricValue, timestamp)
+	ts := sink.TranslateMetric(timestamp, labels, name, metricValue, createTime)
 
+	as.NotNil(ts)
 	as.Equal(ts.Metric.Type, expectedName)
 	as.Equal(len(ts.Points), 1)
 	return ts.Points[0].Value
@@ -132,8 +134,9 @@ func TestTranslateMemoryMajorPageFaults(t *testing.T) {
 	metricValue := generateIntMetric(20)
 	name := "memory/major_page_faults"
 	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, timestamp)
+	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
@@ -146,8 +149,9 @@ func TestTranslateMemoryMinorPageFaults(t *testing.T) {
 	metricValue := generateIntMetric(42)
 	name := "memory/minor_page_faults"
 	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, timestamp)
+	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
@@ -175,8 +179,9 @@ func TestTranslateFilesystemUsage(t *testing.T) {
 		Name: "filesystem/usage",
 	}
 	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateLabeledMetric(timestamp, commonLabels, metric, timestamp)
+	ts := sink.TranslateLabeledMetric(timestamp, commonLabels, metric, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_used")
@@ -193,8 +198,9 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 		Name: "filesystem/limit",
 	}
 	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateLabeledMetric(timestamp, commonLabels, metric, timestamp)
+	ts := sink.TranslateLabeledMetric(timestamp, commonLabels, metric, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_total")

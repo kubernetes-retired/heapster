@@ -310,6 +310,10 @@ func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels 
 
 func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, createTime time.Time) *sd_api.TimeSeries {
 	resourceLabels := sink.getResourceLabels(labels)
+	if !createTime.Before(timestamp) {
+		glog.V(4).Infof("Error translating metric %v for pod %v: batch timestamp %v earlier than pod create time %v", name, labels["pod_name"], timestamp, createTime)
+		return nil
+	}
 	switch name {
 	case core.MetricUptime.MetricDescriptor.Name:
 		doubleValue := float64(value.IntValue) / float64(time.Second/time.Millisecond)
