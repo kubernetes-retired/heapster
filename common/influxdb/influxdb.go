@@ -40,6 +40,7 @@ type InfluxdbConfig struct {
 	WithFields      bool
 	InsecureSsl     bool
 	RetentionPolicy string
+	ClusterName     string
 }
 
 func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
@@ -79,6 +80,7 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 		WithFields:      false,
 		InsecureSsl:     false,
 		RetentionPolicy: "0",
+		ClusterName:     "default",
 	}
 
 	if len(uri.Host) > 0 {
@@ -119,6 +121,10 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 			return nil, fmt.Errorf("failed to parse `insecuressl` flag - %v", err)
 		}
 		config.InsecureSsl = val
+	}
+
+	if len(opts["cluster_name"]) >= 1 {
+		config.ClusterName = opts["cluster_name"][0]
 	}
 
 	return &config, nil

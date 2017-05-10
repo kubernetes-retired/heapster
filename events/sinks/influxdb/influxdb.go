@@ -131,6 +131,9 @@ func (sink *influxdbSink) ExportEvents(eventBatch *core.EventBatch) {
 		if err != nil {
 			glog.Warningf("Failed to convert event to point: %v", err)
 		}
+
+		point.Tags["cluster_name"] = sink.c.ClusterName
+
 		dataPoints = append(dataPoints, *point)
 		if len(dataPoints) >= maxSendBatchSize {
 			sink.sendData(dataPoints)
