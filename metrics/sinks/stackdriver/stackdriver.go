@@ -17,6 +17,7 @@ package stackdriver
 import (
 	"fmt"
 	"net/url"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -39,6 +40,8 @@ type StackdriverSink struct {
 	project           string
 	zone              string
 	stackdriverClient *sd_api.Service
+	requestQueue      chan *sd_api.CreateTimeSeriesRequest
+	workers           int
 }
 
 type metricMetadata struct {
@@ -138,7 +141,7 @@ func (sink *StackdriverSink) Name() string {
 }
 
 func (sink *StackdriverSink) Stop() {
-	// nothing needs to be done
+	close(sink.requestQueue)
 }
 
 func (sink *StackdriverSink) processMetrics(metricValues map[string]core.MetricValue,
@@ -176,7 +179,7 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 		for _, ts := range timeseries {
 			req.TimeSeries = append(req.TimeSeries, ts)
 			if len(req.TimeSeries) >= maxTimeseriesPerRequest {
-				sink.sendRequest(req)
+				sink.requestQueue <- req
 				req = getReq()
 			}
 		}
@@ -188,14 +191,14 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 				req.TimeSeries = append(req.TimeSeries, point)
 			}
 			if len(req.TimeSeries) >= maxTimeseriesPerRequest {
-				sink.sendRequest(req)
+				sink.requestQueue <- req
 				req = getReq()
 			}
 		}
 	}
 
 	if len(req.TimeSeries) > 0 {
-		sink.sendRequest(req)
+		sink.requestQueue <- req
 	}
 }
 
@@ -205,6 +208,20 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 	}
 	if len(uri.Host) > 0 {
 		return nil, fmt.Errorf("Host should not be set for Stackdriver sink")
+	}
+
+	opts := uri.Query()
+	var (
+		workers int
+		err     error
+	)
+	if len(opts["workers"]) >= 1 {
+		workers, err = strconv.Atoi(opts["workers"][0])
+		if err != nil {
+			return nil, fmt.Errorf("Number of workers should be an integer, found: %v", opts["workers"][0])
+		}
+	} else {
+		workers = 1
 	}
 
 	if err := gce_util.EnsureOnGCE(); err != nil {
@@ -230,19 +247,42 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 
+	requestQueue := make(chan *sd_api.CreateTimeSeriesRequest)
+
 	sink := &StackdriverSink{
 		project:           projectId,
 		zone:              zone,
 		stackdriverClient: stackdriverClient,
+		requestQueue:      requestQueue,
+		workers:           workers,
 	}
 
 	// Register sink metrics
 	prometheus.MustRegister(requestsSent)
 	prometheus.MustRegister(timeseriesSent)
 
+	// Launch Go routines responsible for sending requests
+	for i := 0; i < sink.workers; i++ {
+		go sink.requestSender(sink.requestQueue)
+	}
+
 	glog.Infof("Created Stackdriver sink")
 
+	glog.Infof("Workers: %v", sink.workers)
+
 	return sink, nil
+}
+
+func (sink *StackdriverSink) requestSender(queue chan *sd_api.CreateTimeSeriesRequest) {
+	for {
+		select {
+		case req, active := <-queue:
+			if !active {
+				return
+			}
+			sink.sendRequest(req)
+		}
+	}
 }
 
 func (sink *StackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
@@ -251,7 +291,12 @@ func (sink *StackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
 	var responseCode int
 	if err != nil {
 		glog.Errorf("Error while sending request to Stackdriver %v", err)
-		responseCode = err.(*googleapi.Error).Code
+		switch reflect.Indirect(reflect.ValueOf(err)).Type() {
+		case reflect.Indirect(reflect.ValueOf(&googleapi.Error{})).Type():
+			responseCode = err.(*googleapi.Error).Code
+		default:
+			responseCode = -1
+		}
 	} else {
 		responseCode = empty.ServerResponse.HTTPStatusCode
 	}
