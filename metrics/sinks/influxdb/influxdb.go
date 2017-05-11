@@ -93,6 +93,9 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 					point.Tags[key] = value
 				}
 			}
+
+			point.Tags["cluster_name"] = sink.c.ClusterName
+
 			dataPoints = append(dataPoints, point)
 			if len(dataPoints) >= maxSendBatchSize {
 				sink.sendData(dataPoints)
@@ -131,6 +134,7 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 				},
 				Time: dataBatch.Timestamp.UTC(),
 			}
+
 			for key, value := range metricSet.Labels {
 				if value != "" {
 					point.Tags[key] = value
@@ -141,6 +145,7 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 					point.Tags[key] = value
 				}
 			}
+			point.Tags["cluster_name"] = sink.c.ClusterName
 
 			dataPoints = append(dataPoints, point)
 			if len(dataPoints) >= maxSendBatchSize {
