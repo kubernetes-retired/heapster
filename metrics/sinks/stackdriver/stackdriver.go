@@ -141,6 +141,18 @@ func (sink *StackdriverSink) Stop() {
 	// nothing needs to be done
 }
 
+func (sink *StackdriverSink) processMetrics(metricValues map[string]core.MetricValue,
+	timestamp time.Time, labels map[string]string, createTime time.Time) []*sd_api.TimeSeries {
+	timeseries := make([]*sd_api.TimeSeries, 0)
+	for name, value := range metricValues {
+		ts := sink.TranslateMetric(timestamp, labels, name, value, createTime)
+		if ts != nil {
+			timeseries = append(timeseries, ts)
+		}
+	}
+	return timeseries
+}
+
 func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 	req := getReq()
 	for _, metricSet := range dataBatch.MetricSets {
@@ -154,14 +166,15 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 			metricSet.Labels[core.LabelContainerName.Key] = "machine"
 		}
 
-		sink.preprocessMemoryMetrics(metricSet)
+		computedMetrics := sink.preprocessMemoryMetrics(metricSet)
 
-		for name, value := range metricSet.MetricValues {
-			point := sink.TranslateMetric(dataBatch.Timestamp, metricSet.Labels, name, value, metricSet.CreateTime)
+		computedTimeseries := sink.processMetrics(computedMetrics.MetricValues, dataBatch.Timestamp, metricSet.Labels, metricSet.CreateTime)
+		timeseries := sink.processMetrics(metricSet.MetricValues, dataBatch.Timestamp, metricSet.Labels, metricSet.CreateTime)
 
-			if point != nil {
-				req.TimeSeries = append(req.TimeSeries, point)
-			}
+		timeseries = append(timeseries, computedTimeseries...)
+
+		for _, ts := range timeseries {
+			req.TimeSeries = append(req.TimeSeries, ts)
 			if len(req.TimeSeries) >= maxTimeseriesPerRequest {
 				sink.sendRequest(req)
 				req = getReq()
@@ -249,14 +262,18 @@ func (sink *StackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
 		Add(float64(len(req.TimeSeries)))
 }
 
-func (sink *StackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) {
+func (sink *StackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) *core.MetricSet {
 	usage := metricSet.MetricValues[core.MetricMemoryUsage.MetricDescriptor.Name].IntValue
 	workingSet := metricSet.MetricValues[core.MetricMemoryWorkingSet.MetricDescriptor.Name].IntValue
 	bytesUsed := core.MetricValue{
 		IntValue: usage - workingSet,
 	}
 
-	metricSet.MetricValues["memory/bytes_used"] = bytesUsed
+	newMetricSet := &core.MetricSet{
+		MetricValues: map[string]core.MetricValue{},
+	}
+
+	newMetricSet.MetricValues["memory/bytes_used"] = bytesUsed
 
 	memoryFaults := metricSet.MetricValues[core.MetricMemoryPageFaults.MetricDescriptor.Name].IntValue
 	majorMemoryFaults := metricSet.MetricValues[core.MetricMemoryMajorPageFaults.MetricDescriptor.Name].IntValue
@@ -264,7 +281,9 @@ func (sink *StackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) 
 	minorMemoryFaults := core.MetricValue{
 		IntValue: memoryFaults - majorMemoryFaults,
 	}
-	metricSet.MetricValues["memory/minor_page_faults"] = minorMemoryFaults
+	newMetricSet.MetricValues["memory/minor_page_faults"] = minorMemoryFaults
+
+	return newMetricSet
 }
 
 func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *sd_api.TimeSeries {
