@@ -19,12 +19,12 @@
 
 all: build
 
-VERSION?=v4.1.2
+VERSION?=v4.2.0
 PREFIX?=gcr.io/google_containers
 ARCH?=amd64
 TEMP_DIR:=$(shell mktemp -d)
 LDFLAGS=-w -X main.version=$(VERSION) -X main.commit=unknown-dev -X main.timestamp=0 -extldflags '-static'
-DEB_BUILD=4.1.2-1486989747
+DEB_BUILD=4.2.0
 KUBE_CROSS_IMAGE=gcr.io/google_containers/kube-cross:v1.7.3-0
 
 # s390x
