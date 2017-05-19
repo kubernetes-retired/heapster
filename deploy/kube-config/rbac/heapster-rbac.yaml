@@ -13,12 +13,10 @@ rules:
   - namespaces
   - nodes
   - pods
-  - deployments
   verbs:
   - get
   - list
   - watch
-  - update
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
