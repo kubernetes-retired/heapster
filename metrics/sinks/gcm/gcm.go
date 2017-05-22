@@ -28,6 +28,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	gcm "google.golang.org/api/monitoring/v3"
+	aws_util "k8s.io/heapster/common/aws"
 )
 
 const (
@@ -321,21 +322,46 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("invalid metrics parameter: %s", metrics)
 	}
 
-	if err := gce_util.EnsureOnGCE(); err != nil {
-		return nil, err
-	}
+	var projectId string
+	var gcmService *gcm.Service
 
-	// Detect project ID
-	projectId, err := gce.ProjectID()
-	if err != nil {
-		return nil, err
-	}
+	// Check if we're on AWS
+	if aws_util.IsOnAWS() {
 
-	// Create Google Cloud Monitoring service.
-	client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
-	gcmService, err := gcm.New(client)
-	if err != nil {
-		return nil, err
+		glog.Infof("Not running on GCE, attempting to connect with default credentials")
+
+		projectId, err = aws_util.ProjectID()
+		if err != nil {
+			return nil, err
+		}
+		glog.Infof("GCP project ID is %v", projectId)
+
+		if client, err := google.DefaultClient(oauth2.NoContext, gcm.MonitoringScope); err != nil {
+			return nil, err
+		} else {
+			gcmService, err = gcm.New(client)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+
+		if err := gce_util.EnsureOnGCE(); err != nil {
+			return nil, err
+		}
+		// Detect project ID
+		projectId, err = gce.ProjectID()
+		if err != nil {
+			return nil, err
+		}
+		// Create Google Cloud Monitoring service
+		client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
+		gcmService, err = gcm.New(client)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sink := &gcmSink{
