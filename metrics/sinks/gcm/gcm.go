@@ -17,6 +17,7 @@ package gcm
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -36,6 +37,8 @@ const (
 	maxNumLabels    = 10
 	// The largest number of timeseries we can write to per request.
 	maxTimeseriesPerRequest = 200
+	gcpCredentialEnv      = "GOOGLE_APPLICATION_CREDENTIALS"
+	gcpProjectEnv         = "GOOGLE_PROJECT_ID"
 )
 
 type MetricFilter int8
@@ -321,21 +324,36 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("invalid metrics parameter: %s", metrics)
 	}
 
-	if err := gce_util.EnsureOnGCE(); err != nil {
-		return nil, err
-	}
+	var projectId string
+	var gcmService *gcm.Service
 
-	// Detect project ID
-	projectId, err := gce.ProjectID()
-	if err != nil {
-		return nil, err
-	}
-
-	// Create Google Cloud Monitoring service.
-	client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
-	gcmService, err := gcm.New(client)
-	if err != nil {
-		return nil, err
+	if os.Getenv(gcpCredentialEnv) != "" {
+		// GCP credentials supplied, so assume we're not in GCE
+		if os.Getenv(gcpProjectEnv) == "" {
+			return nil, fmt.Errorf("no GCP project ID supplied")
+		}
+		// Create Google Cloud Monitoring service
+		if client, err := google.DefaultClient(oauth2.NoContext, gcm.MonitoringScope); err != nil {
+			return nil, err
+		} else {
+			gcmService, err = gcm.New(client)
+		}
+	} else {
+		// Ensure we're on GCE
+		if err := gce_util.EnsureOnGCE(); err != nil {
+			return nil, err
+		}
+		// Detect project ID
+		projectId, err = gce.ProjectID()
+		if err != nil {
+			return nil, err
+		}
+		// Create Google Cloud Monitoring service.
+		client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
+		gcmService, err = gcm.New(client)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sink := &gcmSink{
