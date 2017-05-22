@@ -49,7 +49,9 @@ func NewApi(runningInKubernetes bool, metricSink *metricsink.MetricSink, histori
 		gkeMetrics[val.Name] = val.MetricDescriptor
 	}
 	gkeMetrics[core.MetricCpuLimit.Name] = core.MetricCpuLimit.MetricDescriptor
+	gkeMetrics[core.MetricCpuRequest.Name] = core.MetricCpuRequest.MetricDescriptor
 	gkeMetrics[core.MetricMemoryLimit.Name] = core.MetricMemoryLimit.MetricDescriptor
+	gkeMetrics[core.MetricMemoryRequest.Name] = core.MetricMemoryRequest.MetricDescriptor
 
 	for _, val := range core.CommonLabels() {
 		gkeLabels[val.Key] = val
