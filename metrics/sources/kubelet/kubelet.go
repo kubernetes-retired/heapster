@@ -113,8 +113,6 @@ func (this *kubeletMetricsSource) handleKubernetesContainer(cName, ns, podName s
 	cMetrics.Labels[LabelPodId.Key] = c.Spec.Labels[kubernetesPodUID]
 	cMetrics.Labels[LabelPodName.Key] = podName
 	cMetrics.Labels[LabelNamespaceName.Key] = ns
-	// Needed for backward compatibility
-	cMetrics.Labels[LabelPodNamespace.Key] = ns
 	return metricSetKey
 }
 

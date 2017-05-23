@@ -30,7 +30,6 @@ func makeBatches(now time.Time, key, otherKey string) (core.DataBatch, core.Data
 			key: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
-					core.LabelPodNamespace.Key:  "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -54,7 +53,6 @@ func makeBatches(now time.Time, key, otherKey string) (core.DataBatch, core.Data
 			key: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
-					core.LabelPodNamespace.Key:  "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -98,7 +96,6 @@ func makeBatches(now time.Time, key, otherKey string) (core.DataBatch, core.Data
 			key: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
-					core.LabelPodNamespace.Key:  "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -136,7 +133,6 @@ func makeBatches(now time.Time, key, otherKey string) (core.DataBatch, core.Data
 			otherKey: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
-					core.LabelPodNamespace.Key:  "ns1",
 				},
 				MetricValues: map[string]core.MetricValue{
 					"m1": {
@@ -223,7 +219,6 @@ func TestGetNames(t *testing.T) {
 			key: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
-					core.LabelPodNamespace.Key:  "ns1",
 					core.LabelNamespaceName.Key: "ns1",
 					core.LabelPodName.Key:       "pod1",
 				},
@@ -243,7 +238,6 @@ func TestGetNames(t *testing.T) {
 			otherKey: {
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
-					core.LabelPodNamespace.Key:  "ns2",
 					core.LabelNamespaceName.Key: "ns2",
 					core.LabelPodName.Key:       "pod2",
 				},
