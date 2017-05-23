@@ -331,7 +331,10 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		// GCP credentials supplied, so assume we're not in GCE
 		if os.Getenv(gcpProjectEnv) == "" {
 			return nil, fmt.Errorf("no GCP project ID supplied")
+		} else {
+			projectId = os.Getenv(gcpProjectEnv)
 		}
+		glog.Infof("Google project ID is: %s", projectId)
 		// Create Google Cloud Monitoring service
 		if client, err := google.DefaultClient(oauth2.NoContext, gcm.MonitoringScope); err != nil {
 			return nil, err
