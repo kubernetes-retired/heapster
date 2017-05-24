@@ -35,6 +35,12 @@ type influxdbSink struct {
 	dbExists bool
 }
 
+var influxdbBlacklistLabels = map[string]struct{}{
+	core.LabelPodNamespaceUID.Key: {},
+	core.LabelPodId.Key:           {},
+	core.LabelHostname.Key:        {},
+}
+
 const (
 	// Value Field name
 	valueField = "value"
@@ -89,8 +95,10 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 				Time: dataBatch.Timestamp.UTC(),
 			}
 			for key, value := range metricSet.Labels {
-				if value != "" {
-					point.Tags[key] = value
+				if _, exists := influxdbBlacklistLabels[key]; !exists {
+					if value != "" {
+						point.Tags[key] = value
+					}
 				}
 			}
 
@@ -141,8 +149,10 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 				}
 			}
 			for key, value := range labeledMetric.Labels {
-				if value != "" {
-					point.Tags[key] = value
+				if _, exists := influxdbBlacklistLabels[key]; !exists {
+					if value != "" {
+						point.Tags[key] = value
+					}
 				}
 			}
 			point.Tags["cluster_name"] = sink.c.ClusterName

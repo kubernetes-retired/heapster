@@ -25,7 +25,6 @@ import (
 var LabelsToPopulate = []core.LabelDescriptor{
 	core.LabelPodId,
 	core.LabelPodName,
-	core.LabelPodNamespace,
 	core.LabelNamespaceName,
 	core.LabelPodNamespaceUID,
 	core.LabelHostname,

@@ -103,7 +103,6 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePod,
 					core.LabelNamespaceName.Key: namespace,
-					core.LabelPodNamespace.Key:  namespace,
 					core.LabelPodName.Key:       podName,
 					core.LabelNodename.Key:      containerMs.Labels[core.LabelNodename.Key],
 					core.LabelHostname.Key:      containerMs.Labels[core.LabelHostname.Key],
@@ -133,7 +132,6 @@ func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *cor
 					Labels: map[string]string{
 						core.LabelMetricSetType.Key:      core.MetricSetTypePodContainer,
 						core.LabelNamespaceName.Key:      pod.Namespace,
-						core.LabelPodNamespace.Key:       pod.Namespace,
 						core.LabelPodName.Key:            pod.Name,
 						core.LabelContainerName.Key:      container.Name,
 						core.LabelContainerBaseImage.Key: container.Image,

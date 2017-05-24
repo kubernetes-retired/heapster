@@ -184,8 +184,6 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 	podMetrics.Labels[LabelPodId.Key] = ref.UID
 	podMetrics.Labels[LabelPodName.Key] = ref.Name
 	podMetrics.Labels[LabelNamespaceName.Key] = ref.Namespace
-	// Needed for backward compatibility
-	podMetrics.Labels[LabelPodNamespace.Key] = ref.Namespace
 
 	this.decodeUptime(podMetrics, pod.StartTime.Time)
 	this.decodeNetworkStats(podMetrics, pod.Network)
