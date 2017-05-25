@@ -35,7 +35,6 @@ var (
 		"name": "redis",
 		"io.kubernetes.pod.name": "default/redis-test",
 		"pod_id":                 fakePodUid,
-		"pod_namespace":          "default",
 		"pod_name":               fakePodName,
 		"container_name":         "redis",
 		"container_base_image":   "kubernetes/redis:v1",

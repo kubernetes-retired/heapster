@@ -140,15 +140,6 @@ func customMetricTypeSchema(typeName string, customSchema string) string {
             }
           }
         },
-        "pod_namespace": {
-          "type": "string",
-          "fields": {
-            "raw": {
-              "type": "string",
-              "index": "not_analyzed"
-            }
-          }
-        },
         "resource_id": {
           "type": "string",
           "index": "not_analyzed"
