@@ -270,12 +270,6 @@ func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister v1listers.PodLi
 		&processors.ClusterAggregator{
 			MetricsToAggregate: metricsToAggregate,
 		})
-
-	nodeAutoscalingEnricher, err := processors.NewNodeAutoscalingEnricher(kubernetesUrl)
-	if err != nil {
-		glog.Fatalf("Failed to create NodeAutoscalingEnricher: %v", err)
-	}
-	dataProcessors = append(dataProcessors, nodeAutoscalingEnricher)
 	return dataProcessors
 }
 

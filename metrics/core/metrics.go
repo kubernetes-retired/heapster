@@ -73,17 +73,6 @@ var LabeledMetrics = []Metric{
 	MetricFilesystemInodesFree,
 }
 
-var NodeAutoscalingMetrics = []Metric{
-	MetricNodeCpuCapacity,
-	MetricNodeMemoryCapacity,
-	MetricNodeCpuAllocatable,
-	MetricNodeMemoryAllocatable,
-	MetricNodeCpuUtilization,
-	MetricNodeMemoryUtilization,
-	MetricNodeCpuReservation,
-	MetricNodeMemoryReservation,
-}
-
 var CpuMetrics = []Metric{
 	MetricCpuLimit,
 	MetricCpuRequest,
@@ -156,8 +145,7 @@ func MetricFamilyForName(metricName string) MetricFamily {
 	return MetricFamilyGeneral
 }
 
-var AllMetrics = append(append(append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...), LabeledMetrics...),
-	NodeAutoscalingMetrics...)
+var AllMetrics = append(append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...), LabeledMetrics...)
 
 // Definition of Standard Metrics.
 var MetricUptime = Metric{
@@ -719,15 +707,6 @@ var MetricFilesystemInodesFree = Metric{
 		}
 		return result
 	},
-}
-
-func IsNodeAutoscalingMetric(name string) bool {
-	for _, autoscalingMetric := range NodeAutoscalingMetrics {
-		if autoscalingMetric.MetricDescriptor.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 type MetricDescriptor struct {

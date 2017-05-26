@@ -56,10 +56,6 @@ To use the GCM sink add the following flag:
 
 *Note: This sink works only on a Google Compute Engine VM as of now*
 
-GCM has one option - `metrics` that can be set to:
-* all - the sink exports all metrics
-* autoscaling - the sink exports only autoscaling-related metrics
-
 ### Google Cloud Logging
 This sink supports events only.
 To use the GCL sink add the following flag:
