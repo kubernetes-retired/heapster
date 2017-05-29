@@ -367,6 +367,23 @@ func TestRegister(t *testing.T) {
 	assert.True(t, definitionsCalled["gauge"], "Gauge definitions were not fetched")
 	assert.True(t, definitionsCalled["counter"], "Counter definitions were not fetched")
 	assert.True(t, updateTagsCalled, "Updating outdated tags was not called")
+
+	// Try without pre caching
+	definitionsCalled = make(map[string]bool)
+	updateTagsCalled = false
+
+	hSink, err = integSink(s.URL + "?tenant=test-heapster&disablePreCache=true")
+	assert.NoError(t, err)
+
+	err = hSink.Register(md)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(hSink.models))
+	assert.Equal(t, 0, len(hSink.reg))
+
+	assert.False(t, definitionsCalled["gauge"], "Gauge definitions were fetched")
+	assert.False(t, definitionsCalled["counter"], "Counter definitions were fetched")
+	assert.False(t, updateTagsCalled, "Updating outdated tags was called")
 }
 
 // Store timeseries with both gauges and cumulatives
@@ -460,6 +477,7 @@ func TestStoreTimeseries(t *testing.T) {
 func TestTags(t *testing.T) {
 	m := &sync.Mutex{}
 	calls := make([]string, 0, 2)
+	serverTags := make(map[string]string)
 	// how many times tags have been updated
 	tagsUpdated := 0
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -473,23 +491,8 @@ func TestTags(t *testing.T) {
 		assert.NoError(t, err)
 
 		if strings.HasSuffix(r.RequestURI, "/tags") {
-			tags := make(map[string]string)
-			err := json.Unmarshal(b, &tags)
+			err := json.Unmarshal(b, &serverTags)
 			assert.NoError(t, err)
-
-			assert.Equal(t, 10, len(tags))
-			assert.Equal(t, "test-label", tags["projectId"])
-			assert.Equal(t, "test-container", tags[core.LabelContainerName.Key])
-			assert.Equal(t, "test-podid", tags[core.LabelPodId.Key])
-			assert.Equal(t, "test-container/test/metric/A", tags["group_id"])
-			assert.Equal(t, "test/metric/A", tags["descriptor_name"])
-			assert.Equal(t, "XYZ", tags[core.LabelResourceID.Key])
-			assert.Equal(t, "bytes", tags["units"])
-
-			assert.Equal(t, "testLabelA:testValueA,testLabelB:testValueB", tags[core.LabelLabels.Key])
-			assert.Equal(t, "testValueA", tags["labels.testLabelA"])
-			assert.Equal(t, "testValueB", tags["labels.testLabelB"])
-
 			tagsUpdated++
 		}
 	}))
@@ -555,6 +558,35 @@ func TestTags(t *testing.T) {
 	assert.Equal(t, "testLabelA:testValueA,testLabelB:testValueB", tags[core.LabelLabels.Key])
 	assert.Equal(t, "testValueA", tags["labels.testLabelA"])
 	assert.Equal(t, "testValueB", tags["labels.testLabelB"])
+
+	assert.Equal(t, 10, len(serverTags))
+	assert.Equal(t, "test-label", serverTags["projectId"])
+	assert.Equal(t, "test-container", serverTags[core.LabelContainerName.Key])
+	assert.Equal(t, "test-podid", serverTags[core.LabelPodId.Key])
+	assert.Equal(t, "test-container/test/metric/A", serverTags["group_id"])
+	assert.Equal(t, "test/metric/A", serverTags["descriptor_name"])
+	assert.Equal(t, "XYZ", serverTags[core.LabelResourceID.Key])
+	assert.Equal(t, "bytes", serverTags["units"])
+
+	assert.Equal(t, "testLabelA:testValueA,testLabelB:testValueB", serverTags[core.LabelLabels.Key])
+	assert.Equal(t, "testValueA", serverTags["labels.testLabelA"])
+	assert.Equal(t, "testValueB", serverTags["labels.testLabelB"])
+
+	// Make modifications to the metrics and check that they're updated correctly
+
+	// First, no changes - no update should happen
+	hSink.registerLabeledIfNecessary(&metricSet, labeledMetric)
+	assert.Equal(t, 1, tagsUpdated)
+
+	// Now modify the labels and expect an update
+	metricSet.Labels[core.LabelLabels.Key] = "testLabelA:testValueA,testLabelB:testValueB,testLabelC:testValueC"
+	hSink.registerLabeledIfNecessary(&metricSet, labeledMetric)
+	assert.Equal(t, 2, tagsUpdated)
+
+	assert.Equal(t, "testLabelA:testValueA,testLabelB:testValueB,testLabelC:testValueC", serverTags[core.LabelLabels.Key])
+	assert.Equal(t, "testValueA", serverTags["labels.testLabelA"])
+	assert.Equal(t, "testValueB", serverTags["labels.testLabelB"])
+	assert.Equal(t, "testValueC", serverTags["labels.testLabelC"])
 }
 
 func TestUserPass(t *testing.T) {
