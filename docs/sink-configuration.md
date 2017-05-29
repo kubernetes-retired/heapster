@@ -88,6 +88,7 @@ The following options are available:
 * `batchSize`- How many metrics are sent in each request to Hawkular-Metrics (default is 1000)
 * `concurrencyLimit`- How many concurrent requests are used to send data to the Hawkular-Metrics (default is 5)
 * `labelTagPrefix` - A prefix to be placed in front of each label when stored as a tag for the metric (default is `labels.`)
+* `disablePreCache` - Disable cache initialization by fetching metric definitions from Hawkular-Metrics
 
 A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. To increase the performance of Hawkular sink in case of multiple instances of Hawkular-Metrics (such as scaled scenario in OpenShift) modify the parameters of batchSize and concurrencyLimit to balance the load on Hawkular-Metrics instances.
 
