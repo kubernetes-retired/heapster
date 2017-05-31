@@ -51,14 +51,15 @@ Heapster tags each metric with the following labels.
 |----------------|-------------------------------------------------------------------------------|
 | pod_id         | Unique ID of a Pod                                                            |
 | pod_name       | User-provided name of a Pod                                                   |
-| pod_namespace  | The namespace of a Pod                                                        |
-| container_base_image | Base image for the container |  
+| container_base_image | Base image for the container |
 | container_name | User-provided name of the container or full cgroup name for system containers |
 | host_id        | Cloud-provider specified or user specified Identifier of a node               |
 | hostname       | Hostname where the container ran                                              |
+| nodename       | Nodename where the container ran                                              |
 | labels         | Comma-separated(Default) list of user-provided labels. Format is 'key:value'  |
 | namespace_id   | UID of the namespace of a Pod                                                 |
-| resource_id    | A unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage | 
+| namespace_name | User-provided name of a Namespace                                             |
+| resource_id    | A unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage |
 
 **Note**
   * Label separator can be configured with Heapster `--label-seperator`. Comma-seperated label pairs is fine until we use [Bosun](http://bosun.org) as alert system and use `group by labels` to search for labels.
