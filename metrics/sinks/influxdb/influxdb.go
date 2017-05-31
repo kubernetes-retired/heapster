@@ -39,6 +39,7 @@ var influxdbBlacklistLabels = map[string]struct{}{
 	core.LabelPodNamespaceUID.Key: {},
 	core.LabelPodId.Key:           {},
 	core.LabelHostname.Key:        {},
+	core.LabelHostID.Key:          {},
 }
 
 const (
