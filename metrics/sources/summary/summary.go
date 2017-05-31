@@ -163,8 +163,8 @@ func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet,
 	metrics[NodeKey(node.NodeName)] = nodeMetrics
 
 	for _, container := range node.SystemContainers {
-		key := NodeContainerKey(node.NodeName, this.getContainerName(&container))
-		containerMetrics := this.decodeContainerStats(labels, &container)
+		key := NodeContainerKey(node.NodeName, this.getSystemContainerName(&container))
+		containerMetrics := this.decodeContainerStats(labels, &container, true)
 		containerMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeSystemContainer
 		metrics[key] = containerMetrics
 	}
@@ -196,11 +196,11 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 
 	for _, container := range pod.Containers {
 		key := PodContainerKey(ref.Namespace, ref.Name, container.Name)
-		metrics[key] = this.decodeContainerStats(podMetrics.Labels, &container)
+		metrics[key] = this.decodeContainerStats(podMetrics.Labels, &container, false)
 	}
 }
 
-func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *stats.ContainerStats) *MetricSet {
+func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *stats.ContainerStats, isSystemContainer bool) *MetricSet {
 	glog.V(9).Infof("Decoding container stats stats for container %s...", container.Name)
 	containerMetrics := &MetricSet{
 		Labels:         this.cloneLabels(podLabels),
@@ -210,7 +210,11 @@ func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]stri
 		ScrapeTime:     this.getScrapeTime(container.CPU, container.Memory, nil),
 	}
 	containerMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePodContainer
-	containerMetrics.Labels[LabelContainerName.Key] = this.getContainerName(container)
+	if isSystemContainer {
+		containerMetrics.Labels[LabelContainerName.Key] = this.getSystemContainerName(container)
+	} else {
+		containerMetrics.Labels[LabelContainerName.Key] = container.Name
+	}
 
 	this.decodeUptime(containerMetrics, container.StartTime.Time)
 	this.decodeCPUStats(containerMetrics, container.CPU)
@@ -348,7 +352,7 @@ func (this *summaryMetricsSource) addLabeledIntMetric(metrics *MetricSet, metric
 }
 
 // Translate system container names to the legacy names for backwards compatibility.
-func (this *summaryMetricsSource) getContainerName(c *stats.ContainerStats) string {
+func (this *summaryMetricsSource) getSystemContainerName(c *stats.ContainerStats) string {
 	if legacyName, ok := systemNameMap[c.Name]; ok {
 		return legacyName
 	}

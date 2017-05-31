@@ -59,7 +59,8 @@ const (
 	seedPod1           = 3000
 	seedPod1Container  = 4000
 	seedPod2           = 5000
-	seedPod2Container  = 6000
+	seedPod2Container0 = 6000
+	seedPod2Container1 = 7000
 )
 
 const (
@@ -72,8 +73,9 @@ const (
 
 	cName00 = "c0"
 	cName01 = "c1"
-	cName10 = "c0" // ensure cName10 conflicts with cName02, but is in a different pod
-	cName20 = "c1" // ensure cName20 conflicts with cName01, but is in a different pod + namespace
+	cName10 = "c0"      // ensure cName10 conflicts with cName02, but is in a different pod
+	cName20 = "c1"      // ensure cName20 conflicts with cName01, but is in a different pod + namespace
+	cName21 = "runtime" // ensure that runtime containers are not renamed
 )
 
 var (
@@ -157,7 +159,8 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod2),
 			Containers: []stats.ContainerStats{
-				genTestSummaryContainer(cName20, seedPod2Container),
+				genTestSummaryContainer(cName20, seedPod2Container0),
+				genTestSummaryContainer(cName21, seedPod2Container1),
 			},
 		}},
 	}
@@ -237,7 +240,14 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 	}, {
 		key:     core.PodContainerKey(namespace1, pName2, cName20),
 		setType: core.MetricSetTypePodContainer,
-		seed:    seedPod2Container,
+		seed:    seedPod2Container0,
+		cpu:     true,
+		memory:  true,
+		fs:      containerFs,
+	}, {
+		key:     core.PodContainerKey(namespace1, pName2, cName21),
+		setType: core.MetricSetTypePodContainer,
+		seed:    seedPod2Container1,
 		cpu:     true,
 		memory:  true,
 		fs:      containerFs,
