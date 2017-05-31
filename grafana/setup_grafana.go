@@ -43,19 +43,22 @@ type grafanaConfig struct {
 func main() {
 
 	envParams := map[string]string{
-		"grafana_user":              "admin",
-		"grafana_passwd":            "admin",
-		"grafana_port":              "3000",
-		"influxdb_host":             "monitoring-influxdb",
-		"influxdb_port":             "8086",
-		"influxdb_database":         "k8s",
-		"influxdb_user":             "root",
-		"influxdb_password":         "root",
-		"influxdb_service_url":      "",
-		"dashboard_location":        "/dashboards",
-		"gf_auth_anonymous_enabled": "true",
-		"gf_server_protocol":        "http",
-		"backend_access_mode":       "proxy",
+		"grafana_user":               "admin",
+		"grafana_passwd":             "admin",
+		"grafana_port":               "3000",
+		"influxdb_host":              "monitoring-influxdb",
+		"influxdb_port":              "8086",
+		"influxdb_database":          "k8s",
+		"influxdb_user":              "root",
+		"influxdb_password":          "root",
+		"influxdb_service_url":       "",
+		"dashboard_location":         "/dashboards",
+		"gf_auth_anonymous_enabled":  "true",
+		"gf_security_admin_user":     "",
+		"gf_security_admin_password": "",
+		"gf_server_http_port":        "",
+		"gf_server_protocol":         "http",
+		"backend_access_mode":        "proxy",
 	}
 
 	for k := range envParams {
@@ -78,8 +81,21 @@ func main() {
 		Password:  envParams["influxdb_password"],
 		Database:  envParams["influxdb_database"],
 	}
+	// Override setup env vars with Grafana configuration env vars if present
+	adminUser := envParams["grafana_user"]
+	if user, ok := envParams["gf_security_admin_user"]; ok && len(user) != 0 {
+		adminUser = user
+	}
+	adminPassword := envParams["grafana_passwd"]
+	if password, ok := envParams["gf_security_admin_password"]; ok && len(password) != 0 {
+		adminPassword = password
+	}
+	httpPort := envParams["grafana_port"]
+	if port, ok := envParams["gf_server_http_port"]; ok && len(port) != 0 {
+		httpPort = port
+	}
 
-	grafanaURL := fmt.Sprintf("%s://%s:%s@localhost:%s", envParams["gf_server_protocol"], envParams["grafana_user"], envParams["grafana_passwd"], envParams["grafana_port"])
+	grafanaURL := fmt.Sprintf("%s://%s:%s@localhost:%s", envParams["gf_server_protocol"], adminUser, adminPassword, httpPort)
 
 	for {
 		res, err := http.Get(grafanaURL + "/api/org")

@@ -3,7 +3,6 @@
 # Allow access to dashboards without having to log in
 # Export these variables so grafana picks them up
 export GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED:-true}
-export GF_SERVER_HTTP_PORT=${GRAFANA_PORT}
 export GF_SERVER_PROTOCOL=${GF_SERVER_PROTOCOL:-http}
 
 echo "Starting a utility program that will configure Grafana"
