@@ -251,6 +251,7 @@ func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *
 
 	this.addIntMetric(metrics, &MetricMemoryUsage, memory.UsageBytes)
 	this.addIntMetric(metrics, &MetricMemoryWorkingSet, memory.WorkingSetBytes)
+	this.addIntMetric(metrics, &MetricMemoryRSS, memory.RSSBytes)
 	this.addIntMetric(metrics, &MetricMemoryPageFaults, memory.PageFaults)
 	this.addIntMetric(metrics, &MetricMemoryMajorPageFaults, memory.MajorPageFaults)
 }

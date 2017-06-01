@@ -168,7 +168,7 @@ type MemoryStats struct {
 	// dirty memory, and kernel memory. WorkingSetBytes is <= UsageBytes
 	// +optional
 	WorkingSetBytes *uint64 `json:"workingSetBytes,omitempty"`
-	// The amount of anonymous and swap cache memory (includes transparent
+	// The amount of anonymous memory (includes transparent
 	// hugepages).
 	// +optional
 	RSSBytes *uint64 `json:"rssBytes,omitempty"`
