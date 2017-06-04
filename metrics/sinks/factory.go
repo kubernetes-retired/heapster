@@ -33,6 +33,7 @@ import (
 	"k8s.io/heapster/metrics/sinks/opentsdb"
 	"k8s.io/heapster/metrics/sinks/riemann"
 	"k8s.io/heapster/metrics/sinks/stackdriver"
+	"k8s.io/heapster/metrics/sinks/vpa"
 	"k8s.io/heapster/metrics/sinks/wavefront"
 )
 
@@ -69,6 +70,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return wavefront.NewWavefrontSink(&uri.Val)
 	case "riemann":
 		return riemann.CreateRiemannSink(&uri.Val)
+	case "vpa":
+		return vpa.CreateRecommenderSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
