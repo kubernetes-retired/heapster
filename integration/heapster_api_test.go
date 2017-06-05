@@ -147,7 +147,7 @@ func getHeapsterRcAndSvc(fm kubeFramework) (*kube_v1.Service, *kube_v1.Replicati
 	// Add test docker image
 	rc, err := fm.ParseRC(*heapsterControllerFile)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse heapster controller - %v", err)
+		return nil, nil, fmt.Errorf("Failed to parse heapster controller - %v", err)
 	}
 	for i := range rc.Spec.Template.Spec.Containers {
 		rc.Spec.Template.Spec.Containers[i].Image = *heapsterImage
