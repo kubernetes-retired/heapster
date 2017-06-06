@@ -38,6 +38,7 @@ const (
 	offsetMemPageFaults
 	offsetMemMajorPageFaults
 	offsetMemUsageBytes
+	offsetMemRSSBytes
 	offsetMemWorkingSetBytes
 	offsetNetRxBytes
 	offsetNetRxErrors
@@ -268,6 +269,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		if e.memory {
 			checkIntMetric(t, m, e.key, core.MetricMemoryUsage, e.seed+offsetMemUsageBytes)
 			checkIntMetric(t, m, e.key, core.MetricMemoryWorkingSet, e.seed+offsetMemWorkingSetBytes)
+			checkIntMetric(t, m, e.key, core.MetricMemoryRSS, e.seed+offsetMemRSSBytes)
 			checkIntMetric(t, m, e.key, core.MetricMemoryPageFaults, e.seed+offsetMemPageFaults)
 			checkIntMetric(t, m, e.key, core.MetricMemoryMajorPageFaults, e.seed+offsetMemMajorPageFaults)
 		}
@@ -316,6 +318,7 @@ func genTestSummaryMemory(seed int) *stats.MemoryStats {
 		Time:            metav1.NewTime(scrapeTime),
 		UsageBytes:      uint64Val(seed, offsetMemUsageBytes),
 		WorkingSetBytes: uint64Val(seed, offsetMemWorkingSetBytes),
+		RSSBytes:        uint64Val(seed, offsetMemRSSBytes),
 		PageFaults:      uint64Val(seed, offsetMemPageFaults),
 		MajorPageFaults: uint64Val(seed, offsetMemMajorPageFaults),
 	}
