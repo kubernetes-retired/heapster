@@ -19,7 +19,7 @@ $ kubectl create -f deploy/kube-config/influxdb/
 Grafana service by default requests for a LoadBalancer. If that is not available in your cluster, consider changing that to NodePort. Use the external IP assigned to the Grafana service,
 to access Grafana.
 The default user name and password is 'admin'.
-Once you login to Grafana, add a datasource that is InfluxDB. The URL for InfluxDB will be `http://monitoring-influxdb:8086`. Database name is 'k8s'. Default user name and password is 'root'.
+Once you login to Grafana, add a datasource that is InfluxDB. The URL for InfluxDB will be `http://INFLUXDB_HOST:INFLUXDB_PORT`. Database name is 'k8s'. Default user name and password is 'root'.
 Grafana documentation for InfluxDB [here](http://docs.grafana.org/datasources/influxdb/).
 
 Take a look at the [storage schema](storage-schema.md) to understand how metrics are stored in InfluxDB.
