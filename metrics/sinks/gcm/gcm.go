@@ -306,6 +306,9 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 	}
 
 	opts, err := url.ParseQuery(uri.RawQuery)
+	if err != nil {
+		return nil, err
+	}
 
 	metrics := "all"
 	if len(opts["metrics"]) > 0 {
