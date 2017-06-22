@@ -129,6 +129,9 @@ func disableClusterMonitoring(kubeBaseDir string) error {
 			lines[i] = "ENABLE_CLUSTER_MONITORING=false"
 		} else if strings.Contains(line, "NUM_MINIONS=") {
 			lines[i] = "NUM_MINIONS=2"
+		} else if strings.Contains(line, "MASTER_SIZE=") {
+			// TODO(piosz): remove this once everything fits onto master
+			lines[i] = "MASTER_SIZE=n1-standard-2"
 		}
 	}
 	output := strings.Join(lines, "\n")
@@ -309,11 +312,19 @@ func downloadAndSetupCluster(version string) (baseDir string, err error) {
 }
 
 func newKubeFramework(version string) (kubeFramework, error) {
+	// Install gcloud components.
+	// TODO(piosz): move this to the image creation
+	cmd := exec.Command("gcloud", "components", "install", "alpha", "beta", "kubectl", "--quiet")
+	glog.V(2).Infof("about to install gcloud components")
+	if o, err := cmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("Error while installing gcloud components: %v\n%s", err, o)
+	}
+
 	var err error
 	kubeBaseDir := ""
 	if version != "" {
 		if len(strings.Split(version, ".")) != 3 {
-			return nil, fmt.Errorf("invalid kubernetes version specified - %q", version)
+			glog.Warningf("Using not stable version - %q", version)
 		}
 		kubeBaseDir, err = downloadAndSetupCluster(version)
 		if err != nil {
