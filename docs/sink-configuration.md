@@ -194,17 +194,10 @@ Besides this, the following options can be set in query string:
 * `startupHealthcheckTimeout` - the time in seconds the healthcheck waits for
   a response from Elasticsearch on startup, i.e. when creating a client. The
   default value is `1`.
+* `ver` - ElasticSearch cluster version, can be either `2` or `5`. The default is `5`
 * `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
 * `cluster_name` - cluster name for different Kubernetes clusters. Default value is `default`.
-
-
-Like this:
-
-    --sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testMetric"
-
-	or
-
-	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testEvent"
+* `pipeline` - (optional; >ES5) Ingest Pipeline to process the documents. The default is disabled(empty value)
 
 #### AWS Integration
 In order to use AWS Managed Elastic we need to use one of the following methods:

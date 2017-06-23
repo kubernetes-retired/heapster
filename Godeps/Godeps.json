@@ -584,6 +584,16 @@
 			"Rev": "1ad75b5396674e9c783400e89106bc0c8da9d786"
 		},
 		{
+			"ImportPath": "gopkg.in/olivere/elastic.v5",
+			"Comment": "v5.0.36",
+			"Rev": "6f76abde0f1f149b7d6fc47aee4c54366844f775"
+		},
+		{
+			"ImportPath": "gopkg.in/olivere/elastic.v5/uritemplates",
+			"Comment": "v5.0.36",
+			"Rev": "6f76abde0f1f149b7d6fc47aee4c54366844f775"
+		},
+		{
 			"ImportPath": "gopkg.in/yaml.v2",
 			"Rev": "53feefa2559fb8dfa8d81baad31be332c97d6c77"
 		},
