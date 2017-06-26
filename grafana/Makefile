@@ -20,11 +20,12 @@
 all: build
 
 VERSION?=v4.4.1
+DEB_VERSION?=4.4.1
+
 PREFIX?=gcr.io/google_containers
 ARCH?=amd64
 TEMP_DIR:=$(shell mktemp -d)
 LDFLAGS=-w -X main.version=$(VERSION) -X main.commit=unknown-dev -X main.timestamp=0 -extldflags '-static'
-DEB_BUILD=4.4.1
 KUBE_CROSS_IMAGE=gcr.io/google_containers/kube-cross:v1.8.3-2
 
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
@@ -35,9 +36,9 @@ ifeq ($(ARCH),amd64)
 	BASEIMAGE?=busybox
 	CC=gcc
 endif
-ifeq ($(ARCH),armhfrm)
+ifeq ($(ARCH),arm)
 	BASEIMAGE?=armhf/busybox
-	CC=arm-linux-gnueabi-gcc
+	CC=arm-linux-gnueabihf-gcc
 endif
 ifeq ($(ARCH),arm64)
 	BASEIMAGE?=aarch64/busybox
@@ -63,7 +64,7 @@ build:
 	# Lastly, it compiles the go helper
 	docker run --rm -it -v $(TEMP_DIR):/build -w /go/src/github.com/grafana/grafana $(KUBE_CROSS_IMAGE) /bin/bash -c "\
 		curl -sSL https://github.com/grafana/grafana/archive/$(VERSION).tar.gz | tar -xz --strip-components=1 \
-		&& curl -sSL https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_$(DEB_BUILD)_amd64.deb > /tmp/grafana.deb \
+		&& curl -sSL https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_$(DEB_VERSION)_amd64.deb > /tmp/grafana.deb \
 		&& mkdir /tmp/grafanarootfs && dpkg -x /tmp/grafana.deb /tmp/grafanarootfs \
 		&& cp /tmp/grafanarootfs/usr/share/grafana/conf/sample.ini /tmp/grafanarootfs/etc/grafana/grafana.ini \
 		&& cp /tmp/grafanarootfs/usr/share/grafana/conf/ldap.toml /tmp/grafanarootfs/etc/grafana/ldap.toml \
