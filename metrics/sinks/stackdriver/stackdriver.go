@@ -38,6 +38,7 @@ const (
 
 type StackdriverSink struct {
 	project           string
+	cluster           string
 	zone              string
 	stackdriverClient *sd_api.Service
 	requestQueue      chan *sd_api.CreateTimeSeriesRequest
@@ -223,6 +224,11 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		workers = 1
 	}
 
+	cluster_name := ""
+	if len(opts["cluster_name"]) >= 1 {
+		cluster_name = opts["cluster_name"][0]
+	}
+
 	if err := gce_util.EnsureOnGCE(); err != nil {
 		return nil, err
 	}
@@ -250,6 +256,7 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 
 	sink := &StackdriverSink{
 		project:           projectId,
+		cluster:           cluster_name,
 		zone:              zone,
 		stackdriverClient: stackdriverClient,
 		requestQueue:      requestQueue,
@@ -408,7 +415,7 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 func (sink *StackdriverSink) getResourceLabels(labels map[string]string) map[string]string {
 	return map[string]string{
 		"project_id":     sink.project,
-		"cluster_name":   "",
+		"cluster_name":   sink.cluster,
 		"zone":           sink.zone,
 		"instance_id":    labels[core.LabelHostID.Key],
 		"namespace_id":   labels[core.LabelPodNamespaceUID.Key],
