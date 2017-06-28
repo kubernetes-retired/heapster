@@ -37,6 +37,17 @@ The following options are available:
 * `withfields` - Use [InfluxDB fields](storage-schema.md#using-fields) (default: `false`)
 * `cluster_name` - cluster name for different Kubernetes clusters. (default: `default`)
 
+### Stackdriver
+
+This sink supports monitoring metrics only.
+To use the Stackdriver sink add following flag:
+
+	--sink=stackdriver[:?<STACKDRIVER_OPTIONS>]
+
+The following options are available:
+* `workers` - The number of workers. (default: `1`)
+* `cluster_name` - Cluster name for different Kubernetes clusters. (default: ``)
+
 ### Google Cloud Monitoring
 This sink supports monitoring metrics only.
 To use the GCM sink add the following flag:
