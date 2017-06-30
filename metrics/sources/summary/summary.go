@@ -194,8 +194,23 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 
 	for _, container := range pod.Containers {
 		key := PodContainerKey(ref.Namespace, ref.Name, container.Name)
+		// This check ensures that we are not replacing metrics of running container with metrics of terminated one if
+		// there are two exactly same containers reported by kubelet.
+		if _, exist := metrics[key]; exist && containerIsTerminated(&container, metrics[key].CreateTime) {
+			continue
+		}
 		metrics[key] = this.decodeContainerStats(podMetrics.Labels, &container, false)
 	}
+}
+
+func containerIsTerminated(container *stats.ContainerStats, otherStartTime time.Time) bool {
+	if container.StartTime.Time.Before(otherStartTime) {
+		if *container.CPU.UsageNanoCores == 0 {
+			return true
+		}
+		glog.Warningf("Two identical containers are reported and the older one is not terminated: %v", container)
+	}
+	return false
 }
 
 func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *stats.ContainerStats, isSystemContainer bool) *MetricSet {
