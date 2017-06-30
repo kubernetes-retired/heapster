@@ -134,6 +134,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName00, seedPod0Container0),
 				genTestSummaryContainer(cName01, seedPod0Container1),
+				genTestSummaryTerminatedContainer(cName00, seedPod0Container0),
 			},
 		}, {
 			PodRef: stats.PodReference{
@@ -292,6 +293,17 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 	}
 }
 
+func genTestSummaryTerminatedContainer(name string, seed int) stats.ContainerStats {
+	return stats.ContainerStats{
+		Name:      name,
+		StartTime: metav1.NewTime(startTime.Add(-time.Minute)),
+		CPU:       genTestSummaryZeroCPU(seed),
+		Memory:    genTestSummaryZeroMemory(seed),
+		Rootfs:    genTestSummaryFsStats(seed),
+		Logs:      genTestSummaryFsStats(seed),
+	}
+}
+
 func genTestSummaryContainer(name string, seed int) stats.ContainerStats {
 	return stats.ContainerStats{
 		Name:      name,
@@ -303,6 +315,16 @@ func genTestSummaryContainer(name string, seed int) stats.ContainerStats {
 	}
 }
 
+func genTestSummaryZeroCPU(seed int) *stats.CPUStats {
+	cpu := stats.CPUStats{
+		Time:                 metav1.NewTime(scrapeTime),
+		UsageNanoCores:       uint64Val(seed, -seed),
+		UsageCoreNanoSeconds: uint64Val(seed, offsetCPUUsageCoreSeconds),
+	}
+	*cpu.UsageCoreNanoSeconds *= uint64(time.Millisecond.Nanoseconds())
+	return &cpu
+}
+
 func genTestSummaryCPU(seed int) *stats.CPUStats {
 	cpu := stats.CPUStats{
 		Time:                 metav1.NewTime(scrapeTime),
@@ -311,6 +333,17 @@ func genTestSummaryCPU(seed int) *stats.CPUStats {
 	}
 	*cpu.UsageNanoCores *= uint64(time.Millisecond.Nanoseconds())
 	return &cpu
+}
+
+func genTestSummaryZeroMemory(seed int) *stats.MemoryStats {
+	return &stats.MemoryStats{
+		Time:            metav1.NewTime(scrapeTime),
+		UsageBytes:      uint64Val(seed, -seed),
+		WorkingSetBytes: uint64Val(seed, offsetMemWorkingSetBytes),
+		RSSBytes:        uint64Val(seed, offsetMemRSSBytes),
+		PageFaults:      uint64Val(seed, offsetMemPageFaults),
+		MajorPageFaults: uint64Val(seed, offsetMemMajorPageFaults),
+	}
 }
 
 func genTestSummaryMemory(seed int) *stats.MemoryStats {
