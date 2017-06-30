@@ -194,8 +194,20 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 
 	for _, container := range pod.Containers {
 		key := PodContainerKey(ref.Namespace, ref.Name, container.Name)
+		if _, exist := metrics[key]; exist && containerIsTerminated(&container, metrics[key].CreateTime) {
+			continue
+		}
 		metrics[key] = this.decodeContainerStats(podMetrics.Labels, &container, false)
 	}
+}
+
+func containerIsTerminated(container *stats.ContainerStats, otherStartTime time.Time) bool {
+	if container.StartTime.Time.Before(otherStartTime) && *container.CPU.UsageNanoCores == 0 {
+		return true
+	} else if container.StartTime.Time.Before(otherStartTime) {
+		glog.Warningf("Two identical containers are reported and the older one is not terminated: %v", container)
+	}
+	return false
 }
 
 func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *stats.ContainerStats, isSystemContainer bool) *MetricSet {
