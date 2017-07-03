@@ -46,11 +46,11 @@ func (h *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
 		// If no descriptorTag is found, this metric does not belong to Heapster
 		if mk, found := p.Tags[descriptorTag]; found {
 			if model, f := h.models[mk]; f && !h.recent(p, model) {
-				if err := h.client.UpdateTags(mt, p.Id, p.Tags, h.modifiers...); err != nil {
+				if err := h.client.UpdateTags(mt, p.ID, p.Tags, h.modifiers...); err != nil {
 					return err
 				}
 			}
-			h.reg[p.Id] = p
+			h.reg[p.ID] = p
 		}
 	}
 
@@ -88,7 +88,7 @@ func (h *hawkularSink) descriptorToDefinition(md *core.MetricDescriptor) metrics
 	tags[descriptorTag] = md.Name
 
 	hmd := metrics.MetricDefinition{
-		Id:   md.Name,
+		ID:   md.Name,
 		Tags: tags,
 		Type: heapsterTypeToHawkularType(md.Type),
 	}
@@ -287,11 +287,11 @@ func (h *hawkularSink) pointToLabeledMetricHeader(ms *core.MetricSet, metric cor
 
 	m := metrics.Datapoint{
 		Value:     value,
-		Timestamp: metrics.UnixMilli(timestamp),
+		Timestamp: timestamp,
 	}
 
 	mh := &metrics.MetricHeader{
-		Id:   name,
+		ID:   name,
 		Data: []metrics.Datapoint{m},
 		Type: heapsterTypeToHawkularType(metric.MetricType),
 	}
