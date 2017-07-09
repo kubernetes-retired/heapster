@@ -15,13 +15,14 @@
 package gcm
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"sync"
 	"time"
 
-	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
 
 	gce "cloud.google.com/go/compute/metadata"
@@ -38,7 +39,6 @@ const (
 	// The largest number of timeseries we can write to per request.
 	maxTimeseriesPerRequest = 200
 	gcpCredentialEnv        = "GOOGLE_APPLICATION_CREDENTIALS"
-	gcpProjectEnv           = "GOOGLE_PROJECT_ID"
 )
 
 type MetricFilter int8
@@ -324,39 +324,37 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("invalid metrics parameter: %s", metrics)
 	}
 
-	var projectId string
-	var gcmService *gcm.Service
+	var gcpConfig struct {
+		ProjectId string `json:"project_id"`
+	}
 
-	if os.Getenv(gcpCredentialEnv) != "" {
-		// GCP credentials supplied, so assume we're not in GCE
-		if os.Getenv(gcpProjectEnv) == "" {
-			return nil, fmt.Errorf("no GCP project ID supplied")
-		} else {
-			projectId = os.Getenv(gcpProjectEnv)
+	client, err := google.DefaultClient(oauth2.NoContext, gcm.MonitoringScope)
+	if err != nil {
+		return nil, fmt.Errorf("error creating oauth2 client: %s", err)
+	}
+
+	gcmService, err := gcm.New(client)
+	if err != nil {
+		return nil, fmt.Errorf("error creating GCM service: %s", err)
+	}
+
+	// Try and get the project ID, GCE metadata first
+	projectId, err := gce.ProjectID()
+	// If there was a problem, try the default credentials file
+	if err != nil {
+		file := os.Getenv(gcpCredentialEnv)
+		if file == "" {
+			return nil, fmt.Errorf("no %s environment variable detected", gcpCredentialEnv)
 		}
-		glog.Infof("Google project ID is: %s", projectId)
-		// Create Google Cloud Monitoring service
-		if client, err := google.DefaultClient(oauth2.NoContext, gcm.MonitoringScope); err != nil {
-			return nil, err
-		} else {
-			gcmService, err = gcm.New(client)
-		}
-	} else {
-		// Ensure we're on GCE
-		if err := gce_util.EnsureOnGCE(); err != nil {
-			return nil, err
-		}
-		// Detect project ID
-		projectId, err = gce.ProjectID()
+		conf, err := ioutil.ReadFile(file)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error reading default credentials file: %s", err)
 		}
-		// Create Google Cloud Monitoring service.
-		client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
-		gcmService, err = gcm.New(client)
+		err = json.Unmarshal(conf, &gcpConfig)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error loading default credentials file: %s", err)
 		}
+		projectId = gcpConfig.ProjectId
 	}
 
 	sink := &gcmSink{
