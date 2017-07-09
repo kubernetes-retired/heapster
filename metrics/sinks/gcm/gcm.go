@@ -39,6 +39,7 @@ const (
 	// The largest number of timeseries we can write to per request.
 	maxTimeseriesPerRequest = 200
 	gcpCredentialEnv        = "GOOGLE_APPLICATION_CREDENTIALS"
+	gcpProjectId            = "GOOGLE_PROJECT_ID"
 )
 
 type MetricFilter int8
@@ -324,10 +325,6 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("invalid metrics parameter: %s", metrics)
 	}
 
-	var gcpConfig struct {
-		ProjectId string `json:"project_id"`
-	}
-
 	client, err := google.DefaultClient(oauth2.NoContext, gcm.MonitoringScope)
 	if err != nil {
 		return nil, fmt.Errorf("error creating oauth2 client: %s", err)
@@ -338,23 +335,33 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("error creating GCM service: %s", err)
 	}
 
-	// Try and get the project ID, GCE metadata first
-	projectId, err := gce.ProjectID()
-	// If there was a problem, try the default credentials file
-	if err != nil {
+	// Try and get the project ID from an environment variable first
+	var projectId string
+	projectId = os.Getenv(gcpProjectId)
+	if projectId == "" {
+		// If the variable is not set, move on to the default credentials file
 		file := os.Getenv(gcpCredentialEnv)
-		if file == "" {
-			return nil, fmt.Errorf("no %s environment variable detected", gcpCredentialEnv)
+		if file != "" {
+			// Attempt to load the config from the credentials file
+			conf, err := ioutil.ReadFile(file)
+			if err != nil {
+				return nil, fmt.Errorf("error reading default credentials file: %s", err)
+			}
+			var gcpConfig struct {
+				ProjectId string `json:"project_id"`
+			}
+			err = json.Unmarshal(conf, &gcpConfig)
+			if err != nil {
+				return nil, fmt.Errorf("error loading default credentials file: %s", err)
+			}
+			projectId = gcpConfig.ProjectId
+		} else {
+			// Required nvironment variables not set, try GCE metadata
+			projectId, err = gce.ProjectID()
+			if err != nil {
+				return nil, fmt.Errorf("error retrieving project ID from GCE metadata: %s", err)
+			}
 		}
-		conf, err := ioutil.ReadFile(file)
-		if err != nil {
-			return nil, fmt.Errorf("error reading default credentials file: %s", err)
-		}
-		err = json.Unmarshal(conf, &gcpConfig)
-		if err != nil {
-			return nil, fmt.Errorf("error loading default credentials file: %s", err)
-		}
-		projectId = gcpConfig.ProjectId
 	}
 
 	sink := &gcmSink{
