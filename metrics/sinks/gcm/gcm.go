@@ -336,14 +336,14 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("error creating GCM service: %s", err)
 	}
 
-	// Try and get the project ID from the environment variable first
+	// Try and get the project ID from the environment variable first.
 	var projectId string
 	projectId = os.Getenv(gcpProjectIdEnv)
 	if projectId == "" {
-		// If the variable is not set, move on to the default credentials file
+		// If the variable is not set, move on to the default credentials file.
 		file := os.Getenv(gcpCredentialsEnv)
 		if file != "" {
-			// Attempt to load the config from the credentials file
+			// Attempt to load the config from the credentials file.
 			conf, err := ioutil.ReadFile(file)
 			if err != nil {
 				return nil, fmt.Errorf("error reading default credentials file: %s", err)
@@ -357,7 +357,7 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 			}
 			projectId = gcpConfig.ProjectId
 		} else {
-			// Try GCE metadata
+			// Try the GCE metadata service.
 			projectId, err = gce.ProjectID()
 			if err != nil {
 				return nil, fmt.Errorf("error retrieving project ID from GCE metadata: %s", err)
