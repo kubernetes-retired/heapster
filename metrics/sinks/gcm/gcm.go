@@ -38,8 +38,8 @@ const (
 	maxNumLabels    = 10
 	// The largest number of timeseries we can write to per request.
 	maxTimeseriesPerRequest = 200
-	gcpCredentialEnv        = "GOOGLE_APPLICATION_CREDENTIALS"
-	gcpProjectId            = "GOOGLE_PROJECT_ID"
+	gcpCredentialsEnv       = "GOOGLE_APPLICATION_CREDENTIALS"
+	gcpProjectIdEnv         = "GOOGLE_PROJECT_ID"
 )
 
 type MetricFilter int8
@@ -330,17 +330,18 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("error creating oauth2 client: %s", err)
 	}
 
+	// Create Google Cloud Monitoring service.
 	gcmService, err := gcm.New(client)
 	if err != nil {
 		return nil, fmt.Errorf("error creating GCM service: %s", err)
 	}
 
-	// Try and get the project ID from an environment variable first
+	// Try and get the project ID from the environment variable first
 	var projectId string
-	projectId = os.Getenv(gcpProjectId)
+	projectId = os.Getenv(gcpProjectIdEnv)
 	if projectId == "" {
 		// If the variable is not set, move on to the default credentials file
-		file := os.Getenv(gcpCredentialEnv)
+		file := os.Getenv(gcpCredentialsEnv)
 		if file != "" {
 			// Attempt to load the config from the credentials file
 			conf, err := ioutil.ReadFile(file)
@@ -356,7 +357,7 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 			}
 			projectId = gcpConfig.ProjectId
 		} else {
-			// Required nvironment variables not set, try GCE metadata
+			// Try GCE metadata
 			projectId, err = gce.ProjectID()
 			if err != nil {
 				return nil, fmt.Errorf("error retrieving project ID from GCE metadata: %s", err)
