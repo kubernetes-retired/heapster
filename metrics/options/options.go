@@ -46,7 +46,7 @@ type HeapsterRunOptions struct {
 	Sinks               flags.Uris
 	HistoricalSource    string
 	Version             bool
-	LabelSeperator      string
+	LabelSeparator      string
 	DisableMetricExport bool
 }
 
@@ -82,6 +82,6 @@ func (h *HeapsterRunOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&h.AllowedUsers, "allowed_users", "", "comma-separated list of allowed users")
 	fs.StringVar(&h.HistoricalSource, "historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
 	fs.BoolVar(&h.Version, "version", false, "print version info and exit")
-	fs.StringVar(&h.LabelSeperator, "label_seperator", ",", "seperator used for joining labels")
+	fs.StringVar(&h.LabelSeparator, "label_separator", ",", "separator used for joining labels")
 	fs.BoolVar(&h.DisableMetricExport, "disable_export", false, "Disable exporting metrics in api/v1/metric-export")
 }
