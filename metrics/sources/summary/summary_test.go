@@ -29,6 +29,7 @@ import (
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sources/kubelet"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
+	"fmt"
 )
 
 const (
@@ -400,10 +401,52 @@ func checkFsMetric(t *testing.T, metrics *core.MetricSet, key, label string, met
 }
 
 func TestScrapeSummaryMetrics(t *testing.T) {
+	usedMemory := uint64Val(1000, 100)
+	availableMemory := uint64Val(1000, 100)
+	wsMemory := uint64Val(1000, 100)
+
+	availableFsBytes := uint64Val(1030, 100)
+	usedFsBytes := uint64Val(13240, 100)
+	totalFsBytes := uint64Val(2453, 100)
+	freeInode := uint64Val(10340, 100)
+	usedInode := uint64Val(103420, 100)
+	totalInode := uint64Val(103420, 100)
+
 	summary := stats.Summary{
 		Node: stats.NodeStats{
 			NodeName:  nodeInfo.NodeName,
 			StartTime: metav1.NewTime(startTime),
+		},
+		Pods: []stats.PodStats{
+			stats.PodStats{
+				PodRef: stats.PodReference{
+					Name: "my-pod",
+					Namespace:"my-namespace",
+				},
+				Containers: []stats.ContainerStats{
+					stats.ContainerStats{
+						Name: "my-container",
+						Memory: &stats.MemoryStats{
+							AvailableBytes: availableMemory,
+							UsageBytes: usedMemory,
+							WorkingSetBytes: wsMemory,
+						},
+					},
+				},
+				VolumeStats: []stats.VolumeStats {
+					stats.VolumeStats {
+						Name: "data",
+						FsStats: stats.FsStats {
+							AvailableBytes: availableFsBytes,
+							UsedBytes: usedFsBytes,
+							CapacityBytes: totalFsBytes,
+							InodesFree: freeInode,
+							InodesUsed: usedInode,
+							Inodes: totalInode,
+						},
+					},
+				},
+			},
 		},
 	}
 	data, err := json.Marshal(&summary)
@@ -423,5 +466,12 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	res := ms.ScrapeMetrics(time.Now(), time.Now())
+	fmt.Println(res.MetricSets["namespace:my-namespace/pod:my-pod"].LabeledMetrics[0].Labels)
 	assert.Equal(t, res.MetricSets["node:test"].Labels[core.LabelMetricSetType.Key], core.MetricSetTypeNode)
+
+	assert.Equal(t, len(res.MetricSets["namespace:my-namespace/pod:my-pod"].LabeledMetrics), 3)
+
+	for _, labeledMetric := range res.MetricSets["namespace:my-namespace/pod:my-pod"].LabeledMetrics {
+		assert.True(t, strings.HasPrefix("Volume:data", labeledMetric.Labels["resource_id"]))
+	}
 }
