@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-
+	
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +29,6 @@ import (
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sources/kubelet"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
-	"fmt"
 )
 
 const (
@@ -420,29 +419,29 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 		Pods: []stats.PodStats{
 			stats.PodStats{
 				PodRef: stats.PodReference{
-					Name: "my-pod",
-					Namespace:"my-namespace",
+					Name:      "my-pod",
+					Namespace: "my-namespace",
 				},
 				Containers: []stats.ContainerStats{
 					stats.ContainerStats{
 						Name: "my-container",
 						Memory: &stats.MemoryStats{
-							AvailableBytes: availableMemory,
-							UsageBytes: usedMemory,
+							AvailableBytes:  availableMemory,
+							UsageBytes:      usedMemory,
 							WorkingSetBytes: wsMemory,
 						},
 					},
 				},
-				VolumeStats: []stats.VolumeStats {
-					stats.VolumeStats {
+				VolumeStats: []stats.VolumeStats{
+					stats.VolumeStats{
 						Name: "data",
-						FsStats: stats.FsStats {
+						FsStats: stats.FsStats{
 							AvailableBytes: availableFsBytes,
-							UsedBytes: usedFsBytes,
-							CapacityBytes: totalFsBytes,
-							InodesFree: freeInode,
-							InodesUsed: usedInode,
-							Inodes: totalInode,
+							UsedBytes:      usedFsBytes,
+							CapacityBytes:  totalFsBytes,
+							InodesFree:     freeInode,
+							InodesUsed:     usedInode,
+							Inodes:         totalInode,
 						},
 					},
 				},
