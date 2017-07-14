@@ -465,9 +465,8 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	res := ms.ScrapeMetrics(time.Now(), time.Now())
-	fmt.Println(res.MetricSets["namespace:my-namespace/pod:my-pod"].LabeledMetrics[0].Labels)
-	assert.Equal(t, res.MetricSets["node:test"].Labels[core.LabelMetricSetType.Key], core.MetricSetTypeNode)
 
+	assert.Equal(t, res.MetricSets["node:test"].Labels[core.LabelMetricSetType.Key], core.MetricSetTypeNode)
 	assert.Equal(t, len(res.MetricSets["namespace:my-namespace/pod:my-pod"].LabeledMetrics), 3)
 
 	for _, labeledMetric := range res.MetricSets["namespace:my-namespace/pod:my-pod"].LabeledMetrics {
