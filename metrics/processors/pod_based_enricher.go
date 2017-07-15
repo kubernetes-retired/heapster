@@ -124,28 +124,30 @@ func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *cor
 	// Add cpu/mem requests and limits to containers
 	for _, container := range pod.Spec.Containers {
 		containerKey := core.PodContainerKey(pod.Namespace, pod.Name, container.Name)
-		if _, found := batch.MetricSets[containerKey]; !found {
-			if _, found := newMs[containerKey]; !found {
-				glog.V(2).Infof("Container %s not found, creating a stub", containerKey)
-				containerMs := &core.MetricSet{
-					MetricValues: make(map[string]core.MetricValue),
-					Labels: map[string]string{
-						core.LabelMetricSetType.Key:      core.MetricSetTypePodContainer,
-						core.LabelNamespaceName.Key:      pod.Namespace,
-						core.LabelPodName.Key:            pod.Name,
-						core.LabelContainerName.Key:      container.Name,
-						core.LabelContainerBaseImage.Key: container.Image,
-						core.LabelPodId.Key:              string(pod.UID),
-						core.LabelLabels.Key:             util.LabelsToString(pod.Labels),
-						core.LabelNodename.Key:           podMs.Labels[core.LabelNodename.Key],
-						core.LabelHostname.Key:           podMs.Labels[core.LabelHostname.Key],
-						core.LabelHostID.Key:             podMs.Labels[core.LabelHostID.Key],
-					},
-				}
-				updateContainerResourcesAndLimits(containerMs, container)
-				newMs[containerKey] = containerMs
-			}
+		if _, found := batch.MetricSets[containerKey]; found {
+			continue
 		}
+		if _, found := newMs[containerKey]; found {
+			continue
+		}
+		glog.V(2).Infof("Container %s not found, creating a stub", containerKey)
+		containerMs := &core.MetricSet{
+			MetricValues: make(map[string]core.MetricValue),
+			Labels: map[string]string{
+				core.LabelMetricSetType.Key:      core.MetricSetTypePodContainer,
+				core.LabelNamespaceName.Key:      pod.Namespace,
+				core.LabelPodName.Key:            pod.Name,
+				core.LabelContainerName.Key:      container.Name,
+				core.LabelContainerBaseImage.Key: container.Image,
+				core.LabelPodId.Key:              string(pod.UID),
+				core.LabelLabels.Key:             util.LabelsToString(pod.Labels),
+				core.LabelNodename.Key:           podMs.Labels[core.LabelNodename.Key],
+				core.LabelHostname.Key:           podMs.Labels[core.LabelHostname.Key],
+				core.LabelHostID.Key:             podMs.Labels[core.LabelHostID.Key],
+			},
+		}
+		updateContainerResourcesAndLimits(containerMs, container)
+		newMs[containerKey] = containerMs
 	}
 }
 
