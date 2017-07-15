@@ -236,14 +236,12 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 		Timestamp:  end,
 		MetricSets: map[string]*MetricSet{},
 	}
-	keys := make(map[string]bool)
 	for _, c := range containers {
 		name, metrics := this.decodeMetrics(&c)
 		if name == "" || metrics == nil {
 			continue
 		}
 		result.MetricSets[name] = metrics
-		keys[name] = true
 	}
 	return result
 }
@@ -272,9 +270,7 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 		return sources
 	}
 
-	nodeNames := make(map[string]bool)
 	for _, node := range nodes {
-		nodeNames[node.Name] = true
 		hostname, ip, err := getNodeHostnameAndIP(node)
 		if err != nil {
 			glog.Errorf("%v", err)
