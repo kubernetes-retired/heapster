@@ -184,42 +184,47 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		}
 	}
 
-	if c.Spec.HasCustomMetrics {
-	metricloop:
-		for _, spec := range c.Spec.CustomMetrics {
-			if cmValue, ok := c.Stats[0].CustomMetrics[spec.Name]; ok && cmValue != nil && len(cmValue) >= 1 {
-				newest := cmValue[0]
-				for _, metricVal := range cmValue {
-					if newest.Timestamp.Before(metricVal.Timestamp) {
-						newest = metricVal
-					}
-				}
-				mv := MetricValue{}
-				switch spec.Type {
-				case cadvisor.MetricGauge:
-					mv.MetricType = MetricGauge
-				case cadvisor.MetricCumulative:
-					mv.MetricType = MetricCumulative
-				default:
-					glog.V(4).Infof("Skipping %s: unknown custom metric type: %v", spec.Name, spec.Type)
-					continue metricloop
-				}
+	if !c.Spec.HasCustomMetrics {
+		return metricSetKey, cMetrics
+	}
 
-				switch spec.Format {
-				case cadvisor.IntType:
-					mv.ValueType = ValueInt64
-					mv.IntValue = newest.IntValue
-				case cadvisor.FloatType:
-					mv.ValueType = ValueFloat
-					mv.FloatValue = float32(newest.FloatValue)
-				default:
-					glog.V(4).Infof("Skipping %s: unknown custom metric format", spec.Name, spec.Format)
-					continue metricloop
-				}
+metricloop:
+	for _, spec := range c.Spec.CustomMetrics {
+		cmValue, ok := c.Stats[0].CustomMetrics[spec.Name]
+		if !ok || cmValue == nil || len(cmValue) == 0 {
+			continue metricloop
+		}
 
-				cMetrics.MetricValues[CustomMetricPrefix+spec.Name] = mv
+		newest := cmValue[0]
+		for _, metricVal := range cmValue {
+			if newest.Timestamp.Before(metricVal.Timestamp) {
+				newest = metricVal
 			}
 		}
+		mv := MetricValue{}
+		switch spec.Type {
+		case cadvisor.MetricGauge:
+			mv.MetricType = MetricGauge
+		case cadvisor.MetricCumulative:
+			mv.MetricType = MetricCumulative
+		default:
+			glog.V(4).Infof("Skipping %s: unknown custom metric type: %v", spec.Name, spec.Type)
+			continue metricloop
+		}
+
+		switch spec.Format {
+		case cadvisor.IntType:
+			mv.ValueType = ValueInt64
+			mv.IntValue = newest.IntValue
+		case cadvisor.FloatType:
+			mv.ValueType = ValueFloat
+			mv.FloatValue = float32(newest.FloatValue)
+		default:
+			glog.V(4).Infof("Skipping %s: unknown custom metric format", spec.Name, spec.Format)
+			continue metricloop
+		}
+
+		cMetrics.MetricValues[CustomMetricPrefix+spec.Name] = mv
 	}
 
 	return metricSetKey, cMetrics
