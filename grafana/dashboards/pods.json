@@ -974,7 +974,7 @@
             }
           ],
           "query": "SHOW TAG VALUES FROM \"uptime\" WITH KEY = \"namespace_name\"",
-          "refresh": false,
+          "refresh": true,
           "type": "query"
         },
         {
