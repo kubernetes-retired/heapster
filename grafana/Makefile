@@ -19,12 +19,12 @@
 
 all: build
 
-VERSION?=v4.2.0
+VERSION?=v4.4.1
 PREFIX?=gcr.io/google_containers
 ARCH?=amd64
 TEMP_DIR:=$(shell mktemp -d)
 LDFLAGS=-w -X main.version=$(VERSION) -X main.commit=unknown-dev -X main.timestamp=0 -extldflags '-static'
-DEB_BUILD=4.2.0
+DEB_BUILD=4.4.1
 KUBE_CROSS_IMAGE=gcr.io/google_containers/kube-cross:v1.8.3-1
 
 # s390x
@@ -66,6 +66,8 @@ build:
 		curl -sSL https://github.com/grafana/grafana/archive/$(VERSION).tar.gz | tar -xz --strip-components=1 \
 		&& curl -sSL https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_$(DEB_BUILD)_amd64.deb > /tmp/grafana.deb \
 		&& mkdir /tmp/grafanarootfs && dpkg -x /tmp/grafana.deb /tmp/grafanarootfs \
+		&& cp /tmp/grafanarootfs/usr/share/grafana/conf/sample.ini /tmp/grafanarootfs/etc/grafana/grafana.ini \
+		&& cp /tmp/grafanarootfs/usr/share/grafana/conf/ldap.toml /tmp/grafanarootfs/etc/grafana/ldap.toml \
 		&& CGO_ENABLED=1 GOARCH=$(ARCH) CC=$(CC) go build --ldflags=\"$(LDFLAGS)\" -o /tmp/grafanarootfs/usr/sbin/grafana-server ./pkg/cmd/grafana-server \
 		&& CGO_ENABLED=1 GOARCH=$(ARCH) CC=$(CC) go build --ldflags=\"$(LDFLAGS)\" -o /tmp/grafanarootfs/usr/sbin/grafana-cli ./pkg/cmd/grafana-cli \
 		&& cd /tmp/grafanarootfs && tar -cf /build/grafana.tar . \
