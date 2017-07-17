@@ -446,7 +446,7 @@ func (sink *StackdriverSink) doublePoint(endTime time.Time, startTime time.Time,
 			StartTime: startTime.Format(time.RFC3339),
 		},
 		Value: &sd_api.TypedValue{
-			DoubleValue:     value,
+			DoubleValue:     &value,
 			ForceSendFields: []string{"DoubleValue"},
 		},
 	}
@@ -460,7 +460,7 @@ func (sink *StackdriverSink) intPoint(endTime time.Time, startTime time.Time, va
 			StartTime: startTime.Format(time.RFC3339),
 		},
 		Value: &sd_api.TypedValue{
-			Int64Value:      value,
+			Int64Value:      &value,
 			ForceSendFields: []string{"Int64Value"},
 		},
 	}

@@ -27,7 +27,7 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	gcl "google.golang.org/api/logging/v2beta1"
+	gcl "google.golang.org/api/logging/v2"
 )
 
 const (

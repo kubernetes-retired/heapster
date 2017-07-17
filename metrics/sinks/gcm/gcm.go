@@ -82,12 +82,12 @@ func createTimeSeries(timestamp time.Time, labels map[string]string, metric stri
 
 	switch val.ValueType {
 	case core.ValueInt64:
-		point.Value.Int64Value = val.IntValue
+		point.Value.Int64Value = &val.IntValue
 		point.Value.ForceSendFields = []string{"Int64Value"}
 		valueType = "INT64"
 	case core.ValueFloat:
 		v := float64(val.FloatValue)
-		point.Value.DoubleValue = v
+		point.Value.DoubleValue = &v
 		point.Value.ForceSendFields = []string{"DoubleValue"}
 		valueType = "DOUBLE"
 	default:
