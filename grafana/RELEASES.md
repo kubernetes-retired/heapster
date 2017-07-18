@@ -1,13 +1,17 @@
 # Release Notes for Grafana container.
 
-## 4.0.2 (4.1.2016)
+## 4.4.1 (18-07-2017)
+- Image includes grafana.ini configuration file.
+- Support Grafana 4.4.1.
+
+## 4.0.2 (04-01-2017)
 - Formalized the image name for every arch to `gcr.io/google_containers/heapster-grafana-ARCH:VERSION`
 - Now this image is released for multiple architectures, including amd64, arm, arm64, ppc64le and s390x
 - The `gcr.io/google_containers/heapster-grafana:VERSION` image is a manifest list, which means docker will pull the right image for the right arch automatically
 - Grafana v4.0.2
 - Enhanced the Makefile and the README
 
-## 3.1.1 (24-11-2016) 
+## 3.1.1 (24-11-2016)
 - Support Grafana 3.1.1.
 
 ## 2.6.0-2 (29-02-2016)
