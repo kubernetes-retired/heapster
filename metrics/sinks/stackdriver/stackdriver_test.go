@@ -78,7 +78,7 @@ func TestTranslateUptime(t *testing.T) {
 	value := testTranslateMetric(as, 30000, "uptime", commonLabels,
 		"container.googleapis.com/container/uptime")
 
-	as.Equal(30.0, value.DoubleValue)
+	as.Equal(30.0, *value.DoubleValue)
 }
 
 func TestTranslateCpuUsage(t *testing.T) {
@@ -86,7 +86,7 @@ func TestTranslateCpuUsage(t *testing.T) {
 	value := testTranslateMetric(as, 3600000000000, "cpu/usage", commonLabels,
 		"container.googleapis.com/container/cpu/usage_time")
 
-	as.Equal(3600.0, value.DoubleValue)
+	as.Equal(3600.0, *value.DoubleValue)
 }
 
 func TestTranslateCpuLimit(t *testing.T) {
@@ -94,7 +94,7 @@ func TestTranslateCpuLimit(t *testing.T) {
 	value := testTranslateMetric(as, 2000, "cpu/limit", commonLabels,
 		"container.googleapis.com/container/cpu/reserved_cores")
 
-	as.Equal(2.0, value.DoubleValue)
+	as.Equal(2.0, *value.DoubleValue)
 }
 
 func TestTranslateMemoryLimitNode(t *testing.T) {
@@ -119,7 +119,7 @@ func TestTranslateMemoryLimitPod(t *testing.T) {
 	value := testTranslateMetric(as, 2048, "memory/limit", labels,
 		"container.googleapis.com/container/memory/bytes_total")
 
-	as.Equal(int64(2048), value.Int64Value)
+	as.Equal(int64(2048), *value.Int64Value)
 }
 
 func TestTranslateMemoryNodeAllocatable(t *testing.T) {
@@ -127,7 +127,7 @@ func TestTranslateMemoryNodeAllocatable(t *testing.T) {
 	value := testTranslateMetric(as, 2048, "memory/node_allocatable", commonLabels,
 		"container.googleapis.com/container/memory/bytes_total")
 
-	as.Equal(int64(2048), value.Int64Value)
+	as.Equal(int64(2048), *value.Int64Value)
 }
 
 func TestTranslateMemoryMajorPageFaults(t *testing.T) {
@@ -141,7 +141,7 @@ func TestTranslateMemoryMajorPageFaults(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(ts.Points[0].Value.Int64Value, int64(20))
+	as.Equal(*ts.Points[0].Value.Int64Value, int64(20))
 	as.Equal(ts.Metric.Labels["fault_type"], "major")
 }
 
@@ -156,7 +156,7 @@ func TestTranslateMemoryMinorPageFaults(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(ts.Points[0].Value.Int64Value, int64(42))
+	as.Equal(*ts.Points[0].Value.Int64Value, int64(42))
 	as.Equal(ts.Metric.Labels["fault_type"], "minor")
 }
 
@@ -165,7 +165,7 @@ func TestTranslateMemoryBytesUsed(t *testing.T) {
 	value := testTranslateMetric(as, 987, "memory/bytes_used", commonLabels,
 		"container.googleapis.com/container/memory/bytes_used")
 
-	as.Equal(int64(987), value.Int64Value)
+	as.Equal(int64(987), *value.Int64Value)
 }
 
 // Test TranslateLabeledMetric
@@ -186,7 +186,7 @@ func TestTranslateFilesystemUsage(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_used")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(ts.Points[0].Value.Int64Value, int64(10000))
+	as.Equal(*ts.Points[0].Value.Int64Value, int64(10000))
 }
 
 func TestTranslateFilesystemLimit(t *testing.T) {
@@ -205,7 +205,7 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_total")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(ts.Points[0].Value.Int64Value, int64(30000))
+	as.Equal(*ts.Points[0].Value.Int64Value, int64(30000))
 }
 
 // Test PreprocessMemoryMetrics
