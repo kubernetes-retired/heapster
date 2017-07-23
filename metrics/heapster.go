@@ -326,7 +326,7 @@ func getPodLister(kubeClient *kube_client.Clientset) (v1listers.PodLister, error
 
 func validateFlags(opt *options.HeapsterRunOptions) error {
 	if opt.MetricResolution < 5*time.Second {
-		return fmt.Errorf("metric resolution needs to be greater than 5 seconds - %d", opt.MetricResolution)
+		return fmt.Errorf("metric resolution could not be less than 5 seconds - %d", opt.MetricResolution)
 	}
 	if (len(opt.TLSCertFile) > 0 && len(opt.TLSKeyFile) == 0) || (len(opt.TLSCertFile) == 0 && len(opt.TLSKeyFile) > 0) {
 		return fmt.Errorf("both TLS certificate & key are required to enable TLS serving")
