@@ -15,17 +15,14 @@
 package gcm
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
-	"os"
 	"sync"
 	"time"
 
+	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
 
-	gce "cloud.google.com/go/compute/metadata"
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -336,33 +333,10 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("error creating GCM service: %s", err)
 	}
 
-	// Try and get the project ID from the environment variable first.
-	var projectId string
-	projectId = os.Getenv(gcpProjectIdEnv)
-	if projectId == "" {
-		// If the variable is not set, move on to the default credentials file.
-		file := os.Getenv(gcpCredentialsEnv)
-		if file != "" {
-			// Attempt to load the config from the credentials file.
-			conf, err := ioutil.ReadFile(file)
-			if err != nil {
-				return nil, fmt.Errorf("error reading default credentials file: %s", err)
-			}
-			var gcpConfig struct {
-				ProjectId string `json:"project_id"`
-			}
-			err = json.Unmarshal(conf, &gcpConfig)
-			if err != nil {
-				return nil, fmt.Errorf("error loading default credentials file: %s", err)
-			}
-			projectId = gcpConfig.ProjectId
-		} else {
-			// Try the GCE metadata service.
-			projectId, err = gce.ProjectID()
-			if err != nil {
-				return nil, fmt.Errorf("error retrieving project ID from GCE metadata: %s", err)
-			}
-		}
+	// Get the GCP Project ID.
+	projectId, err := gce_util.GetProjectId()
+	if err != nil {
+		return nil, fmt.Errorf("error getting GCP project ID: %s", err)
 	}
 
 	sink := &gcmSink{
