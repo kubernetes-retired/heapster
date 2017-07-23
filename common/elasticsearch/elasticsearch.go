@@ -127,7 +127,7 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 	var esSvc ElasticSearchService
 	opts, err := url.ParseQuery(uri.RawQuery)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parser url's query string: %s", err)
+		return nil, fmt.Errorf("Failed to parse url's query string: %s", err)
 	}
 
 	version := 5

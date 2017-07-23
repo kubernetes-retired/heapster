@@ -124,7 +124,7 @@ func getTopic(opts map[string][]string, topicType string) (string, error) {
 func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
 	opts, err := url.ParseQuery(uri.RawQuery)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parser url's query string: %s", err)
+		return nil, fmt.Errorf("failed to parse url's query string: %s", err)
 	}
 	glog.V(3).Infof("kafka sink option: %v", opts)
 
