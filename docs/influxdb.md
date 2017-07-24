@@ -18,6 +18,7 @@ the Heapster repository, and then run
 
 ```shell
 $ kubectl create -f deploy/kube-config/influxdb/
+$ kubectl create -f deploy/kube-config/rbac/heapster-rbac.yaml
 ```
 
 Grafana service by default requests for a LoadBalancer. If that is not available in your cluster, consider changing that to NodePort. Use the external IP assigned to the Grafana service,
