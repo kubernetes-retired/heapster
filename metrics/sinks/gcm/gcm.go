@@ -35,8 +35,6 @@ const (
 	maxNumLabels    = 10
 	// The largest number of timeseries we can write to per request.
 	maxTimeseriesPerRequest = 200
-	gcpCredentialsEnv       = "GOOGLE_APPLICATION_CREDENTIALS"
-	gcpProjectIdEnv         = "GOOGLE_PROJECT_ID"
 )
 
 type MetricFilter int8
