@@ -43,23 +43,20 @@ func EnsureOnGCE() error {
 }
 
 func GetProjectId() (string, error) {
-	var projectId string
-	var err error
-
 	// Try the environment variable first.
-	if projectId = getProjectIdFromEnv(); projectId != "" {
+	if projectId := getProjectIdFromEnv(); projectId != "" {
 		glog.Infof("Using GCP project ID from environment variable: %s", projectId)
 		return projectId, nil
 	}
 
 	// Try the default credentials file, if the environment variable is set.
 	if file := os.Getenv(gcpCredentialsEnv); file != "" {
-		projectId, err = getProjectIdFromFile(file)
+		projectId, err := getProjectIdFromFile(file)
 		if err == nil {
 			glog.Infof("Using GCP project ID from default credentials file: %s", projectId)
 			return projectId, nil
 		} else {
-			glog.Infof("Error getting project ID from default credentials file: %s", err)
+			glog.Infof("Unable to get project ID from default credentials file: %s", err)
 		}
 	}
 
@@ -68,7 +65,8 @@ func GetProjectId() (string, error) {
 	if err := EnsureOnGCE(); err != nil {
 		return "", err
 	}
-	if projectId, err = metadata.ProjectID(); err != nil {
+	projectId, err := metadata.ProjectID()
+	if err != nil {
 		return "", err
 	}
 	return projectId, nil
@@ -81,17 +79,17 @@ func getProjectIdFromEnv() string {
 func getProjectIdFromFile(file string) (string, error) {
 	conf, err := ioutil.ReadFile(file)
 	if err != nil {
-		return "", fmt.Errorf("Error reading default credentials file: %s", err)
+		return "", fmt.Errorf("error reading default credentials file: %s", err)
 	}
 	var gcpConfig struct {
 		ProjectId *string `json:"project_id"`
 	}
 	err = json.Unmarshal(conf, &gcpConfig)
 	if err != nil {
-		return "", fmt.Errorf("Error unmarshalling default credentials file: %s", err)
+		return "", fmt.Errorf("error unmarshalling default credentials file: %s", err)
 	}
 	if gcpConfig.ProjectId == nil {
-		return "", fmt.Errorf("Field project_id not found in credentials file")
+		return "", fmt.Errorf("field project_id not found")
 	}
 	return *gcpConfig.ProjectId, nil
 }
