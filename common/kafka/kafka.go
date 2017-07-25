@@ -148,6 +148,7 @@ func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
 	brokerConf.LeaderRetryLimit = brokerLeaderRetryLimit
 	brokerConf.LeaderRetryWait = brokerLeaderRetryWait
 	brokerConf.AllowTopicCreation = brokerAllowTopicCreation
+	brokerConf.Logger = &GologAdapterLogger{}
 
 	// set up producer of kafka server.
 	sinkProducer, err := setupProducer(kafkaBrokers, topic, brokerConf)
