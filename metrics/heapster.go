@@ -270,6 +270,12 @@ func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister v1listers.PodLi
 		&processors.ClusterAggregator{
 			MetricsToAggregate: metricsToAggregate,
 		})
+
+	nodeEnricher, err := processors.NewNodeEnricher(kubernetesUrl)
+	if err != nil {
+		glog.Fatalf("Failed to create NodeEnricher: %v", err)
+	}
+	dataProcessors = append(dataProcessors, nodeEnricher)
 	return dataProcessors
 }
 

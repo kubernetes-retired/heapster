@@ -102,10 +102,16 @@ func createTimeSeries(timestamp time.Time, labels map[string]string, metric stri
 
 func (sink *gcmSink) getTimeSeries(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, createTime time.Time) *gcm.TimeSeries {
 	finalLabels := make(map[string]string)
-	supportedLabels := core.GcmLabels()
-	for key, value := range labels {
-		if _, ok := supportedLabels[key]; ok {
-			finalLabels[key] = value
+	if core.IsNodeMetric(metric) {
+		finalLabels[core.LabelHostname.Key] = labels[core.LabelHostname.Key]
+		finalLabels[core.LabelGCEResourceID.Key] = labels[core.LabelHostID.Key]
+		finalLabels[core.LabelGCEResourceType.Key] = "instance"
+	} else {
+		supportedLabels := core.GcmLabels()
+		for key, value := range labels {
+			if _, ok := supportedLabels[key]; ok {
+				finalLabels[key] = value
+			}
 		}
 	}
 
@@ -201,11 +207,22 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 		}
 		labels := make([]*gcm.LabelDescriptor, 0)
 
-		for _, l := range core.GcmLabels() {
-			labels = append(labels, &gcm.LabelDescriptor{
-				Key:         l.Key,
-				Description: l.Description,
-			})
+		// Node metrics have special labels
+		if core.IsNodeMetric(metric.MetricDescriptor.Name) {
+			for _, l := range core.GcmNodeLabels() {
+				labels = append(labels, &gcm.LabelDescriptor{
+					Key:         l.Key,
+					Description: l.Description,
+				})
+			}
+		} else {
+
+			for _, l := range core.GcmLabels() {
+				labels = append(labels, &gcm.LabelDescriptor{
+					Key:         l.Key,
+					Description: l.Description,
+				})
+			}
 		}
 
 		var metricKind string

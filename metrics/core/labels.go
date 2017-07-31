@@ -134,6 +134,12 @@ var gcmLabels = []LabelDescriptor{
 	LabelResourceID,
 }
 
+var gcmNodeLabels = []LabelDescriptor{
+	LabelGCEResourceID,
+	LabelGCEResourceType,
+	LabelHostname,
+}
+
 func CommonLabels() []LabelDescriptor {
 	result := make([]LabelDescriptor, len(commonLabels))
 	copy(result, commonLabels)
@@ -168,6 +174,14 @@ func SupportedLabels() []LabelDescriptor {
 func GcmLabels() map[string]LabelDescriptor {
 	result := make(map[string]LabelDescriptor, len(gcmLabels))
 	for _, l := range gcmLabels {
+		result[l.Key] = l
+	}
+	return result
+}
+
+func GcmNodeLabels() map[string]LabelDescriptor {
+	result := make(map[string]LabelDescriptor, len(gcmNodeLabels))
+	for _, l := range gcmNodeLabels {
 		result[l.Key] = l
 	}
 	return result
