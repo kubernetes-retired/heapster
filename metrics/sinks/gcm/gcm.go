@@ -272,15 +272,12 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 	}
 
 	client, err := google.DefaultClient(oauth2.NoContext, gcm.MonitoringScope)
+	if err != nil {
+		return nil, fmt.Errorf("error creating oauth2 client: %v", err)
+	}
 
 	if err := gce_util.EnsureOnGCE(); err != nil {
 		return nil, err
-	}
-
-	// Detect project ID
-	projectId, err := gce.ProjectID()
-	if err != nil {
-		return nil, fmt.Errorf("error creating oauth2 client: %v", err)
 	}
 
 	// Create Google Cloud Monitoring service.
@@ -289,7 +286,7 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("error creating GCM service: %v", err)
 	}
 
-	// Get the GCP Project ID.
+	// Detect project ID
 	projectId, err := gce_util.GetProjectId()
 	if err != nil {
 		return nil, fmt.Errorf("error getting GCP project ID: %v", err)
