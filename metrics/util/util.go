@@ -21,27 +21,57 @@ import (
 	v1listers "k8s.io/client-go/listers/core/v1"
 	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/heapster/metrics/core"
 	"sort"
 	"strings"
 	"time"
 )
 
 var labelSeperator string
+var storedLabels map[string]string
+var ignoredLabels map[string]string
 
-// Concatenates a map of labels into a Seperator-seperated key:value pairs.
-func LabelsToString(labels map[string]string) string {
-	output := make([]string, 0, len(labels))
-	for key, value := range labels {
-		output = append(output, fmt.Sprintf("%s:%s", key, value))
+// Copies labels from input map to output:
+// - all labels, unless found in ignoredLabels, are concatenated into a Seperator-seperated key:value pairs and stored under core.LabelLabels.Key
+// - labels found in storedLabels are additionally stored under key provided
+func CopyLabels(in map[string]string, out map[string]string) {
+	labels := make([]string, 0, len(in))
+
+	for key, value := range in {
+		if mappedKey, exists := storedLabels[key]; exists {
+			out[mappedKey] = value
+		}
+
+		if _, exists := ignoredLabels[key]; !exists {
+			labels = append(labels, fmt.Sprintf("%s:%s", key, value))
+		}
 	}
 
-	// Sort to produce a stable output.
-	sort.Strings(output)
-	return strings.Join(output, labelSeperator)
+	sort.Strings(labels)
+	out[core.LabelLabels.Key] = strings.Join(labels, labelSeperator)
 }
 
 func SetLabelSeperator(seperator string) {
 	labelSeperator = seperator
+}
+
+func SetStoredLabels(labels []string) {
+	storedLabels = make(map[string]string)
+	for _, s := range labels {
+		split := strings.SplitN(s, "=", 2)
+		if len(split) == 1 {
+			storedLabels[split[0]] = split[0]
+		} else {
+			storedLabels[split[1]] = split[0]
+		}
+	}
+}
+
+func SetIgnoredLabels(labels []string) {
+	ignoredLabels = make(map[string]string)
+	for _, s := range labels {
+		ignoredLabels[s] = ""
+	}
 }
 
 func GetNodeLister(kubeClient *kube_client.Clientset) (v1listers.NodeLister, *cache.Reflector, error) {

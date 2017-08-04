@@ -68,6 +68,8 @@ func main() {
 	defer logs.FlushLogs()
 
 	setLabelSeperator(opt)
+	setStoredLabels(opt)
+	setIgnoredLabels(opt)
 	setMaxProcs(opt)
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", version.HeapsterVersion)
@@ -356,4 +358,12 @@ func setMaxProcs(opt *options.HeapsterRunOptions) {
 
 func setLabelSeperator(opt *options.HeapsterRunOptions) {
 	util.SetLabelSeperator(opt.LabelSeperator)
+}
+
+func setStoredLabels(opt *options.HeapsterRunOptions) {
+	util.SetStoredLabels(opt.StoredLabels)
+}
+
+func setIgnoredLabels(opt *options.HeapsterRunOptions) {
+	util.SetIgnoredLabels(opt.IgnoredLabels)
 }
