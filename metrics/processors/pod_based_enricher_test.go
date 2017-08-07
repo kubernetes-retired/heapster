@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"k8s.io/heapster/metrics/core"
+	"k8s.io/heapster/metrics/util"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -122,9 +123,14 @@ func TestPodEnricher(t *testing.T) {
 	store := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	podLister := v1listers.NewPodLister(store)
 	store.Add(&pod)
-	podBasedEnricher := PodBasedEnricher{podLister: podLister}
+	labelCopier, err := util.NewLabelCopier(",", []string{}, []string{})
+	assert.NoError(t, err)
 
-	var err error
+	podBasedEnricher := PodBasedEnricher{
+		podLister:   podLister,
+		labelCopier: labelCopier,
+	}
+
 	for _, batch := range batches {
 		batch, err = podBasedEnricher.Process(batch)
 		assert.NoError(t, err)
