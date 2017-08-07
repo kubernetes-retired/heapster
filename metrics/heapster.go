@@ -67,9 +67,11 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	setLabelSeperator(opt)
-	setStoredLabels(opt)
-	setIgnoredLabels(opt)
+	labelCopier, err := util.NewLabelCopier(opt.LabelSeperator, opt.StoredLabels, opt.IgnoredLabels)
+	if err != nil {
+		glog.Fatalf("Failed to initialize label copier: %v", err)
+	}
+
 	setMaxProcs(opt)
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Heapster version %v", version.HeapsterVersion)
@@ -85,7 +87,7 @@ func main() {
 	sinkManager, metricSink, historicalSource := createAndInitSinksOrDie(opt.Sinks, opt.HistoricalSource)
 
 	podLister, nodeLister := getListersOrDie(kubernetesUrl)
-	dataProcessors := createDataProcessorsOrDie(kubernetesUrl, podLister)
+	dataProcessors := createDataProcessorsOrDie(kubernetesUrl, podLister, labelCopier)
 
 	man, err := manager.NewManager(sourceManager, dataProcessors, sinkManager,
 		opt.MetricResolution, manager.DefaultScrapeOffset, manager.DefaultMaxParallelism)
@@ -226,13 +228,13 @@ func createKubeClientOrDie(kubernetesUrl *url.URL) *kube_client.Clientset {
 	return kube_client.NewForConfigOrDie(kubeConfig)
 }
 
-func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister v1listers.PodLister) []core.DataProcessor {
+func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister v1listers.PodLister, labelCopier *util.LabelCopier) []core.DataProcessor {
 	dataProcessors := []core.DataProcessor{
 		// Convert cumulative to rate
 		processors.NewRateCalculator(core.RateMetricsMapping),
 	}
 
-	podBasedEnricher, err := processors.NewPodBasedEnricher(podLister)
+	podBasedEnricher, err := processors.NewPodBasedEnricher(podLister, labelCopier)
 	if err != nil {
 		glog.Fatalf("Failed to create PodBasedEnricher: %v", err)
 	}
@@ -273,7 +275,7 @@ func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister v1listers.PodLi
 			MetricsToAggregate: metricsToAggregate,
 		})
 
-	nodeAutoscalingEnricher, err := processors.NewNodeAutoscalingEnricher(kubernetesUrl)
+	nodeAutoscalingEnricher, err := processors.NewNodeAutoscalingEnricher(kubernetesUrl, labelCopier)
 	if err != nil {
 		glog.Fatalf("Failed to create NodeAutoscalingEnricher: %v", err)
 	}
@@ -354,16 +356,4 @@ func setMaxProcs(opt *options.HeapsterRunOptions) {
 	if actualNumProcs != numProcs {
 		glog.Warningf("Specified max procs of %d but using %d", numProcs, actualNumProcs)
 	}
-}
-
-func setLabelSeperator(opt *options.HeapsterRunOptions) {
-	util.SetLabelSeperator(opt.LabelSeperator)
-}
-
-func setStoredLabels(opt *options.HeapsterRunOptions) {
-	util.SetStoredLabels(opt.StoredLabels)
-}
-
-func setIgnoredLabels(opt *options.HeapsterRunOptions) {
-	util.SetIgnoredLabels(opt.IgnoredLabels)
 }

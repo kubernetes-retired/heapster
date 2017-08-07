@@ -28,8 +28,9 @@ import (
 )
 
 type NodeAutoscalingEnricher struct {
-	nodeLister v1listers.NodeLister
-	reflector  *cache.Reflector
+	nodeLister  v1listers.NodeLister
+	reflector   *cache.Reflector
+	labelCopier *util.LabelCopier
 }
 
 func (this *NodeAutoscalingEnricher) Name() string {
@@ -43,7 +44,7 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 	}
 	for _, node := range nodes {
 		if metricSet, found := batch.MetricSets[core.NodeKey(node.Name)]; found {
-			util.CopyLabels(node.Labels, metricSet.Labels)
+			this.labelCopier.Copy(node.Labels, metricSet.Labels)
 			capacityCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
 			capacityMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
 			allocatableCpu, _ := node.Status.Allocatable[kube_api.ResourceCPU]
@@ -87,7 +88,7 @@ func setFloat(metricSet *core.MetricSet, metric *core.Metric, value float32) {
 	}
 }
 
-func NewNodeAutoscalingEnricher(url *url.URL) (*NodeAutoscalingEnricher, error) {
+func NewNodeAutoscalingEnricher(url *url.URL, labelCopier *util.LabelCopier) (*NodeAutoscalingEnricher, error) {
 	kubeConfig, err := kube_config.GetKubeClientConfig(url)
 	if err != nil {
 		return nil, err
@@ -98,7 +99,8 @@ func NewNodeAutoscalingEnricher(url *url.URL) (*NodeAutoscalingEnricher, error) 
 	nodeLister, reflector, _ := util.GetNodeLister(kubeClient)
 
 	return &NodeAutoscalingEnricher{
-		nodeLister: nodeLister,
-		reflector:  reflector,
+		nodeLister:  nodeLister,
+		reflector:   reflector,
+		labelCopier: labelCopier,
 	}, nil
 }
