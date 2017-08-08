@@ -134,6 +134,14 @@ var (
 		},
 		[]string{"code"},
 	)
+	requestLatency = prometheus.NewSummary(
+		prometheus.SummaryOpts{
+			Namespace: "heapster",
+			Subsystem: "stackdriver",
+			Name:      "request_latency_milliseconds",
+			Help:      "Latency of requests to Stackdriver Monitoring API.",
+		},
+	)
 )
 
 func (sink *StackdriverSink) Name() string {
@@ -265,6 +273,7 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 	// Register sink metrics
 	prometheus.MustRegister(requestsSent)
 	prometheus.MustRegister(timeseriesSent)
+	prometheus.MustRegister(requestLatency)
 
 	// Launch Go routines responsible for sending requests
 	for i := 0; i < workers; i++ {
@@ -289,6 +298,7 @@ func (sink *StackdriverSink) requestSender(queue chan *sd_api.CreateTimeSeriesRe
 }
 
 func (sink *StackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
+	startTime := time.Now()
 	empty, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
 
 	var responseCode int
@@ -308,6 +318,7 @@ func (sink *StackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
 	timeseriesSent.
 		WithLabelValues(strconv.Itoa(responseCode)).
 		Add(float64(len(req.TimeSeries)))
+	requestLatency.Observe(time.Since(startTime).Seconds() / time.Millisecond.Seconds())
 }
 
 func (sink *StackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) *core.MetricSet {
