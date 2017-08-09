@@ -42,6 +42,8 @@ type StackdriverSink struct {
 	zone              string
 	stackdriverClient *sd_api.Service
 	requestQueue      chan *sd_api.CreateTimeSeriesRequest
+	minInterval       time.Duration
+	lastExportTime    time.Time
 }
 
 type metricMetadata struct {
@@ -165,6 +167,13 @@ func (sink *StackdriverSink) processMetrics(metricValues map[string]core.MetricV
 }
 
 func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
+	// Make sure we don't export metrics too often.
+	if dataBatch.Timestamp.Before(sink.lastExportTime.Add(sink.minInterval)) {
+		glog.Infof("Skipping batch from %s because there hasn't passed %s from last export time %s", dataBatch.Timestamp, sink.minInterval, sink.lastExportTime)
+		return
+	}
+	sink.lastExportTime = dataBatch.Timestamp
+
 	req := getReq()
 	for _, metricSet := range dataBatch.MetricSets {
 		switch metricSet.Labels["type"] {
@@ -237,6 +246,16 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		cluster_name = opts["cluster_name"][0]
 	}
 
+	minInterval := time.Nanosecond
+	if len(opts["min_interval_sec"]) >= 1 {
+		if interval, err := strconv.Atoi(opts["min_interval_sec"][0]); err != nil {
+			return nil, fmt.Errorf("Min interval should be an integer, found: %v", opts["min_interval_sec"][0])
+		} else {
+			minInterval = time.Duration(interval) * time.Second
+		}
+
+	}
+
 	if err := gce_util.EnsureOnGCE(); err != nil {
 		return nil, err
 	}
@@ -268,6 +287,7 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		zone:              zone,
 		stackdriverClient: stackdriverClient,
 		requestQueue:      requestQueue,
+		minInterval:       minInterval,
 	}
 
 	// Register sink metrics
