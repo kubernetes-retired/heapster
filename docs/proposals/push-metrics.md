@@ -2,7 +2,7 @@
 
 ## Overview and Motivation
 
-Currently, Heapster supports pulling metrics from kubelet, and defines an
+Currently, Heapster supports pulling metrics from kubelet and defines an
 interface for pulling from other sources.  However, in certain cases, it is
 more useful to be able to have services push metrics into Heapster, instead
 of having Heapster pull metrics.
@@ -17,7 +17,7 @@ provide metrics through Heapster.
 ### Target Audience and Metrics
 
 Like the existing custom metrics pull mechanism, the metrics pushed through the
-push mechanism are intended to be those metrics that are useful for consumption
+push mechanism are intended to be useful for consumption
 by system components, such as metrics intended for use with autoscaling.  The
 custom metrics pushed through the push mechanisms are still intended to follow
 the overall guidelines for Heapster custom metrics (keep the number of
