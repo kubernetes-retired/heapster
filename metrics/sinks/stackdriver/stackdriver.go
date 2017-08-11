@@ -175,10 +175,15 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 	sink.lastExportTime = dataBatch.Timestamp
 
 	req := getReq()
-	for _, metricSet := range dataBatch.MetricSets {
+	for key, metricSet := range dataBatch.MetricSets {
 		switch metricSet.Labels["type"] {
 		case core.MetricSetTypeNode, core.MetricSetTypePod, core.MetricSetTypePodContainer, core.MetricSetTypeSystemContainer:
 		default:
+			continue
+		}
+
+		if metricSet.CreateTime.IsZero() {
+			glog.Infof("Skipping incorrect metric set %s because create time is zero", key)
 			continue
 		}
 
