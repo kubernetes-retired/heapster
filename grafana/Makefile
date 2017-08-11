@@ -25,10 +25,9 @@ ARCH?=amd64
 TEMP_DIR:=$(shell mktemp -d)
 LDFLAGS=-w -X main.version=$(VERSION) -X main.commit=unknown-dev -X main.timestamp=0 -extldflags '-static'
 DEB_BUILD=4.4.1
-KUBE_CROSS_IMAGE=gcr.io/google_containers/kube-cross:v1.8.3-1
+KUBE_CROSS_IMAGE=gcr.io/google_containers/kube-cross:v1.8.3-2
 
-# s390x
-ALL_ARCHITECTURES=amd64 arm arm64 ppc64le
+ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
 ML_PLATFORMS=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
 
 # Set default base image dynamically for each arch
