@@ -16,6 +16,7 @@ package stackdriver
 
 import (
 	"fmt"
+	"math/rand"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -26,7 +27,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	googleapi "google.golang.org/api/googleapi"
+	"google.golang.org/api/googleapi"
 	sd_api "google.golang.org/api/monitoring/v3"
 	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
@@ -34,14 +35,21 @@ import (
 
 const (
 	maxTimeseriesPerRequest = 200
+	// 2 seconds on SD side, 1 extra for networking overhead
+	sdRequestLatencySec           = 3
+	httpResponseCodeUnknown       = -100
+	httpResponseCodeClientTimeout = -1
 )
 
 type StackdriverSink struct {
-	project           string
-	cluster           string
-	zone              string
-	stackdriverClient *sd_api.Service
-	requestQueue      chan *sd_api.CreateTimeSeriesRequest
+	project               string
+	cluster               string
+	zone                  string
+	stackdriverClient     *sd_api.Service
+	minInterval           time.Duration
+	lastExportTime        time.Time
+	batchExportTimeoutSec int
+	initialDelaySec       int
 }
 
 type metricMetadata struct {
@@ -134,6 +142,14 @@ var (
 		},
 		[]string{"code"},
 	)
+	requestLatency = prometheus.NewSummary(
+		prometheus.SummaryOpts{
+			Namespace: "heapster",
+			Subsystem: "stackdriver",
+			Name:      "request_latency_milliseconds",
+			Help:      "Latency of requests to Stackdriver Monitoring API.",
+		},
+	)
 )
 
 func (sink *StackdriverSink) Name() string {
@@ -141,7 +157,6 @@ func (sink *StackdriverSink) Name() string {
 }
 
 func (sink *StackdriverSink) Stop() {
-	close(sink.requestQueue)
 }
 
 func (sink *StackdriverSink) processMetrics(metricValues map[string]core.MetricValue,
@@ -157,11 +172,24 @@ func (sink *StackdriverSink) processMetrics(metricValues map[string]core.MetricV
 }
 
 func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
+	// Make sure we don't export metrics too often.
+	if dataBatch.Timestamp.Before(sink.lastExportTime.Add(sink.minInterval)) {
+		glog.V(2).Infof("Skipping batch from %s because there hasn't passed %s from last export time %s", dataBatch.Timestamp, sink.minInterval, sink.lastExportTime)
+		return
+	}
+	sink.lastExportTime = dataBatch.Timestamp
+
+	requests := []*sd_api.CreateTimeSeriesRequest{}
 	req := getReq()
-	for _, metricSet := range dataBatch.MetricSets {
+	for key, metricSet := range dataBatch.MetricSets {
 		switch metricSet.Labels["type"] {
 		case core.MetricSetTypeNode, core.MetricSetTypePod, core.MetricSetTypePodContainer, core.MetricSetTypeSystemContainer:
 		default:
+			continue
+		}
+
+		if metricSet.CreateTime.IsZero() {
+			glog.V(2).Infof("Skipping incorrect metric set %s because create time is zero", key)
 			continue
 		}
 
@@ -179,7 +207,7 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 		for _, ts := range timeseries {
 			req.TimeSeries = append(req.TimeSeries, ts)
 			if len(req.TimeSeries) >= maxTimeseriesPerRequest {
-				sink.requestQueue <- req
+				requests = append(requests, req)
 				req = getReq()
 			}
 		}
@@ -191,15 +219,112 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 				req.TimeSeries = append(req.TimeSeries, point)
 			}
 			if len(req.TimeSeries) >= maxTimeseriesPerRequest {
-				sink.requestQueue <- req
+				requests = append(requests, req)
 				req = getReq()
 			}
 		}
 	}
 
 	if len(req.TimeSeries) > 0 {
-		sink.requestQueue <- req
+		requests = append(requests, req)
 	}
+
+	go sink.sendRequests(requests)
+}
+
+func (sink *StackdriverSink) sendRequests(requests []*sd_api.CreateTimeSeriesRequest) {
+	// Each worker can handle at least batchExportTimeout/sdRequestLatencySec requests within the specified period.
+	// 5 extra workers just in case.
+	workers := 5 + len(requests)/(sink.batchExportTimeoutSec/sdRequestLatencySec)
+	requestQueue := make(chan *sd_api.CreateTimeSeriesRequest)
+	completedQueue := make(chan bool)
+
+	// Launch Go routines responsible for sending requests
+	for i := 0; i < workers; i++ {
+		go sink.requestSender(requestQueue, completedQueue)
+	}
+
+	timeout := time.Duration(sink.batchExportTimeoutSec) * time.Second
+	timeoutSending := time.After(timeout)
+	timeoutCompleted := time.After(timeout)
+
+forloop:
+	for i, r := range requests {
+		select {
+		case requestQueue <- r:
+			// yet another request added to queue
+		case <-timeoutSending:
+			glog.Warningf("Timeout while exporting metrics to Stackdriver. Dropping %d out of %d requests.", len(requests)-i, len(requests))
+			// TODO(piosz): consider cancelling requests in flight
+			// Report dropped requests in metrics.
+			for _, req := range requests[i:] {
+				requestsSent.WithLabelValues(strconv.Itoa(httpResponseCodeClientTimeout)).Inc()
+				timeseriesSent.
+					WithLabelValues(strconv.Itoa(httpResponseCodeClientTimeout)).
+					Add(float64(len(req.TimeSeries)))
+			}
+			break forloop
+		}
+	}
+
+	// Close the channel in order to cancel exporting routines.
+	close(requestQueue)
+
+	workersCompleted := 0
+	for {
+		select {
+		case <-completedQueue:
+			workersCompleted++
+			if workersCompleted == workers {
+				glog.V(4).Infof("All %d workers successfully finished sending requests to SD.", workersCompleted)
+				return
+			}
+		case <-timeoutCompleted:
+			glog.Warningf("Only %d out of %d workers successfully finished sending requests to SD. Some metrics might be lost.", workersCompleted, workers)
+			return
+		}
+	}
+}
+
+func (sink *StackdriverSink) requestSender(reqQueue chan *sd_api.CreateTimeSeriesRequest, completedQueue chan bool) {
+	defer func() {
+		completedQueue <- true
+	}()
+	time.Sleep(time.Duration(rand.Intn(1000*sink.initialDelaySec)) * time.Millisecond)
+	for {
+		select {
+		case req, active := <-reqQueue:
+			if !active {
+				return
+			}
+			sink.sendOneRequest(req)
+		}
+	}
+}
+
+func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest) {
+	startTime := time.Now()
+	empty, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
+
+	var responseCode int
+	if err != nil {
+		glog.Warningf("Error while sending request to Stackdriver %v", err)
+		switch reflect.Indirect(reflect.ValueOf(err)).Type() {
+		case reflect.Indirect(reflect.ValueOf(&googleapi.Error{})).Type():
+			responseCode = err.(*googleapi.Error).Code
+		default:
+			responseCode = httpResponseCodeUnknown
+		}
+	} else {
+		responseCode = empty.ServerResponse.HTTPStatusCode
+	}
+
+	requestsSent.WithLabelValues(strconv.Itoa(responseCode)).Inc()
+	timeseriesSent.
+		WithLabelValues(strconv.Itoa(responseCode)).
+		Add(float64(len(req.TimeSeries)))
+	requestLatency.Observe(time.Since(startTime).Seconds() / time.Millisecond.Seconds())
+
 }
 
 func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
@@ -211,22 +336,34 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 	}
 
 	opts := uri.Query()
-	var (
-		workers int
-		err     error
-	)
-	if len(opts["workers"]) >= 1 {
-		workers, err = strconv.Atoi(opts["workers"][0])
-		if err != nil {
-			return nil, fmt.Errorf("Number of workers should be an integer, found: %v", opts["workers"][0])
-		}
-	} else {
-		workers = 1
-	}
 
 	cluster_name := ""
 	if len(opts["cluster_name"]) >= 1 {
 		cluster_name = opts["cluster_name"][0]
+	}
+
+	minInterval := time.Nanosecond
+	if len(opts["min_interval_sec"]) >= 1 {
+		if interval, err := strconv.Atoi(opts["min_interval_sec"][0]); err != nil {
+			return nil, fmt.Errorf("Min interval should be an integer, found: %v", opts["min_interval_sec"][0])
+		} else {
+			minInterval = time.Duration(interval) * time.Second
+		}
+	}
+
+	batchExportTimeoutSec := 60
+	var err error
+	if len(opts["batch_export_timeout_sec"]) >= 1 {
+		if batchExportTimeoutSec, err = strconv.Atoi(opts["batch_export_timeout_sec"][0]); err != nil {
+			return nil, fmt.Errorf("Batch export timeout should be an integer, found: %v", opts["batch_export_timeout_sec"][0])
+		}
+	}
+
+	initialDelaySec := sdRequestLatencySec
+	if len(opts["initial_delay_sec"]) >= 1 {
+		if initialDelaySec, err = strconv.Atoi(opts["initial_delay_sec"][0]); err != nil {
+			return nil, fmt.Errorf("Initial delay should be an integer, found: %v", opts["initial_delay_sec"][0])
+		}
 	}
 
 	if err := gce_util.EnsureOnGCE(); err != nil {
@@ -252,62 +389,24 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 
-	requestQueue := make(chan *sd_api.CreateTimeSeriesRequest)
-
 	sink := &StackdriverSink{
-		project:           projectId,
-		cluster:           cluster_name,
-		zone:              zone,
-		stackdriverClient: stackdriverClient,
-		requestQueue:      requestQueue,
+		project:               projectId,
+		cluster:               cluster_name,
+		zone:                  zone,
+		stackdriverClient:     stackdriverClient,
+		minInterval:           minInterval,
+		batchExportTimeoutSec: batchExportTimeoutSec,
+		initialDelaySec:       initialDelaySec,
 	}
 
 	// Register sink metrics
 	prometheus.MustRegister(requestsSent)
 	prometheus.MustRegister(timeseriesSent)
+	prometheus.MustRegister(requestLatency)
 
-	// Launch Go routines responsible for sending requests
-	for i := 0; i < workers; i++ {
-		go sink.requestSender(sink.requestQueue)
-	}
-
-	glog.Infof("Created Stackdriver sink, number of workers sending requests to Stackdriver: %v", workers)
+	glog.Infof("Created Stackdriver sink")
 
 	return sink, nil
-}
-
-func (sink *StackdriverSink) requestSender(queue chan *sd_api.CreateTimeSeriesRequest) {
-	for {
-		select {
-		case req, active := <-queue:
-			if !active {
-				return
-			}
-			sink.sendRequest(req)
-		}
-	}
-}
-
-func (sink *StackdriverSink) sendRequest(req *sd_api.CreateTimeSeriesRequest) {
-	empty, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
-
-	var responseCode int
-	if err != nil {
-		glog.Errorf("Error while sending request to Stackdriver %v", err)
-		switch reflect.Indirect(reflect.ValueOf(err)).Type() {
-		case reflect.Indirect(reflect.ValueOf(&googleapi.Error{})).Type():
-			responseCode = err.(*googleapi.Error).Code
-		default:
-			responseCode = -1
-		}
-	} else {
-		responseCode = empty.ServerResponse.HTTPStatusCode
-	}
-
-	requestsSent.WithLabelValues(strconv.Itoa(responseCode)).Inc()
-	timeseriesSent.
-		WithLabelValues(strconv.Itoa(responseCode)).
-		Add(float64(len(req.TimeSeries)))
 }
 
 func (sink *StackdriverSink) preprocessMemoryMetrics(metricSet *core.MetricSet) *core.MetricSet {
