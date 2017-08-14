@@ -16,6 +16,7 @@ package stackdriver
 
 import (
 	"fmt"
+	"math/rand"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -26,17 +27,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	googleapi "google.golang.org/api/googleapi"
+	"google.golang.org/api/googleapi"
 	sd_api "google.golang.org/api/monitoring/v3"
 	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
-	"net/http"
 )
 
 const (
 	maxTimeseriesPerRequest = 200
 	// 2 seconds on SD side, 1 extra for networking overhead
-	sdRequestLatencySec = 3
+	sdRequestLatencySec           = 3
+	httpResponseCodeUnknown       = -100
+	httpResponseCodeClientTimeout = -1
 )
 
 type StackdriverSink struct {
@@ -234,38 +236,38 @@ func (sink *StackdriverSink) sendRequests(requests []*sd_api.CreateTimeSeriesReq
 	// 5 extra workers just in case.
 	workers := 5 + len(requests)/(sink.batchExportTimeoutSec/sdRequestLatencySec)
 	requestQueue := make(chan *sd_api.CreateTimeSeriesRequest)
+	// Close the channel in order to cancel exporting routines.
+	defer close(requestQueue)
 
 	// Launch Go routines responsible for sending requests
 	for i := 0; i < workers; i++ {
 		go sink.requestSender(requestQueue)
 	}
 
-	timeoutTime := time.Now().Add(time.Duration(sink.batchExportTimeoutSec) * time.Second)
+	timeout := time.After(time.Duration(sink.batchExportTimeoutSec) * time.Second)
 
 forloop:
-	for i := range requests {
-		now := time.Now()
+	for i, r := range requests {
 		select {
-		case requestQueue <- requests[i]:
+		case requestQueue <- r:
 			// yet another request added to queue
-		case <-time.After(timeoutTime.Sub(now)):
-			glog.Warningf("Timeout while exporting metrics to Stackdriver. Dropping %d requests.", len(requests)-i)
+		case <-timeout:
+			glog.Warningf("Timeout while exporting metrics to Stackdriver. Dropping %d out of %d requests.", len(requests)-i, len(requests))
+			// TODO(piosz): consider cancelling requests in flight
 			// Report dropped requests in metrics.
-			for j := i; j < len(requests); j++ {
-				requestsSent.WithLabelValues(strconv.Itoa(http.StatusTooManyRequests)).Inc()
+			for _, req := range requests[i:] {
+				requestsSent.WithLabelValues(strconv.Itoa(httpResponseCodeClientTimeout)).Inc()
 				timeseriesSent.
-					WithLabelValues(strconv.Itoa(http.StatusTooManyRequests)).
-					Add(float64(len(requests[j].TimeSeries)))
+					WithLabelValues(strconv.Itoa(httpResponseCodeClientTimeout)).
+					Add(float64(len(req.TimeSeries)))
 			}
 			break forloop
 		}
 	}
-
-	// Close the channel in order to cancel exporting routines.
-	close(requestQueue)
 }
 
 func (sink *StackdriverSink) requestSender(queue chan *sd_api.CreateTimeSeriesRequest) {
+	time.Sleep(time.Duration(rand.Intn(1000*sdRequestLatencySec)) * time.Millisecond)
 	for {
 		select {
 		case req, active := <-queue:
@@ -283,12 +285,12 @@ func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest)
 
 	var responseCode int
 	if err != nil {
-		glog.Errorf("Error while sending request to Stackdriver %v", err)
+		glog.Warningf("Error while sending request to Stackdriver %v", err)
 		switch reflect.Indirect(reflect.ValueOf(err)).Type() {
 		case reflect.Indirect(reflect.ValueOf(&googleapi.Error{})).Type():
 			responseCode = err.(*googleapi.Error).Code
 		default:
-			responseCode = -1
+			responseCode = httpResponseCodeUnknown
 		}
 	} else {
 		responseCode = empty.ServerResponse.HTTPStatusCode
