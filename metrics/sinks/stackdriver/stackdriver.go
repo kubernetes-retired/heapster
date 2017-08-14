@@ -241,18 +241,17 @@ func (sink *StackdriverSink) sendRequests(requests []*sd_api.CreateTimeSeriesReq
 
 	// Launch Go routines responsible for sending requests
 	for i := 0; i < workers; i++ {
-		go sink.requestSender(requestQueue)
+		go sink.requestSender(requestQueue, time.After(time.Duration(sink.batchExportTimeoutSec)*time.Second))
 	}
 
-	timeoutTime := time.Now().Add(time.Duration(sink.batchExportTimeoutSec) * time.Second)
+	timeout := time.After(time.Duration(sink.batchExportTimeoutSec) * time.Second)
 
 forloop:
 	for i, r := range requests {
-		now := time.Now()
 		select {
 		case requestQueue <- r:
 			// yet another request added to queue
-		case <-time.After(timeoutTime.Sub(now)):
+		case <-timeout:
 			glog.Warningf("Timeout while exporting metrics to Stackdriver. Dropping %d out of %d requests.", len(requests)-i, len(requests))
 			// TODO(piosz): consider cancelling requests in flight
 			// Report dropped requests in metrics.
@@ -265,10 +264,9 @@ forloop:
 			break forloop
 		}
 	}
-
 }
 
-func (sink *StackdriverSink) requestSender(queue chan *sd_api.CreateTimeSeriesRequest) {
+func (sink *StackdriverSink) requestSender(queue chan *sd_api.CreateTimeSeriesRequest, timeout <-chan time.Time) {
 	time.Sleep(time.Duration(rand.Intn(1000*sdRequestLatencySec)) * time.Millisecond)
 	for {
 		select {
@@ -276,13 +274,28 @@ func (sink *StackdriverSink) requestSender(queue chan *sd_api.CreateTimeSeriesRe
 			if !active {
 				return
 			}
-			sink.sendOneRequest(req)
+
+			startTime := time.Now()
+			resp := make(chan int)
+			sink.sendOneRequest(req, resp)
+			responseCode := httpResponseCodeClientTimeout
+
+			select {
+			case responseCode = <-resp:
+				// Request sent successfully
+				requestLatency.Observe(time.Since(startTime).Seconds() / time.Millisecond.Seconds())
+			case <-timeout:
+				glog.V(2).Infof("Request to SD not completed on time.")
+			}
+			requestsSent.WithLabelValues(strconv.Itoa(responseCode)).Inc()
+			timeseriesSent.
+				WithLabelValues(strconv.Itoa(responseCode)).
+				Add(float64(len(req.TimeSeries)))
 		}
 	}
 }
 
-func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest) {
-	startTime := time.Now()
+func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest, resp chan int) {
 	empty, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
 
 	var responseCode int
@@ -298,12 +311,7 @@ func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest)
 		responseCode = empty.ServerResponse.HTTPStatusCode
 	}
 
-	requestsSent.WithLabelValues(strconv.Itoa(responseCode)).Inc()
-	timeseriesSent.
-		WithLabelValues(strconv.Itoa(responseCode)).
-		Add(float64(len(req.TimeSeries)))
-	requestLatency.Observe(time.Since(startTime).Seconds() / time.Millisecond.Seconds())
-
+	resp <- responseCode
 }
 
 func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
