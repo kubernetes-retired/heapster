@@ -49,6 +49,7 @@ type StackdriverSink struct {
 	minInterval           time.Duration
 	lastExportTime        time.Time
 	batchExportTimeoutSec int
+	initialDelaySec       int
 }
 
 type metricMetadata struct {
@@ -236,22 +237,24 @@ func (sink *StackdriverSink) sendRequests(requests []*sd_api.CreateTimeSeriesReq
 	// 5 extra workers just in case.
 	workers := 5 + len(requests)/(sink.batchExportTimeoutSec/sdRequestLatencySec)
 	requestQueue := make(chan *sd_api.CreateTimeSeriesRequest)
+	completedQueue := make(chan bool)
 	// Close the channel in order to cancel exporting routines.
 	defer close(requestQueue)
 
 	// Launch Go routines responsible for sending requests
 	for i := 0; i < workers; i++ {
-		go sink.requestSender(requestQueue)
+		go sink.requestSender(requestQueue, completedQueue)
 	}
 
-	timeout := time.After(time.Duration(sink.batchExportTimeoutSec) * time.Second)
+	timeoutSending := time.After(time.Duration(sink.batchExportTimeoutSec) * time.Second)
+	timeoutCompleted := time.After(time.Duration(sink.batchExportTimeoutSec) * time.Second)
 
 forloop:
 	for i, r := range requests {
 		select {
 		case requestQueue <- r:
 			// yet another request added to queue
-		case <-timeout:
+		case <-timeoutSending:
 			glog.Warningf("Timeout while exporting metrics to Stackdriver. Dropping %d out of %d requests.", len(requests)-i, len(requests))
 			// TODO(piosz): consider cancelling requests in flight
 			// Report dropped requests in metrics.
@@ -264,13 +267,31 @@ forloop:
 			break forloop
 		}
 	}
-}
 
-func (sink *StackdriverSink) requestSender(queue chan *sd_api.CreateTimeSeriesRequest) {
-	time.Sleep(time.Duration(rand.Intn(1000*sdRequestLatencySec)) * time.Millisecond)
+	workersCompleted := 0
 	for {
 		select {
-		case req, active := <-queue:
+		case <-completedQueue:
+			workersCompleted++
+			if workersCompleted == workers {
+				glog.V(4).Infof("All %d workers successfully finished sending requests to SD.", workersCompleted)
+				return
+			}
+		case <-timeoutCompleted:
+			glog.Infof("Only %d out of %d workers successfully finished sending requests to SD. Some metrics might be lost.", workersCompleted, workers)
+			return
+		}
+	}
+}
+
+func (sink *StackdriverSink) requestSender(reqQueue chan *sd_api.CreateTimeSeriesRequest, completedQueue chan bool) {
+	defer func() {
+		completedQueue <- true
+	}()
+	time.Sleep(time.Duration(rand.Intn(1000*sink.initialDelaySec)) * time.Millisecond)
+	for {
+		select {
+		case req, active := <-reqQueue:
 			if !active {
 				return
 			}
@@ -336,6 +357,13 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		}
 	}
 
+	initialDelaySec := sdRequestLatencySec
+	if len(opts["initial_delay_sec"]) >= 1 {
+		if initialDelaySec, err = strconv.Atoi(opts["initial_delay_sec"][0]); err != nil {
+			return nil, fmt.Errorf("Initial delay should be an integer, found: %v", opts["initial_delay_sec"][0])
+		}
+	}
+
 	if err := gce_util.EnsureOnGCE(); err != nil {
 		return nil, err
 	}
@@ -366,6 +394,7 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		stackdriverClient:     stackdriverClient,
 		minInterval:           minInterval,
 		batchExportTimeoutSec: batchExportTimeoutSec,
+		initialDelaySec:       initialDelaySec,
 	}
 
 	// Register sink metrics
