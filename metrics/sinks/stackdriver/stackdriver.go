@@ -16,6 +16,8 @@ package stackdriver
 
 import (
 	"fmt"
+	"math/rand"
+	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -26,11 +28,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	googleapi "google.golang.org/api/googleapi"
+	"google.golang.org/api/googleapi"
 	sd_api "google.golang.org/api/monitoring/v3"
 	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
-	"net/http"
 )
 
 const (
@@ -234,6 +235,8 @@ func (sink *StackdriverSink) sendRequests(requests []*sd_api.CreateTimeSeriesReq
 	// 5 extra workers just in case.
 	workers := 5 + len(requests)/(sink.batchExportTimeoutSec/sdRequestLatencySec)
 	requestQueue := make(chan *sd_api.CreateTimeSeriesRequest)
+	// Close the channel in order to cancel exporting routines.
+	defer close(requestQueue)
 
 	// Launch Go routines responsible for sending requests
 	for i := 0; i < workers; i++ {
@@ -249,7 +252,8 @@ forloop:
 		case requestQueue <- requests[i]:
 			// yet another request added to queue
 		case <-time.After(timeoutTime.Sub(now)):
-			glog.Warningf("Timeout while exporting metrics to Stackdriver. Dropping %d requests.", len(requests)-i)
+			glog.Warningf("Timeout while exporting metrics to Stackdriver. Dropping %d out of %d requests.", len(requests)-i, len(requests))
+			// TODO(piosz): consider cancelling requests in flight
 			// Report dropped requests in metrics.
 			for j := i; j < len(requests); j++ {
 				requestsSent.WithLabelValues(strconv.Itoa(http.StatusTooManyRequests)).Inc()
@@ -261,11 +265,10 @@ forloop:
 		}
 	}
 
-	// Close the channel in order to cancel exporting routines.
-	close(requestQueue)
 }
 
 func (sink *StackdriverSink) requestSender(queue chan *sd_api.CreateTimeSeriesRequest) {
+	time.Sleep(time.Duration(rand.Intn(1000*sdRequestLatencySec)) * time.Millisecond)
 	for {
 		select {
 		case req, active := <-queue:
