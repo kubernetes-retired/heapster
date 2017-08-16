@@ -19,7 +19,7 @@
 
 all: build
 
-VERSION?=v1.1.1
+VERSION?=v1.3.3
 PREFIX?=gcr.io/google_containers
 ARCH?=amd64
 GOLANG_VERSION=1.8
