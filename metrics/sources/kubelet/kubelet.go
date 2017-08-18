@@ -233,9 +233,9 @@ metricloop:
 func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
 	containers, err := this.scrapeKubelet(this.kubeletClient, this.host, start, end)
 	if err != nil {
-		glog.Errorf("error while getting containers from Kubelet: %v", err)
+		glog.Errorf("error while getting containers from Kubelet %s: %v", this.host, err)
 	}
-	glog.V(2).Infof("successfully obtained stats for %v containers", len(containers))
+	glog.V(2).Infof("successfully obtained stats from %s for %v containers", this.host, len(containers))
 
 	result := &DataBatch{
 		Timestamp:  end,

@@ -38,6 +38,10 @@ type Host struct {
 	Resource string
 }
 
+func (h Host) String() string {
+	return fmt.Sprintf("%s:%d", h.IP, h.Port)
+}
+
 type KubeletClient struct {
 	config *kubelet_client.KubeletClientConfig
 	client *http.Client
