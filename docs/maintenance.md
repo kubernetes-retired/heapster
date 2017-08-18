@@ -18,7 +18,7 @@ non-sink-specific pull requests.
 
 ### Labels ###
 
-Each issue and pull request should be assinged one of:
+Each issue and pull request should be assigned one of:
 
 - bug
 - enhancement
