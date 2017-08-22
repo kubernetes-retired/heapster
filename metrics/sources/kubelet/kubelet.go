@@ -68,15 +68,17 @@ type kubeletMetricsSource struct {
 	nodename      string
 	hostname      string
 	hostId        string
+	schedulable   string
 }
 
-func NewKubeletMetricsSource(host Host, client *KubeletClient, nodeName string, hostName string, hostId string) MetricsSource {
+func NewKubeletMetricsSource(host Host, client *KubeletClient, nodeName string, hostName string, hostId string, schedulable string) MetricsSource {
 	return &kubeletMetricsSource{
 		host:          host,
 		kubeletClient: client,
 		nodename:      nodeName,
 		hostname:      hostName,
 		hostId:        hostId,
+		schedulable:   schedulable,
 	}
 }
 
@@ -137,6 +139,7 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 	if isNode(c) {
 		metricSetKey = NodeKey(this.nodename)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
+		cMetrics.Labels[LabelNodeSchedulable.Key] = this.schedulable
 	} else {
 		cName := c.Spec.Labels[kubernetesContainerLabel]
 		ns := c.Spec.Labels[kubernetesPodNamespaceLabel]
@@ -287,9 +290,18 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 			node.Name,
 			hostname,
 			node.Spec.ExternalID,
+			getNodeSchedulableStatus(node),
 		))
 	}
 	return sources
+}
+
+func getNodeSchedulableStatus(node *kube_api.Node) string {
+	if node.Spec.Unschedulable {
+		return "false"
+	}
+
+	return "true"
 }
 
 func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
