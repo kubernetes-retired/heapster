@@ -134,7 +134,7 @@ var gcmLabels = []LabelDescriptor{
 	LabelResourceID,
 }
 
-var gcmNodeAutoscalingLabels = []LabelDescriptor{
+var gcmNodeLabels = []LabelDescriptor{
 	LabelGCEResourceID,
 	LabelGCEResourceType,
 	LabelHostname,
@@ -178,9 +178,10 @@ func GcmLabels() map[string]LabelDescriptor {
 	}
 	return result
 }
-func GcmNodeAutoscalingLabels() map[string]LabelDescriptor {
-	result := make(map[string]LabelDescriptor, len(gcmNodeAutoscalingLabels))
-	for _, l := range gcmNodeAutoscalingLabels {
+
+func GcmNodeLabels() map[string]LabelDescriptor {
+	result := make(map[string]LabelDescriptor, len(gcmNodeLabels))
+	for _, l := range gcmNodeLabels {
 		result[l.Key] = l
 	}
 	return result

@@ -27,16 +27,16 @@ import (
 	"k8s.io/heapster/metrics/util"
 )
 
-type NodeAutoscalingEnricher struct {
+type NodeEnricher struct {
 	nodeLister v1listers.NodeLister
 	reflector  *cache.Reflector
 }
 
-func (this *NodeAutoscalingEnricher) Name() string {
+func (this *NodeEnricher) Name() string {
 	return "node_autoscaling_enricher"
 }
 
-func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataBatch, error) {
+func (this *NodeEnricher) Process(batch *core.DataBatch) (*core.DataBatch, error) {
 	nodes, err := this.nodeLister.List(labels.Everything())
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func setFloat(metricSet *core.MetricSet, metric *core.Metric, value float32) {
 	}
 }
 
-func NewNodeAutoscalingEnricher(url *url.URL) (*NodeAutoscalingEnricher, error) {
+func NewNodeEnricher(url *url.URL) (*NodeEnricher, error) {
 	kubeConfig, err := kube_config.GetKubeClientConfig(url)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func NewNodeAutoscalingEnricher(url *url.URL) (*NodeAutoscalingEnricher, error) 
 	// watch nodes
 	nodeLister, reflector, _ := util.GetNodeLister(kubeClient)
 
-	return &NodeAutoscalingEnricher{
+	return &NodeEnricher{
 		nodeLister: nodeLister,
 		reflector:  reflector,
 	}, nil

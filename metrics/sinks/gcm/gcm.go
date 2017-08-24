@@ -37,19 +37,11 @@ const (
 	maxTimeseriesPerRequest = 200
 )
 
-type MetricFilter int8
-
-const (
-	metricsAll MetricFilter = iota
-	metricsOnlyAutoscaling
-)
-
 type gcmSink struct {
 	sync.RWMutex
-	registered   bool
-	project      string
-	metricFilter MetricFilter
-	gcmService   *gcm.Service
+	registered bool
+	project    string
+	gcmService *gcm.Service
 }
 
 func (sink *gcmSink) Name() string {
@@ -110,24 +102,14 @@ func createTimeSeries(timestamp time.Time, labels map[string]string, metric stri
 
 func (sink *gcmSink) getTimeSeries(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, createTime time.Time) *gcm.TimeSeries {
 	finalLabels := make(map[string]string)
-	if core.IsNodeAutoscalingMetric(metric) {
-		// All and autoscaling. Do not populate for other filters.
-		if sink.metricFilter != metricsAll &&
-			sink.metricFilter != metricsOnlyAutoscaling {
-			return nil
-		}
-
+	if core.IsNodeMetric(metric) {
 		finalLabels[core.LabelHostname.Key] = labels[core.LabelHostname.Key]
 		finalLabels[core.LabelGCEResourceID.Key] = labels[core.LabelHostID.Key]
 		finalLabels[core.LabelGCEResourceType.Key] = "instance"
 	} else {
-		// Only all.
-		if sink.metricFilter != metricsAll {
-			return nil
-		}
-		supportedLables := core.GcmLabels()
+		supportedLabels := core.GcmLabels()
 		for key, value := range labels {
-			if _, ok := supportedLables[key]; ok {
+			if _, ok := supportedLabels[key]; ok {
 				finalLabels[key] = value
 			}
 		}
@@ -137,11 +119,6 @@ func (sink *gcmSink) getTimeSeries(timestamp time.Time, labels map[string]string
 }
 
 func (sink *gcmSink) getTimeSeriesForLabeledMetrics(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *gcm.TimeSeries {
-	// Only all. There are no autoscaling labeled metrics.
-	if sink.metricFilter != metricsAll {
-		return nil
-	}
-
 	finalLabels := make(map[string]string)
 	supportedLables := core.GcmLabels()
 	for key, value := range labels {
@@ -230,25 +207,15 @@ func (sink *gcmSink) register(metrics []core.Metric) error {
 		}
 		labels := make([]*gcm.LabelDescriptor, 0)
 
-		// Node autoscaling metrics have special labels.
-		if core.IsNodeAutoscalingMetric(metric.MetricDescriptor.Name) {
-			// All and autoscaling. Do not populate for other filters.
-			if sink.metricFilter != metricsAll &&
-				sink.metricFilter != metricsOnlyAutoscaling {
-				continue
-			}
-
-			for _, l := range core.GcmNodeAutoscalingLabels() {
+		// Node metrics have special labels
+		if core.IsNodeMetric(metric.MetricDescriptor.Name) {
+			for _, l := range core.GcmNodeLabels() {
 				labels = append(labels, &gcm.LabelDescriptor{
 					Key:         l.Key,
 					Description: l.Description,
 				})
 			}
 		} else {
-			// Only all.
-			if sink.metricFilter != metricsAll {
-				continue
-			}
 
 			for _, l := range core.GcmLabels() {
 				labels = append(labels, &gcm.LabelDescriptor{
@@ -304,28 +271,13 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("host should not be set for GCM sink")
 	}
 
-	opts, err := url.ParseQuery(uri.RawQuery)
-	if err != nil {
-		return nil, err
-	}
-
-	metrics := "all"
-	if len(opts["metrics"]) > 0 {
-		metrics = opts["metrics"][0]
-	}
-	var metricFilter MetricFilter = metricsAll
-	switch metrics {
-	case "all":
-		metricFilter = metricsAll
-	case "autoscaling":
-		metricFilter = metricsOnlyAutoscaling
-	default:
-		return nil, fmt.Errorf("invalid metrics parameter: %s", metrics)
-	}
-
 	client, err := google.DefaultClient(oauth2.NoContext, gcm.MonitoringScope)
 	if err != nil {
 		return nil, fmt.Errorf("error creating oauth2 client: %v", err)
+	}
+
+	if err := gce_util.EnsureOnGCE(); err != nil {
+		return nil, err
 	}
 
 	// Create Google Cloud Monitoring service.
@@ -334,17 +286,16 @@ func CreateGCMSink(uri *url.URL) (core.DataSink, error) {
 		return nil, fmt.Errorf("error creating GCM service: %v", err)
 	}
 
-	// Get the GCP Project ID.
+	// Detect project ID
 	projectId, err := gce_util.GetProjectId()
 	if err != nil {
 		return nil, fmt.Errorf("error getting GCP project ID: %v", err)
 	}
 
 	sink := &gcmSink{
-		registered:   false,
-		project:      projectId,
-		gcmService:   gcmService,
-		metricFilter: metricFilter,
+		registered: false,
+		project:    projectId,
+		gcmService: gcmService,
 	}
 	glog.Infof("created GCM sink")
 	if err := sink.registerAllMetrics(); err != nil {
