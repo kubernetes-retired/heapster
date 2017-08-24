@@ -466,3 +466,34 @@ func TestScrapeMetrics(t *testing.T) {
 	assert.Equal(t, res.MetricSets["node:/container:docker-daemon"].Labels["container_name"], "docker-daemon")
 
 }
+
+func TestGetNodeSchedulableStatus(t *testing.T) {
+	metas := []struct {
+		Node   *kube_api.Node
+		Wanted string
+	}{
+		{
+			Node: &kube_api.Node{
+				Spec: kube_api.NodeSpec{
+					Unschedulable: false,
+				},
+			},
+			Wanted: "true",
+		},
+		{
+			Node: &kube_api.Node{
+				Spec: kube_api.NodeSpec{
+					Unschedulable: true,
+				},
+			},
+			Wanted: "false",
+		},
+	}
+
+	for _, meta := range metas {
+		got := getNodeSchedulableStatus(meta.Node)
+		if got != meta.Wanted {
+			t.Errorf("get node schedulable status error. wanted: %s, got: %s", meta.Wanted, got)
+		}
+	}
+}
