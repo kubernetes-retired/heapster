@@ -67,6 +67,8 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
+	validateOptionsOrDie(opt)
+
 	setLabelSeperator(opt)
 	setMaxProcs(opt)
 	glog.Infof(strings.Join(os.Args, " "))
@@ -356,4 +358,12 @@ func setMaxProcs(opt *options.HeapsterRunOptions) {
 
 func setLabelSeperator(opt *options.HeapsterRunOptions) {
 	util.SetLabelSeperator(opt.LabelSeperator)
+}
+func validateOptionsOrDie(opts *options.HeapsterRunOptions) {
+	// if we allow user to specify scrapeOffset in the future, we should compare to max(manager.MinMetricResolution,user-specified-scrapeOffset)
+	if opts.MetricResolution < manager.MinMetricResolution {
+		glog.Fatalf(
+			"Option metric_resolution must be equal to or greater than %d seconds, metric_resolution:%v",
+			manager.MinMetricResolution/time.Second, opts.MetricResolution)
+	}
 }

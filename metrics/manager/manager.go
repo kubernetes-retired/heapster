@@ -26,6 +26,10 @@ import (
 const (
 	DefaultScrapeOffset   = 5 * time.Second
 	DefaultMaxParallelism = 3
+
+	// MinMetricResolution is the minimum value of metric resolution.
+	// should always be equal to or greater than DefaultScrapeOffset.
+	MinMetricResolution = 30 * time.Second
 )
 
 var (
