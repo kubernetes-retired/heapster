@@ -1,4 +1,3 @@
----
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -14,11 +13,14 @@ spec:
     spec:
       containers:
       - name: grafana
-        image: gcr.io/google_containers/heapster-grafana-amd64:v4.4.1
+        image: gcr.io/google_containers/heapster-grafana-amd64:v4.4.3
         ports:
         - containerPort: 3000
           protocol: TCP
         volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: ca-certificates
+          readOnly: true
         - mountPath: /var
           name: grafana-storage
         env:
@@ -41,6 +43,9 @@ spec:
           # value: /api/v1/proxy/namespaces/kube-system/services/monitoring-grafana/
           value: /
       volumes:
+      - name: ca-certificates
+        hostPath:
+          path: /etc/ssl/certs
       - name: grafana-storage
         emptyDir: {}
 ---

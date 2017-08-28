@@ -18,7 +18,7 @@ non-sink-specific pull requests.
 
 ### Labels ###
 
-Each issue and pull request should be assinged one of:
+Each issue and pull request should be assigned one of:
 
 - bug
 - enhancement
@@ -53,4 +53,6 @@ Releases
 --------
 
 Releases will be performed by @piosz.  Any issues about releases should be
-assigned to him.
+assigned to him. Version needs to be updated in the `Makefile`, and in the
+individual YAML files in `deploy/kube-config/` once the images have been
+built.

@@ -1,5 +1,5 @@
 reporting-disabled = true
-bind-address = ":8088"
+bind-address = "localhost:8088"
 
 [meta]
   dir = "/data/meta"
@@ -30,12 +30,6 @@ bind-address = ":8088"
 [retention]
   enabled = true
   check-interval = "30m0s"
-
-[admin]
-  enabled = false
-  bind-address = ":8083"
-  https-enabled = false
-  https-certificate = "/etc/ssl/influxdb.pem"
 
 [shard-precreation]
   enabled = true

@@ -67,7 +67,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	labelCopier, err := util.NewLabelCopier(opt.LabelSeperator, opt.StoredLabels, opt.IgnoredLabels)
+	labelCopier, err := util.NewLabelCopier(opt.LabelSeparator, opt.StoredLabels, opt.IgnoredLabels)
 	if err != nil {
 		glog.Fatalf("Failed to initialize label copier: %v", err)
 	}

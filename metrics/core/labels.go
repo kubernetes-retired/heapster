@@ -85,6 +85,10 @@ var (
 		Key:         "resource_type",
 		Description: "Resource types for nodes specific for GCE.",
 	}
+	LabelNodeSchedulable = LabelDescriptor{
+		Key:         "schedulable",
+		Description: "Node schedulable status.",
+	}
 )
 
 type LabelDescriptor struct {

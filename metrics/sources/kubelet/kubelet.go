@@ -68,15 +68,17 @@ type kubeletMetricsSource struct {
 	nodename      string
 	hostname      string
 	hostId        string
+	schedulable   string
 }
 
-func NewKubeletMetricsSource(host Host, client *KubeletClient, nodeName string, hostName string, hostId string) MetricsSource {
+func NewKubeletMetricsSource(host Host, client *KubeletClient, nodeName string, hostName string, hostId string, schedulable string) MetricsSource {
 	return &kubeletMetricsSource{
 		host:          host,
 		kubeletClient: client,
 		nodename:      nodeName,
 		hostname:      hostName,
 		hostId:        hostId,
+		schedulable:   schedulable,
 	}
 }
 
@@ -137,6 +139,7 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 	if isNode(c) {
 		metricSetKey = NodeKey(this.nodename)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
+		cMetrics.Labels[LabelNodeSchedulable.Key] = this.schedulable
 	} else {
 		cName := c.Spec.Labels[kubernetesContainerLabel]
 		ns := c.Spec.Labels[kubernetesPodNamespaceLabel]
@@ -233,9 +236,9 @@ metricloop:
 func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
 	containers, err := this.scrapeKubelet(this.kubeletClient, this.host, start, end)
 	if err != nil {
-		glog.Errorf("error while getting containers from Kubelet: %v", err)
+		glog.Errorf("error while getting containers from Kubelet %s: %v", this.host, err)
 	}
-	glog.V(2).Infof("successfully obtained stats for %v containers", len(containers))
+	glog.V(2).Infof("successfully obtained stats from %s for %v containers", this.host, len(containers))
 
 	result := &DataBatch{
 		Timestamp:  end,
@@ -287,9 +290,18 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 			node.Name,
 			hostname,
 			node.Spec.ExternalID,
+			getNodeSchedulableStatus(node),
 		))
 	}
 	return sources
+}
+
+func getNodeSchedulableStatus(node *kube_api.Node) string {
+	if node.Spec.Unschedulable {
+		return "false"
+	}
+
+	return "true"
 }
 
 func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
