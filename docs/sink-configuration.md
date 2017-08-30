@@ -145,7 +145,8 @@ Options can be set in query string, like this:
 
 * `brokers` - Kafka's brokers' list.
 * `timeseriestopic` - Kafka's topic for timeseries. Default value : `heapster-metrics`
-* `eventstopic` - Kafka's topic for events.Default value : `heapster-events`
+* `eventstopic` - Kafka's topic for events. Default value : `heapster-events`
+*  compression - Kafka's compression for both topics. Must be gzip or none. Default value : none
 
 For example,
 
