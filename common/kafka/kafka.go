@@ -137,7 +137,7 @@ func getCompression(opts map[string][]string) (proto.Compression, error) {
 	case "gzip":
 		return proto.CompressionGzip, nil
 	default:
-		return pr	oto.CompressionNone, fmt.Errorf("Compression '%s' is illegal. Use none, gzip or snappy", comp)
+		return proto.CompressionNone, fmt.Errorf("Compression '%s' is illegal. Use none, gzip or snappy", comp)
 	}
 }
 
