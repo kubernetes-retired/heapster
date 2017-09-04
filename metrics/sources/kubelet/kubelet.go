@@ -323,6 +323,9 @@ func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
 		if addr.Type == kube_api.NodeLegacyHostIP && addr.Address != "" && ip == "" {
 			ip = addr.Address
 		}
+		if addr.Type == kube_api.NodeExternalIP && addr.Address != "" && ip == "" {
+			ip = addr.Address
+		}
 	}
 	if ip != "" {
 		return hostname, ip, nil

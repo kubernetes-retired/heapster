@@ -430,6 +430,9 @@ func (this *summaryProvider) getNodeInfo(node *kube_api.Node) (NodeInfo, error) 
 		if addr.Type == kube_api.NodeLegacyHostIP && addr.Address != "" && info.IP == "" {
 			info.IP = addr.Address
 		}
+		if addr.Type == kube_api.NodeExternalIP && addr.Address != "" && info.IP == "" {
+			info.IP = addr.Address
+		}
 	}
 
 	if info.IP == "" {
