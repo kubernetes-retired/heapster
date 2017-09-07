@@ -653,6 +653,26 @@ var MetricFilesystemAvailable = Metric{
 		Units:       UnitsBytes,
 		Labels:      metricLabels,
 	},
+	HasLabeledMetric: func(spec *cadvisor.ContainerSpec) bool {
+		return spec.HasFilesystem
+	},
+	GetLabeledMetric: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) []LabeledMetric {
+		result := make([]LabeledMetric, 0, len(stat.Filesystem))
+		for _, fs := range stat.Filesystem {
+			result = append(result, LabeledMetric{
+				Name: "filesystem/available",
+				Labels: map[string]string{
+					LabelResourceID.Key: fs.Device,
+				},
+				MetricValue: MetricValue{
+					ValueType:  ValueInt64,
+					MetricType: MetricGauge,
+					IntValue:   int64(fs.Available),
+				},
+			})
+		}
+		return result
+	},
 }
 
 var MetricFilesystemInodes = Metric{
