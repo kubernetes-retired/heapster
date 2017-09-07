@@ -375,6 +375,29 @@ var nodes = []kube_api.Node{
 			},
 		},
 	},
+	{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testNode",
+		},
+		Status: kube_api.NodeStatus{
+			Conditions: []kube_api.NodeCondition{
+				{
+					Type:   "NotReady",
+					Status: kube_api.ConditionTrue,
+				},
+			},
+			Addresses: []kube_api.NodeAddress{
+				{
+					Type:    kube_api.NodeHostName,
+					Address: "testNode",
+				},
+				{
+					Type:    kube_api.NodeExternalIP,
+					Address: "127.0.0.1",
+				},
+			},
+		},
+	},
 }
 
 func TestGetNodeHostnameAndIP(t *testing.T) {
