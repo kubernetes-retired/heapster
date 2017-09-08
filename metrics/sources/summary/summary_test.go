@@ -96,9 +96,9 @@ type fakeSource struct {
 }
 
 func (f *fakeSource) Name() string { return "fake" }
-func (f *fakeSource) ScrapeMetrics(start, end time.Time) *core.DataBatch {
+func (f *fakeSource) ScrapeMetrics(start, end time.Time) (*core.DataBatch, error) {
 	f.scraped = true
-	return nil
+	return nil, nil
 }
 
 func testingSummaryMetricsSource() *summaryMetricsSource {
@@ -422,6 +422,7 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 	ms.node.Port, err = strconv.Atoi(split[1])
 	require.NoError(t, err)
 
-	res := ms.ScrapeMetrics(time.Now(), time.Now())
+	res, err := ms.ScrapeMetrics(time.Now(), time.Now())
+	assert.Nil(t, err, "scrape error")
 	assert.Equal(t, res.MetricSets["node:test"].Labels[core.LabelMetricSetType.Key], core.MetricSetTypeNode)
 }

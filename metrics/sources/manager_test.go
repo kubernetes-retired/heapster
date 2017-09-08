@@ -29,7 +29,10 @@ func TestAllSourcesReplyInTime(t *testing.T) {
 	manager, _ := NewSourceManager(metricsSourceProvider, time.Second*3)
 	now := time.Now()
 	end := now.Truncate(10 * time.Second)
-	dataBatch := manager.ScrapeMetrics(end.Add(-10*time.Second), end)
+	dataBatch, err := manager.ScrapeMetrics(end.Add(-10*time.Second), end)
+	if err != nil {
+		t.Fatalf("ScrapeMetrics error. %v", err)
+	}
 
 	elapsed := time.Now().Sub(now)
 	if elapsed > 3*time.Second {
@@ -58,7 +61,10 @@ func TestOneSourcesReplyInTime(t *testing.T) {
 	manager, _ := NewSourceManager(metricsSourceProvider, time.Second*3)
 	now := time.Now()
 	end := now.Truncate(10 * time.Second)
-	dataBatch := manager.ScrapeMetrics(end.Add(-10*time.Second), end)
+	dataBatch, err := manager.ScrapeMetrics(end.Add(-10*time.Second), end)
+	if err != nil {
+		t.Fatalf("ScrapeMetrics error. %v", err)
+	}
 	elapsed := time.Now().Sub(now)
 
 	if elapsed > 4*time.Second {
@@ -91,7 +97,10 @@ func TestNoSourcesReplyInTime(t *testing.T) {
 	manager, _ := NewSourceManager(metricsSourceProvider, time.Second*3)
 	now := time.Now()
 	end := now.Truncate(10 * time.Second)
-	dataBatch := manager.ScrapeMetrics(end.Add(-10*time.Second), end)
+	dataBatch, err := manager.ScrapeMetrics(end.Add(-10*time.Second), end)
+	if err != nil {
+		t.Fatalf("ScrapeMetrics error. %v", err)
+	}
 	elapsed := time.Now().Sub(now)
 
 	if elapsed > 4*time.Second {

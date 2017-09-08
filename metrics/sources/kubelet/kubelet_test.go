@@ -484,7 +484,8 @@ func TestScrapeMetrics(t *testing.T) {
 
 	start := time.Now()
 	end := start.Add(5 * time.Second)
-	res := mtrcSrc.ScrapeMetrics(start, end)
+	res, err := mtrcSrc.ScrapeMetrics(start, end)
+	assert.Nil(t, err, "scrape error")
 	assert.Equal(t, res.MetricSets["node:/container:docker-daemon"].Labels["type"], "sys_container")
 	assert.Equal(t, res.MetricSets["node:/container:docker-daemon"].Labels["container_name"], "docker-daemon")
 

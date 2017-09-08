@@ -134,7 +134,7 @@ type DataBatch struct {
 // A place from where the metrics should be scraped.
 type MetricsSource interface {
 	Name() string
-	ScrapeMetrics(start, end time.Time) *DataBatch
+	ScrapeMetrics(start, end time.Time) (*DataBatch, error)
 }
 
 // Provider of list of sources to be scaped.
