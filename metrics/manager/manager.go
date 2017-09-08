@@ -125,21 +125,22 @@ func (rm *realManager) housekeep(start, end time.Time) {
 	go func(rm *realManager) {
 		// should always give back the semaphore
 		defer func() { rm.housekeepSemaphoreChan <- struct{}{} }()
-		data := rm.source.ScrapeMetrics(start, end)
+		data, err := rm.source.ScrapeMetrics(start, end)
 
-		for _, p := range rm.processors {
-			newData, err := process(p, data)
-			if err == nil {
-				data = newData
-			} else {
-				glog.Errorf("Error in processor: %v", err)
-				return
+		if err == nil {
+			for _, p := range rm.processors {
+				newData, err := process(p, data)
+				if err == nil {
+					data = newData
+				} else {
+					glog.Errorf("Error in processor: %v", err)
+					return
+				}
 			}
+
+			// Export data to sinks
+			rm.sink.ExportData(data)
 		}
-
-		// Export data to sinks
-		rm.sink.ExportData(data)
-
 	}(rm)
 }
 

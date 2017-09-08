@@ -81,7 +81,7 @@ func (this *summaryMetricsSource) String() string {
 	return fmt.Sprintf("kubelet_summary:%s:%d", this.node.IP, this.node.Port)
 }
 
-func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
+func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) (*DataBatch, error) {
 	result := &DataBatch{
 		Timestamp:  time.Now(),
 		MetricSets: map[string]*MetricSet{},
@@ -95,12 +95,12 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 
 	if err != nil {
 		glog.Errorf("error while getting metrics summary from Kubelet %s(%s:%d): %v", this.node.NodeName, this.node.IP, this.node.Port, err)
-		return result
+		return nil, err
 	}
 
 	result.MetricSets = this.decodeSummary(summary)
 
-	return result
+	return result, err
 }
 
 const (

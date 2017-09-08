@@ -233,17 +233,21 @@ metricloop:
 	return metricSetKey, cMetrics
 }
 
-func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
+func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) (*DataBatch, error) {
 	containers, err := this.scrapeKubelet(this.kubeletClient, this.host, start, end)
+
 	if err != nil {
 		glog.Errorf("error while getting containers from Kubelet %s: %v", this.host, err)
+		return nil, err
 	}
+
 	glog.V(2).Infof("successfully obtained stats from %s for %v containers", this.host, len(containers))
 
 	result := &DataBatch{
 		Timestamp:  end,
 		MetricSets: map[string]*MetricSet{},
 	}
+
 	for _, c := range containers {
 		name, metrics := this.decodeMetrics(&c)
 		if name == "" || metrics == nil {
@@ -251,7 +255,8 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch
 		}
 		result.MetricSets[name] = metrics
 	}
-	return result
+
+	return result, nil
 }
 
 func (this *kubeletMetricsSource) scrapeKubelet(client *KubeletClient, host Host, start, end time.Time) ([]cadvisor.ContainerInfo, error) {

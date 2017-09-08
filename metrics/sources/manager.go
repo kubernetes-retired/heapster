@@ -75,7 +75,7 @@ func (this *sourceManager) Name() string {
 	return "source_manager"
 }
 
-func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
+func (this *sourceManager) ScrapeMetrics(start, end time.Time) (*DataBatch, error) {
 	glog.V(1).Infof("Scraping metrics start: %s, end: %s", start, end)
 	sources := this.metricsSourceProvider.GetMetricsSources()
 
@@ -96,21 +96,23 @@ func (this *sourceManager) ScrapeMetrics(start, end time.Time) *DataBatch {
 			time.Sleep(time.Duration(rand.Intn(delayMs)) * time.Millisecond)
 
 			glog.V(2).Infof("Querying source: %s", source)
-			metrics := scrape(source, start, end)
-			now := time.Now()
-			if !now.Before(timeoutTime) {
-				glog.Warningf("Failed to get %s response in time", source)
-				return
-			}
-			timeForResponse := timeoutTime.Sub(now)
+			metrics, err := scrape(source, start, end)
+			if err == nil {
+				now := time.Now()
+				if !now.Before(timeoutTime) {
+					glog.Warningf("Failed to get %s response in time", source)
+					return
+				}
+				timeForResponse := timeoutTime.Sub(now)
 
-			select {
-			case channel <- metrics:
-				// passed the response correctly.
-				return
-			case <-time.After(timeForResponse):
-				glog.Warningf("Failed to send the response back %s", source)
-				return
+				select {
+				case channel <- metrics:
+					// passed the response correctly.
+					return
+				case <-time.After(timeForResponse):
+					glog.Warningf("Failed to send the response back %s", source)
+					return
+				}
 			}
 		}(source, responseChannel, start, end, timeoutTime, delayMs)
 	}
@@ -153,10 +155,10 @@ responseloop:
 	for i, value := range latencies {
 		glog.V(1).Infof("   scrape  bucket %d: %d", i, value)
 	}
-	return &response
+	return &response, nil
 }
 
-func scrape(s MetricsSource, start, end time.Time) *DataBatch {
+func scrape(s MetricsSource, start, end time.Time) (*DataBatch, error) {
 	sourceName := s.Name()
 	startTime := time.Now()
 	defer lastScrapeTimestamp.
