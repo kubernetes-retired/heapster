@@ -37,3 +37,4 @@ List of Owners
 | Graphite        | :heavy_check_mark: | :x:                | @jsoriano / @theairkit                        | :new: #1341    |
 | Wavefront       | :heavy_check_mark: | :x:                | @ezeev                                        | :ok:           |
 | Librato         | :heavy_check_mark: | :x:                | @johanneswuerbach                             | :ok:           |
+| StatsD          | :heavy_check_mark: | :x:                | @yogeswaran                                   | :ok:           |
