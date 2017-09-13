@@ -338,9 +338,9 @@ func genTestSummaryCPU(seed int) *stats.CPUStats {
 func genTestSummaryZeroMemory(seed int) *stats.MemoryStats {
 	return &stats.MemoryStats{
 		Time:            metav1.NewTime(scrapeTime),
-		UsageBytes:      uint64Val(seed, -seed),
+		UsageBytes:      uint64Val(seed, offsetMemUsageBytes),
 		WorkingSetBytes: uint64Val(seed, offsetMemWorkingSetBytes),
-		RSSBytes:        uint64Val(seed, offsetMemRSSBytes),
+		RSSBytes:        uint64Val(seed, -seed),
 		PageFaults:      uint64Val(seed, offsetMemPageFaults),
 		MajorPageFaults: uint64Val(seed, offsetMemMajorPageFaults),
 	}
