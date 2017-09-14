@@ -15,10 +15,12 @@
 package hawkular
 
 import (
+	"bytes"
 	"fmt"
+	"hash/fnv"
 	"math"
-	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -30,9 +32,12 @@ import (
 
 // Fetches definitions from the server and checks that they're matching the descriptors
 func (h *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
+	tagsFilter := make(map[string]string, 1)
+	tagsFilter[descriptorTag] = "*"
+
 	m := make([]metrics.Modifier, len(h.modifiers), len(h.modifiers)+1)
 	copy(m, h.modifiers)
-	m = append(m, metrics.Filters(metrics.TypeFilter(mt)))
+	m = append(m, metrics.Filters(metrics.TypeFilter(mt), metrics.TagsFilter(tagsFilter)))
 
 	mds, err := h.client.Definitions(m...)
 	if err != nil {
@@ -43,18 +48,49 @@ func (h *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
 	defer h.regLock.Unlock()
 
 	for _, p := range mds {
-		// If no descriptorTag is found, this metric does not belong to Heapster
-		if mk, found := p.Tags[descriptorTag]; found {
-			if model, f := h.models[mk]; f && !h.recent(p, model) {
-				if err := h.client.UpdateTags(mt, p.ID, p.Tags, h.modifiers...); err != nil {
-					return err
-				}
+		if model, f := h.models[p.Tags[descriptorTag]]; f && !h.recent(p, model) {
+			if err := h.client.UpdateTags(mt, p.ID, p.Tags, h.modifiers...); err != nil {
+				return err
 			}
-			h.reg[p.ID] = p
 		}
+		h.reg[p.ID] = hash(p)
 	}
 
 	return nil
+}
+
+func hash(md *metrics.MetricDefinition) uint64 {
+	h := fnv.New64a()
+
+	// Hash metricId first
+	h.Write([]byte(md.Tenant))
+	h.Write([]byte(md.Type))
+	h.Write([]byte(md.ID))
+
+	// Then tags to allow "recent" checking
+	var buffer bytes.Buffer
+
+	tagNames := make([]string, 0, len(md.Tags))
+	tagValues := make([]string, 0, len(md.Tags))
+
+	for k, v := range md.Tags {
+		tagNames = append(tagNames, k)
+		tagValues = append(tagValues, v)
+	}
+
+	sort.Strings(tagNames)
+	sort.Strings(tagValues)
+
+	for _, tn := range tagNames {
+		buffer.WriteString(tn)
+	}
+
+	for _, tv := range tagValues {
+		buffer.WriteString(tv)
+	}
+
+	buffer.WriteTo(h)
+	return h.Sum64()
 }
 
 // Checks that stored definition is up to date with the model
@@ -203,8 +239,10 @@ func (h *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric cor
 		return err
 	}
 
+	mddHash := hash(mdd)
+
 	h.regLock.RLock()
-	if _, found := h.reg[key]; !found || !reflect.DeepEqual(mdd.Tags, h.reg[key].Tags) {
+	if _, found := h.reg[key]; !found || h.reg[key] != mddHash {
 		// I'm going to release the lock to allow concurrent processing, even if that
 		// can cause dual updates (highly unlikely). The UpdateTags is idempotent in any case.
 		h.regLock.RUnlock()
@@ -218,7 +256,7 @@ func (h *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric cor
 		}
 
 		h.regLock.Lock()
-		h.reg[key] = mdd
+		h.reg[key] = mddHash
 		h.regLock.Unlock()
 	} else {
 		h.regLock.RUnlock()

@@ -49,7 +49,7 @@ type hawkularSink struct {
 	client  *metrics.Client
 	models  map[string]*metrics.MetricDefinition // Model definitions
 	regLock sync.RWMutex
-	reg     map[string]*metrics.MetricDefinition // Real definitions
+	reg     map[string]uint64 // Hash of real definition
 
 	uri *url.URL
 
