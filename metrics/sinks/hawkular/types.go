@@ -45,11 +45,19 @@ func (f FilterType) From(s string) FilterType {
 	}
 }
 
+type expiringItem struct {
+	hash uint64
+	ttl  uint64
+}
+
 type hawkularSink struct {
 	client  *metrics.Client
 	models  map[string]*metrics.MetricDefinition // Model definitions
 	regLock sync.RWMutex
-	reg     map[string]*metrics.MetricDefinition // Real definitions
+	// reg      map[string]uint64 // Hash of real definition
+	expReg   map[string]*expiringItem
+	runId    uint64
+	cacheAge uint64
 
 	uri *url.URL
 
