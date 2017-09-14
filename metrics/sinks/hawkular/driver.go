@@ -60,12 +60,9 @@ func (h *hawkularSink) Register(mds []core.MetricDescriptor) error {
 
 	if !h.disablePreCaching {
 		// Fetch currently known metrics from Hawkular-Metrics and cache them
-		types := []metrics.MetricType{metrics.Gauge, metrics.Counter}
-		for _, t := range types {
-			err := h.updateDefinitions(t)
-			if err != nil {
-				return err
-			}
+		err := h.cacheDefinitions()
+		if err != nil {
+			return err
 		}
 	}
 
@@ -80,6 +77,7 @@ func (h *hawkularSink) Stop() {
 
 func (h *hawkularSink) ExportData(db *core.DataBatch) {
 	totalCount := 0
+	h.runId++
 	for _, ms := range db.MetricSets {
 		totalCount += len(ms.MetricValues)
 		totalCount += len(ms.LabeledMetrics)
@@ -120,12 +118,7 @@ func (h *hawkularSink) ExportData(db *core.DataBatch) {
 					}
 				}
 
-				wg.Add(1)
-				go func(ms *core.MetricSet, labeledMetric core.LabeledMetric, tenant string) {
-					defer wg.Done()
-					h.registerLabeledIfNecessary(ms, labeledMetric, metrics.Tenant(tenant))
-				}(ms, labeledMetric, tenant)
-
+				h.registerLabeledIfNecessaryInline(ms, labeledMetric, wg, metrics.Tenant(tenant))
 				mH, err := h.pointToLabeledMetricHeader(ms, labeledMetric, db.Timestamp)
 				if err != nil {
 					// One transformation error should not prevent the whole process
@@ -142,7 +135,9 @@ func (h *hawkularSink) ExportData(db *core.DataBatch) {
 		}
 		h.sendData(tmhs, wg) // Send to a limited channel? Only batches.. egg.
 		wg.Wait()
+		// glog.V(4).Infof("ExportData updated %d tags, total size of cached tags is %d\n", updatedTags, len(h.reg))
 	}
+	h.expireCache(h.runId)
 }
 
 func metricValueToLabeledMetric(msValues map[string]core.MetricValue) []core.LabeledMetric {
@@ -163,7 +158,7 @@ func (h *hawkularSink) DebugInfo() string {
 
 	h.regLock.Lock()
 	defer h.regLock.Unlock()
-	info += fmt.Sprintf("Known metrics: %d\n", len(h.reg))
+	info += fmt.Sprintf("Cached metrics: %d\n", len(h.expReg))
 	if len(h.labelTenant) > 0 {
 		info += fmt.Sprintf("Using label '%s' as tenant information\n", h.labelTenant)
 	}
@@ -198,11 +193,13 @@ func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 }
 
 func (h *hawkularSink) init() error {
-	h.reg = make(map[string]*metrics.MetricDefinition)
 	h.models = make(map[string]*metrics.MetricDefinition)
 	h.modifiers = make([]metrics.Modifier, 0)
 	h.filters = make([]Filter, 0)
 	h.batchSize = batchSizeDefault
+	h.expReg = make(map[string]*expiringItem)
+	h.cacheAge = 2
+	h.runId = 0
 
 	p := metrics.Parameters{
 		Tenant:      "heapster",

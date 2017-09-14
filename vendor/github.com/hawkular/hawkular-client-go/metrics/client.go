@@ -315,6 +315,36 @@ func (c *Client) Create(md MetricDefinition, o ...Modifier) (bool, error) {
 	return true, nil
 }
 
+// AllDefinitions fetches all metric definitions (for every tenant) from the server. Requires admin/service rights
+func (c *Client) AllDefinitions(o ...Modifier) ([]*MetricDefinition, error) {
+	o = prepend(o, c.URL("GET", OpenshiftEndpoint()), AdminAuthentication(c.AdminToken))
+
+	r, err := c.Send(o...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer r.Body.Close()
+
+	if r.StatusCode == http.StatusOK {
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return nil, err
+		}
+		md := []*MetricDefinition{}
+		if b != nil && len(b) > 0 {
+			if err = json.Unmarshal(b, &md); err != nil {
+				return nil, err
+			}
+		}
+		return md, err
+	} else if r.StatusCode > 399 {
+		return nil, c.parseErrorResponse(r)
+	}
+
+	return nil, nil
+}
+
 // Definitions fetches metric definitions from the server
 func (c *Client) Definitions(o ...Modifier) ([]*MetricDefinition, error) {
 	o = prepend(o, c.URL("GET", TypeEndpoint(Generic)))
@@ -683,6 +713,13 @@ func (c *Client) createURL(e ...Endpoint) *url.URL {
 		f(&mu)
 	}
 	return &mu
+}
+
+// OpenshiftEndpoint is a URL endpoint only available in the origin-metrics installation
+func OpenshiftEndpoint() Endpoint {
+	return func(u *url.URL) {
+		addToURL(u, "openshift")
+	}
 }
 
 // TenantEndpoint is a URL endpoint to fetch tenant related information
