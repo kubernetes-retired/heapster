@@ -130,33 +130,35 @@ type statsRequest struct {
 	Subcontainers bool `json:"subcontainers,omitempty"`
 }
 
+func (self *KubeletClient) getScheme() string {
+	if self.config != nil && self.config.EnableHttps {
+		return "https"
+	} else {
+		return "http"
+	}
+}
+
+func (self *KubeletClient) getUrl(host Host, path string) string {
+	url := url.URL{
+		Scheme: self.getScheme(),
+		Host:   host.String(),
+		Path:   path,
+	}
+
+	return url.String()
+}
+
 // Get stats for all non-Kubernetes containers.
 func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) ([]cadvisor.ContainerInfo, error) {
-	scheme := "http"
-	if self.config != nil && self.config.EnableHttps {
-		scheme = "https"
-	}
+	url := self.getUrl(host, "/stats/container/")
 
-	url := url.URL{
-		Scheme: scheme,
-		Host:   host.String(),
-		Path:   "/stats/container/",
-	}
-
-	return self.getAllContainers(url.String(), start, end)
+	return self.getAllContainers(url, start, end)
 }
 
 func (self *KubeletClient) GetSummary(host Host) (*stats.Summary, error) {
-	url := url.URL{
-		Scheme: "http",
-		Host:   host.String(),
-		Path:   "/stats/summary/",
-	}
-	if self.config != nil && self.config.EnableHttps {
-		url.Scheme = "https"
-	}
+	url := self.getUrl(host, "/stats/summary/")
 
-	req, err := http.NewRequest("GET", url.String(), nil)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
