@@ -1,5 +1,5 @@
 reporting-disabled = true
-bind-address = "localhost:8088"
+bind-address = "127.0.0.1:8088"
 
 [meta]
   dir = "/data/meta"
