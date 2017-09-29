@@ -498,7 +498,18 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 		return ts
 	case "memory/bytes_used":
 		point := sink.intPoint(timestamp, timestamp, value.IntValue)
-		return createTimeSeries(resourceLabels, memoryBytesUsedMD, point)
+		ts := createTimeSeries(resourceLabels, memoryBytesUsedMD, point)
+		ts.Metric.Labels = map[string]string{
+			"memory_type": "evictable",
+		}
+		return ts
+	case core.MetricMemoryWorkingSet.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, value.IntValue)
+		ts := createTimeSeries(resourceLabels, memoryBytesUsedMD, point)
+		ts.Metric.Labels = map[string]string{
+			"memory_type": "non-evictable",
+		}
+		return ts
 	case "memory/minor_page_faults":
 		point := sink.intPoint(timestamp, createTime, value.IntValue)
 		ts := createTimeSeries(resourceLabels, memoryPageFaultsMD, point)
