@@ -15,6 +15,7 @@
 package stackdriver
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -309,6 +310,12 @@ func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest)
 	var responseCode int
 	if err != nil {
 		glog.Warningf("Error while sending request to Stackdriver %v", err)
+		reqJson, errJson := json.Marshal(req)
+		if errJson != nil {
+			glog.Warningf("The request was %s", reqJson)
+		} else {
+			glog.Errorf("Couldn't marshal Stackdriver request %v", errJson)
+		}
 		switch reflect.Indirect(reflect.ValueOf(err)).Type() {
 		case reflect.Indirect(reflect.ValueOf(&googleapi.Error{})).Type():
 			responseCode = err.(*googleapi.Error).Code
