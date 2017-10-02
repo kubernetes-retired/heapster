@@ -306,9 +306,9 @@ func (sink *StackdriverSink) requestSender(reqQueue chan *sd_api.CreateTimeSerie
 func marshalRequestAndLog(printer func([]byte), req *sd_api.CreateTimeSeriesRequest) {
 	reqJson, errJson := json.Marshal(req)
 	if errJson != nil {
-		printer(reqJson)
-	} else {
 		glog.Errorf("Couldn't marshal Stackdriver request %v", errJson)
+	} else {
+		printer(reqJson)
 	}
 }
 
