@@ -306,9 +306,9 @@ func (sink *StackdriverSink) requestSender(reqQueue chan *sd_api.CreateTimeSerie
 func marshalRequestAndLog(printer func([]byte), req *sd_api.CreateTimeSeriesRequest) {
 	reqJson, errJson := json.Marshal(req)
 	if errJson != nil {
-		printer(reqJson)
-	} else {
 		glog.Errorf("Couldn't marshal Stackdriver request %v", errJson)
+	} else {
+		printer(reqJson)
 	}
 }
 
@@ -335,7 +335,7 @@ func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest)
 		// Convert request to json and log it, but only if logging level is equal to 10 or more.
 		if glog.V(10) {
 			marshalRequestAndLog(func(reqJson []byte) {
-				glog.V(2).Infof("Stackdriver request sent: %s", reqJson)
+				glog.V(10).Infof("Stackdriver request sent: %s", reqJson)
 			}, req)
 		}
 		responseCode = empty.ServerResponse.HTTPStatusCode
