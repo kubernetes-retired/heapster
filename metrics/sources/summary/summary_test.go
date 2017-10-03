@@ -62,6 +62,7 @@ const (
 	seedPod2           = 5000
 	seedPod2Container0 = 6000
 	seedPod2Container1 = 7000
+	seedPod3Container0 = 9000
 )
 
 const (
@@ -71,17 +72,25 @@ const (
 	pName0 = "pod0"
 	pName1 = "pod1"
 	pName2 = "pod0" // ensure pName2 conflicts with pName0, but is in a different namespace
+	pName3 = "pod2"
 
 	cName00 = "c0"
 	cName01 = "c1"
 	cName10 = "c0"      // ensure cName10 conflicts with cName02, but is in a different pod
 	cName20 = "c1"      // ensure cName20 conflicts with cName01, but is in a different pod + namespace
 	cName21 = "runtime" // ensure that runtime containers are not renamed
+	cName30 = "c3"
 )
 
 var (
-	scrapeTime = time.Now()
-	startTime  = time.Now().Add(-time.Minute)
+	availableFsBytes = uint64(1130)
+	usedFsBytes      = uint64(13340)
+	totalFsBytes     = uint64(2153)
+	freeInode        = uint64(10440)
+	usedInode        = uint64(103520)
+	totalInode       = uint64(103620)
+	scrapeTime       = time.Now()
+	startTime        = time.Now().Add(-time.Minute)
 )
 
 var nodeInfo = NodeInfo{
@@ -109,6 +118,7 @@ func testingSummaryMetricsSource() *summaryMetricsSource {
 }
 
 func TestDecodeSummaryMetrics(t *testing.T) {
+
 	ms := testingSummaryMetricsSource()
 	summary := stats.Summary{
 		Node: stats.NodeStats{
@@ -163,6 +173,26 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName20, seedPod2Container0),
 				genTestSummaryContainer(cName21, seedPod2Container1),
+			},
+		}, {
+			PodRef: stats.PodReference{
+				Name:      pName3,
+				Namespace: namespace0,
+			},
+			Containers: []stats.ContainerStats{
+				genTestSummaryContainer(cName30, seedPod3Container0),
+			},
+			VolumeStats: []stats.VolumeStats{{
+				Name: "C",
+				FsStats: stats.FsStats{
+					AvailableBytes: &availableFsBytes,
+					UsedBytes:      &usedFsBytes,
+					CapacityBytes:  &totalFsBytes,
+					InodesFree:     &freeInode,
+					InodesUsed:     &usedInode,
+					Inodes:         &totalInode,
+				},
+			},
 			},
 		}},
 	}
@@ -253,6 +283,13 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		cpu:     true,
 		memory:  true,
 		fs:      containerFs,
+	}, {
+		key:     core.PodContainerKey(namespace0, pName3, cName30),
+		setType: core.MetricSetTypePodContainer,
+		seed:    seedPod3Container0,
+		cpu:     true,
+		memory:  true,
+		fs:      containerFs,
 	}}
 
 	metrics := ms.decodeSummary(&summary)
@@ -287,6 +324,20 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		}
 		delete(metrics, e.key)
 	}
+
+	// Verify volume information labeled metrics
+	var volumeInformationMetricsKey = core.PodKey(namespace0, pName3)
+	var mappedVolumeStats = map[string]int64{}
+	for _, labeledMetric := range metrics[volumeInformationMetricsKey].LabeledMetrics {
+		assert.True(t, strings.HasPrefix("Volume:C", labeledMetric.Labels["resource_id"]))
+		mappedVolumeStats[labeledMetric.Name] = labeledMetric.IntValue
+	}
+
+	assert.True(t, mappedVolumeStats["filesystem/available"] == int64(availableFsBytes))
+	assert.True(t, mappedVolumeStats["filesystem/usage"] == int64(usedFsBytes))
+	assert.True(t, mappedVolumeStats["filesystem/limit"] == int64(totalFsBytes))
+
+	delete(metrics, volumeInformationMetricsKey)
 
 	for k, v := range metrics {
 		assert.Fail(t, "unexpected metric", "%q: %+v", k, v)
