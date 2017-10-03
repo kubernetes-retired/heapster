@@ -47,6 +47,8 @@ type HeapsterRunOptions struct {
 	HistoricalSource    string
 	Version             bool
 	LabelSeparator      string
+	IgnoredLabels       []string
+	StoredLabels        []string
 	DisableMetricExport bool
 }
 
@@ -83,5 +85,7 @@ func (h *HeapsterRunOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&h.HistoricalSource, "historical_source", "", "which source type to use for the historical API (should be exactly the same as one of the sink URIs), or empty to disable the historical API")
 	fs.BoolVar(&h.Version, "version", false, "print version info and exit")
 	fs.StringVar(&h.LabelSeparator, "label_separator", ",", "separator used for joining labels")
+	fs.StringSliceVar(&h.IgnoredLabels, "ignore_label", []string{}, "ignore this label when joining labels")
+	fs.StringSliceVar(&h.StoredLabels, "store_label", []string{}, "store this label separately from joined labels with the same name (name) or with different name (newName=name)")
 	fs.BoolVar(&h.DisableMetricExport, "disable_export", false, "Disable exporting metrics in api/v1/metric-export")
 }

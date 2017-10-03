@@ -62,7 +62,7 @@ Heapster tags each metric with the following labels.
 | resource_id    | A unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage |
 
 **Note**
-  * Label separator can be configured with Heapster `--label-seperator`. Comma-seperated label pairs is fine until we use [Bosun](http://bosun.org) as alert system and use `group by labels` to search for labels.
+  * Label separator can be configured with Heapster `--label-separator`. Comma-seperated label pairs is fine until we use [Bosun](http://bosun.org) as alert system and use `group by labels` to search for labels.
     [Bosun(0.5.0) uses comma to split queried tag key and tag value](https://github.com/bosun-monitor/bosun/blob/0.5.0/opentsdb/tsdb.go#L566-L575). For example if the expression used for query InfluxDB from Bosun is like this:
 ```
 $limit = avg(influx("k8s", '''SELECT mean(value) as value FROM "memory/limit" WHERE type = 'node' GROUP BY nodename, labels''', "${INTERVAL}s", "", ""))
@@ -84,6 +84,7 @@ nodename=127.0.0.1
 labels=labels:beta.kubernetes.io/arch:amd64,beta.kubernetes.io/os.linux,kubernetes.io/hostname:127.0.0.1
 ```
 This will make bosun confused and panic with something like "panic: opentsdb: bad tag: beta.kubernetes.io/os:linux".
+  * User-provided labels can be stored additionally as separate labels with Heapster `--store-label`. Similarily, using `--ignore-label`, labels can be ommited in concatenated labels.
 
 ## Aggregates
 

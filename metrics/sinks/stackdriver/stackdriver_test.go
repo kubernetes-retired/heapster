@@ -130,6 +130,36 @@ func TestTranslateMemoryNodeAllocatable(t *testing.T) {
 	as.Equal(int64(2048), *value.Int64Value)
 }
 
+func TestTranslateMemoryUsedEvictable(t *testing.T) {
+	metricValue := generateIntMetric(100)
+	name := "memory/bytes_used"
+	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
+
+	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+
+	as := assert.New(t)
+	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/bytes_used")
+	as.Equal(len(ts.Points), 1)
+	as.Equal(*ts.Points[0].Value.Int64Value, int64(100))
+	as.Equal(ts.Metric.Labels["memory_type"], "evictable")
+}
+
+func TestTranslateMemoryUsedNonEvictable(t *testing.T) {
+	metricValue := generateIntMetric(200)
+	name := core.MetricMemoryWorkingSet.MetricDescriptor.Name
+	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
+
+	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+
+	as := assert.New(t)
+	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/bytes_used")
+	as.Equal(len(ts.Points), 1)
+	as.Equal(*ts.Points[0].Value.Int64Value, int64(200))
+	as.Equal(ts.Metric.Labels["memory_type"], "non-evictable")
+}
+
 func TestTranslateMemoryMajorPageFaults(t *testing.T) {
 	metricValue := generateIntMetric(20)
 	name := "memory/major_page_faults"
@@ -158,14 +188,6 @@ func TestTranslateMemoryMinorPageFaults(t *testing.T) {
 	as.Equal(len(ts.Points), 1)
 	as.Equal(*ts.Points[0].Value.Int64Value, int64(42))
 	as.Equal(ts.Metric.Labels["fault_type"], "minor")
-}
-
-func TestTranslateMemoryBytesUsed(t *testing.T) {
-	as := assert.New(t)
-	value := testTranslateMetric(as, 987, "memory/bytes_used", commonLabels,
-		"container.googleapis.com/container/memory/bytes_used")
-
-	as.Equal(int64(987), *value.Int64Value)
 }
 
 // Test TranslateLabeledMetric

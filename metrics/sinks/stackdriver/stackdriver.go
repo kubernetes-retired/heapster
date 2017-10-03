@@ -15,6 +15,7 @@
 package stackdriver
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -302,6 +303,15 @@ func (sink *StackdriverSink) requestSender(reqQueue chan *sd_api.CreateTimeSerie
 	}
 }
 
+func marshalRequestAndLog(printer func([]byte), req *sd_api.CreateTimeSeriesRequest) {
+	reqJson, errJson := json.Marshal(req)
+	if errJson != nil {
+		glog.Errorf("Couldn't marshal Stackdriver request %v", errJson)
+	} else {
+		printer(reqJson)
+	}
+}
+
 func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest) {
 	startTime := time.Now()
 	empty, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
@@ -309,6 +319,12 @@ func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest)
 	var responseCode int
 	if err != nil {
 		glog.Warningf("Error while sending request to Stackdriver %v", err)
+		// Convert request to json and log it, but only if logging level is equal to 2 or more.
+		if glog.V(2) {
+			marshalRequestAndLog(func(reqJson []byte) {
+				glog.V(2).Infof("The request was: %s", reqJson)
+			}, req)
+		}
 		switch reflect.Indirect(reflect.ValueOf(err)).Type() {
 		case reflect.Indirect(reflect.ValueOf(&googleapi.Error{})).Type():
 			responseCode = err.(*googleapi.Error).Code
@@ -316,6 +332,12 @@ func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest)
 			responseCode = httpResponseCodeUnknown
 		}
 	} else {
+		// Convert request to json and log it, but only if logging level is equal to 10 or more.
+		if glog.V(10) {
+			marshalRequestAndLog(func(reqJson []byte) {
+				glog.V(10).Infof("Stackdriver request sent: %s", reqJson)
+			}, req)
+		}
 		responseCode = empty.ServerResponse.HTTPStatusCode
 	}
 
@@ -498,7 +520,18 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 		return ts
 	case "memory/bytes_used":
 		point := sink.intPoint(timestamp, timestamp, value.IntValue)
-		return createTimeSeries(resourceLabels, memoryBytesUsedMD, point)
+		ts := createTimeSeries(resourceLabels, memoryBytesUsedMD, point)
+		ts.Metric.Labels = map[string]string{
+			"memory_type": "evictable",
+		}
+		return ts
+	case core.MetricMemoryWorkingSet.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, value.IntValue)
+		ts := createTimeSeries(resourceLabels, memoryBytesUsedMD, point)
+		ts.Metric.Labels = map[string]string{
+			"memory_type": "non-evictable",
+		}
+		return ts
 	case "memory/minor_page_faults":
 		point := sink.intPoint(timestamp, createTime, value.IntValue)
 		ts := createTimeSeries(resourceLabels, memoryPageFaultsMD, point)

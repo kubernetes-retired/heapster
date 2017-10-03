@@ -27,7 +27,8 @@ import (
 )
 
 type PodBasedEnricher struct {
-	podLister v1listers.PodLister
+	podLister   v1listers.PodLister
+	labelCopier *util.LabelCopier
 }
 
 func (this *PodBasedEnricher) Name() string {
@@ -46,7 +47,7 @@ func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, e
 				glog.V(3).Infof("Failed to get pod %s from cache: %v", core.PodKey(namespace, podName), err)
 				continue
 			}
-			addPodInfo(k, v, pod, batch, newMs)
+			this.addPodInfo(k, v, pod, batch, newMs)
 		case core.MetricSetTypePodContainer:
 			namespace := v.Labels[core.LabelNamespaceName.Key]
 			podName := v.Labels[core.LabelPodName.Key]
@@ -55,7 +56,7 @@ func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, e
 				glog.V(3).Infof("Failed to get pod %s from cache: %v", core.PodKey(namespace, podName), err)
 				continue
 			}
-			addContainerInfo(k, v, pod, batch, newMs)
+			this.addContainerInfo(k, v, pod, batch, newMs)
 		}
 	}
 	for k, v := range newMs {
@@ -75,7 +76,7 @@ func (this *PodBasedEnricher) getPod(namespace, name string) (*kube_api.Pod, err
 	return pod, nil
 }
 
-func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod, batch *core.DataBatch, newMs map[string]*core.MetricSet) {
+func (this *PodBasedEnricher) addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod, batch *core.DataBatch, newMs map[string]*core.MetricSet) {
 	for _, container := range pod.Spec.Containers {
 		if key == core.PodContainerKey(pod.Namespace, pod.Name, container.Name) {
 			updateContainerResourcesAndLimits(containerMs, container)
@@ -87,7 +88,7 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 	}
 
 	containerMs.Labels[core.LabelPodId.Key] = string(pod.UID)
-	containerMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels)
+	this.labelCopier.Copy(pod.Labels, containerMs.Labels)
 
 	namespace := containerMs.Labels[core.LabelNamespaceName.Key]
 	podName := containerMs.Labels[core.LabelPodName.Key]
@@ -110,16 +111,16 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 				},
 			}
 			newMs[podKey] = podMs
-			addPodInfo(podKey, podMs, pod, batch, newMs)
+			this.addPodInfo(podKey, podMs, pod, batch, newMs)
 		}
 	}
 }
 
-func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *core.DataBatch, newMs map[string]*core.MetricSet) {
+func (this *PodBasedEnricher) addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *core.DataBatch, newMs map[string]*core.MetricSet) {
 
 	// Add UID to pod
 	podMs.Labels[core.LabelPodId.Key] = string(pod.UID)
-	podMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels)
+	this.labelCopier.Copy(pod.Labels, podMs.Labels)
 
 	// Add cpu/mem requests and limits to containers
 	for _, container := range pod.Spec.Containers {
@@ -140,12 +141,12 @@ func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *cor
 				core.LabelContainerName.Key:      container.Name,
 				core.LabelContainerBaseImage.Key: container.Image,
 				core.LabelPodId.Key:              string(pod.UID),
-				core.LabelLabels.Key:             util.LabelsToString(pod.Labels),
 				core.LabelNodename.Key:           podMs.Labels[core.LabelNodename.Key],
 				core.LabelHostname.Key:           podMs.Labels[core.LabelHostname.Key],
 				core.LabelHostID.Key:             podMs.Labels[core.LabelHostID.Key],
 			},
 		}
+		this.labelCopier.Copy(pod.Labels, containerMs.Labels)
 		updateContainerResourcesAndLimits(containerMs, container)
 		newMs[containerKey] = containerMs
 	}
@@ -185,8 +186,9 @@ func intValue(value int64) core.MetricValue {
 	}
 }
 
-func NewPodBasedEnricher(podLister v1listers.PodLister) (*PodBasedEnricher, error) {
+func NewPodBasedEnricher(podLister v1listers.PodLister, labelCopier *util.LabelCopier) (*PodBasedEnricher, error) {
 	return &PodBasedEnricher{
-		podLister: podLister,
+		podLister:   podLister,
+		labelCopier: labelCopier,
 	}, nil
 }
