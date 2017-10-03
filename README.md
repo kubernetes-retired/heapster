@@ -4,13 +4,9 @@
 
 Heapster enables Container Cluster Monitoring and Performance Analysis.
 
-Heapster currently supports [Kubernetes](https://github.com/kubernetes/kubernetes) and CoreOS natively.
-*Heapster is compatible with kubernetes versions starting from v1.0.6 only*
-
-It can be extended to support other cluster management solutions easily.
+Heapster supports [Kubernetes](https://github.com/kubernetes/kubernetes) (versions v1.0.6 and higher), and platforms which include it. 
 
 Heapster collects and interprets various signals like compute resource usage, lifecycle events, etc, and exports cluster metrics via [REST endpoints](docs/model.md).
-**Note: Some of the endpoints are only valid in Kubernetes clusters**
 
 Heapster supports multiple sources of data.
 More information [here](docs/source-configuration.md).
@@ -22,9 +18,10 @@ The current version of Storage Schema is documented [here](docs/storage-schema.m
 
 ### Running Heapster on Kubernetes
 
-To run Heapster on a Kubernetes cluster with,
-- InfluxDB use [this guide](docs/influxdb.md).
-- Google Cloud Monitoring and Google Cloud Logging use [this guide](docs/google.md).
+Heapster can run on a Kubernetes cluster using a number of backends.  Some common choices:
+- [InfluxDB](docs/influxdb.md)
+- [Stackdriver Monitoring Logging](docs/google.md) for Google Cloud Platform
+- [Other backends](docs/)
 
 ### Running Heapster on OpenShift
 
