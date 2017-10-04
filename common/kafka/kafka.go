@@ -124,20 +124,17 @@ func getTopic(opts map[string][]string, topicType string) (string, error) {
 }
 
 func getCompression(opts map[string][]string) (proto.Compression, error) {
-
 	if len(opts[compression]) == 0 {
 		return proto.CompressionNone, nil
 	}
-
 	comp := opts[compression][0]
-
 	switch comp {
 	case "none":
 		return proto.CompressionNone, nil
 	case "gzip":
 		return proto.CompressionGzip, nil
 	default:
-		return proto.CompressionNone, fmt.Errorf("Compression '%s' is illegal. Use none, gzip or snappy", comp)
+		return proto.CompressionNone, fmt.Errorf("Compression '%s' is illegal. Use none or gzip", comp)
 	}
 }
 
