@@ -29,7 +29,7 @@ import (
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	kubelet_client "k8s.io/heapster/metrics/sources/kubelet/util"
-	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
+	"k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 )
 
 type Host struct {
@@ -140,7 +140,7 @@ func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) 
 	return self.getAllContainers(url, start, end)
 }
 
-func (self *KubeletClient) GetSummary(host Host) (*stats.Summary, error) {
+func (self *KubeletClient) GetSummary(host Host) (*v1alpha1.Summary, error) {
 	url := url.URL{
 		Scheme: "http",
 		Host:   fmt.Sprintf("%s:%d", host.IP, host.Port),
@@ -154,7 +154,7 @@ func (self *KubeletClient) GetSummary(host Host) (*stats.Summary, error) {
 	if err != nil {
 		return nil, err
 	}
-	summary := &stats.Summary{}
+	summary := &v1alpha1.Summary{}
 	client := self.client
 	if client == nil {
 		client = http.DefaultClient

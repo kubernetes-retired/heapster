@@ -28,15 +28,14 @@ import (
 	"golang.org/x/net/context"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
+	utilcache "k8s.io/apimachinery/pkg/util/cache"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/etcd/metrics"
 	etcdutil "k8s.io/apiserver/pkg/storage/etcd/util"
-	utilcache "k8s.io/apiserver/pkg/util/cache"
 	utiltrace "k8s.io/apiserver/pkg/util/trace"
 )
 
@@ -129,6 +128,9 @@ func (h *etcdHelper) Create(ctx context.Context, key string, obj, out runtime.Ob
 	if version, err := h.versioner.ObjectResourceVersion(obj); err == nil && version != 0 {
 		return errors.New("resourceVersion may not be set on objects to be created")
 	}
+	if err := h.versioner.PrepareObjectForStorage(obj); err != nil {
+		return fmt.Errorf("PrepareObjectForStorage returned an error: %v", err)
+	}
 	trace.Step("Version checked")
 
 	startTime := time.Now()
@@ -161,12 +163,12 @@ func checkPreconditions(key string, preconditions *storage.Preconditions, out ru
 	if preconditions == nil {
 		return nil
 	}
-	objMeta, err := metav1.ObjectMetaFor(out)
+	objMeta, err := meta.Accessor(out)
 	if err != nil {
 		return storage.NewInternalErrorf("can't enforce preconditions %v on un-introspectable object %v, got error: %v", *preconditions, out, err)
 	}
-	if preconditions.UID != nil && *preconditions.UID != objMeta.UID {
-		errMsg := fmt.Sprintf("Precondition failed: UID in precondition: %v, UID in object meta: %v", preconditions.UID, objMeta.UID)
+	if preconditions.UID != nil && *preconditions.UID != objMeta.GetUID() {
+		errMsg := fmt.Sprintf("Precondition failed: UID in precondition: %v, UID in object meta: %v", preconditions.UID, objMeta.GetUID())
 		return storage.NewInvalidObjError(key, errMsg)
 	}
 	return nil
@@ -363,7 +365,7 @@ func (h *etcdHelper) GetToList(ctx context.Context, key string, resourceVersion 
 		return err
 	}
 	trace.Step("Object decoded")
-	if err := h.versioner.UpdateList(listObj, response.Index); err != nil {
+	if err := h.versioner.UpdateList(listObj, response.Index, ""); err != nil {
 		return err
 	}
 	return nil
@@ -380,11 +382,12 @@ func (h *etcdHelper) decodeNodeList(nodes []*etcd.Node, filter storage.FilterFun
 	}
 	for _, node := range nodes {
 		if node.Dir {
-			trace.Step("Decoding dir " + node.Key + " START")
+			// IMPORTANT: do not log each key as a discrete step in the trace log
+			// as it produces an immense amount of log spam when there is a large
+			// amount of content in the list.
 			if err := h.decodeNodeList(node.Nodes, filter, slicePtr); err != nil {
 				return err
 			}
-			trace.Step("Decoding dir " + node.Key + " END")
 			continue
 		}
 		if obj, found := h.getFromCache(node.ModifiedIndex, filter); found {
@@ -442,7 +445,7 @@ func (h *etcdHelper) List(ctx context.Context, key string, resourceVersion strin
 		return err
 	}
 	trace.Step("Node list decoded")
-	if err := h.versioner.UpdateList(listObj, index); err != nil {
+	if err := h.versioner.UpdateList(listObj, index, ""); err != nil {
 		return err
 	}
 	return nil
@@ -530,7 +533,7 @@ func (h *etcdHelper) GuaranteedUpdate(
 		}
 
 		// Since update object may have a resourceVersion set, we need to clear it here.
-		if err := h.versioner.UpdateObject(ret, 0); err != nil {
+		if err := h.versioner.PrepareObjectForStorage(ret); err != nil {
 			return errors.New("resourceVersion cannot be set on objects store in etcd")
 		}
 
@@ -609,12 +612,7 @@ func (h *etcdHelper) getFromCache(index uint64, filter storage.FilterFunc) (runt
 		}
 		// We should not return the object itself to avoid polluting the cache if someone
 		// modifies returned values.
-		objCopy, err := h.copier.Copy(obj.(runtime.Object))
-		if err != nil {
-			glog.Errorf("Error during DeepCopy of cached object: %q", err)
-			// We can't return a copy, thus we report the object as not found.
-			return nil, false
-		}
+		objCopy := obj.(runtime.Object).DeepCopyObject()
 		metrics.ObserveCacheHit()
 		return objCopy.(runtime.Object), true
 	}
@@ -627,11 +625,7 @@ func (h *etcdHelper) addToCache(index uint64, obj runtime.Object) {
 	defer func() {
 		metrics.ObserveAddCache(startTime)
 	}()
-	objCopy, err := h.copier.Copy(obj)
-	if err != nil {
-		glog.Errorf("Error during DeepCopy of cached object: %q", err)
-		return
-	}
+	objCopy := obj.DeepCopyObject()
 	isOverwrite := h.cache.Add(index, objCopy)
 	if !isOverwrite {
 		metrics.ObserveNewEntry()

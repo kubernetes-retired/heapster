@@ -29,7 +29,6 @@ import (
 type StorageDecorator func(
 	copier runtime.ObjectCopier,
 	config *storagebackend.Config,
-	capacity int,
 	objectType runtime.Object,
 	resourcePrefix string,
 	keyFunc func(obj runtime.Object) (string, error),
@@ -42,7 +41,6 @@ type StorageDecorator func(
 func UndecoratedStorage(
 	copier runtime.ObjectCopier,
 	config *storagebackend.Config,
-	capacity int,
 	objectType runtime.Object,
 	resourcePrefix string,
 	keyFunc func(obj runtime.Object) (string, error),

@@ -17,11 +17,11 @@ limitations under the License.
 package v1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	api "k8s.io/client-go/pkg/api"
-	v1 "k8s.io/client-go/pkg/api/v1"
+	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
@@ -57,6 +57,38 @@ func newNamespaces(c *CoreV1Client) *namespaces {
 	}
 }
 
+// Get takes name of the namespace, and returns the corresponding namespace object, and an error if there is any.
+func (c *namespaces) Get(name string, options meta_v1.GetOptions) (result *v1.Namespace, err error) {
+	result = &v1.Namespace{}
+	err = c.client.Get().
+		Resource("namespaces").
+		Name(name).
+		VersionedParams(&options, scheme.ParameterCodec).
+		Do().
+		Into(result)
+	return
+}
+
+// List takes label and field selectors, and returns the list of Namespaces that match those selectors.
+func (c *namespaces) List(opts meta_v1.ListOptions) (result *v1.NamespaceList, err error) {
+	result = &v1.NamespaceList{}
+	err = c.client.Get().
+		Resource("namespaces").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Do().
+		Into(result)
+	return
+}
+
+// Watch returns a watch.Interface that watches the requested namespaces.
+func (c *namespaces) Watch(opts meta_v1.ListOptions) (watch.Interface, error) {
+	opts.Watch = true
+	return c.client.Get().
+		Resource("namespaces").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Watch()
+}
+
 // Create takes the representation of a namespace and creates it.  Returns the server's representation of the namespace, and an error, if there is any.
 func (c *namespaces) Create(namespace *v1.Namespace) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
@@ -81,7 +113,7 @@ func (c *namespaces) Update(namespace *v1.Namespace) (result *v1.Namespace, err 
 }
 
 // UpdateStatus was generated because the type contains a Status member.
-// Add a +genclientstatus=false comment above the type to avoid generating UpdateStatus().
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 
 func (c *namespaces) UpdateStatus(namespace *v1.Namespace) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
@@ -109,42 +141,10 @@ func (c *namespaces) Delete(name string, options *meta_v1.DeleteOptions) error {
 func (c *namespaces) DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error {
 	return c.client.Delete().
 		Resource("namespaces").
-		VersionedParams(&listOptions, api.ParameterCodec).
+		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Body(options).
 		Do().
 		Error()
-}
-
-// Get takes name of the namespace, and returns the corresponding namespace object, and an error if there is any.
-func (c *namespaces) Get(name string, options meta_v1.GetOptions) (result *v1.Namespace, err error) {
-	result = &v1.Namespace{}
-	err = c.client.Get().
-		Resource("namespaces").
-		Name(name).
-		VersionedParams(&options, api.ParameterCodec).
-		Do().
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of Namespaces that match those selectors.
-func (c *namespaces) List(opts meta_v1.ListOptions) (result *v1.NamespaceList, err error) {
-	result = &v1.NamespaceList{}
-	err = c.client.Get().
-		Resource("namespaces").
-		VersionedParams(&opts, api.ParameterCodec).
-		Do().
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested namespaces.
-func (c *namespaces) Watch(opts meta_v1.ListOptions) (watch.Interface, error) {
-	return c.client.Get().
-		Prefix("watch").
-		Resource("namespaces").
-		VersionedParams(&opts, api.ParameterCodec).
-		Watch()
 }
 
 // Patch applies the patch and returns the patched namespace.

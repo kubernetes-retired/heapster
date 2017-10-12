@@ -1,5 +1,5 @@
 /*
-   Copyright 2015-2017 Red Hat, Inc. and/or its affiliates
+   Copyright 2015-2016 Red Hat, Inc. and/or its affiliates
    and other contributors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +20,7 @@ package metrics
 import (
 	"crypto/tls"
 	"encoding/json"
-	// "fmt"
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -37,22 +37,17 @@ type Parameters struct {
 	Tenant      string // Technically optional, but requires setting Tenant() option everytime
 	Url         string
 	TLSConfig   *tls.Config
-	Username    string
-	Password    string
 	Token       string
 	Concurrency int
-	AdminToken  string
 }
 
 // Client is HawkularClient's internal data structure
 type Client struct {
-	Tenant      string
-	url         *url.URL
-	client      *http.Client
-	Credentials string // base64 encoded username/password for Basic header
-	Token       string // authentication token for Bearer header
-	AdminToken  string // authentication for items behind admin token
-	pool        chan (*poolRequest)
+	Tenant string
+	url    *url.URL
+	client *http.Client
+	Token  string
+	pool   chan (*poolRequest)
 }
 
 type poolRequest struct {
@@ -80,15 +75,75 @@ type Filter func(r *http.Request)
 type Endpoint func(u *url.URL)
 
 // MetricType restrictions
-type MetricType string
+type MetricType int
 
 const (
-	Gauge        MetricType = "gauge"
-	Availability            = "availability"
-	Counter                 = "counter"
-	Generic                 = "metrics"
-	String                  = "string"
+	Gauge = iota
+	Availability
+	Counter
+	Generic
 )
+
+var longForm = []string{
+	"gauges",
+	"availability",
+	"counters",
+	"metrics",
+}
+
+var shortForm = []string{
+	"gauge",
+	"availability",
+	"counter",
+	"metrics",
+}
+
+func (mt MetricType) validate() error {
+	if int(mt) > len(longForm) && int(mt) > len(shortForm) {
+		return fmt.Errorf("Given MetricType value %d is not valid", mt)
+	}
+	return nil
+}
+
+// String is a convenience function to return string representation of type
+func (mt MetricType) String() string {
+	if err := mt.validate(); err != nil {
+		return "unknown"
+	}
+	return longForm[mt]
+}
+
+func (mt MetricType) shortForm() string {
+	if err := mt.validate(); err != nil {
+		return "unknown"
+	}
+	return shortForm[mt]
+}
+
+// UnmarshalJSON is a custom unmarshaller for MetricType (from string representation)
+func (mt *MetricType) UnmarshalJSON(b []byte) error {
+	var f interface{}
+	err := json.Unmarshal(b, &f)
+	if err != nil {
+		return err
+	}
+
+	if str, ok := f.(string); ok {
+		for i, v := range shortForm {
+			if str == v {
+				*mt = MetricType(i)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// MarshalJSON is a custom marshaller for MetricType (using string representation)
+func (mt MetricType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(mt.String())
+}
 
 // MetricHeader is the header struct for time series, which has identifiers (tenant, type, id) for uniqueness
 // and []Datapoint to describe the actual time series values.
@@ -158,38 +213,15 @@ type MetricDefinition struct {
 
 // Bucketpoint is a return structure for bucketed data requests (stats endpoint)
 type Bucketpoint struct {
-	Start       time.Time    `json:"-"`
-	End         time.Time    `json:"-"`
+	Start       int64        `json:"start"`
+	End         int64        `json:"end"`
 	Min         float64      `json:"min"`
 	Max         float64      `json:"max"`
 	Avg         float64      `json:"avg"`
 	Median      float64      `json:"median"`
 	Empty       bool         `json:"empty"`
-	Samples     uint64       `json:"samples"`
+	Samples     int64        `json:"samples"`
 	Percentiles []Percentile `json:"percentiles"`
-}
-
-type bucketpoint Bucketpoint
-
-type bucketpointJSON struct {
-	bucketpoint
-	StartTs int64 `json:"start"`
-	EndTs   int64 `json:"end"`
-}
-
-// UnmarshalJSON is a custom unmarshaller to transform int64 timestamps to time.Time
-func (b *Bucketpoint) UnmarshalJSON(payload []byte) error {
-	bp := bucketpointJSON{}
-	err := json.Unmarshal(payload, &bp)
-	if err != nil {
-		return err
-	}
-
-	*b = Bucketpoint(bp.bucketpoint)
-	b.Start = FromUnixMilli(bp.StartTs)
-	b.End = FromUnixMilli(bp.EndTs)
-
-	return nil
 }
 
 // Percentile is Hawkular-Metrics' estimated (not exact) percentile
@@ -208,7 +240,7 @@ const (
 	DESC
 )
 
-// String returns a string representation of type
+// String Get string representation of type
 func (o Order) String() string {
 	switch o {
 	case ASC:
@@ -217,10 +249,4 @@ func (o Order) String() string {
 		return "DESC"
 	}
 	return ""
-}
-
-// TenantDefinition is the structure that defines a tenant
-type TenantDefinition struct {
-	ID         string             `json:"id"`
-	Retentions map[MetricType]int `json:"retentions"`
 }

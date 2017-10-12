@@ -1,5 +1,5 @@
 /*
-   Copyright 2015-2017 Red Hat, Inc. and/or its affiliates
+   Copyright 2015-2016 Red Hat, Inc. and/or its affiliates
    and other contributors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +19,6 @@ package metrics
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -31,6 +30,12 @@ import (
 	"time"
 )
 
+// TODO Instrumentation? To get statistics?
+// TODO Change Datapoint -> time.Time (and fix the JSON marshalling / unmarshalling..)
+// TODO Fix buckets to use time.Time also
+// TODO Fix documentation to make all those functions are sentences (godoc)
+// TODO Allow tracking (with syncgroup) when time series have been written to Hawkular-Metrics
+
 func (c *HawkularClientError) Error() string {
 	return fmt.Sprintf("Hawkular returned status code %d, error message: %s", c.Code, c.msg)
 }
@@ -41,27 +46,17 @@ const (
 	baseURL            string        = "hawkular/metrics"
 	defaultConcurrency int           = 1
 	timeout            time.Duration = time.Duration(30 * time.Second)
-	tenantHeader       string        = "Hawkular-Tenant"
-	adminHeader        string        = "Hawkular-Admin-Token"
 )
 
-// Tenant function replaces the Tenant in the request (instead of using the default in Client parameters)
+// Tenant Override function to replace the Tenant (defaults to Client default)
 func Tenant(tenant string) Modifier {
 	return func(r *http.Request) error {
-		r.Header.Set(tenantHeader, tenant)
+		r.Header.Set("Hawkular-Tenant", tenant)
 		return nil
 	}
 }
 
-// AdminAuthentication function to add metrics' admin token to the request
-func AdminAuthentication(token string) Modifier {
-	return func(r *http.Request) error {
-		r.Header.Add(adminHeader, token)
-		return nil
-	}
-}
-
-// Data adds payload to the request
+// Data Add payload to the request
 func Data(data interface{}) Modifier {
 	return func(r *http.Request) error {
 		jsonb, err := json.Marshal(data)
@@ -73,6 +68,8 @@ func Data(data interface{}) Modifier {
 		rc := ioutil.NopCloser(b)
 		r.Body = rc
 
+		// fmt.Printf("Sending: %s\n", string(jsonb))
+
 		if b != nil {
 			r.ContentLength = int64(b.Len())
 		}
@@ -80,10 +77,9 @@ func Data(data interface{}) Modifier {
 	}
 }
 
-// URL sets the request URL
-func (c *Client) URL(method string, e ...Endpoint) Modifier {
+// URL Set the request URL
+func (c *Client) Url(method string, e ...Endpoint) Modifier {
 	// TODO Create composite URLs? Add().Add().. etc? Easier to modify on the fly..
-	// And also remove the necessary order of Adds
 	return func(r *http.Request) error {
 		u := c.createURL(e...)
 		r.URL = u
@@ -92,7 +88,7 @@ func (c *Client) URL(method string, e ...Endpoint) Modifier {
 	}
 }
 
-// Filters allows using multiple Filter types in the same request
+// Filters Multiple Filter types to execute
 func Filters(f ...Filter) Modifier {
 	return func(r *http.Request) error {
 		for _, filter := range f {
@@ -102,7 +98,7 @@ func Filters(f ...Filter) Modifier {
 	}
 }
 
-// Param adds query parameters to the request
+// Param Add query parameters
 func Param(k string, v string) Filter {
 	return func(r *http.Request) {
 		q := r.URL.Query()
@@ -111,51 +107,38 @@ func Param(k string, v string) Filter {
 	}
 }
 
-// TypeFilter is a query parameter to filter by type
+// TypeFilter Query parameter filtering with type
 func TypeFilter(t MetricType) Filter {
-	return Param("type", fmt.Sprint(t))
+	return Param("type", t.shortForm())
 }
 
-// TagsFilter is a query parameter to filter with tags query
+// TagsFilter Query parameter filtering with tags
 func TagsFilter(t map[string]string) Filter {
-	j := tagsEncoder(t, false)
+	j := tagsEncoder(t)
 	return Param("tags", j)
 }
 
-// TagsQueryFilter is a query parameter for the new style tags query language
-func TagsQueryFilter(query ...string) Filter {
-	tagQl := strings.Join(query, " AND ")
-	return Param("tags", tagQl)
-}
-
-// IdFilter is a query parameter to add filtering by id name
+// IdFilter Query parameter to add filtering by id name
 func IdFilter(regexp string) Filter {
 	return Param("id", regexp)
 }
 
-// StartTimeFilter is a query parameter to filter with start time
+// StartTimeFilter Query parameter to filter with start time
 func StartTimeFilter(startTime time.Time) Filter {
-	// return Param("start", strconv.Itoa(int(startTime.Unix())))
-	return Param("start", strconv.Itoa(int(ToUnixMilli(startTime))))
+	return Param("start", strconv.Itoa(int(startTime.Unix())))
 }
 
-// EndTimeFilter is a query parameter to filter with end time
+// EndTimeFilter Query parameter to filter with end time
 func EndTimeFilter(endTime time.Time) Filter {
-	return Param("end", strconv.Itoa(int(ToUnixMilli(endTime))))
+	return Param("end", strconv.Itoa(int(endTime.Unix())))
 }
 
-// BucketsFilter is a query parameter to define amount of buckets
+// BucketsFilter Query parameter to define amount of buckets
 func BucketsFilter(buckets int) Filter {
 	return Param("buckets", strconv.Itoa(buckets))
 }
 
-// BucketsDurationFilter is a query parameter to set the size of a bucket based on duration
-// Minimum supported bucket is 1 millisecond
-func BucketsDurationFilter(duration time.Duration) Filter {
-	return Param("bucketDuration", fmt.Sprintf("%dms", (duration.Nanoseconds()/1e6)))
-}
-
-// LimitFilter is a query parameter to limit result count
+// LimitFilter Query parameter to limit result count
 func LimitFilter(limit int) Filter {
 	return Param("limit", strconv.Itoa(limit))
 }
@@ -165,17 +148,17 @@ func OrderFilter(order Order) Filter {
 	return Param("order", order.String())
 }
 
-// StartFromBeginningFilter returns data from the oldest stored datapoint
+// StartFromBeginningFilter Return data from the oldest stored datapoint
 func StartFromBeginningFilter() Filter {
 	return Param("fromEarliest", "true")
 }
 
-// StackedFilter forces downsampling of stacked return values
+// StackedFilter Force downsampling of stacked return values
 func StackedFilter() Filter {
 	return Param("stacked", "true")
 }
 
-// PercentilesFilter is a query parameter to define the requested percentiles
+// PercentilesFilter Query parameter to define the requested percentiles
 func PercentilesFilter(percentiles []float64) Filter {
 	s := make([]string, 0, len(percentiles))
 	for _, v := range percentiles {
@@ -196,11 +179,7 @@ func (c *Client) createRequest() *http.Request {
 		Host:       c.url.Host,
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add(tenantHeader, c.Tenant)
-
-	if len(c.Credentials) > 0 {
-		req.Header.Add("Authorization", fmt.Sprintf("Basic %s", c.Credentials))
-	}
+	req.Header.Add("Hawkular-Tenant", c.Tenant)
 
 	if len(c.Token) > 0 {
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token))
@@ -209,8 +188,7 @@ func (c *Client) createRequest() *http.Request {
 	return req
 }
 
-// Send sends a constructed request to the Hawkular-Metrics server.
-// All the requests are pooled and limited by set concurrency limits
+// Send Sends a constructed request to the Hawkular-Metrics server
 func (c *Client) Send(o ...Modifier) (*http.Response, error) {
 	// Initialize
 	r := c.createRequest()
@@ -236,64 +214,10 @@ func (c *Client) Send(o ...Modifier) (*http.Response, error) {
 
 // Commands
 
-// Tenants returns a list of tenants from the server
-func (c *Client) Tenants(o ...Modifier) ([]*TenantDefinition, error) {
-	o = prepend(o, c.URL("GET", TenantEndpoint()), AdminAuthentication(c.AdminToken))
-
-	r, err := c.Send(o...)
-	if err != nil {
-		return nil, err
-	}
-
-	defer r.Body.Close()
-
-	if r.StatusCode == http.StatusOK {
-		b, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			return nil, err
-		}
-		tenants := []*TenantDefinition{}
-		if b != nil {
-			if err = json.Unmarshal(b, &tenants); err != nil {
-				return nil, err
-			}
-		}
-		return tenants, err
-	} else if r.StatusCode > 399 {
-		return nil, c.parseErrorResponse(r)
-	}
-
-	return nil, nil
-}
-
-// CreateTenant creates a tenant definition on the server
-func (c *Client) CreateTenant(tenant TenantDefinition, o ...Modifier) (bool, error) {
-	o = prepend(o, c.URL("POST", TenantEndpoint()), AdminAuthentication(c.AdminToken), Data(tenant))
-
-	r, err := c.Send(o...)
-	if err != nil {
-		return false, err
-	}
-
-	defer r.Body.Close()
-
-	if r.StatusCode > 399 {
-		err = c.parseErrorResponse(r)
-		if err, ok := err.(*HawkularClientError); ok {
-			if err.Code != http.StatusConflict {
-				return false, err
-			}
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-// Create creates a new metric definition
+// Create Creates new metric Definition
 func (c *Client) Create(md MetricDefinition, o ...Modifier) (bool, error) {
 	// Keep the order, add custom prepend
-	o = prepend(o, c.URL("POST", TypeEndpoint(md.Type)), Data(md))
+	o = prepend(o, c.Url("POST", TypeEndpoint(md.Type)), Data(md))
 
 	r, err := c.Send(o...)
 	if err != nil {
@@ -307,17 +231,18 @@ func (c *Client) Create(md MetricDefinition, o ...Modifier) (bool, error) {
 		if err, ok := err.(*HawkularClientError); ok {
 			if err.Code != http.StatusConflict {
 				return false, err
+			} else {
+				return false, nil
 			}
-			return false, nil
 		}
 		return false, err
 	}
 	return true, nil
 }
 
-// Definitions fetches metric definitions from the server
+// Definitions Fetch metric definitions
 func (c *Client) Definitions(o ...Modifier) ([]*MetricDefinition, error) {
-	o = prepend(o, c.URL("GET", TypeEndpoint(Generic)))
+	o = prepend(o, c.Url("GET", TypeEndpoint(Generic)))
 
 	r, err := c.Send(o...)
 	if err != nil {
@@ -345,9 +270,9 @@ func (c *Client) Definitions(o ...Modifier) ([]*MetricDefinition, error) {
 	return nil, nil
 }
 
-// Definition returns a single metric definition
+// Definition Return a single definition
 func (c *Client) Definition(t MetricType, id string, o ...Modifier) (*MetricDefinition, error) {
-	o = prepend(o, c.URL("GET", TypeEndpoint(t), SingleMetricEndpoint(id)))
+	o = prepend(o, c.Url("GET", TypeEndpoint(t), SingleMetricEndpoint(id)))
 
 	r, err := c.Send(o...)
 	if err != nil {
@@ -375,9 +300,9 @@ func (c *Client) Definition(t MetricType, id string, o ...Modifier) (*MetricDefi
 	return nil, nil
 }
 
-// TagValues queries for available tagValues
+// TagValues Query available tagValues with a TagsFilter, TypeFilter
 func (c *Client) TagValues(tagQuery map[string]string, o ...Modifier) (map[string][]string, error) {
-	o = prepend(o, c.URL("GET", TypeEndpoint(Generic), TagEndpoint(), TagsEndpoint(tagQuery)))
+	o = prepend(o, c.Url("GET", TypeEndpoint(Generic), TagEndpoint(), TagsEndpoint(tagQuery)))
 
 	r, err := c.Send(o...)
 	if err != nil {
@@ -405,9 +330,9 @@ func (c *Client) TagValues(tagQuery map[string]string, o ...Modifier) (map[strin
 	return nil, nil
 }
 
-// UpdateTags modifies the tags of a metric definition
+// UpdateTags Update tags of a metric (or create if not existing)
 func (c *Client) UpdateTags(t MetricType, id string, tags map[string]string, o ...Modifier) error {
-	o = prepend(o, c.URL("PUT", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint()), Data(tags))
+	o = prepend(o, c.Url("PUT", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint()), Data(tags))
 
 	r, err := c.Send(o...)
 	if err != nil {
@@ -423,9 +348,9 @@ func (c *Client) UpdateTags(t MetricType, id string, tags map[string]string, o .
 	return nil
 }
 
-// DeleteTags deletes given tags from the definition
-func (c *Client) DeleteTags(t MetricType, id string, tags []string, o ...Modifier) error {
-	o = prepend(o, c.URL("DELETE", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint(), TagNamesEndpoint(tags)))
+// DeleteTags Delete given tags from the definition
+func (c *Client) DeleteTags(t MetricType, id string, tags map[string]string, o ...Modifier) error {
+	o = prepend(o, c.Url("DELETE", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint(), TagsEndpoint(tags)))
 
 	r, err := c.Send(o...)
 	if err != nil {
@@ -441,9 +366,9 @@ func (c *Client) DeleteTags(t MetricType, id string, tags []string, o ...Modifie
 	return nil
 }
 
-// Tags fetches metric definition's tags
+// Tags Fetch metric definition's tags
 func (c *Client) Tags(t MetricType, id string, o ...Modifier) (map[string]string, error) {
-	o = prepend(o, c.URL("GET", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint()))
+	o = prepend(o, c.Url("GET", TypeEndpoint(t), SingleMetricEndpoint(id), TagEndpoint()))
 
 	r, err := c.Send(o...)
 	if err != nil {
@@ -471,7 +396,7 @@ func (c *Client) Tags(t MetricType, id string, o ...Modifier) (map[string]string
 	return nil, nil
 }
 
-// Write writes datapoints to the server
+// Write Write datapoints to the server
 func (c *Client) Write(metrics []MetricHeader, o ...Modifier) error {
 	if len(metrics) > 0 {
 		mHs := make(map[MetricType][]MetricHeader)
@@ -492,7 +417,7 @@ func (c *Client) Write(metrics []MetricHeader, o ...Modifier) error {
 
 				// Should be sorted and splitted by type & tenant..
 				on := o
-				on = prepend(on, c.URL("POST", TypeEndpoint(k), RawEndpoint()), Data(v))
+				on = prepend(on, c.Url("POST", TypeEndpoint(k), RawEndpoint()), Data(v))
 
 				r, err := c.Send(on...)
 				if err != nil {
@@ -522,9 +447,9 @@ func (c *Client) Write(metrics []MetricHeader, o ...Modifier) error {
 	return nil
 }
 
-// ReadRaw reads metric datapoints from the server for the given metric
-func (c *Client) ReadRaw(t MetricType, id string, o ...Modifier) ([]*Datapoint, error) {
-	o = prepend(o, c.URL("GET", TypeEndpoint(t), SingleMetricEndpoint(id), RawEndpoint()))
+// ReadMetric Read metric datapoints from the server
+func (c *Client) ReadMetric(t MetricType, id string, o ...Modifier) ([]*Datapoint, error) {
+	o = prepend(o, c.Url("GET", TypeEndpoint(t), SingleMetricEndpoint(id), RawEndpoint()))
 
 	r, err := c.Send(o...)
 	if err != nil {
@@ -553,9 +478,9 @@ func (c *Client) ReadRaw(t MetricType, id string, o ...Modifier) ([]*Datapoint, 
 	return nil, nil
 }
 
-// ReadBuckets reads datapoints from the server, aggregated to buckets with given parameters.
+// ReadBuckets Read datapoints from the server with in buckets (aggregates)
 func (c *Client) ReadBuckets(t MetricType, o ...Modifier) ([]*Bucketpoint, error) {
-	o = prepend(o, c.URL("GET", TypeEndpoint(t), StatsEndpoint()))
+	o = prepend(o, c.Url("GET", TypeEndpoint(t), StatsEndpoint()))
 
 	r, err := c.Send(o...)
 	if err != nil {
@@ -585,19 +510,11 @@ func (c *Client) ReadBuckets(t MetricType, o ...Modifier) ([]*Bucketpoint, error
 	return nil, nil
 }
 
-// NewHawkularClient returns a new initialized instance of client
+// NewHawkularClient Initialization
 func NewHawkularClient(p Parameters) (*Client, error) {
 	uri, err := url.Parse(p.Url)
 	if err != nil {
 		return nil, err
-	}
-
-	if (p.Username != "" && p.Password == "") || (p.Username == "" && p.Password != "") {
-		return nil, fmt.Errorf("To configure credentials, you must specify both Username and Password")
-	}
-
-	if (p.Username != "" && p.Password != "") && (p.Token != "") {
-		return nil, fmt.Errorf("You cannot specify both Username/Password credentials and a Token.")
 	}
 
 	if uri.Path == "" {
@@ -608,7 +525,7 @@ func NewHawkularClient(p Parameters) (*Client, error) {
 		Host:   uri.Host,
 		Path:   uri.Path,
 		Scheme: uri.Scheme,
-		Opaque: fmt.Sprintf("/%s", uri.Path),
+		Opaque: fmt.Sprintf("//%s/%s", uri.Host, uri.Path),
 	}
 
 	c := &http.Client{
@@ -619,23 +536,16 @@ func NewHawkularClient(p Parameters) (*Client, error) {
 		c.Transport = transport
 	}
 
-	var creds string
-	if p.Username != "" && p.Password != "" {
-		creds = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%v:%v", p.Username, p.Password)))
-	}
-
 	if p.Concurrency < 1 {
 		p.Concurrency = 1
 	}
 
 	client := &Client{
-		url:         u,
-		Tenant:      p.Tenant,
-		Credentials: creds,
-		Token:       p.Token,
-		AdminToken:  p.AdminToken,
-		client:      c,
-		pool:        make(chan *poolRequest, p.Concurrency),
+		url:    u,
+		Tenant: p.Tenant,
+		Token:  p.Token,
+		client: c,
+		pool:   make(chan *poolRequest, p.Concurrency),
 	}
 
 	for i := 0; i < p.Concurrency; i++ {
@@ -645,7 +555,7 @@ func NewHawkularClient(p Parameters) (*Client, error) {
 	return client, nil
 }
 
-// Close safely closes the Hawkular-Metrics client and flushes remaining writes to the server
+// Close Safely close the Hawkular-Metrics client and flush remaining work
 func (c *Client) Close() {
 	close(c.pool)
 }
@@ -685,70 +595,42 @@ func (c *Client) createURL(e ...Endpoint) *url.URL {
 	return &mu
 }
 
-// TenantEndpoint is a URL endpoint to fetch tenant related information
-func TenantEndpoint() Endpoint {
-	return func(u *url.URL) {
-		addToURL(u, "tenants")
-	}
-}
-
-// TypeEndpoint is a URL endpoint setting metricType
+// TypeEndpoint URL endpoint setting metricType
 func TypeEndpoint(t MetricType) Endpoint {
 	return func(u *url.URL) {
-		switch t {
-		case Gauge:
-			addToURL(u, "gauges")
-		case Counter:
-			addToURL(u, "counters")
-		case String:
-			addToURL(u, "strings")
-		default:
-			addToURL(u, string(t))
-		}
+		addToURL(u, t.String())
 	}
 }
 
-// SingleMetricEndpoint is a URL endpoint for requesting single metricID
+// SingleMetricEndpoint URL endpoint for requesting single metricID
 func SingleMetricEndpoint(id string) Endpoint {
 	return func(u *url.URL) {
-		addToURL(u, URLEscape(id))
+		addToURL(u, url.QueryEscape(id))
 	}
 }
 
-// TagEndpoint is a URL endpoint to check tags information
+// TagEndpoint URL endpoint to check tags information
 func TagEndpoint() Endpoint {
 	return func(u *url.URL) {
 		addToURL(u, "tags")
 	}
 }
 
-// TagsEndpoint is a URL endpoint which adds tags query
+// TagsEndpoint URL endpoint which adds tags query
 func TagsEndpoint(tags map[string]string) Endpoint {
 	return func(u *url.URL) {
-		addToURL(u, tagsEncoder(tags, true))
+		addToURL(u, tagsEncoder(tags))
 	}
 }
 
-// TagNamesEndpoint is a URL endpoint which adds tags names (no values)
-func TagNamesEndpoint(tagNames []string) Endpoint {
-	return func(u *url.URL) {
-		escapedNames := make([]string, 0, len(tagNames))
-		for _, v := range tagNames {
-			escapedNames = append(escapedNames, URLEscape(v))
-		}
-		tags := strings.Join(escapedNames, ",")
-		addToURL(u, tags)
-	}
-}
-
-// RawEndpoint is an endpoint to read and write raw datapoints
+// RawEndpoint Endpoint to read and write raw datapoints
 func RawEndpoint() Endpoint {
 	return func(u *url.URL) {
 		addToURL(u, "raw")
 	}
 }
 
-// StatsEndpoint is an endpoint to read aggregated metrics
+// StatsEndpoint Endpoint to read aggregated metrics
 func StatsEndpoint() Endpoint {
 	return func(u *url.URL) {
 		addToURL(u, "stats")
@@ -760,22 +642,11 @@ func addToURL(u *url.URL, s string) *url.URL {
 	return u
 }
 
-func tagsEncoder(t map[string]string, escape bool) string {
+func tagsEncoder(t map[string]string) string {
 	tags := make([]string, 0, len(t))
 	for k, v := range t {
-		if escape {
-			k = URLEscape(k)
-			v = URLEscape(v)
-		}
 		tags = append(tags, fmt.Sprintf("%s:%s", k, v))
 	}
 	j := strings.Join(tags, ",")
 	return j
-}
-
-// URLEscape Is a fixed version of Golang's URL escaping handling
-func URLEscape(input string) string {
-	escaped := url.QueryEscape(input)
-	escaped = strings.Replace(escaped, "+", "%20", -1)
-	return escaped
 }
