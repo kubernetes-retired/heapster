@@ -2,15 +2,9 @@
 
 [![GoDoc](https://godoc.org/k8s.io/heapster?status.svg)](https://godoc.org/k8s.io/heapster) [![Build Status](https://travis-ci.org/kubernetes/heapster.svg?branch=master)](https://travis-ci.org/kubernetes/heapster)  [![Go Report Card](https://goreportcard.com/badge/github.com/kubernetes/heapster)](https://goreportcard.com/report/github.com/kubernetes/heapster)
 
-Heapster enables Container Cluster Monitoring and Performance Analysis.
-
-Heapster currently supports [Kubernetes](https://github.com/kubernetes/kubernetes) and CoreOS natively.
-*Heapster is compatible with kubernetes versions starting from v1.0.6 only*
-
-It can be extended to support other cluster management solutions easily.
+Heapster enables Container Cluster Monitoring and Performance Analysis for [Kubernetes](https://github.com/kubernetes/kubernetes) (versions v1.0.6 and higher), and platforms which include it. 
 
 Heapster collects and interprets various signals like compute resource usage, lifecycle events, etc, and exports cluster metrics via [REST endpoints](docs/model.md).
-**Note: Some of the endpoints are only valid in Kubernetes clusters**
 
 Heapster supports multiple sources of data.
 More information [here](docs/source-configuration.md).
@@ -22,9 +16,10 @@ The current version of Storage Schema is documented [here](docs/storage-schema.m
 
 ### Running Heapster on Kubernetes
 
-To run Heapster on a Kubernetes cluster with,
-- InfluxDB use [this guide](docs/influxdb.md).
-- Google Cloud Monitoring and Google Cloud Logging use [this guide](docs/google.md).
+Heapster can run on a Kubernetes cluster using a number of backends.  Some common choices:
+- [InfluxDB](docs/influxdb.md)
+- [Stackdriver Monitoring and Logging](docs/google.md) for Google Cloud Platform
+- [Other backends](docs/)
 
 ### Running Heapster on OpenShift
 
@@ -35,4 +30,4 @@ Using Heapster to monitor an OpenShift cluster requires some additional changes 
 
 ## Community
 
-Contributions, questions, and comments are all welcomed and encouraged! minkube developers hang out on [Slack](https://kubernetes.slack.com) in the #sig-instrumentation channel (get an invitation [here](http://slack.kubernetes.io/)). We also have the [kubernetes-dev Google Groups mailing list](https://groups.google.com/forum/#!forum/kubernetes-dev). If you are posting to the list please prefix your subject with "heapster: ".
+Contributions, questions, and comments are all welcomed and encouraged! Developers hang out on [Slack](https://kubernetes.slack.com) in the #sig-instrumentation channel (get an invitation [here](http://slack.kubernetes.io/)). We also have the [kubernetes-dev Google Groups mailing list](https://groups.google.com/forum/#!forum/kubernetes-dev). If you are posting to the list please prefix your subject with "heapster: ".
