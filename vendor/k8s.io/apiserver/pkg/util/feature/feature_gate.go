@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
@@ -50,10 +51,7 @@ var (
 	}
 
 	// DefaultFeatureGate is a shared global FeatureGate.
-	DefaultFeatureGate = &featureGate{
-		known:   defaultFeatures,
-		special: specialFeatures,
-	}
+	DefaultFeatureGate FeatureGate = NewFeatureGate()
 )
 
 type FeatureSpec struct {
@@ -67,50 +65,29 @@ const (
 	// Values for PreRelease.
 	Alpha = prerelease("ALPHA")
 	Beta  = prerelease("BETA")
-	GA = prerelease("")
+	GA    = prerelease("")
 )
 
 // FeatureGate parses and stores flag gates for known features from
 // a string like feature1=true,feature2=false,...
 type FeatureGate interface {
+	// AddFlag adds a flag for setting global feature gates to the specified FlagSet.
 	AddFlag(fs *pflag.FlagSet)
+	// Set parses and stores flag gates for known features
+	// from a string like feature1=true,feature2=false,...
 	Set(value string) error
-	Add(features map[Feature]FeatureSpec)
+	// Enabled returns true if the key is enabled.
+	Enabled(key Feature) bool
+	// Add adds features to the featureGate.
+	Add(features map[Feature]FeatureSpec) error
+	// KnownFeatures returns a slice of strings describing the FeatureGate's known features.
 	KnownFeatures() []string
-
-	// Every feature gate should add method here following this template:
-	//
-	// // owner: @username
-	// // alpha: v1.4
-	// MyFeature() bool
-
-	// owner: @timstclair
-	// beta: v1.4
-	AppArmor() bool
-
-	// owner: @girishkalele
-	// alpha: v1.4
-	ExternalTrafficLocalOnly() bool
-
-	// owner: @saad-ali
-	// alpha: v1.3
-	DynamicVolumeProvisioning() bool
-
-	// owner: @mtaufen
-	// alpha: v1.4
-	DynamicKubeletConfig() bool
-
-	// owner: timstclair
-	// alpha: v1.5
-	StreamingProxyRedirects() bool
-
-	// owner: @pweil-
-	// alpha: v1.5
-	ExperimentalHostUserNamespaceDefaulting() bool
 }
 
 // featureGate implements FeatureGate as well as pflag.Value for flag parsing.
 type featureGate struct {
+	lock sync.RWMutex
+
 	known   map[Feature]FeatureSpec
 	special map[Feature]func(*featureGate, bool)
 	enabled map[Feature]bool
@@ -132,10 +109,24 @@ func setUnsetAlphaGates(f *featureGate, val bool) {
 // Set, String, and Type implement pflag.Value
 var _ pflag.Value = &featureGate{}
 
-// Set Parses a string of the form // "key1=value1,key2=value2,..." into a
+func NewFeatureGate() *featureGate {
+	f := &featureGate{
+		known:   map[Feature]FeatureSpec{},
+		special: specialFeatures,
+		enabled: map[Feature]bool{},
+	}
+	for k, v := range defaultFeatures {
+		f.known[k] = v
+	}
+	return f
+}
+
+// Set Parses a string of the form "key1=value1,key2=value2,..." into a
 // map[string]bool of known keys or returns an error.
 func (f *featureGate) Set(value string) error {
-	f.enabled = make(map[Feature]bool)
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
 	for _, s := range strings.Split(value, ",") {
 		if len(s) == 0 {
 			continue
@@ -166,7 +157,11 @@ func (f *featureGate) Set(value string) error {
 	return nil
 }
 
+// String returns a string containing all enabled feature gates, formatted as "key1=value1,key2=value2,...".
 func (f *featureGate) String() string {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+
 	pairs := []string{}
 	for k, v := range f.enabled {
 		pairs = append(pairs, fmt.Sprintf("%s=%t", k, v))
@@ -179,7 +174,11 @@ func (f *featureGate) Type() string {
 	return "mapStringBool"
 }
 
+// Add adds features to the featureGate.
 func (f *featureGate) Add(features map[Feature]FeatureSpec) error {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
 	if f.closed {
 		return fmt.Errorf("cannot add a feature gate after adding it to the flag set")
 	}
@@ -197,7 +196,11 @@ func (f *featureGate) Add(features map[Feature]FeatureSpec) error {
 	return nil
 }
 
+// Enabled returns true if the key is enabled.
 func (f *featureGate) Enabled(key Feature) bool {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+
 	defaultValue := f.known[key].Default
 	if f.enabled != nil {
 		if v, ok := f.enabled[key]; ok {
@@ -209,7 +212,9 @@ func (f *featureGate) Enabled(key Feature) bool {
 
 // AddFlag adds a flag for setting global feature gates to the specified FlagSet.
 func (f *featureGate) AddFlag(fs *pflag.FlagSet) {
+	f.lock.Lock()
 	f.closed = true
+	f.lock.Unlock()
 
 	known := f.KnownFeatures()
 	fs.Var(f, flagName, ""+
@@ -217,8 +222,10 @@ func (f *featureGate) AddFlag(fs *pflag.FlagSet) {
 		"Options are:\n"+strings.Join(known, "\n"))
 }
 
-// Returns a string describing the FeatureGate's known features.
+// KnownFeatures returns a slice of strings describing the FeatureGate's known features.
 func (f *featureGate) KnownFeatures() []string {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
 	var known []string
 	for k, v := range f.known {
 		pre := ""

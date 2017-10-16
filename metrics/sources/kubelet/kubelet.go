@@ -26,11 +26,11 @@ import (
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	"github.com/prometheus/client_golang/prometheus"
+	kube_api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kube_client "k8s.io/client-go/kubernetes"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/util"
 )
@@ -324,9 +324,6 @@ func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
 				ip = addr.Address
 			}
 		}
-		if addr.Type == kube_api.NodeLegacyHostIP && addr.Address != "" && ip == "" {
-			ip = addr.Address
-		}
 		if addr.Type == kube_api.NodeExternalIP && addr.Address != "" && ip == "" {
 			ip = addr.Address
 		}
@@ -350,7 +347,7 @@ func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	}
 
 	// Get nodes to test if the client is configured well. Watch gives less error information.
-	if _, err := kubeClient.Nodes().List(metav1.ListOptions{}); err != nil {
+	if _, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{}); err != nil {
 		glog.Errorf("Failed to load nodes: %v", err)
 	}
 

@@ -31,10 +31,10 @@ import (
 	"k8s.io/heapster/metrics/cmd/heapster-apiserver/app"
 	"k8s.io/heapster/metrics/options"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
-	"k8s.io/metrics/pkg/apis/metrics/v1alpha1"
+	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
-var metricsGroupVersion = v1alpha1.SchemeGroupVersion
+var metricsGroupVersion = v1beta1.SchemeGroupVersion
 
 var metricsGroupVersionForDiscovery = metav1.GroupVersionForDiscovery{
 	GroupVersion: metricsGroupVersion.String(),
@@ -52,7 +52,7 @@ func TestRunSecureServer(t *testing.T) {
 
 	go func() {
 		opt := getServerOptions()
-		opt.SecureServing.ServingOptions.BindPort = testSecurePort
+		opt.SecureServing.BindPort = testSecurePort
 		opt.SecureServing.ServerCert.CertDirectory = "/tmp"
 		opt.DisableAuthForTesting = true
 
@@ -142,7 +142,7 @@ func testAPIGroupList(t *testing.T, serverIP string) {
 }
 
 func testAPIGroup(t *testing.T, serverIP string) {
-	serverURL := serverIP + "/apis/metrics"
+	serverURL := serverIP + "/apis/metrics.k8s.io/v1beta1"
 	contents, err := readResponse(serverURL)
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -153,15 +153,12 @@ func testAPIGroup(t *testing.T, serverIP string) {
 		t.Fatalf("Error in unmarshalling response from server %s: %v", serverURL, err)
 	}
 	assert.Equal(t, "v1", apiGroup.APIVersion)
-	assert.Equal(t, apiGroup.Name, metricsGroupVersion.Group)
-	assert.Equal(t, 1, len(apiGroup.Versions))
-	assert.Equal(t, metricsGroupVersion.String(), apiGroup.Versions[0].GroupVersion)
-	assert.Equal(t, metricsGroupVersion.Version, apiGroup.Versions[0].Version)
-	assert.Equal(t, apiGroup.PreferredVersion, apiGroup.Versions[0])
+	assert.Equal(t, "metrics.k8s.io", metricsGroupVersion.Group)
+	assert.Equal(t, 0, len(apiGroup.Versions))
 }
 
 func testAPIResourceList(t *testing.T, serverIP string) {
-	serverURL := serverIP + "/apis/metrics/v1alpha1"
+	serverURL := serverIP + "/apis/metrics.k8s.io/v1beta1"
 	contents, err := readResponse(serverURL)
 	if err != nil {
 		t.Fatalf("%v", err)

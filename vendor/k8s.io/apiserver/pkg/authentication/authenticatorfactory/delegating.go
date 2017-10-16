@@ -29,8 +29,8 @@ import (
 	"k8s.io/apiserver/pkg/authentication/request/bearertoken"
 	"k8s.io/apiserver/pkg/authentication/request/headerrequest"
 	unionauth "k8s.io/apiserver/pkg/authentication/request/union"
+	"k8s.io/apiserver/pkg/authentication/request/websocket"
 	"k8s.io/apiserver/pkg/authentication/request/x509"
-	"k8s.io/apiserver/pkg/authentication/user"
 	webhooktoken "k8s.io/apiserver/plugin/pkg/authenticator/token/webhook"
 	authenticationclient "k8s.io/client-go/kubernetes/typed/authentication/v1beta1"
 	"k8s.io/client-go/util/cert"
@@ -88,7 +88,7 @@ func (c DelegatingAuthenticatorConfig) New() (authenticator.Request, *spec.Secur
 		if err != nil {
 			return nil, nil, err
 		}
-		authenticators = append(authenticators, bearertoken.New(tokenAuth))
+		authenticators = append(authenticators, bearertoken.New(tokenAuth), websocket.NewProtocolAuthenticator(tokenAuth))
 
 		securityDefinitions["BearerToken"] = &spec.SecurityScheme{
 			SecuritySchemeProps: spec.SecuritySchemeProps{
@@ -107,7 +107,7 @@ func (c DelegatingAuthenticatorConfig) New() (authenticator.Request, *spec.Secur
 		return nil, nil, errors.New("No authentication method configured")
 	}
 
-	authenticator := group.NewGroupAdder(unionauth.New(authenticators...), []string{user.AllAuthenticated})
+	authenticator := group.NewAuthenticatedGroupAdder(unionauth.New(authenticators...))
 	if c.Anonymous {
 		authenticator = unionauth.NewFailOnError(authenticator, anonymous.NewAuthenticator())
 	}
