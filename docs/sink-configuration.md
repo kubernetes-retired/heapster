@@ -75,6 +75,51 @@ To use the GCL sink add the following flag:
     * Where `project_ID` is the project ID of the Google Cloud Platform project.
     * Select `kubernetes.io/events` from the `All logs` drop down menu.
 
+### StatsD
+This sink supports monitoring metrics only.
+To use the StatsD sink add the following flag:
+```
+  --sink="statsd:udp://<HOST>:<PORT>[?<OPTIONS>]"
+```
+
+The following options are available:
+
+* `prefix`           - Adds specified prefix to all metrics, default is empty
+* `protocolType`     - Protocol type specifies the message format, it can be either etsystatsd or influxstatsd, default is etsystatsd
+* `numMetricsPerMsg` - number of metrics to be packed in an UDP message, default is 5
+* `renameLabels`     - renames labels, old and new label separated by ':' and pairs of old and new labels separated by ','
+* `allowedLabels`    - comma-separated labels that are allowed, default is empty ie all labels are allowed
+* `labelStyle`       - convert labels from default snake case to other styles, default is no convertion. Styles supported are `lowerCamelCase` and `upperCamelCase`
+
+For example.
+```
+  --sink="statsd:udp://127.0.0.1:4125?prefix=kubernetes.example.&protocolType=influxstatsd&numMetricsPerMsg=10&renameLabels=type:k8s_type,host_name:k8s_host_name&allowedLabels=container_name,namespace_name,type,host_name&labelStyle=lowerCamelCase"
+```
+
+#### etsystatsd metrics format
+
+| Metric Set Type |  Metrics Format                                                                       |
+|:----------------|:--------------------------------------------------------------------------------------|
+| Cluster         | `<PREFIX>.<SUFFIX>`                                                                   |
+| Node            | `<PREFIX>.node.<NODE>.<SUFFIX>`                                                       |
+| Namespace       | `<PREFIX>.namespace.<NAMESPACE>.<SUFFIX>`                                             |
+| Pod             | `<PREFIX>.node.<NODE>.namespace.<NAMESPACE>.pod.<POD>.<SUFFIX>`                       |
+| PodContainer    | `<PREFIX>.node.<NODE>.namespace.<NAMESPACE>.pod.<POD>.container.<CONTAINER>.<SUFFIX>` |
+| SystemContainer | `<PREFIX>.node.<NODE>.sys-container.<SYS-CONTAINER>.<SUFFIX>`                         |
+
+* `PREFIX`      - configured prefix
+* `SUFFIX`      - `[.<USER_LABELS>].<METRIC>[.<RESOURCE_ID>]`
+* `USER_LABELS` - user provided labels `[.<KEY1>.<VAL1>][.<KEY2>.<VAL2>] ...`
+* `METRIC`      - metric name, eg: filesystem/usage
+* `RESOURCE_ID` - An unique identifier used to differentiate multiple metrics of the same type. eg: FS partitions under filesystem/usage
+
+#### influxstatsd metrics format
+Influx StatsD is very similar to Etsy StatsD. Tags are supported by adding a comma-separated list of tags in key=value format.
+
+```
+<METRIC>[,<KEY1=VAL1>,<KEY2=VAL2>...]:<METRIC_VALUE>|<METRIC_TYPE>
+```
+
 ### Hawkular-Metrics
 This sink supports monitoring metrics only.
 To use the Hawkular-Metrics sink add the following flag:
