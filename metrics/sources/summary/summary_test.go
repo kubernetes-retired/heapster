@@ -535,11 +535,13 @@ func genTestSummaryBlankMemory() *stats.MemoryStats {
 
 func genTestSummaryNetwork(seed int) *stats.NetworkStats {
 	return &stats.NetworkStats{
-		Time:     metav1.NewTime(scrapeTime),
-		RxBytes:  uint64Val(seed, offsetNetRxBytes),
-		RxErrors: uint64Val(seed, offsetNetRxErrors),
-		TxBytes:  uint64Val(seed, offsetNetTxBytes),
-		TxErrors: uint64Val(seed, offsetNetTxErrors),
+		Time: metav1.NewTime(scrapeTime),
+		InterfaceStats: stats.InterfaceStats{
+			RxBytes:  uint64Val(seed, offsetNetRxBytes),
+			RxErrors: uint64Val(seed, offsetNetRxErrors),
+			TxBytes:  uint64Val(seed, offsetNetTxBytes),
+			TxErrors: uint64Val(seed, offsetNetTxErrors),
+		},
 	}
 }
 

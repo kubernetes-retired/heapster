@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	kube_api "k8s.io/client-go/pkg/api/v1"
+	kube_api "k8s.io/api/core/v1"
 	honeycomb_common "k8s.io/heapster/common/honeycomb"
 	event_core "k8s.io/heapster/events/core"
 )

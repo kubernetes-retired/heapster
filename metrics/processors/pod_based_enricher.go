@@ -21,8 +21,8 @@ import (
 
 	"k8s.io/heapster/metrics/util"
 
+	kube_api "k8s.io/api/core/v1"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/heapster/metrics/core"
 )
 

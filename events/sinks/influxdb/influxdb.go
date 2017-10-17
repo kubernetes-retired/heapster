@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	kube_api "k8s.io/client-go/pkg/api/v1"
+	kube_api "k8s.io/api/core/v1"
 	influxdb_common "k8s.io/heapster/common/influxdb"
 	"k8s.io/heapster/events/core"
 	metrics_core "k8s.io/heapster/metrics/core"
