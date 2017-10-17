@@ -203,7 +203,6 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all container stats from Kubelet URL %q: %v", url, err)
 	}
-
 	result := make([]cadvisor.ContainerInfo, 0, len(containers))
 	for _, containerInfo := range containers {
 		cont := self.parseStat(&containerInfo)

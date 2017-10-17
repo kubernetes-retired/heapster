@@ -22,7 +22,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/riemann/riemann-go-client"
-	kube_api "k8s.io/client-go/pkg/api/v1"
+	kube_api "k8s.io/api/core/v1"
 	riemannCommon "k8s.io/heapster/common/riemann"
 	"k8s.io/heapster/events/core"
 )

@@ -135,13 +135,12 @@ func IdFilter(regexp string) Filter {
 
 // StartTimeFilter is a query parameter to filter with start time
 func StartTimeFilter(startTime time.Time) Filter {
-	// return Param("start", strconv.Itoa(int(startTime.Unix())))
-	return Param("start", strconv.Itoa(int(ToUnixMilli(startTime))))
+	return Param("start", strconv.FormatInt(ToUnixMilli(startTime), 10))
 }
 
 // EndTimeFilter is a query parameter to filter with end time
 func EndTimeFilter(endTime time.Time) Filter {
-	return Param("end", strconv.Itoa(int(ToUnixMilli(endTime))))
+	return Param("end", strconv.FormatInt(ToUnixMilli(endTime), 10))
 }
 
 // BucketsFilter is a query parameter to define amount of buckets

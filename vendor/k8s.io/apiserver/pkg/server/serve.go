@@ -17,20 +17,19 @@ limitations under the License.
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/golang/glog"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/validation"
-
-	"github.com/golang/glog"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -41,8 +40,12 @@ const (
 // be loaded or the initial listen call fails. The actual server loop (stoppable by closing
 // stopCh) runs in a go routine, i.e. serveSecurely does not block.
 func (s *GenericAPIServer) serveSecurely(stopCh <-chan struct{}) error {
+	if s.SecureServingInfo.Listener == nil {
+		return fmt.Errorf("listener must not be nil")
+	}
+
 	secureServer := &http.Server{
-		Addr:           s.SecureServingInfo.BindAddress,
+		Addr:           s.SecureServingInfo.Listener.Addr().String(),
 		Handler:        s.Handler,
 		MaxHeaderBytes: 1 << 20,
 		TLSConfig: &tls.Config{
@@ -54,6 +57,13 @@ func (s *GenericAPIServer) serveSecurely(stopCh <-chan struct{}) error {
 			// enable HTTP2 for go's 1.7 HTTP Server
 			NextProtos: []string{"h2", "http/1.1"},
 		},
+	}
+
+	if s.SecureServingInfo.MinTLSVersion > 0 {
+		secureServer.TLSConfig.MinVersion = s.SecureServingInfo.MinTLSVersion
+	}
+	if len(s.SecureServingInfo.CipherSuites) > 0 {
+		secureServer.TLSConfig.CipherSuites = s.SecureServingInfo.CipherSuites
 	}
 
 	if s.SecureServingInfo.Cert != nil {
@@ -76,101 +86,53 @@ func (s *GenericAPIServer) serveSecurely(stopCh <-chan struct{}) error {
 		secureServer.TLSConfig.ClientCAs = s.SecureServingInfo.ClientCA
 	}
 
-	glog.Infof("Serving securely on %s", s.SecureServingInfo.BindAddress)
-	var err error
-	s.effectiveSecurePort, err = runServer(secureServer, s.SecureServingInfo.BindNetwork, stopCh)
+	glog.Infof("Serving securely on %s", secureServer.Addr)
+	err := RunServer(secureServer, s.SecureServingInfo.Listener, s.ShutdownTimeout, stopCh)
 	return err
 }
 
-// serveInsecurely run the insecure http server. It fails only if the initial listen
-// call fails. The actual server loop (stoppable by closing stopCh) runs in a go
-// routine, i.e. serveInsecurely does not block.
-func (s *GenericAPIServer) serveInsecurely(stopCh <-chan struct{}) error {
-	insecureServer := &http.Server{
-		Addr:           s.InsecureServingInfo.BindAddress,
-		Handler:        s.InsecureHandler,
-		MaxHeaderBytes: 1 << 20,
-	}
-	glog.Infof("Serving insecurely on %s", s.InsecureServingInfo.BindAddress)
-	var err error
-	s.effectiveInsecurePort, err = runServer(insecureServer, s.InsecureServingInfo.BindNetwork, stopCh)
-	return err
-}
-
-// runServer listens on the given port, then spawns a go-routine continuously serving
-// until the stopCh is closed. The port is returned. This function does not block.
-func runServer(server *http.Server, network string, stopCh <-chan struct{}) (int, error) {
-	if len(server.Addr) == 0 {
-		return 0, errors.New("address cannot be empty")
+// RunServer listens on the given port if listener is not given,
+// then spawns a go-routine continuously serving
+// until the stopCh is closed. This function does not block.
+func RunServer(
+	server *http.Server,
+	ln net.Listener,
+	shutDownTimeout time.Duration,
+	stopCh <-chan struct{},
+) error {
+	if ln == nil {
+		return fmt.Errorf("listener must not be nil")
 	}
 
-	if len(network) == 0 {
-		network = "tcp"
-	}
-
-	// first listen is synchronous (fail early!)
-	ln, err := net.Listen(network, server.Addr)
-	if err != nil {
-		return 0, fmt.Errorf("failed to listen on %v: %v", server.Addr, err)
-	}
-
-	// get port
-	tcpAddr, ok := ln.Addr().(*net.TCPAddr)
-	if !ok {
-		ln.Close()
-		return 0, fmt.Errorf("invalid listen address: %q", ln.Addr().String())
-	}
-
-	lock := sync.Mutex{} // to avoid we close an old listener during a listen retry
+	// Shutdown server gracefully.
 	go func() {
 		<-stopCh
-		lock.Lock()
-		defer lock.Unlock()
-		ln.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), shutDownTimeout)
+		server.Shutdown(ctx)
+		cancel()
 	}()
 
 	go func() {
 		defer utilruntime.HandleCrash()
 
-		for {
-			var listener net.Listener
-			listener = tcpKeepAliveListener{ln.(*net.TCPListener)}
-			if server.TLSConfig != nil {
-				listener = tls.NewListener(listener, server.TLSConfig)
-			}
+		var listener net.Listener
+		listener = tcpKeepAliveListener{ln.(*net.TCPListener)}
+		if server.TLSConfig != nil {
+			listener = tls.NewListener(listener, server.TLSConfig)
+		}
 
-			err := server.Serve(listener)
-			glog.Errorf("Error serving %v (%v); will try again.", server.Addr, err)
+		err := server.Serve(listener)
 
-			// listen again
-			func() {
-				lock.Lock()
-				defer lock.Unlock()
-				for {
-					time.Sleep(15 * time.Second)
-
-					ln, err = net.Listen(network, server.Addr)
-					if err == nil {
-						return
-					}
-					select {
-					case <-stopCh:
-						return
-					default:
-					}
-					glog.Errorf("Error listening on %v (%v); will try again.", server.Addr, err)
-				}
-			}()
-
-			select {
-			case <-stopCh:
-				return
-			default:
-			}
+		msg := fmt.Sprintf("Stopped listening on %s", ln.Addr().String())
+		select {
+		case <-stopCh:
+			glog.Info(msg)
+		default:
+			panic(fmt.Sprintf("%s due to error: %v", msg, err))
 		}
 	}()
 
-	return tcpAddr.Port, nil
+	return nil
 }
 
 type NamedTLSCert struct {

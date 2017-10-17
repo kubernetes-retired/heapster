@@ -139,6 +139,7 @@ func NewParameterCodec(scheme *Scheme) ParameterCodec {
 		typer:     scheme,
 		convertor: scheme,
 		creator:   scheme,
+		defaulter: scheme,
 	}
 }
 
@@ -147,6 +148,7 @@ type parameterCodec struct {
 	typer     ObjectTyper
 	convertor ObjectConvertor
 	creator   ObjectCreater
+	defaulter ObjectDefaulter
 }
 
 var _ ParameterCodec = &parameterCodec{}
@@ -163,15 +165,27 @@ func (c *parameterCodec) DecodeParameters(parameters url.Values, from schema.Gro
 	}
 	for i := range targetGVKs {
 		if targetGVKs[i].GroupVersion() == from {
-			return c.convertor.Convert(&parameters, into, nil)
+			if err := c.convertor.Convert(&parameters, into, nil); err != nil {
+				return err
+			}
+			// in the case where we going into the same object we're receiving, default on the outbound object
+			if c.defaulter != nil {
+				c.defaulter.Default(into)
+			}
+			return nil
 		}
 	}
+
 	input, err := c.creator.New(from.WithKind(targetGVKs[0].Kind))
 	if err != nil {
 		return err
 	}
 	if err := c.convertor.Convert(&parameters, input, nil); err != nil {
 		return err
+	}
+	// if we have defaulter, default the input before converting to output
+	if c.defaulter != nil {
+		c.defaulter.Default(input)
 	}
 	return c.convertor.Convert(input, into, nil)
 }
@@ -195,16 +209,17 @@ func (c *parameterCodec) EncodeParameters(obj Object, to schema.GroupVersion) (u
 }
 
 type base64Serializer struct {
-	Serializer
+	Encoder
+	Decoder
 }
 
-func NewBase64Serializer(s Serializer) Serializer {
-	return &base64Serializer{s}
+func NewBase64Serializer(e Encoder, d Decoder) Serializer {
+	return &base64Serializer{e, d}
 }
 
 func (s base64Serializer) Encode(obj Object, stream io.Writer) error {
 	e := base64.NewEncoder(base64.StdEncoding, stream)
-	err := s.Serializer.Encode(obj, e)
+	err := s.Encoder.Encode(obj, e)
 	e.Close()
 	return err
 }
@@ -215,7 +230,7 @@ func (s base64Serializer) Decode(data []byte, defaults *schema.GroupVersionKind,
 	if err != nil {
 		return nil, nil, err
 	}
-	return s.Serializer.Decode(out[:n], defaults, into)
+	return s.Decoder.Decode(out[:n], defaults, into)
 }
 
 // SerializerInfoForMediaType returns the first info in types that has a matching media type (which cannot
