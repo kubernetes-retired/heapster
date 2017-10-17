@@ -24,8 +24,8 @@ import (
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	kube_api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kube_api "k8s.io/client-go/pkg/api/v1"
 	util "k8s.io/client-go/util/testing"
 	"k8s.io/heapster/metrics/core"
 )
@@ -338,7 +338,7 @@ var nodes = []kube_api.Node{
 					Address: "testNode",
 				},
 				{
-					Type:    kube_api.NodeLegacyHostIP,
+					Type:    kube_api.NodeInternalIP,
 					Address: "127.0.0.1",
 				},
 			},
@@ -359,10 +359,6 @@ var nodes = []kube_api.Node{
 				{
 					Type:    kube_api.NodeHostName,
 					Address: "testNode",
-				},
-				{
-					Type:    kube_api.NodeLegacyHostIP,
-					Address: "127.0.0.2",
 				},
 				{
 					Type:    kube_api.NodeInternalIP,

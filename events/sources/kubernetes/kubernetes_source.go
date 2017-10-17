@@ -21,11 +21,11 @@ import (
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 
+	kubeapi "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubewatch "k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
 	kubev1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	kubeapi "k8s.io/client-go/pkg/api/v1"
 	kubeconfig "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/events/core"
 )
@@ -179,7 +179,7 @@ func NewKubernetesSource(uri *url.URL) (*KubernetesEventSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	eventClient := kubeClient.Events(kubeapi.NamespaceAll)
+	eventClient := kubeClient.CoreV1().Events(kubeapi.NamespaceAll)
 	result := KubernetesEventSource{
 		localEventsBuffer: make(chan *kubeapi.Event, LocalEventsBufferSize),
 		stopChannel:       make(chan struct{}),

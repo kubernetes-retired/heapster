@@ -34,7 +34,7 @@ ifeq ($(INTERACTIVE), 1)
 	TTY=-t
 endif
 
-SUPPORTED_KUBE_VERSIONS=1.7.0-beta.2
+SUPPORTED_KUBE_VERSIONS=1.8.0
 TEST_NAMESPACE=heapster-e2e-tests
 
 HEAPSTER_LDFLAGS=-w -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)

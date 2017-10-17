@@ -76,7 +76,6 @@ The following options are available:
 * `inClusterConfig` - Use kube config in service accounts associated with Heapster's namespace. (default: true)
 * `kubeletPort` - kubelet port to use (default: `10255`)
 * `kubeletHttps` - whether to use https to connect to kubelets (default: `false`)
-* `apiVersion` - API version to use to talk to Kubernetes. Defaults to the version in kubeConfig.
 * `insecure` - whether to trust kubernetes certificates (default: `false`)
 * `auth` - client auth file to use. Set auth if the service accounts are not usable.
 * `useServiceAccount` - whether to use the service account token if one is mounted at `/var/run/secrets/kubernetes.io/serviceaccount/token` (default: `false`)

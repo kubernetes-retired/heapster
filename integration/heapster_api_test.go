@@ -26,14 +26,15 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
+	kube_v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
-	kube_v1 "k8s.io/client-go/pkg/api/v1"
 	api_v1 "k8s.io/heapster/metrics/api/v1/types"
-	metrics_api "k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/core"
+	"k8s.io/kubernetes/pkg/api"
+	metrics_api "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
 const (
@@ -190,7 +191,7 @@ const (
 )
 
 func getTimeseries(fm kubeFramework, svc *kube_v1.Service) ([]*api_v1.Timeseries, error) {
-	body, err := fm.Client().Core().RESTClient().Get().
+	body, err := fm.Client().CoreV1().RESTClient().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
 		Resource("services").
@@ -209,7 +210,7 @@ func getTimeseries(fm kubeFramework, svc *kube_v1.Service) ([]*api_v1.Timeseries
 }
 
 func getSchema(fm kubeFramework, svc *kube_v1.Service) (*api_v1.TimeseriesSchema, error) {
-	body, err := fm.Client().Core().RESTClient().Get().
+	body, err := fm.Client().CoreV1().RESTClient().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
 		Resource("services").
@@ -429,7 +430,7 @@ var labelSelectorEverything = labels.Everything()
 
 func getDataFromProxy(fm kubeFramework, svc *kube_v1.Service, url string) ([]byte, error) {
 	glog.V(2).Infof("Querying heapster: %s", url)
-	return fm.Client().Core().RESTClient().Get().
+	return fm.Client().CoreV1().RESTClient().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
 		Resource("services").
@@ -440,12 +441,12 @@ func getDataFromProxy(fm kubeFramework, svc *kube_v1.Service, url string) ([]byt
 
 func getDataFromProxyWithSelector(fm kubeFramework, svc *kube_v1.Service, url string, labelSelector *labels.Selector) ([]byte, error) {
 	glog.V(2).Infof("Querying heapster: %s", url)
-	return fm.Client().Core().RESTClient().Get().
+	return fm.Client().CoreV1().RESTClient().Get().
 		Namespace(svc.Namespace).
 		Prefix("proxy").
 		Resource("services").
 		Name(svc.Name).
-		Suffix(url).LabelsSelectorParam(*labelSelector).
+		Suffix(url).VersionedParams(&metav1.ListOptions{LabelSelector: (*labelSelector).String()}, api.ParameterCodec).
 		Do().Raw()
 }
 

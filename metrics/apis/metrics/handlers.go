@@ -26,14 +26,14 @@ import (
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 
+	kube_v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	kube_v1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/core"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
 type Api struct {
@@ -52,7 +52,7 @@ func NewApi(metricSink *metricsink.MetricSink, podLister v1listers.PodLister, no
 
 func (a *Api) Register(container *restful.Container) {
 	ws := new(restful.WebService)
-	ws.Path("/apis/metrics/v1alpha1").
+	ws.Path("/apis/metrics.k8s.io/v1beta1").
 		Doc("Root endpoint of metrics API").
 		Produces(restful.MIME_JSON)
 
@@ -114,7 +114,7 @@ func (a *Api) nodeMetricsList(request *restful.Request, response *restful.Respon
 		return
 	}
 
-	res := v1alpha1.NodeMetricsList{}
+	res := v1beta1.NodeMetricsList{}
 	for _, node := range nodes {
 		if m := a.getNodeMetrics(node.Name); m != nil {
 			res.Items = append(res.Items, *m)
@@ -133,7 +133,7 @@ func (a *Api) nodeMetrics(request *restful.Request, response *restful.Response) 
 	response.WriteEntity(m)
 }
 
-func (a *Api) getNodeMetrics(node string) *v1alpha1.NodeMetrics {
+func (a *Api) getNodeMetrics(node string) *v1beta1.NodeMetrics {
 	batch := a.metricSink.GetLatestDataBatch()
 	if batch == nil {
 		return nil
@@ -149,8 +149,8 @@ func (a *Api) getNodeMetrics(node string) *v1alpha1.NodeMetrics {
 		return nil
 	}
 
-	return &v1alpha1.NodeMetrics{
-		ObjectMeta: kube_v1.ObjectMeta{
+	return &v1beta1.NodeMetrics{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:              node,
 			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
@@ -207,7 +207,7 @@ func podMetricsInNamespaceList(a *Api, request *restful.Request, response *restf
 		return
 	}
 
-	res := v1alpha1.PodMetricsList{}
+	res := v1beta1.PodMetricsList{}
 	for _, pod := range pods {
 		if m := a.getPodMetrics(pod); m != nil {
 			res.Items = append(res.Items, *m)
@@ -241,21 +241,21 @@ func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 	}
 }
 
-func (a *Api) getPodMetrics(pod *kube_v1.Pod) *v1alpha1.PodMetrics {
+func (a *Api) getPodMetrics(pod *kube_v1.Pod) *v1beta1.PodMetrics {
 	batch := a.metricSink.GetLatestDataBatch()
 	if batch == nil {
 		return nil
 	}
 
-	res := &v1alpha1.PodMetrics{
-		ObjectMeta: kube_v1.ObjectMeta{
+	res := &v1beta1.PodMetrics{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:              pod.Name,
 			Namespace:         pod.Namespace,
 			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
 		Timestamp:  metav1.NewTime(batch.Timestamp),
 		Window:     metav1.Duration{Duration: time.Minute},
-		Containers: make([]v1alpha1.ContainerMetrics, 0),
+		Containers: make([]v1beta1.ContainerMetrics, 0),
 	}
 
 	for _, c := range pod.Spec.Containers {
@@ -270,7 +270,7 @@ func (a *Api) getPodMetrics(pod *kube_v1.Pod) *v1alpha1.PodMetrics {
 			return nil
 		}
 
-		res.Containers = append(res.Containers, v1alpha1.ContainerMetrics{Name: c.Name, Usage: usage})
+		res.Containers = append(res.Containers, v1beta1.ContainerMetrics{Name: c.Name, Usage: usage})
 	}
 
 	return res

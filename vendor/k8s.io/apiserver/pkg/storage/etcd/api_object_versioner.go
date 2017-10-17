@@ -20,7 +20,6 @@ import (
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/storage"
 )
@@ -44,16 +43,28 @@ func (a APIObjectVersioner) UpdateObject(obj runtime.Object, resourceVersion uin
 }
 
 // UpdateList implements Versioner
-func (a APIObjectVersioner) UpdateList(obj runtime.Object, resourceVersion uint64) error {
-	listMeta, err := metav1.ListMetaFor(obj)
-	if err != nil || listMeta == nil {
+func (a APIObjectVersioner) UpdateList(obj runtime.Object, resourceVersion uint64, nextKey string) error {
+	listAccessor, err := meta.ListAccessor(obj)
+	if err != nil || listAccessor == nil {
 		return err
 	}
 	versionString := ""
 	if resourceVersion != 0 {
 		versionString = strconv.FormatUint(resourceVersion, 10)
 	}
-	listMeta.ResourceVersion = versionString
+	listAccessor.SetResourceVersion(versionString)
+	listAccessor.SetContinue(nextKey)
+	return nil
+}
+
+// PrepareObjectForStorage clears resource version and self link prior to writing to etcd.
+func (a APIObjectVersioner) PrepareObjectForStorage(obj runtime.Object) error {
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return err
+	}
+	accessor.SetResourceVersion("")
+	accessor.SetSelfLink("")
 	return nil
 }
 

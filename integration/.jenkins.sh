@@ -7,7 +7,7 @@ export GOBIN="$GOPATH/bin"
 export PATH="$GOBIN:$PATH"
 
 # Kubernetes version(s) to run the integration tests against.
-kube_version="1.7.0-beta.2"
+kube_version="1.8.0"
 
 if ! git diff --name-only origin/master | grep -c -E "*.go|*.sh|.*yaml|Makefile" &> /dev/null; then
   echo "This PR does not touch files that require integration testing. Skipping integration tests!"
