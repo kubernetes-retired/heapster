@@ -26,24 +26,23 @@ import (
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_v1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/core"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/resource"
-	kube_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
-	kube_v1 "k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/client/cache"
-	"k8s.io/kubernetes/pkg/labels"
 )
 
 type Api struct {
 	metricSink *metricsink.MetricSink
-	podLister  *cache.StoreToPodLister
-	nodeLister *cache.StoreToNodeLister
+	podLister  v1listers.PodLister
+	nodeLister v1listers.NodeLister
 }
 
-func NewApi(metricSink *metricsink.MetricSink, podLister *cache.StoreToPodLister, nodeLister *cache.StoreToNodeLister) *Api {
+func NewApi(metricSink *metricsink.MetricSink, podLister v1listers.PodLister, nodeLister v1listers.NodeLister) *Api {
 	return &Api{
 		metricSink: metricSink,
 		podLister:  podLister,
@@ -102,12 +101,12 @@ func (a *Api) nodeMetricsList(request *restful.Request, response *restful.Respon
 		return
 	}
 
-	nodes, err := a.nodeLister.NodeCondition(func(node *kube_api.Node) bool {
+	nodes, err := a.nodeLister.ListWithPredicate(func(node *kube_v1.Node) bool {
 		if labelSelector.Empty() {
 			return true
 		}
 		return labelSelector.Matches(labels.Set(node.Labels))
-	}).List()
+	})
 	if err != nil {
 		errMsg := fmt.Errorf("Error while listing nodes: %v", err)
 		glog.Error(errMsg)
@@ -153,10 +152,10 @@ func (a *Api) getNodeMetrics(node string) *v1alpha1.NodeMetrics {
 	return &v1alpha1.NodeMetrics{
 		ObjectMeta: kube_v1.ObjectMeta{
 			Name:              node,
-			CreationTimestamp: kube_unversioned.NewTime(time.Now()),
+			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
-		Timestamp: kube_unversioned.NewTime(batch.Timestamp),
-		Window:    kube_unversioned.Duration{Duration: time.Minute},
+		Timestamp: metav1.NewTime(batch.Timestamp),
+		Window:    metav1.Duration{Duration: time.Minute},
 		Usage:     usage,
 	}
 }
@@ -182,7 +181,7 @@ func parseResourceList(ms *core.MetricSet) (kube_v1.ResourceList, error) {
 }
 
 func (a *Api) allPodMetricsList(request *restful.Request, response *restful.Response) {
-	podMetricsInNamespaceList(a, request, response, kube_api.NamespaceAll)
+	podMetricsInNamespaceList(a, request, response, kube_v1.NamespaceAll)
 }
 
 func (a *Api) podMetricsList(request *restful.Request, response *restful.Response) {
@@ -213,7 +212,7 @@ func podMetricsInNamespaceList(a *Api, request *restful.Request, response *restf
 		if m := a.getPodMetrics(pod); m != nil {
 			res.Items = append(res.Items, *m)
 		} else {
-			glog.Infof("No metrics for pod %s/%s", pod.Namespace, pod.Name)
+			glog.V(2).Infof("No metrics for pod %s/%s", pod.Namespace, pod.Name)
 		}
 	}
 	response.WriteEntity(&res)
@@ -242,7 +241,7 @@ func (a *Api) podMetrics(request *restful.Request, response *restful.Response) {
 	}
 }
 
-func (a *Api) getPodMetrics(pod *kube_api.Pod) *v1alpha1.PodMetrics {
+func (a *Api) getPodMetrics(pod *kube_v1.Pod) *v1alpha1.PodMetrics {
 	batch := a.metricSink.GetLatestDataBatch()
 	if batch == nil {
 		return nil
@@ -252,17 +251,17 @@ func (a *Api) getPodMetrics(pod *kube_api.Pod) *v1alpha1.PodMetrics {
 		ObjectMeta: kube_v1.ObjectMeta{
 			Name:              pod.Name,
 			Namespace:         pod.Namespace,
-			CreationTimestamp: kube_unversioned.NewTime(time.Now()),
+			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
-		Timestamp:  kube_unversioned.NewTime(batch.Timestamp),
-		Window:     kube_unversioned.Duration{Duration: time.Minute},
+		Timestamp:  metav1.NewTime(batch.Timestamp),
+		Window:     metav1.Duration{Duration: time.Minute},
 		Containers: make([]v1alpha1.ContainerMetrics, 0),
 	}
 
 	for _, c := range pod.Spec.Containers {
 		ms, found := batch.MetricSets[core.PodContainerKey(pod.Namespace, pod.Name, c.Name)]
 		if !found {
-			glog.Infof("No metrics for container %s in pod %s/%s", c.Name, pod.Namespace, pod.Name)
+			glog.V(2).Infof("No metrics for container %s in pod %s/%s", c.Name, pod.Namespace, pod.Name)
 			return nil
 		}
 

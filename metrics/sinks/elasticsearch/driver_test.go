@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/olivere/elastic.v3"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	"k8s.io/heapster/metrics/core"
 )
@@ -57,7 +56,7 @@ func NewFakeSink() fakeESSink {
 			saveData:  SaveDataIntoES_Stub,
 			flushData: func() error { return nil },
 			esSvc: esCommon.ElasticSearchService{
-				EsClient:    &elastic.Client{},
+				EsClient:    esCommon.NewMockClient(),
 				ClusterName: esCommon.ESClusterName,
 			},
 		},
@@ -66,7 +65,7 @@ func NewFakeSink() fakeESSink {
 }
 
 func TestStoreDataEmptyInput(t *testing.T) {
-	FakeESSink := NewFakeSink()
+	FakeESSink = NewFakeSink()
 	dataBatch := core.DataBatch{}
 	FakeESSink.ExportData(&dataBatch)
 	assert.Equal(t, 0, len(FakeESSink.savedData))
@@ -204,6 +203,4 @@ func TestStoreMultipleDataInput(t *testing.T) {
 		expectMsg := fmt.Sprintf(mgsTemplate, timeStr)
 		assert.Contains(t, msgsString, expectMsg)
 	}
-
-	FakeESSink = NewFakeSink()
 }

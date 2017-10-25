@@ -35,6 +35,13 @@ type influxdbSink struct {
 	dbExists bool
 }
 
+var influxdbBlacklistLabels = map[string]struct{}{
+	core.LabelPodNamespaceUID.Key: {},
+	core.LabelPodId.Key:           {},
+	core.LabelHostname.Key:        {},
+	core.LabelHostID.Key:          {},
+}
+
 const (
 	// Value Field name
 	valueField = "value"
@@ -82,12 +89,22 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 
 			point := influxdb.Point{
 				Measurement: measurementName,
-				Tags:        metricSet.Labels,
+				Tags:        make(map[string]string, len(metricSet.Labels)),
 				Fields: map[string]interface{}{
 					fieldName: value,
 				},
 				Time: dataBatch.Timestamp.UTC(),
 			}
+			for key, value := range metricSet.Labels {
+				if _, exists := influxdbBlacklistLabels[key]; !exists {
+					if value != "" {
+						point.Tags[key] = value
+					}
+				}
+			}
+
+			point.Tags["cluster_name"] = sink.c.ClusterName
+
 			dataPoints = append(dataPoints, point)
 			if len(dataPoints) >= maxSendBatchSize {
 				sink.sendData(dataPoints)
@@ -120,18 +137,26 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 
 			point := influxdb.Point{
 				Measurement: measurementName,
-				Tags:        make(map[string]string),
+				Tags:        make(map[string]string, len(metricSet.Labels)+len(labeledMetric.Labels)),
 				Fields: map[string]interface{}{
 					fieldName: value,
 				},
 				Time: dataBatch.Timestamp.UTC(),
 			}
+
 			for key, value := range metricSet.Labels {
-				point.Tags[key] = value
+				if value != "" {
+					point.Tags[key] = value
+				}
 			}
 			for key, value := range labeledMetric.Labels {
-				point.Tags[key] = value
+				if _, exists := influxdbBlacklistLabels[key]; !exists {
+					if value != "" {
+						point.Tags[key] = value
+					}
+				}
 			}
+			point.Tags["cluster_name"] = sink.c.ClusterName
 
 			dataPoints = append(dataPoints, point)
 			if len(dataPoints) >= maxSendBatchSize {
@@ -147,7 +172,7 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 
 func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	if err := sink.createDatabase(); err != nil {
-		glog.Errorf("Failed to create infuxdb: %v", err)
+		glog.Errorf("Failed to create influxdb: %v", err)
 		return
 	}
 	bp := influxdb.BatchPoints{
@@ -158,12 +183,14 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 
 	start := time.Now()
 	if _, err := sink.client.Write(bp); err != nil {
+		glog.Errorf("InfluxDB write failed: %v", err)
 		if strings.Contains(err.Error(), dbNotFoundError) {
 			sink.resetConnection()
 		} else if _, _, err := sink.client.Ping(); err != nil {
 			glog.Errorf("InfluxDB ping failed: %v", err)
 			sink.resetConnection()
 		}
+		return
 	}
 	end := time.Now()
 	glog.V(4).Infof("Exported %d data to influxDB in %s", len(dataPoints), end.Sub(start))
@@ -197,7 +224,6 @@ func (sink *influxdbSink) createDatabase() error {
 	if sink.dbExists {
 		return nil
 	}
-
 	q := influxdb.Query{
 		Command: fmt.Sprintf(`CREATE DATABASE %s WITH NAME "default"`, sink.c.DbName),
 	}
@@ -218,7 +244,7 @@ func (sink *influxdbSink) createDatabase() error {
 
 func (sink *influxdbSink) createRetentionPolicy() error {
 	q := influxdb.Query{
-		Command: fmt.Sprintf(`CREATE RETENTION POLICY "default" ON %s DURATION 0d REPLICATION 1 DEFAULT`, sink.c.DbName),
+		Command: fmt.Sprintf(`CREATE RETENTION POLICY "default" ON %s DURATION %s REPLICATION 1 DEFAULT`, sink.c.DbName, sink.c.RetentionPolicy),
 	}
 
 	if resp, err := sink.client.Query(q); err != nil {

@@ -11,17 +11,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package install
 
 import (
+	"k8s.io/apimachinery/pkg/apimachinery/announced"
+	"k8s.io/apimachinery/pkg/apimachinery/registered"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/heapster/metrics/apis/metrics"
 	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
-	"k8s.io/kubernetes/pkg/apimachinery/announced"
-	"k8s.io/kubernetes/pkg/util/sets"
 )
 
 func init() {
+	Install(api.GroupFactoryRegistry, api.Registry, api.Scheme)
+}
+
+// Install registers the API group and adds types to a scheme
+func Install(groupFactoryRegistry announced.APIGroupFactoryRegistry, registry *registered.APIRegistrationManager, scheme *runtime.Scheme) {
 	if err := announced.NewGroupMetaFactory(
 		&announced.GroupMetaFactoryArgs{
 			GroupName:                  metrics.GroupName,
@@ -33,7 +40,7 @@ func init() {
 		announced.VersionToSchemeFunc{
 			v1alpha1.SchemeGroupVersion.Version: v1alpha1.AddToScheme,
 		},
-	).Announce().RegisterAndEnable(); err != nil {
+	).Announce(groupFactoryRegistry).RegisterAndEnable(registry, scheme); err != nil {
 		panic(err)
 	}
 }

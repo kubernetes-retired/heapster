@@ -1,11 +1,11 @@
-reporting-disabled = false
-bind-address = ":8088"
+reporting-disabled = true
+bind-address = "localhost:8088"
 
 [meta]
   dir = "/data/meta"
   retention-autocreate = true
   logging-enabled = true
-  
+
 [data]
   dir = "/data/data"
   wal-dir = "/data/wal"
@@ -26,7 +26,7 @@ bind-address = ":8088"
   max-select-point = 0
   max-select-series = 0
   max-select-buckets = 0
-  
+
 [retention]
   enabled = true
   check-interval = "30m0s"
@@ -36,17 +36,11 @@ bind-address = ":8088"
   check-interval = "10m0s"
   advance-period = "30m0s"
 
-[admin]
-  enabled = true
-  bind-address = ":8083"
-  https-enabled = false
-  https-certificate = "/etc/ssl/influxdb.pem"
-
 [monitor]
   store-enabled = true
   store-database = "_internal"
   store-interval = "10s"
-  
+
 [subscriber]
   enabled = true
   http-timeout = "30s"

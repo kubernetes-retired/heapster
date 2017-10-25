@@ -17,21 +17,23 @@ package app
 import (
 	"github.com/golang/glog"
 
-	"k8s.io/heapster/metrics/apis/metrics"
-	_ "k8s.io/heapster/metrics/apis/metrics/install"
-	"k8s.io/heapster/metrics/sinks/metric"
+	"k8s.io/apiserver/pkg/registry/rest"
+	genericapiserver "k8s.io/apiserver/pkg/server"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/heapster/metrics/options"
+	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	nodemetricsstorage "k8s.io/heapster/metrics/storage/nodemetrics"
 	podmetricsstorage "k8s.io/heapster/metrics/storage/podmetrics"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/rest"
-	"k8s.io/kubernetes/pkg/apimachinery/registered"
-	"k8s.io/kubernetes/pkg/client/cache"
-	"k8s.io/kubernetes/pkg/genericapiserver"
-	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
+	"k8s.io/metrics/pkg/apis/metrics"
+	_ "k8s.io/metrics/pkg/apis/metrics/install"
+	"k8s.io/metrics/pkg/apis/metrics/v1alpha1"
 )
 
-func installMetricsAPIs(s *genericoptions.ServerRunOptions, g *genericapiserver.GenericAPIServer,
-	metricSink *metricsink.MetricSink, nodeLister *cache.StoreToNodeLister, podLister *cache.StoreToPodLister) {
+func installMetricsAPIs(s *options.HeapsterRunOptions, g *genericapiserver.GenericAPIServer,
+	metricSink *metricsink.MetricSink, nodeLister v1listers.NodeLister, podLister v1listers.PodLister) {
+
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(metrics.GroupName, api.Registry, api.Scheme, api.ParameterCodec, api.Codecs)
 
 	nodemetricsStorage := nodemetricsstorage.NewStorage(metrics.Resource("nodemetrics"), metricSink, nodeLister)
 	podmetricsStorage := podmetricsstorage.NewStorage(metrics.Resource("podmetrics"), metricSink, podLister)
@@ -39,17 +41,8 @@ func installMetricsAPIs(s *genericoptions.ServerRunOptions, g *genericapiserver.
 		"nodes": nodemetricsStorage,
 		"pods":  podmetricsStorage,
 	}
-	heapsterGroupMeta := registered.GroupOrDie(metrics.GroupName)
-	apiGroupInfo := genericapiserver.APIGroupInfo{
-		GroupMeta: *heapsterGroupMeta,
-		VersionedResourcesStorageMap: map[string]map[string]rest.Storage{
-			"v1alpha1": heapsterResources,
-		},
-		OptionsExternalVersion: &registered.GroupOrDie(api.GroupName).GroupVersion,
-		Scheme:                 api.Scheme,
-		ParameterCodec:         api.ParameterCodec,
-		NegotiatedSerializer:   api.Codecs,
-	}
+	apiGroupInfo.VersionedResourcesStorageMap[v1alpha1.SchemeGroupVersion.Version] = heapsterResources
+
 	if err := g.InstallAPIGroup(&apiGroupInfo); err != nil {
 		glog.Fatalf("Error in registering group versions: %v", err)
 	}

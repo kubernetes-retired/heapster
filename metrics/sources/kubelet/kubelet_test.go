@@ -24,9 +24,10 @@ import (
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	util "k8s.io/client-go/util/testing"
 	"k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 func TestDecodeMetrics1(t *testing.T) {
@@ -298,7 +299,7 @@ func TestDecodeMetrics6(t *testing.T) {
 
 var nodes = []kube_api.Node{
 	{
-		ObjectMeta: kube_api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "testNode",
 		},
 		Status: kube_api.NodeStatus{
@@ -321,7 +322,7 @@ var nodes = []kube_api.Node{
 		},
 	},
 	{
-		ObjectMeta: kube_api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "testNode",
 		},
 		Status: kube_api.NodeStatus{
@@ -344,7 +345,7 @@ var nodes = []kube_api.Node{
 		},
 	},
 	{
-		ObjectMeta: kube_api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "testNode",
 		},
 		Status: kube_api.NodeStatus{
@@ -369,6 +370,29 @@ var nodes = []kube_api.Node{
 				},
 				{
 					Type:    kube_api.NodeInternalIP,
+					Address: "127.0.0.1",
+				},
+			},
+		},
+	},
+	{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testNode",
+		},
+		Status: kube_api.NodeStatus{
+			Conditions: []kube_api.NodeCondition{
+				{
+					Type:   "NotReady",
+					Status: kube_api.ConditionTrue,
+				},
+			},
+			Addresses: []kube_api.NodeAddress{
+				{
+					Type:    kube_api.NodeHostName,
+					Address: "testNode",
+				},
+				{
+					Type:    kube_api.NodeExternalIP,
 					Address: "127.0.0.1",
 				},
 			},
@@ -460,8 +484,40 @@ func TestScrapeMetrics(t *testing.T) {
 
 	start := time.Now()
 	end := start.Add(5 * time.Second)
-	res := mtrcSrc.ScrapeMetrics(start, end)
+	res, err := mtrcSrc.ScrapeMetrics(start, end)
+	assert.Nil(t, err, "scrape error")
 	assert.Equal(t, res.MetricSets["node:/container:docker-daemon"].Labels["type"], "sys_container")
 	assert.Equal(t, res.MetricSets["node:/container:docker-daemon"].Labels["container_name"], "docker-daemon")
 
+}
+
+func TestGetNodeSchedulableStatus(t *testing.T) {
+	metas := []struct {
+		Node   *kube_api.Node
+		Wanted string
+	}{
+		{
+			Node: &kube_api.Node{
+				Spec: kube_api.NodeSpec{
+					Unschedulable: false,
+				},
+			},
+			Wanted: "true",
+		},
+		{
+			Node: &kube_api.Node{
+				Spec: kube_api.NodeSpec{
+					Unschedulable: true,
+				},
+			},
+			Wanted: "false",
+		},
+	}
+
+	for _, meta := range metas {
+		got := getNodeSchedulableStatus(meta.Node)
+		if got != meta.Wanted {
+			t.Errorf("get node schedulable status error. wanted: %s, got: %s", meta.Wanted, got)
+		}
+	}
 }

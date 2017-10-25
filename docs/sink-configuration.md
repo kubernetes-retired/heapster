@@ -5,20 +5,20 @@ Heapster can store data into different backends (sinks). These are specified on 
 via the `--sink` flag. The flag takes an argument of the form `PREFIX:CONFIG[?OPTIONS]`.
 Options (optional!) are specified as URL query parameters, separated by `&` as normal.
 This allows each source to have custom configuration passed to it without needing to
-continually add new flags to Heapster as new sinks are added. This also means
-heapster can store data into multiple sinks at once.
+continually add new flags to Heapster as new sinks are added. Heapster can 
+store data into multiple sinks at once if multiple `--sink` flags are specified.
 
 ## Current sinks
 
 ### Log
 
-This sinks writes all data to the standard output which is particularly useful for debugging.
+This sink writes all data to the standard output which is particularly useful for debugging.
 
-   --sink=log
+    --sink=log
 
 ### InfluxDB
 This sink supports both monitoring metrics and events.
-*Supports InfluxDB versions v0.9 and above*
+*This sink supports InfluxDB versions v0.9 and above*.
 To use the InfluxDB sink add the following flag:
 
 	--sink=influxdb:<INFLUXDB_URL>[?<INFLUXDB_OPTIONS>]
@@ -31,8 +31,22 @@ The following options are available:
 * `user` - InfluxDB username (default: `root`)
 * `pw` - InfluxDB password (default: `root`)
 * `db` - InfluxDB Database name (default: `k8s`)
+* `retention` - Duration of the default InfluxDB retention policy, e.g. `4h` or `7d` (default: `0` meaning infinite)
 * `secure` - Connect securely to InfluxDB (default: `false`)
+* `insecuressl` - Ignore SSL certificate validity (default: `false`)
 * `withfields` - Use [InfluxDB fields](storage-schema.md#using-fields) (default: `false`)
+* `cluster_name` - cluster name for different Kubernetes clusters. (default: `default`)
+
+### Stackdriver
+
+This sink supports monitoring metrics only.
+To use the Stackdriver sink add following flag:
+
+	--sink=stackdriver[:?<STACKDRIVER_OPTIONS>]
+
+The following options are available:
+* `workers` - The number of workers. (default: `1`)
+* `cluster_name` - Cluster name for different Kubernetes clusters. (default: ``)
 
 ### Google Cloud Monitoring
 This sink supports monitoring metrics only.
@@ -40,7 +54,7 @@ To use the GCM sink add the following flag:
 
 	--sink=gcm
 
-*Note: This sink works only on a Google Compute Enginer VM as of now*
+*Note: This sink works only on a Google Compute Engine VM as of now*
 
 GCM has one option - `metrics` that can be set to:
 * all - the sink exports all metrics
@@ -48,17 +62,17 @@ GCM has one option - `metrics` that can be set to:
 
 ### Google Cloud Logging
 This sink supports events only.
-To use the InfluxDB sink add the following flag:
+To use the GCL sink add the following flag:
 
 	--sink=gcl
 
 *Notes:*
- * This sink works only on a Google Compute Enginer VM as of now
+ * This sink works only on a Google Compute Engine VM as of now
  * GCE instance must have “https://www.googleapis.com/auth/logging.write” auth scope
  * GCE instance must have Logging API enabled for the project in Google Developer Console
  * GCL Logs are accessible via:
     * `https://console.developers.google.com/project/<project_ID>/logs?service=custom.googleapis.com`
-    * Where `project_ID` is the project ID of the Google Cloud Platform project ID.
+    * Where `project_ID` is the project ID of the Google Cloud Platform project.
     * Select `kubernetes.io/events` from the `All logs` drop down menu.
 
 ### Hawkular-Metrics
@@ -84,42 +98,40 @@ The following options are available:
   * `name` - The syntax is `name(regexp)` where MetricName is matched (such as `cpu/usage`) with a `regexp` filter
 * `batchSize`- How many metrics are sent in each request to Hawkular-Metrics (default is 1000)
 * `concurrencyLimit`- How many concurrent requests are used to send data to the Hawkular-Metrics (default is 5)
+* `labelTagPrefix` - A prefix to be placed in front of each label when stored as a tag for the metric (default is `labels.`)
+* `disablePreCache` - Disable cache initialization by fetching metric definitions from Hawkular-Metrics
 
 A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. To increase the performance of Hawkular sink in case of multiple instances of Hawkular-Metrics (such as scaled scenario in OpenShift) modify the parameters of batchSize and concurrencyLimit to balance the load on Hawkular-Metrics instances.
 
-### OpenTSDB
-This sink supports monitoring metrics and events.
-To use the opentsdb sink add the following flag:
 
-    --sink=opentsdb:<OPENTSDB_SERVER_URL>
+### Wavefront
+The Wavefront sink supports monitoring metrics only.
+To use the Wavefront sink add the following flag:
 
-Currently, accessing opentsdb via its rest apis doesn't need any authentication, so you
-can enable opentsdb sink like this:
-
-    --sink=opentsdb:http://192.168.1.8:4242
-
-### Monasca
-This sink supports monitoring metrics only.
-To use the Monasca sink add the following flag:
-
-	--sink=monasca:[?<OPTIONS>]
-
-The available options are listed below, and some of them are mandatory. You need to provide access to the Identity service of OpenStack (keystone).
-Currently, only authorization through `username` / `userID` + `password` / `APIKey` is supported. If the agent access (for sending metrics) to Monasca is restricted to a role, please specify the corresponding `tenant-id` for automatic scoped authorization.
-
-The Monasca sink is then created with either the provided Monasca API Server URL, or the URL is discovered automatically if none is provided by the user.
+    --sink=wavefront:<WAVEFRONT_PROXY_URL:PORT>[?<OPTIONS>]
 
 The following options are available:
 
-* `user-id` - ID of the OpenStack user
-* `username` - Name of the OpenStack user
-* `tenant-id` - ID of the OpenStack tenant (project)
-* `keystone-url` - URL to the Keystone identity service (*mandatory*). Must be a v3 server (required by Monasca)
-* `password` - Password of the OpenStack user
-* `api-key` - API-Key for the OpenStack user
-* `domain-id` - ID of the OpenStack user's domain
-* `domain-name` - Name of the OpenStack user's domain
-* `monasca-url` - URL of the Monasca API server (*optional*: the sink will attempt to discover the service if not provided)
+* `clusterName` - The name of the Kubernetes cluster being monitored. This will be added as a tag called `cluster` to metrics in Wavefront (default: `k8s-cluster`)
+* `prefix` - The prefix to be added to all metrics that Heapster collects (default: `heapster.`)
+* `includeLabels` - If set to true, any K8s labels will be applied to metrics as tags (default: `false`)
+* `includeContainers` - If set to true, all container metrics will be sent to Wavefront. When set to false, container level metrics are skipped (pod level and above are still sent to Wavefront) (default: `true`)
+
+
+### OpenTSDB
+This sink supports both monitoring metrics and events.
+To use the OpenTSDB sink add the following flag:
+
+    --sink=opentsdb:<OPENTSDB_SERVER_URL>[?<OPTIONS>]
+
+Currently, accessing OpenTSDB via its rest apis doesn't need any authentication, so you
+can enable OpenTSDB sink like this:
+
+    --sink=opentsdb:http://192.168.1.8:4242?cluster=k8s-cluster
+
+The following options are available:
+
+* `cluster` - The name of the Kubernetes cluster being monitored. This will be added as a tag called `cluster` to metrics in OpenTSDB (default: `k8s-cluster`)
 
 ### Kafka
 This sink supports monitoring metrics only.
@@ -142,26 +154,30 @@ For example,
     --sink="kafka:?brokers=localhost:9092&brokers=localhost:9093&eventstopic=testtopic"
 
 ### Riemann
-This sink supports metrics only.
-To use the reimann sink add the following flag:
+This sink supports monitoring metrics and events.
+To use the Riemann sink add the following flag:
 
 	--sink="riemann:<RIEMANN_SERVER_URL>[?<OPTIONS>]"
 
 The following options are available:
 
-* `ttl` - TTL for writes to Riemann. Default: `60 seconds`
-* `state` - FIXME. Default: `""`
-* `tags` - FIXME. Default. `none`
-* `storeEvents` - Control storage of events. Default: `true`
+* `ttl` - TTL for writing to Riemann. Default: `60 seconds`
+* `state` - The event state. Default: `""`
+* `tags` - Default. `heapster`
+* `batchsize` - The Riemann sink sends batch of events. The default size is `1000`
+
+For example,
+
+--sink=riemann:http://localhost:5555?ttl=120&state=ok&tags=foobar&batchsize=150
 
 ### Elasticsearch
-This sink supports monitoring metrics and events. To use the ElasticSearch
+This sink supports monitoring metrics and events. To use the Elasticsearch
 sink add the following flag:
 ```
     --sink=elasticsearch:<ES_SERVER_URL>[?<OPTIONS>]
 ```
-Normally an ElasticSearch cluster has multiple nodes or a proxy, so these need
-to be configured for the ElasticSearch sink. To do this, you can set
+Normally an Elasticsearch cluster has multiple nodes or a proxy, so these need
+to be configured for the Elasticsearch sink. To do this, you can set
 `ES_SERVER_URL` to a dummy value, and use the `?nodes=` query value for each
 additional node in the cluster. For example:
 ```
@@ -169,6 +185,11 @@ additional node in the cluster. For example:
 ```
 (*) Notice that using the `?nodes` notation will override the `ES_SERVER_URL`
 
+If you run your ElasticSearch cluster behind a loadbalancer (or otherwise do
+not want to specify multiple nodes) then you can do the following:
+```
+  --sink=elasticsearch:http://elasticsearch.example.com:9200?sniff=false
+```
 
 Besides this, the following options can be set in query string:
 
@@ -187,27 +208,20 @@ Besides this, the following options can be set in query string:
 * `startupHealthcheckTimeout` - the time in seconds the healthcheck waits for
   a response from Elasticsearch on startup, i.e. when creating a client. The
   default value is `1`.
+* `ver` - ElasticSearch cluster version, can be either `2` or `5`. The default is `5`
 * `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
 * `cluster_name` - cluster name for different Kubernetes clusters. Default value is `default`.
-
-
-Like this:
-
-    --sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testMetric"
-
-	or
-
-	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testEvent"
+* `pipeline` - (optional; >ES5) Ingest Pipeline to process the documents. The default is disabled(empty value)
 
 #### AWS Integration
 In order to use AWS Managed Elastic we need to use one of the following methods:
 
-1. Making sure the public IPs of the Heapster are allowed on the ElasticSearch's Access Policy
+1. Making sure the public IPs of the Heapster are allowed on the Elasticsearch's Access Policy
 
 -OR-
 
 2. Configuring an Access Policy with IAM
-	1. Configure the ElasticSearch cluster policy with IAM User
+	1. Configure the Elasticsearch cluster policy with IAM User
 	2. Create a secret that stores the IAM credentials
 	3. Expose the credentials to the environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
 
@@ -243,7 +257,7 @@ For example,
 Metrics are sent to Graphite with this hierarchy:
 * `PREFIX`
   * `cluster`
-  * `namespaces` 
+  * `namespaces`
     * `NAMESPACE`
   * `nodes`
     * `NODE`
@@ -254,6 +268,46 @@ Metrics are sent to Graphite with this hierarchy:
                * `CONTAINER`
       * `sys-containers`
         * `SYS-CONTAINER`
+
+### Librato
+
+This sink supports monitoring metrics only.
+
+To use the librato sink add the following flag:
+
+    --sink=librato:<?<OPTIONS>>
+
+Options can be set in query string, like this:
+
+* `username` - Librato user email address (https://www.librato.com/docs/api/#authentication).
+* `token` - Librato API token
+* `prefix` - Prefix for all measurement names
+* `tags` - By default provided tags (comma separated list)
+* `tag_{name}` - Value for the tag `name`
+
+For example,
+
+    --sink=librato:?username=xyz&token=secret&prefix=k8s&tags=cluster&tag_cluster=staging
+
+The librato sink currently only works with accounts, which support [tagged metrics](https://www.librato.com/docs/kb/faq/account_questions/tags_or_sources/).
+
+### Honeycomb
+
+This sink supports both monitoring metrics and events.
+
+To use the Honeycomb sink add the following flag:
+
+    --sink="honeycomb:<?<OPTIONS>>"
+
+Options can be set in query string, like this:
+
+* `dataset` - Honeycomb Dataset to which to publish metrics/events
+* `writekey` - Honeycomb Write Key for your account
+* `apihost` - Option to send metrics to a different host (default: https://api.honeycomb.com) (optional)
+
+For example,
+
+    --sink="honeycomb:?dataset=mydataset&writekey=secretwritekey"
 
 ## Using multiple sinks
 

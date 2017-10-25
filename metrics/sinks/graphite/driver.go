@@ -47,9 +47,10 @@ type graphiteMetric struct {
 	timestamp int64
 }
 
+var escapeFieldReplacer = strings.NewReplacer(".", "_", "/", "_")
+
 func escapeField(f string) string {
-	replacer := strings.NewReplacer(".", "_", "/", "_")
-	return replacer.Replace(f)
+	return escapeFieldReplacer.Replace(f)
 }
 
 func (m *graphiteMetric) Path() string {
@@ -68,7 +69,7 @@ func (m *graphiteMetric) Path() string {
 			return fmt.Sprintf("nodes.%s.pods.%s.%s.containers.%s.%s",
 				escapeField(m.labels[core.LabelHostname.Key]),
 				m.labels[core.LabelNamespaceName.Key],
-				m.labels[core.LabelPodName.Key],
+				escapeField(m.labels[core.LabelPodName.Key]),
 				escapeField(m.labels[core.LabelContainerName.Key]),
 				metricPath,
 			)
@@ -82,7 +83,7 @@ func (m *graphiteMetric) Path() string {
 			return fmt.Sprintf("nodes.%s.pods.%s.%s.%s",
 				escapeField(m.labels[core.LabelHostname.Key]),
 				m.labels[core.LabelNamespaceName.Key],
-				m.labels[core.LabelPodName.Key],
+				escapeField(m.labels[core.LabelPodName.Key]),
 				metricPath,
 			)
 		case core.MetricSetTypeNamespace:

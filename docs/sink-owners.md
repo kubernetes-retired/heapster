@@ -27,15 +27,15 @@ List of Owners
 | --------------- | ------------------ | -------------------| --------------------------------------------- | -------------- |
 | ElasticSearch   | :heavy_check_mark: | :heavy_check_mark: | @AlmogBaku / @andyxning / @huangyuqi          | :ok:           |
 | GCM             | :heavy_check_mark: | :x:                | @kubernetes/heapster-maintainers              | :ok:           |
+| Stackdriver     | :heavy_check_mark: | :x:                | @kubernetes/heapster-maintainers              | :ok:    |
 | Hawkular        | :heavy_check_mark: | :x:                | @burmanm / @mwringe                           | :ok:           |
 | InfluxDB        | :heavy_check_mark: | :heavy_check_mark: | @kubernetes/heapster-maintainers / @andyxning | :ok:           |
 | Metric (memory) | :heavy_check_mark: | :x:                | @kubernetes/heapster-maintainers              | :ok:           |
-| Kafka           | :heavy_check_mark: | :heavy_check_mark: | @huangyuqi                                    | :ok:           |
 | Monasca         | :heavy_check_mark: | :x:                |                                               | :no_entry: [1] |
+| Kafka           | :heavy_check_mark: | :heavy_check_mark: | @huangyuqi                                    | :ok:           |
 | OpenTSDB        | :heavy_check_mark: | :x:                | @bluebreezecf                                 | :ok:           |
-| Riemann         | :heavy_check_mark: | :x: :new:          | @jsoriano (temporarily)                       | :no_entry: [2] |
+| Riemann         | :heavy_check_mark: | :heavy_check_mark: | @jamtur01 @mcorbin                            | :ok:           |
 | Graphite        | :heavy_check_mark: | :x:                | @jsoriano / @theairkit                        | :new: #1341    |
-| Wavefront       | :heavy_check_mark: | :x:                | @ezeev                                        | :new: #1400    |
-
-- [1] Monasca now has native support for Kubernetes, so this is no longer needed (see https://github.com/kubernetes/heapster/issues/1407#issuecomment-266008730 and https://github.com/openstack/monasca-agent/blob/master/docs/Plugins.md#docker)
-- [2] The Riemann library has disappeared (see #1419) and users seem to be moving towards using Graphite (see https://github.com/kubernetes/heapster/issues/1407#issuecomment-265850414) or are unresponsive
+| Wavefront       | :heavy_check_mark: | :x:                | @ezeev                                        | :ok:           |
+| Librato         | :heavy_check_mark: | :x:                | @johanneswuerbach                             | :ok:           |
+| Honeycomb       | :heavy_check_mark: | :heavy_check_mark: | @emfree                                       | :new: #1762    |

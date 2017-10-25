@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build the influxdb image for amd64, arm, arm64 and ppc64le
+# Build the influxdb image for amd64, arm, arm64, ppc64le and s390x
 #
 # Usage:
 # 	[PREFIX=gcr.io/google_containers] [ARCH=amd64] make (build|push)
 
 all: build
 
-VERSION?=v0.13.0
+VERSION?=v1.3.3
 PREFIX?=gcr.io/google_containers
 ARCH?=amd64
-GOLANG_VERSION=1.7
+GOLANG_VERSION=1.8
 TEMP_DIR:=$(shell mktemp -d)
 
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
@@ -63,17 +63,22 @@ build:
 
 	rm -rf $(TEMP_DIR)
 
-push: ./manifest-tool $(addprefix sub-push-,$(ALL_ARCHITECTURES))
-	./manifest-tool push from-args --platforms $(ML_PLATFORMS) --template $(PREFIX)/heapster-influxdb-ARCH:$(VERSION) --target $(PREFIX)/heapster-influxdb:$(VERSION)
+# Should depend on target: ./manifest-tool
+push: gcr-login $(addprefix sub-push-,$(ALL_ARCHITECTURES))
+#	./manifest-tool push from-args --platforms $(ML_PLATFORMS) --template $(PREFIX)/heapster-influxdb-ARCH:$(VERSION) --target $(PREFIX)/heapster-influxdb:$(VERSION)
 
 sub-push-%:
 	$(MAKE) ARCH=$* PREFIX=$(PREFIX) VERSION=$(VERSION) build
-ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
-	gcloud docker push $(PREFIX)/heapster-influxdb-$*:$(VERSION)
-else
 	docker push $(PREFIX)/heapster-influxdb-$*:$(VERSION)
+
+gcr-login:
+ifeq ($(findstring gcr.io,$(PREFIX)),gcr.io)
+	@echo "If you are pushing to a gcr.io registry, you have to be logged in via 'docker login'; 'gcloud docker push' can't push manifest lists yet."
+	@echo "This script is automatically logging you in now."
+	gcloud docker -a
 endif
 
-./manifest-tool:
-	curl -sSL https://github.com/luxas/manifest-tool/releases/download/v0.3.0/manifest-tool > manifest-tool
-	chmod +x manifest-tool
+# TODO(luxas): As soon as it's working to push fat manifests to gcr.io, reenable this code
+#./manifest-tool:
+#	curl -sSL https://github.com/luxas/manifest-tool/releases/download/v0.3.0/manifest-tool > manifest-tool
+#	chmod +x manifest-tool

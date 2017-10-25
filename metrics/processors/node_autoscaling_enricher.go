@@ -16,20 +16,21 @@ package processors
 
 import (
 	"net/url"
-	"time"
 
+	"k8s.io/apimachinery/pkg/labels"
+	kube_client "k8s.io/client-go/kubernetes"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
 	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/util"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/fields"
 )
 
 type NodeAutoscalingEnricher struct {
-	nodeLister *cache.StoreToNodeLister
-	reflector  *cache.Reflector
+	nodeLister  v1listers.NodeLister
+	reflector   *cache.Reflector
+	labelCopier *util.LabelCopier
 }
 
 func (this *NodeAutoscalingEnricher) Name() string {
@@ -37,13 +38,13 @@ func (this *NodeAutoscalingEnricher) Name() string {
 }
 
 func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataBatch, error) {
-	nodes, err := this.nodeLister.List()
+	nodes, err := this.nodeLister.List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
-	for _, node := range nodes.Items {
+	for _, node := range nodes {
 		if metricSet, found := batch.MetricSets[core.NodeKey(node.Name)]; found {
-			metricSet.Labels[core.LabelLabels.Key] = util.LabelsToString(node.Labels)
+			this.labelCopier.Copy(node.Labels, metricSet.Labels)
 			capacityCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
 			capacityMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
 			allocatableCpu, _ := node.Status.Allocatable[kube_api.ResourceCPU]
@@ -87,21 +88,19 @@ func setFloat(metricSet *core.MetricSet, metric *core.Metric, value float32) {
 	}
 }
 
-func NewNodeAutoscalingEnricher(url *url.URL) (*NodeAutoscalingEnricher, error) {
+func NewNodeAutoscalingEnricher(url *url.URL, labelCopier *util.LabelCopier) (*NodeAutoscalingEnricher, error) {
 	kubeConfig, err := kube_config.GetKubeClientConfig(url)
 	if err != nil {
 		return nil, err
 	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	kubeClient := kube_client.NewForConfigOrDie(kubeConfig)
 
 	// watch nodes
-	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
-	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
-	reflector.Run()
+	nodeLister, reflector, _ := util.GetNodeLister(kubeClient)
 
 	return &NodeAutoscalingEnricher{
-		nodeLister: nodeLister,
-		reflector:  reflector,
+		nodeLister:  nodeLister,
+		reflector:   reflector,
+		labelCopier: labelCopier,
 	}, nil
 }

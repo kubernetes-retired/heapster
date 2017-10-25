@@ -15,6 +15,7 @@
 package gcl
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
@@ -26,7 +27,7 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	gcl "google.golang.org/api/logging/v2beta1"
+	gcl "google.golang.org/api/logging/v2"
 )
 
 const (
@@ -48,20 +49,25 @@ func (sink *gclSink) ExportEvents(eventBatch *core.EventBatch) {
 	glog.V(4).Info("Exporting events")
 	entries := make([]*gcl.LogEntry, len(eventBatch.Events))
 	for i, event := range eventBatch.Events {
+		evtJson, err := json.Marshal(event)
+		if err != nil {
+			glog.Errorf("Skipping exporting event due to error while marshaling event %v as JSON: %v", event, err)
+			continue
+		}
 		entries[i] = &gcl.LogEntry{
 			LogName:     fmt.Sprintf("projects/%s/logs/%s", sink.project, url.QueryEscape(logName)),
 			Timestamp:   event.LastTimestamp.Time.UTC().Format(time.RFC3339),
 			Severity:    loggingSeverity,
 			Resource:    &gcl.MonitoredResource{Type: monitoredResourceType},
 			InsertId:    string(event.UID),
-			JsonPayload: *event,
+			JsonPayload: evtJson,
 		}
 	}
 	req := &gcl.WriteLogEntriesRequest{Entries: entries}
 	if _, err := sink.gclService.Entries.Write(req).Do(); err != nil {
 		glog.Errorf("Error while exporting events to GCL: %v", err)
 	} else {
-		glog.V(4).Infof("Sucessfully exported %d events", len(entries))
+		glog.V(4).Infof("Successfully exported %d events", len(entries))
 	}
 }
 

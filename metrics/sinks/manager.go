@@ -40,13 +40,13 @@ var (
 		[]string{"exporter"},
 	)
 
-	// Time spent exporting data to sink in microseconds.
+	// Time spent exporting data to sink in milliseconds.
 	exporterDuration = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
 			Namespace: "heapster",
 			Subsystem: "exporter",
-			Name:      "duration_microseconds",
-			Help:      "Time spent exporting data to sink in microseconds.",
+			Name:      "duration_milliseconds",
+			Help:      "Time spent exporting data to sink in milliseconds.",
 		},
 		[]string{"exporter"},
 	)
@@ -148,12 +148,17 @@ func (this *sinkManager) Stop() {
 
 func export(s core.DataSink, data *core.DataBatch) {
 	startTime := time.Now()
-	defer lastExportTimestamp.
-		WithLabelValues(s.Name()).
-		Set(float64(time.Now().Unix()))
-	defer exporterDuration.
-		WithLabelValues(s.Name()).
-		Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+
+	defer func() {
+		lastExportTimestamp.
+			WithLabelValues(s.Name()).
+			Set(float64(time.Now().Unix()))
+	}()
+	defer func() {
+		exporterDuration.
+			WithLabelValues(s.Name()).
+			Observe(float64(time.Since(startTime)) / float64(time.Millisecond))
+	}()
 
 	s.ExportData(data)
 }

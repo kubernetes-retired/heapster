@@ -22,13 +22,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"k8s.io/heapster/metrics/api/v1/types"
 	"k8s.io/heapster/metrics/core"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
 )
 
 func TestApiFactory(t *testing.T) {
 	metricSink := metricsink.MetricSink{}
-	api := NewApi(false, &metricSink, nil)
+	api := NewApi(false, &metricSink, nil, false)
 	as := assert.New(t)
 	for _, metric := range core.StandardMetrics {
 		val, exists := api.gkeMetrics[metric.Name]
@@ -56,7 +57,7 @@ func TestApiFactory(t *testing.T) {
 }
 
 func TestFuzzInput(t *testing.T) {
-	api := NewApi(false, nil, nil)
+	api := NewApi(false, nil, nil, false)
 	data := []*core.DataBatch{}
 	fuzz.New().NilChance(0).Fuzz(&data)
 	_ = api.processMetricsRequest(data)
@@ -102,8 +103,7 @@ func generateMetricSet(objectType string, labels []core.LabelDescriptor) *core.M
 	return ms
 }
 
-func TestRealInput(t *testing.T) {
-	api := NewApi(false, nil, nil)
+func generateDataBatch() ([]*core.DataBatch, []core.LabelDescriptor) {
 	dataBatch := []*core.DataBatch{
 		{
 			Timestamp:  time.Now(),
@@ -123,6 +123,35 @@ func TestRealInput(t *testing.T) {
 		entry.MetricSets[core.MetricSetTypePodContainer] = generateMetricSet(core.MetricSetTypePodContainer, labels)
 		entry.MetricSets[core.MetricSetTypeSystemContainer] = generateMetricSet(core.MetricSetTypeSystemContainer, labels)
 	}
+	return dataBatch, labels
+}
+
+func generateMetricSink() *metricsink.MetricSink {
+	batches, _ := generateDataBatch()
+	metricSink := &metricsink.MetricSink{}
+	for _, batch := range batches {
+		metricSink.ExportData(batch)
+	}
+	return metricSink
+}
+
+func TestDisabledExportTrue(t *testing.T) {
+	metricSink := generateMetricSink()
+	api := NewApi(false, metricSink, nil, true)
+	ts := api.getMetricsResponse()
+	assert.Equal(t, make([]*types.Timeseries, 0), ts, "Should get 0 timeseries, %v found", len(ts))
+}
+
+func TestDisabledExportFalse(t *testing.T) {
+	metricSink := generateMetricSink()
+	api := NewApi(false, metricSink, nil, false)
+	ts := api.getMetricsResponse()
+	assert.Equal(t, 4, len(ts), "Should get 4 timeseries, %v found", len(ts))
+}
+
+func TestRealInput(t *testing.T) {
+	api := NewApi(false, nil, nil, false)
+	dataBatch, labels := generateDataBatch()
 	ts := api.processMetricsRequest(dataBatch)
 	type expectation struct {
 		count       int

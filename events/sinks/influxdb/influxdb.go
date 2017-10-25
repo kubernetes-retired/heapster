@@ -22,10 +22,10 @@ import (
 	"sync"
 	"time"
 
+	kube_api "k8s.io/client-go/pkg/api/v1"
 	influxdb_common "k8s.io/heapster/common/influxdb"
 	"k8s.io/heapster/events/core"
 	metrics_core "k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
 
 	"github.com/golang/glog"
 	influxdb "github.com/influxdata/influxdb/client"
@@ -131,6 +131,9 @@ func (sink *influxdbSink) ExportEvents(eventBatch *core.EventBatch) {
 		if err != nil {
 			glog.Warningf("Failed to convert event to point: %v", err)
 		}
+
+		point.Tags["cluster_name"] = sink.c.ClusterName
+
 		dataPoints = append(dataPoints, *point)
 		if len(dataPoints) >= maxSendBatchSize {
 			sink.sendData(dataPoints)
@@ -144,7 +147,7 @@ func (sink *influxdbSink) ExportEvents(eventBatch *core.EventBatch) {
 
 func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	if err := sink.createDatabase(); err != nil {
-		glog.Errorf("Failed to create infuxdb: %v", err)
+		glog.Errorf("Failed to create influxdb: %v", err)
 		return
 	}
 	bp := influxdb.BatchPoints{
@@ -155,6 +158,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 
 	start := time.Now()
 	if _, err := sink.client.Write(bp); err != nil {
+		glog.Errorf("InfluxDB write failed: %v", err)
 		if strings.Contains(err.Error(), dbNotFoundError) {
 			sink.resetConnection()
 		} else if _, _, err := sink.client.Ping(); err != nil {

@@ -22,11 +22,11 @@ import (
 	"net/url"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	util "k8s.io/client-go/util/testing"
 	influxdb_common "k8s.io/heapster/common/influxdb"
 	"k8s.io/heapster/events/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	kube_api_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
-	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 type fakeInfluxDBEventSink struct {
@@ -59,15 +59,15 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	event1 := kube_api.Event{
 		Message:        "event1",
 		Count:          100,
-		LastTimestamp:  kube_api_unversioned.NewTime(now),
-		FirstTimestamp: kube_api_unversioned.NewTime(now),
+		LastTimestamp:  metav1.NewTime(now),
+		FirstTimestamp: metav1.NewTime(now),
 	}
 
 	event2 := kube_api.Event{
 		Message:        "event2",
 		Count:          101,
-		LastTimestamp:  kube_api_unversioned.NewTime(now),
-		FirstTimestamp: kube_api_unversioned.NewTime(now),
+		LastTimestamp:  metav1.NewTime(now),
+		FirstTimestamp: metav1.NewTime(now),
 	}
 
 	data := core.EventBatch{

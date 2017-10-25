@@ -26,11 +26,13 @@ import (
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	"github.com/prometheus/client_golang/prometheus"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/labels"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	kube_client "k8s.io/client-go/kubernetes"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/heapster/metrics/util"
 )
 
 const (
@@ -66,15 +68,17 @@ type kubeletMetricsSource struct {
 	nodename      string
 	hostname      string
 	hostId        string
+	schedulable   string
 }
 
-func NewKubeletMetricsSource(host Host, client *KubeletClient, nodeName string, hostName string, hostId string) MetricsSource {
+func NewKubeletMetricsSource(host Host, client *KubeletClient, nodeName string, hostName string, hostId string, schedulable string) MetricsSource {
 	return &kubeletMetricsSource{
 		host:          host,
 		kubeletClient: client,
 		nodename:      nodeName,
 		hostname:      hostName,
 		hostId:        hostId,
+		schedulable:   schedulable,
 	}
 }
 
@@ -111,8 +115,6 @@ func (this *kubeletMetricsSource) handleKubernetesContainer(cName, ns, podName s
 	cMetrics.Labels[LabelPodId.Key] = c.Spec.Labels[kubernetesPodUID]
 	cMetrics.Labels[LabelPodName.Key] = podName
 	cMetrics.Labels[LabelNamespaceName.Key] = ns
-	// Needed for backward compatibility
-	cMetrics.Labels[LabelPodNamespace.Key] = ns
 	return metricSetKey
 }
 
@@ -137,6 +139,7 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 	if isNode(c) {
 		metricSetKey = NodeKey(this.nodename)
 		cMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
+		cMetrics.Labels[LabelNodeSchedulable.Key] = this.schedulable
 	} else {
 		cName := c.Spec.Labels[kubernetesContainerLabel]
 		ns := c.Spec.Labels[kubernetesPodNamespaceLabel]
@@ -184,68 +187,75 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 		}
 	}
 
-	if c.Spec.HasCustomMetrics {
-	metricloop:
-		for _, spec := range c.Spec.CustomMetrics {
-			if cmValue, ok := c.Stats[0].CustomMetrics[spec.Name]; ok && cmValue != nil && len(cmValue) >= 1 {
-				newest := cmValue[0]
-				for _, metricVal := range cmValue {
-					if newest.Timestamp.Before(metricVal.Timestamp) {
-						newest = metricVal
-					}
-				}
-				mv := MetricValue{}
-				switch spec.Type {
-				case cadvisor.MetricGauge:
-					mv.MetricType = MetricGauge
-				case cadvisor.MetricCumulative:
-					mv.MetricType = MetricCumulative
-				default:
-					glog.V(4).Infof("Skipping %s: unknown custom metric type: %v", spec.Name, spec.Type)
-					continue metricloop
-				}
+	if !c.Spec.HasCustomMetrics {
+		return metricSetKey, cMetrics
+	}
 
-				switch spec.Format {
-				case cadvisor.IntType:
-					mv.ValueType = ValueInt64
-					mv.IntValue = newest.IntValue
-				case cadvisor.FloatType:
-					mv.ValueType = ValueFloat
-					mv.FloatValue = float32(newest.FloatValue)
-				default:
-					glog.V(4).Infof("Skipping %s: unknown custom metric format", spec.Name, spec.Format)
-					continue metricloop
-				}
+metricloop:
+	for _, spec := range c.Spec.CustomMetrics {
+		cmValue, ok := c.Stats[0].CustomMetrics[spec.Name]
+		if !ok || cmValue == nil || len(cmValue) == 0 {
+			continue metricloop
+		}
 
-				cMetrics.MetricValues[CustomMetricPrefix+spec.Name] = mv
+		newest := cmValue[0]
+		for _, metricVal := range cmValue {
+			if newest.Timestamp.Before(metricVal.Timestamp) {
+				newest = metricVal
 			}
 		}
+		mv := MetricValue{}
+		switch spec.Type {
+		case cadvisor.MetricGauge:
+			mv.MetricType = MetricGauge
+		case cadvisor.MetricCumulative:
+			mv.MetricType = MetricCumulative
+		default:
+			glog.V(4).Infof("Skipping %s: unknown custom metric type: %v", spec.Name, spec.Type)
+			continue metricloop
+		}
+
+		switch spec.Format {
+		case cadvisor.IntType:
+			mv.ValueType = ValueInt64
+			mv.IntValue = newest.IntValue
+		case cadvisor.FloatType:
+			mv.ValueType = ValueFloat
+			mv.FloatValue = float32(newest.FloatValue)
+		default:
+			glog.V(4).Infof("Skipping %s: unknown custom metric format", spec.Name, spec.Format)
+			continue metricloop
+		}
+
+		cMetrics.MetricValues[CustomMetricPrefix+spec.Name] = mv
 	}
 
 	return metricSetKey, cMetrics
 }
 
-func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) *DataBatch {
+func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) (*DataBatch, error) {
 	containers, err := this.scrapeKubelet(this.kubeletClient, this.host, start, end)
+
 	if err != nil {
-		glog.Errorf("error while getting containers from Kubelet: %v", err)
+		return nil, err
 	}
-	glog.V(2).Infof("successfully obtained stats for %v containers", len(containers))
+
+	glog.V(2).Infof("successfully obtained stats from %s for %v containers", this.host, len(containers))
 
 	result := &DataBatch{
 		Timestamp:  end,
 		MetricSets: map[string]*MetricSet{},
 	}
-	keys := make(map[string]bool)
+
 	for _, c := range containers {
 		name, metrics := this.decodeMetrics(&c)
 		if name == "" || metrics == nil {
 			continue
 		}
 		result.MetricSets[name] = metrics
-		keys[name] = true
 	}
-	return result
+
+	return result, nil
 }
 
 func (this *kubeletMetricsSource) scrapeKubelet(client *KubeletClient, host Host, start, end time.Time) ([]cadvisor.ContainerInfo, error) {
@@ -255,27 +265,25 @@ func (this *kubeletMetricsSource) scrapeKubelet(client *KubeletClient, host Host
 }
 
 type kubeletProvider struct {
-	nodeLister    *cache.StoreToNodeLister
+	nodeLister    v1listers.NodeLister
 	reflector     *cache.Reflector
 	kubeletClient *KubeletClient
 }
 
 func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 	sources := []MetricsSource{}
-	nodes, err := this.nodeLister.List()
+	nodes, err := this.nodeLister.List(labels.Everything())
 	if err != nil {
 		glog.Errorf("error while listing nodes: %v", err)
 		return sources
 	}
-	if len(nodes.Items) == 0 {
+	if len(nodes) == 0 {
 		glog.Error("No nodes received from APIserver.")
 		return sources
 	}
 
-	nodeNames := make(map[string]bool)
-	for _, node := range nodes.Items {
-		nodeNames[node.Name] = true
-		hostname, ip, err := getNodeHostnameAndIP(&node)
+	for _, node := range nodes {
+		hostname, ip, err := getNodeHostnameAndIP(node)
 		if err != nil {
 			glog.Errorf("%v", err)
 			continue
@@ -286,9 +294,18 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 			node.Name,
 			hostname,
 			node.Spec.ExternalID,
+			getNodeSchedulableStatus(node),
 		))
 	}
 	return sources
+}
+
+func getNodeSchedulableStatus(node *kube_api.Node) string {
+	if node.Spec.Unschedulable {
+		return "false"
+	}
+
+	return "true"
 }
 
 func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
@@ -310,6 +327,9 @@ func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
 		if addr.Type == kube_api.NodeLegacyHostIP && addr.Address != "" && ip == "" {
 			ip = addr.Address
 		}
+		if addr.Type == kube_api.NodeExternalIP && addr.Address != "" && ip == "" {
+			ip = addr.Address
+		}
 	}
 	if ip != "" {
 		return hostname, ip, nil
@@ -323,24 +343,19 @@ func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	kubeClient := kube_client.NewForConfigOrDie(kubeConfig)
 	kubeletClient, err := NewKubeletClient(kubeletConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get nodes to test if the client is configured well. Watch gives less error information.
-	if _, err := kubeClient.Nodes().List(kube_api.ListOptions{
-		LabelSelector: labels.Everything(),
-		FieldSelector: fields.Everything()}); err != nil {
+	if _, err := kubeClient.Nodes().List(metav1.ListOptions{}); err != nil {
 		glog.Errorf("Failed to load nodes: %v", err)
 	}
 
 	// watch nodes
-	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
-	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
-	reflector.Run()
+	nodeLister, reflector, _ := util.GetNodeLister(kubeClient)
 
 	return &kubeletProvider{
 		nodeLister:    nodeLister,

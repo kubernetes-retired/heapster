@@ -75,9 +75,14 @@ func ConvertToFloat64(v interface{}) (float64, error) {
 	}
 }
 
-// UnixMilli Returns milliseconds since epoch
-func UnixMilli(t time.Time) int64 {
-	return t.UnixNano() / 1e6
+// ToUnixMilli returns milliseconds since epoch from time.Time
+func ToUnixMilli(t time.Time) int64 {
+	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+}
+
+// FromUnixMilli returns time.Time from milliseconds since epoch
+func FromUnixMilli(milli int64) time.Time {
+	return time.Unix(0, milli*int64(time.Millisecond))
 }
 
 // Prepend Helper function to insert modifier in the beginning of slice

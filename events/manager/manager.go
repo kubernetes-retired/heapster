@@ -31,6 +31,9 @@ var (
 			Name:      "last_time_seconds",
 			Help:      "Last time of eventer housekeep since unix epoch in seconds.",
 		})
+
+	// Time of latest scrape operation
+	LatestScrapeTime = time.Now()
 )
 
 func init() {
@@ -88,6 +91,8 @@ func (rm *realManager) Housekeep() {
 
 func (rm *realManager) housekeep() {
 	defer lastHousekeepTimestamp.Set(float64(time.Now().Unix()))
+
+	LatestScrapeTime = time.Now()
 
 	// No parallelism. Assumes that the events are pushed to Heapster. Add parallelism
 	// when this stops to be true.

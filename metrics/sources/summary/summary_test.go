@@ -24,11 +24,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	util "k8s.io/client-go/util/testing"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sources/kubelet"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
-	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 const (
@@ -38,6 +38,7 @@ const (
 	offsetMemPageFaults
 	offsetMemMajorPageFaults
 	offsetMemUsageBytes
+	offsetMemRSSBytes
 	offsetMemWorkingSetBytes
 	offsetNetRxBytes
 	offsetNetRxErrors
@@ -59,7 +60,11 @@ const (
 	seedPod1           = 3000
 	seedPod1Container  = 4000
 	seedPod2           = 5000
-	seedPod2Container  = 6000
+	seedPod2Container0 = 6000
+	seedPod2Container1 = 7000
+	seedPod3Container0 = 9000
+	seedPod4           = 10000
+	seedPod4Container0 = 11000
 )
 
 const (
@@ -69,16 +74,29 @@ const (
 	pName0 = "pod0"
 	pName1 = "pod1"
 	pName2 = "pod0" // ensure pName2 conflicts with pName0, but is in a different namespace
+	pName3 = "pod2"
+	pName4 = "pod4" // Regression test for #1838
 
 	cName00 = "c0"
 	cName01 = "c1"
-	cName10 = "c0" // ensure cName10 conflicts with cName02, but is in a different pod
-	cName20 = "c1" // ensure cName20 conflicts with cName01, but is in a different pod + namespace
+	cName10 = "c0"      // ensure cName10 conflicts with cName02, but is in a different pod
+	cName20 = "c1"      // ensure cName20 conflicts with cName01, but is in a different pod + namespace
+	cName21 = "runtime" // ensure that runtime containers are not renamed
+	cName30 = "c3"
+	cName40 = "c4" // Running, with cpu / memory stats
+	cName41 = "c4" // Terminated, has no CPU / Memory stats
+	cName42 = "c4" // Terminated, has blank CPU / Memory stats
 )
 
 var (
-	scrapeTime = time.Now()
-	startTime  = time.Now().Add(-time.Minute)
+	availableFsBytes = uint64(1130)
+	usedFsBytes      = uint64(13340)
+	totalFsBytes     = uint64(2153)
+	freeInode        = uint64(10440)
+	usedInode        = uint64(103520)
+	totalInode       = uint64(103620)
+	scrapeTime       = time.Now()
+	startTime        = time.Now().Add(-time.Minute)
 )
 
 var nodeInfo = NodeInfo{
@@ -93,26 +111,25 @@ type fakeSource struct {
 }
 
 func (f *fakeSource) Name() string { return "fake" }
-func (f *fakeSource) ScrapeMetrics(start, end time.Time) *core.DataBatch {
+func (f *fakeSource) ScrapeMetrics(start, end time.Time) (*core.DataBatch, error) {
 	f.scraped = true
-	return nil
+	return nil, nil
 }
 
 func testingSummaryMetricsSource() *summaryMetricsSource {
 	return &summaryMetricsSource{
 		node:          nodeInfo,
 		kubeletClient: &kubelet.KubeletClient{},
-		useFallback:   false,
-		fallback:      &fakeSource{},
 	}
 }
 
 func TestDecodeSummaryMetrics(t *testing.T) {
+
 	ms := testingSummaryMetricsSource()
 	summary := stats.Summary{
 		Node: stats.NodeStats{
 			NodeName:  nodeInfo.NodeName,
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 			CPU:       genTestSummaryCPU(seedNode),
 			Memory:    genTestSummaryMemory(seedNode),
 			Network:   genTestSummaryNetwork(seedNode),
@@ -128,18 +145,19 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				Name:      pName0,
 				Namespace: namespace0,
 			},
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod0),
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName00, seedPod0Container0),
 				genTestSummaryContainer(cName01, seedPod0Container1),
+				genTestSummaryTerminatedContainer(cName00, seedPod0Container0),
 			},
 		}, {
 			PodRef: stats.PodReference{
 				Name:      pName1,
 				Namespace: namespace0,
 			},
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod1),
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName10, seedPod1Container),
@@ -156,10 +174,43 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				Name:      pName2,
 				Namespace: namespace1,
 			},
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod2),
 			Containers: []stats.ContainerStats{
-				genTestSummaryContainer(cName20, seedPod2Container),
+				genTestSummaryContainer(cName20, seedPod2Container0),
+				genTestSummaryContainer(cName21, seedPod2Container1),
+			},
+		}, {
+			PodRef: stats.PodReference{
+				Name:      pName3,
+				Namespace: namespace0,
+			},
+			Containers: []stats.ContainerStats{
+				genTestSummaryContainer(cName30, seedPod3Container0),
+			},
+			VolumeStats: []stats.VolumeStats{{
+				Name: "C",
+				FsStats: stats.FsStats{
+					AvailableBytes: &availableFsBytes,
+					UsedBytes:      &usedFsBytes,
+					CapacityBytes:  &totalFsBytes,
+					InodesFree:     &freeInode,
+					InodesUsed:     &usedInode,
+					Inodes:         &totalInode,
+				},
+			},
+			},
+		}, {
+			PodRef: stats.PodReference{
+				Name:      pName4,
+				Namespace: namespace0,
+			},
+			StartTime: metav1.NewTime(startTime),
+			Network:   genTestSummaryNetwork(seedPod4),
+			Containers: []stats.ContainerStats{
+				genTestSummaryContainer(cName40, seedPod4Container0),
+				genTestSummaryTerminatedContainerNoStats(cName41),
+				genTestSummaryTerminatedContainerBlankStats(cName41),
 			},
 		}},
 	}
@@ -216,6 +267,11 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		seed:    seedPod2,
 		network: true,
 	}, {
+		key:     core.PodKey(namespace0, pName4),
+		setType: core.MetricSetTypePod,
+		seed:    seedPod4,
+		network: true,
+	}, {
 		key:     core.PodContainerKey(namespace0, pName0, cName00),
 		setType: core.MetricSetTypePodContainer,
 		seed:    seedPod0Container0,
@@ -239,7 +295,28 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 	}, {
 		key:     core.PodContainerKey(namespace1, pName2, cName20),
 		setType: core.MetricSetTypePodContainer,
-		seed:    seedPod2Container,
+		seed:    seedPod2Container0,
+		cpu:     true,
+		memory:  true,
+		fs:      containerFs,
+	}, {
+		key:     core.PodContainerKey(namespace1, pName2, cName21),
+		setType: core.MetricSetTypePodContainer,
+		seed:    seedPod2Container1,
+		cpu:     true,
+		memory:  true,
+		fs:      containerFs,
+	}, {
+		key:     core.PodContainerKey(namespace0, pName3, cName30),
+		setType: core.MetricSetTypePodContainer,
+		seed:    seedPod3Container0,
+		cpu:     true,
+		memory:  true,
+		fs:      containerFs,
+	}, {
+		key:     core.PodContainerKey(namespace0, pName4, cName40),
+		setType: core.MetricSetTypePodContainer,
+		seed:    seedPod4Container0,
 		cpu:     true,
 		memory:  true,
 		fs:      containerFs,
@@ -260,6 +337,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		if e.memory {
 			checkIntMetric(t, m, e.key, core.MetricMemoryUsage, e.seed+offsetMemUsageBytes)
 			checkIntMetric(t, m, e.key, core.MetricMemoryWorkingSet, e.seed+offsetMemWorkingSetBytes)
+			checkIntMetric(t, m, e.key, core.MetricMemoryRSS, e.seed+offsetMemRSSBytes)
 			checkIntMetric(t, m, e.key, core.MetricMemoryPageFaults, e.seed+offsetMemPageFaults)
 			checkIntMetric(t, m, e.key, core.MetricMemoryMajorPageFaults, e.seed+offsetMemMajorPageFaults)
 		}
@@ -277,15 +355,56 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		delete(metrics, e.key)
 	}
 
+	// Verify volume information labeled metrics
+	var volumeInformationMetricsKey = core.PodKey(namespace0, pName3)
+	var mappedVolumeStats = map[string]int64{}
+	for _, labeledMetric := range metrics[volumeInformationMetricsKey].LabeledMetrics {
+		assert.True(t, strings.HasPrefix("Volume:C", labeledMetric.Labels["resource_id"]))
+		mappedVolumeStats[labeledMetric.Name] = labeledMetric.IntValue
+	}
+
+	assert.True(t, mappedVolumeStats["filesystem/available"] == int64(availableFsBytes))
+	assert.True(t, mappedVolumeStats["filesystem/usage"] == int64(usedFsBytes))
+	assert.True(t, mappedVolumeStats["filesystem/limit"] == int64(totalFsBytes))
+
+	delete(metrics, volumeInformationMetricsKey)
+
 	for k, v := range metrics {
 		assert.Fail(t, "unexpected metric", "%q: %+v", k, v)
+	}
+}
+
+func genTestSummaryTerminatedContainer(name string, seed int) stats.ContainerStats {
+	return stats.ContainerStats{
+		Name:      name,
+		StartTime: metav1.NewTime(startTime.Add(-time.Minute)),
+		CPU:       genTestSummaryZeroCPU(seed),
+		Memory:    genTestSummaryZeroMemory(seed),
+		Rootfs:    genTestSummaryFsStats(seed),
+		Logs:      genTestSummaryFsStats(seed),
+	}
+}
+
+func genTestSummaryTerminatedContainerNoStats(name string) stats.ContainerStats {
+	return stats.ContainerStats{
+		Name:      name,
+		StartTime: metav1.NewTime(startTime.Add(-time.Minute)),
+	}
+}
+
+func genTestSummaryTerminatedContainerBlankStats(name string) stats.ContainerStats {
+	return stats.ContainerStats{
+		Name:      name,
+		StartTime: metav1.NewTime(startTime.Add(-time.Minute)),
+		CPU:       genTestSummaryBlankCPU(),
+		Memory:    genTestSummaryBlankMemory(),
 	}
 }
 
 func genTestSummaryContainer(name string, seed int) stats.ContainerStats {
 	return stats.ContainerStats{
 		Name:      name,
-		StartTime: unversioned.NewTime(startTime),
+		StartTime: metav1.NewTime(startTime),
 		CPU:       genTestSummaryCPU(seed),
 		Memory:    genTestSummaryMemory(seed),
 		Rootfs:    genTestSummaryFsStats(seed),
@@ -293,9 +412,19 @@ func genTestSummaryContainer(name string, seed int) stats.ContainerStats {
 	}
 }
 
+func genTestSummaryZeroCPU(seed int) *stats.CPUStats {
+	cpu := stats.CPUStats{
+		Time:                 metav1.NewTime(scrapeTime),
+		UsageNanoCores:       uint64Val(seed, -seed),
+		UsageCoreNanoSeconds: uint64Val(seed, offsetCPUUsageCoreSeconds),
+	}
+	*cpu.UsageCoreNanoSeconds *= uint64(time.Millisecond.Nanoseconds())
+	return &cpu
+}
+
 func genTestSummaryCPU(seed int) *stats.CPUStats {
 	cpu := stats.CPUStats{
-		Time:                 unversioned.NewTime(scrapeTime),
+		Time:                 metav1.NewTime(scrapeTime),
 		UsageNanoCores:       uint64Val(seed, offsetCPUUsageCores),
 		UsageCoreNanoSeconds: uint64Val(seed, offsetCPUUsageCoreSeconds),
 	}
@@ -303,19 +432,43 @@ func genTestSummaryCPU(seed int) *stats.CPUStats {
 	return &cpu
 }
 
-func genTestSummaryMemory(seed int) *stats.MemoryStats {
+func genTestSummaryBlankCPU() *stats.CPUStats {
+	return &stats.CPUStats{
+		Time: metav1.NewTime(scrapeTime),
+	}
+}
+
+func genTestSummaryZeroMemory(seed int) *stats.MemoryStats {
 	return &stats.MemoryStats{
-		Time:            unversioned.NewTime(scrapeTime),
+		Time:            metav1.NewTime(scrapeTime),
 		UsageBytes:      uint64Val(seed, offsetMemUsageBytes),
 		WorkingSetBytes: uint64Val(seed, offsetMemWorkingSetBytes),
+		RSSBytes:        uint64Val(seed, -seed),
 		PageFaults:      uint64Val(seed, offsetMemPageFaults),
 		MajorPageFaults: uint64Val(seed, offsetMemMajorPageFaults),
 	}
 }
 
+func genTestSummaryMemory(seed int) *stats.MemoryStats {
+	return &stats.MemoryStats{
+		Time:            metav1.NewTime(scrapeTime),
+		UsageBytes:      uint64Val(seed, offsetMemUsageBytes),
+		WorkingSetBytes: uint64Val(seed, offsetMemWorkingSetBytes),
+		RSSBytes:        uint64Val(seed, offsetMemRSSBytes),
+		PageFaults:      uint64Val(seed, offsetMemPageFaults),
+		MajorPageFaults: uint64Val(seed, offsetMemMajorPageFaults),
+	}
+}
+
+func genTestSummaryBlankMemory() *stats.MemoryStats {
+	return &stats.MemoryStats{
+		Time: metav1.NewTime(scrapeTime),
+	}
+}
+
 func genTestSummaryNetwork(seed int) *stats.NetworkStats {
 	return &stats.NetworkStats{
-		Time:     unversioned.NewTime(scrapeTime),
+		Time:     metav1.NewTime(scrapeTime),
 		RxBytes:  uint64Val(seed, offsetNetRxBytes),
 		RxErrors: uint64Val(seed, offsetNetRxErrors),
 		TxBytes:  uint64Val(seed, offsetNetTxBytes),
@@ -359,7 +512,7 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 	summary := stats.Summary{
 		Node: stats.NodeStats{
 			NodeName:  nodeInfo.NodeName,
-			StartTime: unversioned.NewTime(startTime),
+			StartTime: metav1.NewTime(startTime),
 		},
 	}
 	data, err := json.Marshal(&summary)
@@ -378,53 +531,7 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 	ms.node.Port, err = strconv.Atoi(split[1])
 	require.NoError(t, err)
 
-	res := ms.ScrapeMetrics(time.Now(), time.Now())
+	res, err := ms.ScrapeMetrics(time.Now(), time.Now())
+	assert.Nil(t, err, "scrape error")
 	assert.Equal(t, res.MetricSets["node:test"].Labels[core.LabelMetricSetType.Key], core.MetricSetTypeNode)
-}
-
-func TestFallback(t *testing.T) {
-	server := httptest.NewServer(&util.FakeHandler{
-		StatusCode: 404,
-		T:          t,
-	})
-	defer server.Close()
-
-	ms := testingSummaryMetricsSource()
-	split := strings.SplitN(strings.Replace(server.URL, "http://", "", 1), ":", 2)
-	ms.node.IP = split[0]
-	var err error
-	ms.node.Port, err = strconv.Atoi(split[1])
-	require.NoError(t, err)
-	fallback := ms.fallback.(*fakeSource)
-
-	ms.ScrapeMetrics(time.Now(), time.Now())
-	assert.True(t, fallback.scraped)
-	assert.True(t, ms.useFallback)
-
-	server.Close()           // Second request should not hit the server.
-	fallback.scraped = false // reset
-	ms.ScrapeMetrics(time.Now(), time.Now())
-	assert.True(t, fallback.scraped)
-}
-
-func TestSummarySupported(t *testing.T) {
-	tests := []struct {
-		version        string
-		expectFallback bool
-	}{
-		{"v1.2.0-alpha.8", false},
-		{"v1.2.0", false},
-		{"v1.2.0-alpha.6", true},
-		{"v1.3.0-alpha.1", false},
-		{"v1.1.8", true},
-		{"v1.0.6", true},
-		{"v-invalid", true},
-	}
-
-	for _, test := range tests {
-		node := nodeInfo
-		node.KubeletVersion = test.version
-		source := NewSummaryMetricsSource(node, nil, nil).(*summaryMetricsSource)
-		assert.Equal(t, test.expectFallback, source.useFallback, test.version)
-	}
 }
