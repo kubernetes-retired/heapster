@@ -8,7 +8,7 @@ It allows the extraction of up to 15 minutes of historical data for any Containe
 ## Usage
 
 The Heapster Model is enabled by default. The resolution of the model can be configured through
-the `-metric_resolution` flag, which will cause the model to store historical data at the specified resolution. If the `-metric_resolution` flag is not specified, the default resolution of 60 seconds will be used.
+the `--metric_resolution` flag, which will cause the model to store historical data at the specified resolution. If the `--metric_resolution` flag is not specified, the default resolution of 60 seconds will be used.
 
 ## API documentation
 
