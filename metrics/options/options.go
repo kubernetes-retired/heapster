@@ -21,6 +21,7 @@ import (
 
 	genericoptions "k8s.io/apiserver/pkg/server/options"
 	"k8s.io/heapster/common/flags"
+	"k8s.io/heapster/metrics/sinks"
 )
 
 type HeapsterRunOptions struct {
@@ -33,23 +34,24 @@ type HeapsterRunOptions struct {
 	// Only to be used to for testing
 	DisableAuthForTesting bool
 
-	MetricResolution    time.Duration
-	EnableAPIServer     bool
-	Port                int
-	Ip                  string
-	MaxProcs            int
-	TLSCertFile         string
-	TLSKeyFile          string
-	TLSClientCAFile     string
-	AllowedUsers        string
-	Sources             flags.Uris
-	Sinks               flags.Uris
-	HistoricalSource    string
-	Version             bool
-	LabelSeparator      string
-	IgnoredLabels       []string
-	StoredLabels        []string
-	DisableMetricExport bool
+	MetricResolution      time.Duration
+	EnableAPIServer       bool
+	Port                  int
+	Ip                    string
+	MaxProcs              int
+	TLSCertFile           string
+	TLSKeyFile            string
+	TLSClientCAFile       string
+	AllowedUsers          string
+	Sources               flags.Uris
+	Sinks                 flags.Uris
+	HistoricalSource      string
+	Version               bool
+	LabelSeparator        string
+	IgnoredLabels         []string
+	StoredLabels          []string
+	DisableMetricExport   bool
+	SinkExportDataTimeout time.Duration
 }
 
 func NewHeapsterRunOptions() *HeapsterRunOptions {
@@ -88,4 +90,5 @@ func (h *HeapsterRunOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringSliceVar(&h.IgnoredLabels, "ignore_label", []string{}, "ignore this label when joining labels")
 	fs.StringSliceVar(&h.StoredLabels, "store_label", []string{}, "store this label separately from joined labels with the same name (name) or with different name (newName=name)")
 	fs.BoolVar(&h.DisableMetricExport, "disable_export", false, "Disable exporting metrics in api/v1/metric-export")
+	fs.DurationVar(&h.SinkExportDataTimeout, "sink_export_data_timeout", sinks.DefaultSinkExportDataTimeout, "Timeout for exporting data to a sink")
 }
