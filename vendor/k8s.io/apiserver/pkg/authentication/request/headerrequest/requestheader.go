@@ -83,7 +83,7 @@ func NewSecure(clientCA string, proxyClientNames []string, nameHeaders []string,
 	}
 
 	if len(clientCA) == 0 {
-		return nil, fmt.Errorf("missing clientCA file")
+		return nil, fmt.Errorf("missing clientCA file; define the '--requestheader-client-ca-file' flag")
 	}
 
 	// Wrap with an x509 verifier
