@@ -394,40 +394,24 @@ func (this *summaryProvider) GetMetricsSources() []MetricsSource {
 }
 
 func (this *summaryProvider) getNodeInfo(node *kube_api.Node) (NodeInfo, error) {
-	for _, c := range node.Status.Conditions {
-		if c.Type == kube_api.NodeReady && c.Status != kube_api.ConditionTrue {
-			return NodeInfo{}, fmt.Errorf("Node %v is not ready", node.Name)
-		}
+	hostname, ip, err := kubelet.GetNodeHostnameAndIP(node)
+	if err != nil {
+		return NodeInfo{}, err
+	}
+
+	if hostname == "" {
+		hostname = node.Name
 	}
 	info := NodeInfo{
 		NodeName: node.Name,
-		HostName: node.Name,
+		HostName: hostname,
 		HostID:   node.Spec.ExternalID,
 		Host: kubelet.Host{
+			IP:   ip,
 			Port: this.kubeletClient.GetPort(),
 		},
 		KubeletVersion: node.Status.NodeInfo.KubeletVersion,
 	}
-
-	for _, addr := range node.Status.Addresses {
-		if addr.Type == kube_api.NodeHostName && addr.Address != "" {
-			info.HostName = addr.Address
-		}
-		if addr.Type == kube_api.NodeInternalIP && addr.Address != "" {
-			info.IP = addr.Address
-		}
-		if addr.Type == kube_api.NodeLegacyHostIP && addr.Address != "" && info.IP == "" {
-			info.IP = addr.Address
-		}
-		if addr.Type == kube_api.NodeExternalIP && addr.Address != "" && info.IP == "" {
-			info.IP = addr.Address
-		}
-	}
-
-	if info.IP == "" {
-		return info, fmt.Errorf("Node %v has no valid hostname and/or IP address: %v %v", node.Name, info.HostName, info.IP)
-	}
-
 	return info, nil
 }
 

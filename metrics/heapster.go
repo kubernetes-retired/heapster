@@ -20,10 +20,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -106,7 +108,7 @@ func main() {
 	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource, opt.DisableMetricExport)
 	healthz.InstallHandler(mux, healthzChecker(metricSink))
 
-	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
+	addr := net.JoinHostPort(opt.Ip, strconv.Itoa(opt.Port))
 	glog.Infof("Starting heapster on port %d", opt.Port)
 
 	if len(opt.TLSCertFile) > 0 && len(opt.TLSKeyFile) > 0 {
