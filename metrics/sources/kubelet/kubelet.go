@@ -283,7 +283,7 @@ func (this *kubeletProvider) GetMetricsSources() []MetricsSource {
 	}
 
 	for _, node := range nodes {
-		hostname, ip, err := getNodeHostnameAndIP(node)
+		hostname, ip, err := GetNodeHostnameAndIP(node)
 		if err != nil {
 			glog.Errorf("%v", err)
 			continue
@@ -308,10 +308,10 @@ func getNodeSchedulableStatus(node *kube_api.Node) string {
 	return "true"
 }
 
-func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
+func GetNodeHostnameAndIP(node *kube_api.Node) (string, net.IP, error) {
 	for _, c := range node.Status.Conditions {
 		if c.Type == kube_api.NodeReady && c.Status != kube_api.ConditionTrue {
-			return "", "", fmt.Errorf("Node %v is not ready", node.Name)
+			return "", nil, fmt.Errorf("node %v is not ready", node.Name)
 		}
 	}
 	hostname, ip := node.Name, ""
@@ -320,7 +320,7 @@ func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
 			hostname = addr.Address
 		}
 		if addr.Type == kube_api.NodeInternalIP && addr.Address != "" {
-			if net.ParseIP(addr.Address).To4() != nil {
+			if net.ParseIP(addr.Address) != nil {
 				ip = addr.Address
 			}
 		}
@@ -331,10 +331,10 @@ func getNodeHostnameAndIP(node *kube_api.Node) (string, string, error) {
 			ip = addr.Address
 		}
 	}
-	if ip != "" {
-		return hostname, ip, nil
+	if parsedIP := net.ParseIP(ip); parsedIP != nil {
+		return hostname, parsedIP, nil
 	}
-	return "", "", fmt.Errorf("Node %v has no valid hostname and/or IP address: %v %v", node.Name, hostname, ip)
+	return "", nil, fmt.Errorf("node %v has no valid hostname and/or IP address: %v %v", node.Name, hostname, ip)
 }
 
 func NewKubeletProvider(uri *url.URL) (MetricsSourceProvider, error) {

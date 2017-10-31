@@ -16,6 +16,7 @@ package summary
 
 import (
 	"encoding/json"
+	"net"
 	"net/http/httptest"
 	"strconv"
 	"strings"
@@ -527,7 +528,7 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 
 	ms := testingSummaryMetricsSource()
 	split := strings.SplitN(strings.Replace(server.URL, "http://", "", 1), ":", 2)
-	ms.node.IP = split[0]
+	ms.node.IP = net.ParseIP(split[0])
 	ms.node.Port, err = strconv.Atoi(split[1])
 	require.NoError(t, err)
 

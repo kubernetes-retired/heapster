@@ -22,8 +22,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/golang/glog"
@@ -33,13 +35,13 @@ import (
 )
 
 type Host struct {
-	IP       string
+	IP       net.IP
 	Port     int
 	Resource string
 }
 
 func (h Host) String() string {
-	return fmt.Sprintf("%s:%d", h.IP, h.Port)
+	return net.JoinHostPort(h.IP.String(), strconv.Itoa(h.Port))
 }
 
 type KubeletClient struct {
@@ -135,15 +137,19 @@ func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) 
 		scheme = "https"
 	}
 
-	url := fmt.Sprintf("%s://%s:%d/stats/container/", scheme, host.IP, host.Port)
+	url := url.URL{
+		Scheme: scheme,
+		Host:   host.String(),
+		Path:   "/stats/container/",
+	}
 
-	return self.getAllContainers(url, start, end)
+	return self.getAllContainers(url.String(), start, end)
 }
 
 func (self *KubeletClient) GetSummary(host Host) (*stats.Summary, error) {
 	url := url.URL{
 		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%d", host.IP, host.Port),
+		Host:   host.String(),
 		Path:   "/stats/summary/",
 	}
 	if self.config != nil && self.config.EnableHttps {
