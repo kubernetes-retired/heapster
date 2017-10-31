@@ -87,6 +87,13 @@ func (this *PodBasedEnricher) addContainerInfo(key string, containerMs *core.Met
 		}
 	}
 
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if key == core.PodContainerKey(pod.Namespace, pod.Name, containerStatus.Name) {
+			containerMs.MetricValues[core.MetricRestartCount.Name] = intValue(int64(containerStatus.RestartCount))
+			break
+		}
+	}
+
 	containerMs.Labels[core.LabelPodId.Key] = string(pod.UID)
 	this.labelCopier.Copy(pod.Labels, containerMs.Labels)
 

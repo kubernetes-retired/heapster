@@ -33,13 +33,25 @@ var (
 		stackdriverClient: nil,
 	}
 
-	commonLabels = map[string]string{}
+	commonLabels     = map[string]string{}
+	containerLabels  = map[string]string{"type": "pod_container"}
+	podLabels        = map[string]string{"type": "pod"}
+	nodeLabels       = map[string]string{"type": "node"}
+	nodeDaemonLabels = map[string]string{"type": "sys_container"}
 )
 
 func generateIntMetric(value int64) core.MetricValue {
 	return core.MetricValue{
 		ValueType: core.ValueInt64,
 		IntValue:  value,
+	}
+}
+
+func generateLabeledIntMetric(value int64, labels map[string]string, name string) core.LabeledMetric {
+	return core.LabeledMetric{
+		Name:        name,
+		Labels:      labels,
+		MetricValue: generateIntMetric(value),
 	}
 }
 
@@ -66,6 +78,30 @@ func testTranslateMetric(as *assert.Assertions, value int64, name string, labels
 	createTime := timestamp.Add(-time.Second)
 
 	ts := sink.TranslateMetric(timestamp, labels, name, metricValue, createTime)
+
+	as.NotNil(ts)
+	as.Equal(ts.Metric.Type, expectedName)
+	as.Equal(len(ts.Points), 1)
+	return ts.Points[0].Value
+}
+
+func testTranslateNewMetric(as *assert.Assertions, value core.MetricValue, name string, labels map[string]string, expectedName string) *sd_api.TypedValue {
+	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
+
+	ts := sink.TranslateNewMetric(timestamp, labels, name, value, createTime)
+
+	as.NotNil(ts)
+	as.Equal(ts.Metric.Type, expectedName)
+	as.Equal(len(ts.Points), 1)
+	return ts.Points[0].Value
+}
+
+func testTranslateNewLabeledMetric(as *assert.Assertions, metric core.LabeledMetric, labels map[string]string, expectedName string) *sd_api.TypedValue {
+	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
+
+	ts := sink.TranslateNewLabeledMetric(timestamp, labels, metric, createTime)
 
 	as.NotNil(ts)
 	as.Equal(ts.Metric.Type, expectedName)
@@ -232,7 +268,7 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 
 // Test PreprocessMemoryMetrics
 
-func TestPreprocessMemoryMetrics(t *testing.T) {
+func TestComputeDerivedMetrics(t *testing.T) {
 	as := assert.New(t)
 
 	metricSet := &core.MetricSet{
@@ -244,8 +280,58 @@ func TestPreprocessMemoryMetrics(t *testing.T) {
 		},
 	}
 
-	computedMetrics := sink.preprocessMemoryMetrics(metricSet)
+	computedMetrics := sink.computeDerivedMetrics(metricSet)
 
 	as.Equal(int64(96), computedMetrics.MetricValues["memory/bytes_used"].IntValue)
 	as.Equal(int64(13), computedMetrics.MetricValues["memory/minor_page_faults"].IntValue)
+}
+
+func TestTranslateNewMetricSet(t *testing.T) {
+	as := assert.New(t)
+
+	containerUptime := testTranslateNewMetric(as, generateIntMetric(1000), "uptime", containerLabels, "kubernetes.io/container/uptime")
+	containerCpuUsage := testTranslateNewMetric(as, generateIntMetric(2000000000), "cpu/usage", containerLabels, "kubernetes.io/container/cpu/core_usage_time")
+	containerCpuRequest := testTranslateNewMetric(as, generateIntMetric(3000), "cpu/request", containerLabels, "kubernetes.io/container/cpu/requested_cores")
+	containerCpuLimit := testTranslateNewMetric(as, generateIntMetric(4000), "cpu/limit", containerLabels, "kubernetes.io/container/cpu/limit_cores")
+	containerMemoryUsage := testTranslateNewMetric(as, generateIntMetric(5), "memory/usage", containerLabels, "kubernetes.io/container/memory/used_bytes")
+	containerMemoryRequest := testTranslateNewMetric(as, generateIntMetric(6), "memory/request", containerLabels, "kubernetes.io/container/memory/requested_bytes")
+	containerMemoryLimit := testTranslateNewMetric(as, generateIntMetric(7), "memory/limit", containerLabels, "kubernetes.io/container/memory/limit_bytes")
+	containerRestartCount := testTranslateNewMetric(as, generateIntMetric(8), "restart_count", containerLabels, "kubernetes.io/container/restart_count")
+	podNetworkBytesRx := testTranslateNewMetric(as, generateIntMetric(9), "network/rx", podLabels, "kubernetes.io/pod/network/bytes_rx")
+	podNetworkBytesTx := testTranslateNewMetric(as, generateIntMetric(10), "network/tx", podLabels, "kubernetes.io/pod/network/bytes_tx")
+	podVolumeTotal := testTranslateNewLabeledMetric(as, generateLabeledIntMetric(11, map[string]string{}, "volume/total_bytes"), podLabels, "kubernetes.io/pod/volume/requested_bytes")
+	podVolumeUsed := testTranslateNewLabeledMetric(as, generateLabeledIntMetric(12, map[string]string{}, "volume/used_bytes"), podLabels, "kubernetes.io/pod/volume/used_bytes")
+	nodeCpuUsage := testTranslateNewMetric(as, generateIntMetric(13000000000), "cpu/usage", nodeLabels, "kubernetes.io/node/cpu/core_usage_time")
+	nodeCpuTotal := testTranslateNewMetric(as, generateFloatMetric(14), "cpu/node_capacity", nodeLabels, "kubernetes.io/node/cpu/total_cores")
+	nodeCpuAllocatable := testTranslateNewMetric(as, generateFloatMetric(15), "cpu/node_allocatable", nodeLabels, "kubernetes.io/node/cpu/allocatable_cores")
+	nodeMemoryUsage := testTranslateNewMetric(as, generateIntMetric(16), "memory/usage", nodeLabels, "kubernetes.io/node/memory/used_bytes")
+	nodeMemoryTotal := testTranslateNewMetric(as, generateIntMetric(17), "memory/node_capacity", nodeLabels, "kubernetes.io/node/memory/total_bytes")
+	nodeMemoryAllocatable := testTranslateNewMetric(as, generateIntMetric(18), "memory/node_allocatable", nodeLabels, "kubernetes.io/node/memory/allocatable_bytes")
+	nodeNetworkBytesRx := testTranslateNewMetric(as, generateIntMetric(19), "network/rx", nodeLabels, "kubernetes.io/node/network/bytes_rx")
+	nodeNetworkBytesTx := testTranslateNewMetric(as, generateIntMetric(20), "network/tx", nodeLabels, "kubernetes.io/node/network/bytes_tx")
+	nodeDaemonCpuUsage := testTranslateNewMetric(as, generateIntMetric(21000000000), "cpu/usage", nodeDaemonLabels, "kubernetes.io/node_daemon/cpu/core_usage_time")
+	nodeDaemonMemoryUsage := testTranslateNewMetric(as, generateIntMetric(22), "memory/usage", nodeDaemonLabels, "kubernetes.io/node_daemon/memory/used_bytes")
+
+	as.Equal(float64(1), *containerUptime.DoubleValue)
+	as.Equal(float64(2), *containerCpuUsage.DoubleValue)
+	as.Equal(float64(3), *containerCpuRequest.DoubleValue)
+	as.Equal(float64(4), *containerCpuLimit.DoubleValue)
+	as.Equal(int64(5), *containerMemoryUsage.Int64Value)
+	as.Equal(int64(6), *containerMemoryRequest.Int64Value)
+	as.Equal(int64(7), *containerMemoryLimit.Int64Value)
+	as.Equal(int64(8), *containerRestartCount.Int64Value)
+	as.Equal(int64(9), *podNetworkBytesRx.Int64Value)
+	as.Equal(int64(10), *podNetworkBytesTx.Int64Value)
+	as.Equal(int64(11), *podVolumeTotal.Int64Value)
+	as.Equal(int64(12), *podVolumeUsed.Int64Value)
+	as.Equal(float64(13), *nodeCpuUsage.DoubleValue)
+	as.Equal(float64(14), *nodeCpuTotal.DoubleValue)
+	as.Equal(float64(15), *nodeCpuAllocatable.DoubleValue)
+	as.Equal(int64(16), *nodeMemoryUsage.Int64Value)
+	as.Equal(int64(17), *nodeMemoryTotal.Int64Value)
+	as.Equal(int64(18), *nodeMemoryAllocatable.Int64Value)
+	as.Equal(int64(19), *nodeNetworkBytesRx.Int64Value)
+	as.Equal(int64(20), *nodeNetworkBytesTx.Int64Value)
+	as.Equal(float64(21), *nodeDaemonCpuUsage.DoubleValue)
+	as.Equal(int64(22), *nodeDaemonMemoryUsage.Int64Value)
 }
