@@ -179,6 +179,16 @@ var MetricUptime = Metric{
 	},
 }
 
+var MetricRestartCount = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "restart_count",
+		Description: "Number of container restarts",
+		Type:        MetricCumulative,
+		ValueType:   ValueInt64,
+		Units:       UnitsMilliseconds,
+	},
+}
+
 var MetricCpuUsage = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "cpu/usage",
@@ -672,6 +682,28 @@ var MetricFilesystemAvailable = Metric{
 			})
 		}
 		return result
+	},
+}
+
+var MetricVolumeTotal = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "volume/total_bytes",
+		Description: "Total bytes reserved for a volume",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+		Labels:      metricLabels,
+	},
+}
+
+var MetricVolumeUsage = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "volume/used_bytes",
+		Description: "Usage bytes reserved for a volume",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+		Labels:      metricLabels,
 	},
 }
 
