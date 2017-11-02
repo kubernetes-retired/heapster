@@ -49,7 +49,7 @@ const (
 	dbNotFoundError = "database not found"
 
 	// Maximum number of influxdb Points to be sent in one batch.
-	maxSendBatchSize = 10000
+	maxSendBatchSize = 20000
 )
 
 func (sink *influxdbSink) resetConnection() {
