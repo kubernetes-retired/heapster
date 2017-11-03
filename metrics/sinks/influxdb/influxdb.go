@@ -33,6 +33,9 @@ type influxdbSink struct {
 	sync.RWMutex
 	c        influxdb_common.InfluxdbConfig
 	dbExists bool
+
+	sync.WaitGroup
+	conChan chan struct{}
 }
 
 var influxdbBlacklistLabels = map[string]struct{}{
@@ -107,7 +110,11 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 
 			dataPoints = append(dataPoints, point)
 			if len(dataPoints) >= maxSendBatchSize {
-				sink.sendData(dataPoints)
+				sink.Add(1)
+				sink.conChan <- struct{}{}
+				go func(dataPoints []influxdb.Point) {
+					sink.sendData(dataPoints)
+				}(dataPoints)
 				dataPoints = make([]influxdb.Point, 0, 0)
 			}
 		}
@@ -160,17 +167,32 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 
 			dataPoints = append(dataPoints, point)
 			if len(dataPoints) >= maxSendBatchSize {
-				sink.sendData(dataPoints)
+				sink.Add(1)
+				sink.conChan <- struct{}{}
+				go func(dataPoints []influxdb.Point) {
+					sink.sendData(dataPoints)
+				}(dataPoints)
 				dataPoints = make([]influxdb.Point, 0, 0)
 			}
 		}
 	}
 	if len(dataPoints) >= 0 {
-		sink.sendData(dataPoints)
+		sink.Add(1)
+		sink.conChan <- struct{}{}
+		go func(dataPoints []influxdb.Point) {
+			sink.sendData(dataPoints)
+		}(dataPoints)
 	}
+
+	sink.Wait()
 }
 
 func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
+	defer func() {
+		<-sink.conChan
+		sink.Done()
+	}()
+
 	if err := sink.createDatabase(); err != nil {
 		glog.Errorf("Failed to create influxdb: %v", err)
 		return
@@ -264,8 +286,9 @@ func new(c influxdb_common.InfluxdbConfig) core.DataSink {
 		glog.Errorf("issues while creating an InfluxDB sink: %v, will retry on use", err)
 	}
 	return &influxdbSink{
-		client: client, // can be nil
-		c:      c,
+		client:  client, // can be nil
+		c:       c,
+		conChan: make(chan struct{}, c.Concurrency),
 	}
 }
 

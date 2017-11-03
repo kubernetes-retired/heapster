@@ -36,6 +36,7 @@ The following options are available:
 * `insecuressl` - Ignore SSL certificate validity (default: `false`)
 * `withfields` - Use [InfluxDB fields](storage-schema.md#using-fields) (default: `false`)
 * `cluster_name` - cluster name for different Kubernetes clusters. (default: `default`)
+* `concurrency` - concurrency for sinking to InfluxDB. (default: `1`)
 
 ### Stackdriver
 

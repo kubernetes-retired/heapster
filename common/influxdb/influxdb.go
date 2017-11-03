@@ -41,6 +41,7 @@ type InfluxdbConfig struct {
 	InsecureSsl     bool
 	RetentionPolicy string
 	ClusterName     string
+	Concurrency     int
 }
 
 func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
@@ -81,6 +82,7 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 		InsecureSsl:     false,
 		RetentionPolicy: "0",
 		ClusterName:     "default",
+		Concurrency:     1,
 	}
 
 	if len(uri.Host) > 0 {
@@ -125,6 +127,14 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 
 	if len(opts["cluster_name"]) >= 1 {
 		config.ClusterName = opts["cluster_name"][0]
+	}
+
+	if len(opts["concurrency"]) >= 1 {
+		concurrency, err := strconv.Atoi(opts["concurrency"][0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse `concurrency` flag - %v", err)
+		}
+		config.Concurrency = concurrency
 	}
 
 	return &config, nil
