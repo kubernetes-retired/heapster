@@ -79,7 +79,7 @@ func tagsToString(tags map[string]string) string {
 	tagStr := ""
 	for k, v := range tags {
 		// ignore tags with empty values as well so the data point doesn't fail validation
-		if excludeTag(k) == false && len(v) > 0 { 
+		if excludeTag(k) == false && len(v) > 0 {
 			tagStr += k + "=\"" + v + "\" "
 		}
 	}
