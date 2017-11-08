@@ -62,6 +62,9 @@ const (
 	seedPod2           = 5000
 	seedPod2Container0 = 6000
 	seedPod2Container1 = 7000
+	seedPod3Container0 = 9000
+	seedPod4           = 10000
+	seedPod4Container0 = 11000
 )
 
 const (
@@ -71,12 +74,18 @@ const (
 	pName0 = "pod0"
 	pName1 = "pod1"
 	pName2 = "pod0" // ensure pName2 conflicts with pName0, but is in a different namespace
+	pName3 = "pod2"
+	pName4 = "pod4" // Regression test for #1838
 
 	cName00 = "c0"
 	cName01 = "c1"
 	cName10 = "c0"      // ensure cName10 conflicts with cName02, but is in a different pod
 	cName20 = "c1"      // ensure cName20 conflicts with cName01, but is in a different pod + namespace
 	cName21 = "runtime" // ensure that runtime containers are not renamed
+	cName30 = "c3"
+	cName40 = "c4" // Running, with cpu / memory stats
+	cName41 = "c4" // Terminated, has no CPU / Memory stats
+	cName42 = "c4" // Terminated, has blank CPU / Memory stats
 )
 
 var (
@@ -164,6 +173,38 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				genTestSummaryContainer(cName20, seedPod2Container0),
 				genTestSummaryContainer(cName21, seedPod2Container1),
 			},
+		}, {
+			PodRef: stats.PodReference{
+				Name:      pName3,
+				Namespace: namespace0,
+			},
+			Containers: []stats.ContainerStats{
+				genTestSummaryContainer(cName30, seedPod3Container0),
+			},
+			VolumeStats: []stats.VolumeStats{{
+				Name: "C",
+				FsStats: stats.FsStats{
+					AvailableBytes: &availableFsBytes,
+					UsedBytes:      &usedFsBytes,
+					CapacityBytes:  &totalFsBytes,
+					InodesFree:     &freeInode,
+					InodesUsed:     &usedInode,
+					Inodes:         &totalInode,
+				},
+			},
+			},
+		}, {
+			PodRef: stats.PodReference{
+				Name:      pName4,
+				Namespace: namespace0,
+			},
+			StartTime: metav1.NewTime(startTime),
+			Network:   genTestSummaryNetwork(seedPod4),
+			Containers: []stats.ContainerStats{
+				genTestSummaryContainer(cName40, seedPod4Container0),
+				genTestSummaryTerminatedContainerNoStats(cName41),
+				genTestSummaryTerminatedContainerBlankStats(cName41),
+			},
 		}},
 	}
 
@@ -219,6 +260,11 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		seed:    seedPod2,
 		network: true,
 	}, {
+		key:     core.PodKey(namespace0, pName4),
+		setType: core.MetricSetTypePod,
+		seed:    seedPod4,
+		network: true,
+	}, {
 		key:     core.PodContainerKey(namespace0, pName0, cName00),
 		setType: core.MetricSetTypePodContainer,
 		seed:    seedPod0Container0,
@@ -250,6 +296,20 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		key:     core.PodContainerKey(namespace1, pName2, cName21),
 		setType: core.MetricSetTypePodContainer,
 		seed:    seedPod2Container1,
+		cpu:     true,
+		memory:  true,
+		fs:      containerFs,
+	}, {
+		key:     core.PodContainerKey(namespace0, pName3, cName30),
+		setType: core.MetricSetTypePodContainer,
+		seed:    seedPod3Container0,
+		cpu:     true,
+		memory:  true,
+		fs:      containerFs,
+	}, {
+		key:     core.PodContainerKey(namespace0, pName4, cName40),
+		setType: core.MetricSetTypePodContainer,
+		seed:    seedPod4Container0,
 		cpu:     true,
 		memory:  true,
 		fs:      containerFs,
@@ -304,6 +364,22 @@ func genTestSummaryTerminatedContainer(name string, seed int) stats.ContainerSta
 	}
 }
 
+func genTestSummaryTerminatedContainerNoStats(name string) stats.ContainerStats {
+	return stats.ContainerStats{
+		Name:      name,
+		StartTime: metav1.NewTime(startTime.Add(-time.Minute)),
+	}
+}
+
+func genTestSummaryTerminatedContainerBlankStats(name string) stats.ContainerStats {
+	return stats.ContainerStats{
+		Name:      name,
+		StartTime: metav1.NewTime(startTime.Add(-time.Minute)),
+		CPU:       genTestSummaryBlankCPU(),
+		Memory:    genTestSummaryBlankMemory(),
+	}
+}
+
 func genTestSummaryContainer(name string, seed int) stats.ContainerStats {
 	return stats.ContainerStats{
 		Name:      name,
@@ -335,6 +411,12 @@ func genTestSummaryCPU(seed int) *stats.CPUStats {
 	return &cpu
 }
 
+func genTestSummaryBlankCPU() *stats.CPUStats {
+	return &stats.CPUStats{
+		Time: metav1.NewTime(scrapeTime),
+	}
+}
+
 func genTestSummaryZeroMemory(seed int) *stats.MemoryStats {
 	return &stats.MemoryStats{
 		Time:            metav1.NewTime(scrapeTime),
@@ -354,6 +436,12 @@ func genTestSummaryMemory(seed int) *stats.MemoryStats {
 		RSSBytes:        uint64Val(seed, offsetMemRSSBytes),
 		PageFaults:      uint64Val(seed, offsetMemPageFaults),
 		MajorPageFaults: uint64Val(seed, offsetMemMajorPageFaults),
+	}
+}
+
+func genTestSummaryBlankMemory() *stats.MemoryStats {
+	return &stats.MemoryStats{
+		Time: metav1.NewTime(scrapeTime),
 	}
 }
 
