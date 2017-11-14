@@ -60,6 +60,10 @@ type clusterMetricsFetcher interface {
 	availablePodMetrics(request *restful.Request, response *restful.Response)
 	podMetrics(request *restful.Request, response *restful.Response)
 
+	namespacePVCList(request *restful.Request, response *restful.Response)
+	availablePVCMetrics(request *restful.Request, response *restful.Response)
+	pvcMetrics(request *restful.Request, response *restful.Response)
+
 	podContainerList(request *restful.Request, response *restful.Response)
 
 	availablePodContainerMetrics(request *restful.Request, response *restful.Response)
@@ -208,6 +212,34 @@ func addClusterMetricsRoutes(a clusterMetricsFetcher, ws *restful.WebService) {
 			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
 			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
 			Writes(types.MetricResult{}))
+
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pvcs/").
+			To(metrics.InstrumentRouteFunc("namespacePVCList", a.namespacePVCList)).
+			Doc("Get a list of PVCs from the given namespace that have some metrics").
+			Operation("namespacePVCList").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")))
+
+		// The /namespaces/{namespace-name}/pvcs/{pvc-name}/metrics endpoint returns a list of all available metrics for a PVC entity.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pvcs/{pvc-name}/metrics").
+			To(metrics.InstrumentRouteFunc("availablePVCMetrics", a.availablePVCMetrics)).
+			Doc("Get a list of all available metrics for a PVC entity").
+			Operation("availablePVCMetrics").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pvc-name", "The name of the PVC to lookup").DataType("string")))
+
+		// The /namespaces/{namespace-name}/pvcs/{pvc-name}/metrics/{metric-name} endpoint exposes
+		// an aggregated metric for a PVC entity of the model.
+		ws.Route(ws.GET("/namespaces/{namespace-name}/pvcs/{pvc-name}/metrics/{metric-name:*}").
+			To(metrics.InstrumentRouteFunc("pvcMetrics", a.pvcMetrics)).
+			Doc("Export a metric of the given PVC entity").
+			Operation("pvcMetrics").
+			Param(ws.PathParameter("namespace-name", "The name of the namespace to lookup").DataType("string")).
+			Param(ws.PathParameter("pvc-name", "The name of the PVC to lookup").DataType("string")).
+			Param(ws.PathParameter("metric-name", "The name of the requested metric").DataType("string")).
+			Param(ws.QueryParameter("start", "Start time for requested metrics").DataType("string")).
+			Param(ws.QueryParameter("end", "End time for requested metric").DataType("string")).
+			Param(ws.QueryParameter("labels", "A comma-separated list of key:values pairs to use to search for a labeled metric").DataType("string")).
+			Writes(types.MetricResult{}))
 	}
 
 	ws.Route(ws.GET("/nodes/{node-name}/freecontainers/").
@@ -279,29 +311,29 @@ func (a *Api) RegisterModel(container *restful.Container) {
 	container.Add(ws)
 }
 
-// availableMetrics returns a list of available cluster metric names.
+// availableClusterMetrics returns a list of available cluster metric names.
 func (a *Api) availableClusterMetrics(request *restful.Request, response *restful.Response) {
 	a.processMetricNamesRequest(core.ClusterKey(), response)
 }
 
-// availableMetrics returns a list of available node metric names.
+// availableNodeMetrics returns a list of available node metric names.
 func (a *Api) availableNodeMetrics(request *restful.Request, response *restful.Response) {
 	a.processMetricNamesRequest(core.NodeKey(request.PathParameter("node-name")), response)
 }
 
-// availableMetrics returns a list of available namespace metric names.
+// availableNamespaceMetrics returns a list of available namespace metric names.
 func (a *Api) availableNamespaceMetrics(request *restful.Request, response *restful.Response) {
 	a.processMetricNamesRequest(core.NamespaceKey(request.PathParameter("namespace-name")), response)
 }
 
-// availableMetrics returns a list of available pod metric names.
+// availablePodMetrics returns a list of available pod metric names.
 func (a *Api) availablePodMetrics(request *restful.Request, response *restful.Response) {
 	a.processMetricNamesRequest(
 		core.PodKey(request.PathParameter("namespace-name"),
 			request.PathParameter("pod-name")), response)
 }
 
-// availableMetrics returns a list of available pod metric names.
+// availablePodContainerMetrics returns a list of available pod metric names.
 func (a *Api) availablePodContainerMetrics(request *restful.Request, response *restful.Response) {
 	a.processMetricNamesRequest(
 		core.PodContainerKey(request.PathParameter("namespace-name"),
@@ -310,12 +342,19 @@ func (a *Api) availablePodContainerMetrics(request *restful.Request, response *r
 		), response)
 }
 
-// availableMetrics returns a list of available pod metric names.
+// availableFreeContainerMetrics returns a list of available pod metric names.
 func (a *Api) availableFreeContainerMetrics(request *restful.Request, response *restful.Response) {
 	a.processMetricNamesRequest(
 		core.NodeContainerKey(request.PathParameter("node-name"),
 			request.PathParameter("container-name"),
 		), response)
+}
+
+// availablePVCMetrics returns a list of available PVC metric names.
+func (a *Api) availablePVCMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricNamesRequest(
+		core.PVCKey(request.PathParameter("namespace-name"),
+			request.PathParameter("pvc-name")), response)
 }
 
 func (a *Api) nodeList(request *restful.Request, response *restful.Response) {
@@ -336,6 +375,10 @@ func (a *Api) podContainerList(request *restful.Request, response *restful.Respo
 
 func (a *Api) nodeSystemContainerList(request *restful.Request, response *restful.Response) {
 	response.WriteEntity(a.metricSink.GetSystemContainersFromNode(request.PathParameter("node-name")))
+}
+
+func (a *Api) namespacePVCList(request *restful.Request, response *restful.Response) {
+	response.WriteEntity(a.metricSink.GetPVCsFromNamespace(request.PathParameter("namespace-name")))
 }
 
 func (a *Api) allKeys(request *restful.Request, response *restful.Response) {
@@ -422,6 +465,14 @@ func (a *Api) freeContainerMetrics(request *restful.Request, response *restful.R
 		core.NodeContainerKey(request.PathParameter("node-name"),
 			request.PathParameter("container-name"),
 		),
+		request, response)
+}
+
+// pvcMetrics returns a metric timeseries for a metric of the PVC entity.
+func (a *Api) pvcMetrics(request *restful.Request, response *restful.Response) {
+	a.processMetricRequest(
+		core.PVCKey(request.PathParameter("namespace-name"),
+			request.PathParameter("pvc-name")),
 		request, response)
 }
 

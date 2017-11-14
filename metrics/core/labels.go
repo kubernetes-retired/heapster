@@ -21,6 +21,7 @@ var (
 		Key:         "type",
 		Description: "Type of the metrics set (container, pod, namespace, node, cluster)",
 	}
+	MetricSetTypePVC             = "pvc"
 	MetricSetTypeSystemContainer = "sys_container"
 	MetricSetTypePodContainer    = "pod_container"
 	MetricSetTypePod             = "pod"
@@ -47,6 +48,14 @@ var (
 	LabelContainerName = LabelDescriptor{
 		Key:         "container_name",
 		Description: "User-provided name of the container or full container name for system containers",
+	}
+	LabelPVCName = LabelDescriptor{
+		Key:         "pvc_name",
+		Description: "The name of the PVC",
+	}
+	LabelPodRefs = LabelDescriptor{
+		Key:         "pod_refs",
+		Description: "The list of names of pods that reference a given PVC",
 	}
 	LabelLabels = LabelDescriptor{
 		Key:         "labels",

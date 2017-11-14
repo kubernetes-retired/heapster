@@ -292,6 +292,17 @@ func (this *MetricSink) GetPodsFromNamespace(namespace string) []string {
 		})
 }
 
+func (this *MetricSink) GetPVCsFromNamespace(namespace string) []string {
+	return this.getAllNames(
+		func(ms *core.MetricSet) bool {
+			return ms.Labels[core.LabelMetricSetType.Key] == core.MetricSetTypePVC &&
+				ms.Labels[core.LabelNamespaceName.Key] == namespace
+		},
+		func(key string, ms *core.MetricSet) string {
+			return ms.Labels[core.LabelPVCName.Key]
+		})
+}
+
 func (this *MetricSink) GetContainersForPodFromNamespace(namespace, pod string) []string {
 	return this.getAllNames(
 		func(ms *core.MetricSet) bool {
