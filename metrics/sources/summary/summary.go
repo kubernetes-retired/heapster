@@ -45,8 +45,14 @@ var (
 	)
 )
 
-// Prefix used for the LabelResourceID for volume metrics.
-const VolumeResourcePrefix = "Volume:"
+const (
+	// Prefix used for the LabelResourceID for volume metrics.
+	VolumeResourcePrefix = "Volume:"
+	// Prefix used for the LabelResourceID for pvc metrics.
+	PVCResourcePrefix = "PVC:"
+
+	PodRefSeparator = "|"
+)
 
 func init() {
 	prometheus.MustRegister(summaryRequestLatency)
@@ -128,6 +134,7 @@ func (this *summaryMetricsSource) decodeSummary(summary *stats.Summary) map[stri
 	this.decodeNodeStats(result, labels, &summary.Node)
 	for _, pod := range summary.Pods {
 		this.decodePodStats(result, labels, &pod)
+		this.decodePVCStats(result, labels, &pod)
 	}
 
 	glog.V(9).Infof("End summary decode")
@@ -208,7 +215,7 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 }
 
 func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *stats.ContainerStats, isSystemContainer bool) *MetricSet {
-	glog.V(9).Infof("Decoding container stats stats for container %s...", container.Name)
+	glog.V(9).Infof("Decoding container stats for container %s...", container.Name)
 	containerMetrics := &MetricSet{
 		Labels:              this.cloneLabels(podLabels),
 		MetricValues:        map[string]MetricValue{},
@@ -232,6 +239,64 @@ func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]stri
 	this.decodeUserDefinedMetrics(containerMetrics, container.UserDefinedMetrics)
 
 	return containerMetrics
+}
+
+// decodePVCStats computes PVC metrics using volume stats of each pod.
+// It selects the volume stats of the pod with the latest scrape time.
+// Metric collection time is the earliest pod start time among all pods.
+// PVC stats are only available when the PVC is in use by at least one pod.
+func (this *summaryMetricsSource) decodePVCStats(metrics map[string]*MetricSet, nodeLabels map[string]string, pod *stats.PodStats) {
+	glog.V(9).Infof("Decoding PVC stats for pod %s in namespace %s", pod.PodRef.Name, pod.PodRef.Namespace)
+
+	for _, vol := range pod.VolumeStats {
+		pvc := vol.PVCRef
+
+		if pvc == nil {
+			continue
+		}
+
+		pvcMetricName := PVCKey(pvc.Namespace, pvc.Name)
+		if _, ok := metrics[pvcMetricName]; !ok {
+			glog.V(9).Infof("Adding new metrics for PVC %s in namespace %s, using info from pod %s",
+				pvc.Name, pvc.Namespace, pod.PodRef.Name)
+
+			labels := map[string]string{
+				LabelMetricSetType.Key: MetricSetTypePVC,
+				LabelPVCName.Key:       pvc.Name,
+				LabelNamespaceName.Key: pvc.Namespace,
+				LabelPodRefs.Key:       pod.PodRef.Name,
+			}
+
+			pvcMetrics := &MetricSet{
+				Labels:              labels,
+				MetricValues:        map[string]MetricValue{},
+				LabeledMetrics:      []LabeledMetric{},
+				CollectionStartTime: pod.StartTime.Time,
+				ScrapeTime:          vol.Time.Time,
+			}
+
+			this.decodeFsStats(pvcMetrics, PVCResourcePrefix+pvc.Name, &vol.FsStats)
+			metrics[pvcMetricName] = pvcMetrics
+
+		} else {
+			labels := metrics[pvcMetricName].Labels
+			labels[LabelPodRefs.Key] = appendPodRef(labels[LabelPodRefs.Key], pod.PodRef.Name)
+
+			// Use the FS stats with the latest scrape time.
+			if vol.Time.Time.After(metrics[pvcMetricName].ScrapeTime) {
+				glog.V(9).Infof("Updating metrics with PVC %s in namespace %s, using info from pod %s")
+				this.decodeFsStats(metrics[pvcMetricName], PVCResourcePrefix+pvc.Name, &vol.FsStats)
+				metrics[pvcMetricName].ScrapeTime = vol.Time.Time
+			}
+
+			// Use the earliest pod StartTime among all candidate pods.
+			// It's not possible to get the earliest PVC stat collection time since the PVC
+			// may not be used for some period of time.
+			if pod.StartTime.Time.Before(metrics[pvcMetricName].CollectionStartTime) {
+				metrics[pvcMetricName].CollectionStartTime = pod.StartTime.Time
+			}
+		}
+	}
 }
 
 func (this *summaryMetricsSource) decodeUptime(metrics *MetricSet, startTime time.Time) {
@@ -429,6 +494,14 @@ func (this *summaryProvider) getNodeInfo(node *kube_api.Node) (NodeInfo, error) 
 		KubeletVersion: node.Status.NodeInfo.KubeletVersion,
 	}
 	return info, nil
+}
+
+func appendPodRef(podRefList, newPodRef string) string {
+	if podRefList == "" {
+		return newPodRef
+	} else {
+		return podRefList + PodRefSeparator + newPodRef
+	}
 }
 
 func NewSummaryProvider(uri *url.URL) (MetricsSourceProvider, error) {
