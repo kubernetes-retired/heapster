@@ -176,17 +176,6 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 					req = getReq()
 				}
 			}
-			if sink.useNewResourceModel {
-				point := sink.TranslateLabeledMetric(dataBatch.Timestamp, metricSet.Labels, metric, metricSet.CreateTime)
-				if point != nil {
-					req.TimeSeries = append(req.TimeSeries, point)
-				}
-
-				if len(req.TimeSeries) >= maxTimeseriesPerRequest {
-					requests = append(requests, req)
-					req = getReq()
-				}
-			}
 		}
 	}
 
@@ -526,30 +515,6 @@ func (sink *StackdriverSink) LegacyTranslateMetric(timestamp time.Time, labels m
 	return nil
 }
 
-func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *sd_api.TimeSeries {
-	switch labels["type"] {
-	case core.MetricSetTypePod:
-		podLabels := sink.getPodResourceLabels(labels)
-		switch metric.Name {
-		case core.MetricVolumeUsage.MetricDescriptor.Name:
-			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
-			ts := createTimeSeries("k8s_pod", podLabels, volumeUsedBytesMD, point)
-			ts.Metric.Labels = map[string]string{
-				"name": metric.Labels[core.LabelResourceID.Key],
-			}
-			return ts
-		case core.MetricVolumeTotal.MetricDescriptor.Name:
-			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
-			ts := createTimeSeries("k8s_pod", podLabels, volumeRequestedBytesMD, point)
-			ts.Metric.Labels = map[string]string{
-				"name": metric.Labels[core.LabelResourceID.Key],
-			}
-			return ts
-		}
-	}
-	return nil
-}
-
 func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, createTime time.Time) *sd_api.TimeSeries {
 	if !createTime.Before(timestamp) {
 		glog.V(4).Infof("Error translating metric %v for pod %v: batch timestamp %v earlier than pod create time %v", name, labels["pod_name"], timestamp, createTime)
@@ -592,9 +557,6 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 		case core.MetricMemoryRequest.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
 			return createTimeSeries("k8s_container", containerLabels, memoryRequestedBytesMD, point)
-		case core.MetricRestartCount.MetricDescriptor.Name:
-			point := sink.intPoint(timestamp, timestamp, value.IntValue)
-			return createTimeSeries("k8s_container", containerLabels, restartCountMD, point)
 		}
 	case core.MetricSetTypePod:
 		podLabels := sink.getPodResourceLabels(labels)
