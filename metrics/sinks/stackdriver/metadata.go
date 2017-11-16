@@ -157,67 +157,67 @@ var (
 
 	// Old resource model metrics
 
-	uptimeLegacyMD = &metricMetadata{
+	legacyUptimeMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "DOUBLE",
 		Name:       "container.googleapis.com/container/uptime",
 	}
 
-	cpuReservedCoresLegacyMD = &metricMetadata{
+	legacyCPUReservedCoresMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "DOUBLE",
 		Name:       "container.googleapis.com/container/cpu/reserved_cores",
 	}
 
-	cpuUsageTimeLegacyMD = &metricMetadata{
+	legacyCPUUsageTimeMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "DOUBLE",
 		Name:       "container.googleapis.com/container/cpu/usage_time",
 	}
 
-	networkRxLegacyMD = &metricMetadata{
+	legacyNetworkRxMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/network/received_bytes_count",
 	}
 
-	networkTxLegacyMD = &metricMetadata{
+	legacyNetworkTxMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/network/sent_bytes_count",
 	}
 
-	memoryLimitLegacyMD = &metricMetadata{
+	legacyMemoryLimitMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/memory/bytes_total",
 	}
 
-	memoryBytesUsedLegacyMD = &metricMetadata{
+	legacyMemoryBytesUsedMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/memory/bytes_used",
 	}
 
-	memoryAllocatableBytesLegacyMD = &metricMetadata{
+	legacyMemoryAllocatableBytesMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/memory/allocatable_bytes",
 	}
 
-	memoryPageFaultsLegacyMD = &metricMetadata{
+	legacyMemoryPageFaultsMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/memory/page_fault_count",
 	}
 
-	diskBytesUsedLegacyMD = &metricMetadata{
+	legacyDiskBytesUsedMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/disk/bytes_used",
 	}
 
-	diskBytesTotalLegacyMD = &metricMetadata{
+	legacyDiskBytesTotalMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/disk/bytes_total",
