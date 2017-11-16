@@ -574,9 +574,20 @@ func (sink *StackdriverSink) TranslateNewMetric(timestamp time.Time, labels map[
 		case core.MetricMemoryLimit.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
 			return createK8sTimeSeries("k8s_container", containerLabels, memoryLimitBytesMD, point)
-		case core.MetricMemoryUsage.MetricDescriptor.Name:
+		case "memory/bytes_used":
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
-			return createK8sTimeSeries("k8s_container", containerLabels, memoryContainerUsedBytesMD, point)
+			ts := createK8sTimeSeries("k8s_container", containerLabels, memoryContainerUsedBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				"memory_type": "evictable",
+			}
+			return ts
+		case core.MetricMemoryWorkingSet.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, value.IntValue)
+			ts := createK8sTimeSeries("k8s_container", containerLabels, memoryContainerUsedBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				"memory_type": "non-evictable",
+			}
+			return ts
 		case core.MetricMemoryRequest.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
 			return createK8sTimeSeries("k8s_container", containerLabels, memoryRequestedBytesMD, point)
@@ -612,9 +623,20 @@ func (sink *StackdriverSink) TranslateNewMetric(timestamp time.Time, labels map[
 		case core.MetricNodeMemoryAllocatable.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
 			return createK8sTimeSeries("k8s_node", nodeLabels, memoryAllocatableBytesMD, point)
-		case core.MetricMemoryUsage.MetricDescriptor.Name:
+		case "memory/bytes_used":
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
-			return createK8sTimeSeries("k8s_node", nodeLabels, memoryNodeUsedBytesMD, point)
+			ts := createK8sTimeSeries("k8s_node", nodeLabels, memoryNodeUsedBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				"memory_type": "evictable",
+			}
+			return ts
+		case core.MetricMemoryWorkingSet.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, value.IntValue)
+			ts := createK8sTimeSeries("k8s_node", nodeLabels, memoryNodeUsedBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				"memory_type": "non-evictable",
+			}
+			return ts
 		case core.MetricNetworkRx.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, createTime, value.IntValue)
 			return createK8sTimeSeries("k8s_node", nodeLabels, networkNodeRxMD, point)
@@ -625,9 +647,20 @@ func (sink *StackdriverSink) TranslateNewMetric(timestamp time.Time, labels map[
 	case core.MetricSetTypeSystemContainer:
 		nodeLabels := sink.getNodeResourceLabels(labels)
 		switch name {
-		case core.MetricMemoryUsage.MetricDescriptor.Name:
+		case "memory/bytes_used":
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
-			return createK8sTimeSeries("k8s_node", nodeLabels, memoryNodeDaemonUsedBytesMD, point)
+			ts := createK8sTimeSeries("k8s_node", nodeLabels, memoryNodeDaemonUsedBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				"memory_type": "evictable",
+			}
+			return ts
+		case core.MetricMemoryWorkingSet.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, value.IntValue)
+			ts := createK8sTimeSeries("k8s_node", nodeLabels, memoryNodeDaemonUsedBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				"memory_type": "non-evictable",
+			}
+			return ts
 		case core.MetricCpuUsage.MetricDescriptor.Name:
 			point := sink.doublePoint(timestamp, createTime, float64(value.IntValue)/float64(time.Second/time.Nanosecond))
 			return createK8sTimeSeries("k8s_node", nodeLabels, cpuNodeDaemonCoreUsageTimeMD, point)
