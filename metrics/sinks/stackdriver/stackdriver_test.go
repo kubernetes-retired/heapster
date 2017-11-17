@@ -85,7 +85,7 @@ func testLegacyTranslateMetric(as *assert.Assertions, value int64, name string, 
 	return ts.Points[0].Value
 }
 
-func testTranslateMetric(as *assert.Assertions, value core.MetricValue, name string, labels map[string]string, expectedName string) *sd_api.TypedValue {
+func testTranslateMetric(as *assert.Assertions, value core.MetricValue, labels map[string]string, name string, expectedName string) *sd_api.TypedValue {
 	timestamp := time.Now()
 	createTime := timestamp.Add(-time.Second)
 
@@ -277,25 +277,25 @@ func TestComputeDerivedMetrics(t *testing.T) {
 func TestTranslateMetricSet(t *testing.T) {
 	as := assert.New(t)
 
-	containerUptime := testTranslateMetric(as, generateIntMetric(1000), "uptime", containerLabels, "kubernetes.io/container/uptime")
-	containerCpuUsage := testTranslateMetric(as, generateIntMetric(2000000000), "cpu/usage", containerLabels, "kubernetes.io/container/cpu/core_usage_time")
-	containerCpuRequest := testTranslateMetric(as, generateIntMetric(3000), "cpu/request", containerLabels, "kubernetes.io/container/cpu/requested_cores")
-	containerCpuLimit := testTranslateMetric(as, generateIntMetric(4000), "cpu/limit", containerLabels, "kubernetes.io/container/cpu/limit_cores")
-	containerMemoryUsage := testTranslateMetric(as, generateIntMetric(5), "memory/bytes_used", containerLabels, "kubernetes.io/container/memory/used_bytes")
-	containerMemoryRequest := testTranslateMetric(as, generateIntMetric(6), "memory/request", containerLabels, "kubernetes.io/container/memory/requested_bytes")
-	containerMemoryLimit := testTranslateMetric(as, generateIntMetric(7), "memory/limit", containerLabels, "kubernetes.io/container/memory/limit_bytes")
-	podNetworkBytesRx := testTranslateMetric(as, generateIntMetric(9), "network/rx", podLabels, "kubernetes.io/pod/network/bytes_rx")
-	podNetworkBytesTx := testTranslateMetric(as, generateIntMetric(10), "network/tx", podLabels, "kubernetes.io/pod/network/bytes_tx")
-	nodeCpuUsage := testTranslateMetric(as, generateIntMetric(13000000000), "cpu/usage", nodeLabels, "kubernetes.io/node/cpu/core_usage_time")
-	nodeCpuTotal := testTranslateMetric(as, generateFloatMetric(14), "cpu/node_capacity", nodeLabels, "kubernetes.io/node/cpu/total_cores")
-	nodeCpuAllocatable := testTranslateMetric(as, generateFloatMetric(15), "cpu/node_allocatable", nodeLabels, "kubernetes.io/node/cpu/allocatable_cores")
-	nodeMemoryUsage := testTranslateMetric(as, generateIntMetric(16), "memory/bytes_used", nodeLabels, "kubernetes.io/node/memory/used_bytes")
-	nodeMemoryTotal := testTranslateMetric(as, generateIntMetric(17), "memory/node_capacity", nodeLabels, "kubernetes.io/node/memory/total_bytes")
-	nodeMemoryAllocatable := testTranslateMetric(as, generateIntMetric(18), "memory/node_allocatable", nodeLabels, "kubernetes.io/node/memory/allocatable_bytes")
-	nodeNetworkBytesRx := testTranslateMetric(as, generateIntMetric(19), "network/rx", nodeLabels, "kubernetes.io/node/network/bytes_rx")
-	nodeNetworkBytesTx := testTranslateMetric(as, generateIntMetric(20), "network/tx", nodeLabels, "kubernetes.io/node/network/bytes_tx")
-	nodeDaemonCpuUsage := testTranslateMetric(as, generateIntMetric(21000000000), "cpu/usage", nodeDaemonLabels, "kubernetes.io/node_daemon/cpu/core_usage_time")
-	nodeDaemonMemoryUsage := testTranslateMetric(as, generateIntMetric(22), "memory/bytes_used", nodeDaemonLabels, "kubernetes.io/node_daemon/memory/used_bytes")
+	containerUptime := testTranslateMetric(as, generateIntMetric(1000), containerLabels, "uptime", "kubernetes.io/container/uptime")
+	containerCpuUsage := testTranslateMetric(as, generateIntMetric(2000000000), containerLabels, "cpu/usage", "kubernetes.io/container/cpu/core_usage_time")
+	containerCpuRequest := testTranslateMetric(as, generateIntMetric(3000), containerLabels, "cpu/request", "kubernetes.io/container/cpu/requested_cores")
+	containerCpuLimit := testTranslateMetric(as, generateIntMetric(4000), containerLabels, "cpu/limit", "kubernetes.io/container/cpu/limit_cores")
+	containerMemoryUsage := testTranslateMetric(as, generateIntMetric(5), containerLabels, "memory/bytes_used", "kubernetes.io/container/memory/used_bytes")
+	containerMemoryRequest := testTranslateMetric(as, generateIntMetric(6), containerLabels, "memory/request", "kubernetes.io/container/memory/requested_bytes")
+	containerMemoryLimit := testTranslateMetric(as, generateIntMetric(7), containerLabels, "memory/limit", "kubernetes.io/container/memory/limit_bytes")
+	podNetworkBytesRx := testTranslateMetric(as, generateIntMetric(9), podLabels, "network/rx", "kubernetes.io/pod/network/bytes_rx")
+	podNetworkBytesTx := testTranslateMetric(as, generateIntMetric(10), podLabels, "network/tx", "kubernetes.io/pod/network/bytes_tx")
+	nodeCpuUsage := testTranslateMetric(as, generateIntMetric(13000000000), nodeLabels, "cpu/usage", "kubernetes.io/node/cpu/core_usage_time")
+	nodeCpuTotal := testTranslateMetric(as, generateFloatMetric(14), nodeLabels, "cpu/node_capacity", "kubernetes.io/node/cpu/total_cores")
+	nodeCpuAllocatable := testTranslateMetric(as, generateFloatMetric(15), nodeLabels, "cpu/node_allocatable", "kubernetes.io/node/cpu/allocatable_cores")
+	nodeMemoryUsage := testTranslateMetric(as, generateIntMetric(16), nodeLabels, "memory/bytes_used", "kubernetes.io/node/memory/used_bytes")
+	nodeMemoryTotal := testTranslateMetric(as, generateIntMetric(17), nodeLabels, "memory/node_capacity", "kubernetes.io/node/memory/total_bytes")
+	nodeMemoryAllocatable := testTranslateMetric(as, generateIntMetric(18), nodeLabels, "memory/node_allocatable", "kubernetes.io/node/memory/allocatable_bytes")
+	nodeNetworkBytesRx := testTranslateMetric(as, generateIntMetric(19), nodeLabels, "network/rx", "kubernetes.io/node/network/bytes_rx")
+	nodeNetworkBytesTx := testTranslateMetric(as, generateIntMetric(20), nodeLabels, "network/tx", "kubernetes.io/node/network/bytes_tx")
+	nodeDaemonCpuUsage := testTranslateMetric(as, generateIntMetric(21000000000), nodeDaemonLabels, "cpu/usage", "kubernetes.io/node_daemon/cpu/core_usage_time")
+	nodeDaemonMemoryUsage := testTranslateMetric(as, generateIntMetric(22), nodeDaemonLabels, "memory/bytes_used", "kubernetes.io/node_daemon/memory/used_bytes")
 
 	as.Equal(float64(1), *containerUptime.DoubleValue)
 	as.Equal(float64(2), *containerCpuUsage.DoubleValue)
