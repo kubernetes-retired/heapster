@@ -65,6 +65,11 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 	dataPoints := make([]influxdb.Point, 0, 0)
 	for _, metricSet := range dataBatch.MetricSets {
 		for metricName, metricValue := range metricSet.MetricValues {
+			if sink.c.DisableCounterMetrics {
+				if _, exists := core.RateMetricsMapping[metricName]; exists {
+					continue
+				}
+			}
 
 			var value interface{}
 			if core.ValueInt64 == metricValue.ValueType {
@@ -113,6 +118,11 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 		}
 
 		for _, labeledMetric := range metricSet.LabeledMetrics {
+			if sink.c.DisableCounterMetrics {
+				if _, exists := core.RateMetricsMapping[labeledMetric.Name]; exists {
+					continue
+				}
+			}
 
 			var value interface{}
 			if core.ValueInt64 == labeledMetric.ValueType {
