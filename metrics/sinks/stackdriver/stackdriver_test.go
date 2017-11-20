@@ -97,6 +97,18 @@ func testTranslateMetric(as *assert.Assertions, value core.MetricValue, labels m
 	return ts.Points[0].Value
 }
 
+func testTranslateLabeledMetric(as *assert.Assertions, labels map[string]string, metric core.LabeledMetric, expectedName string) *sd_api.TypedValue {
+	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
+
+	ts := sink.TranslateLabeledMetric(timestamp, labels, metric, createTime)
+
+	as.NotNil(ts)
+	as.Equal(ts.Metric.Type, expectedName)
+	as.Equal(len(ts.Points), 1)
+	return ts.Points[0].Value
+}
+
 func TestTranslateUptime(t *testing.T) {
 	as := assert.New(t)
 	value := testLegacyTranslateMetric(as, 30000, "uptime", commonLabels,
@@ -284,8 +296,11 @@ func TestTranslateMetricSet(t *testing.T) {
 	containerMemoryUsage := testTranslateMetric(as, generateIntMetric(5), containerLabels, "memory/bytes_used", "kubernetes.io/container/memory/used_bytes")
 	containerMemoryRequest := testTranslateMetric(as, generateIntMetric(6), containerLabels, "memory/request", "kubernetes.io/container/memory/requested_bytes")
 	containerMemoryLimit := testTranslateMetric(as, generateIntMetric(7), containerLabels, "memory/limit", "kubernetes.io/container/memory/limit_bytes")
+	containerRestartCount := testTranslateMetric(as, generateIntMetric(8), containerLabels, "restart_count", "kubernetes.io/container/restart_count")
 	podNetworkBytesRx := testTranslateMetric(as, generateIntMetric(9), podLabels, "network/rx", "kubernetes.io/pod/network/bytes_rx")
 	podNetworkBytesTx := testTranslateMetric(as, generateIntMetric(10), podLabels, "network/tx", "kubernetes.io/pod/network/bytes_tx")
+	podVolumeTotal := testTranslateLabeledMetric(as, podLabels, generateLabeledIntMetric(11, map[string]string{}, "volume/total_bytes"), "kubernetes.io/pod/volume/requested_bytes")
+	podVolumeUsed := testTranslateLabeledMetric(as, podLabels, generateLabeledIntMetric(12, map[string]string{}, "volume/used_bytes"), "kubernetes.io/pod/volume/used_bytes")
 	nodeCpuUsage := testTranslateMetric(as, generateIntMetric(13000000000), nodeLabels, "cpu/usage", "kubernetes.io/node/cpu/core_usage_time")
 	nodeCpuTotal := testTranslateMetric(as, generateFloatMetric(14), nodeLabels, "cpu/node_capacity", "kubernetes.io/node/cpu/total_cores")
 	nodeCpuAllocatable := testTranslateMetric(as, generateFloatMetric(15), nodeLabels, "cpu/node_allocatable", "kubernetes.io/node/cpu/allocatable_cores")
@@ -304,8 +319,11 @@ func TestTranslateMetricSet(t *testing.T) {
 	as.Equal(int64(5), *containerMemoryUsage.Int64Value)
 	as.Equal(int64(6), *containerMemoryRequest.Int64Value)
 	as.Equal(int64(7), *containerMemoryLimit.Int64Value)
+	as.Equal(int64(8), *containerRestartCount.Int64Value)
 	as.Equal(int64(9), *podNetworkBytesRx.Int64Value)
 	as.Equal(int64(10), *podNetworkBytesTx.Int64Value)
+	as.Equal(int64(11), *podVolumeTotal.Int64Value)
+	as.Equal(int64(12), *podVolumeUsed.Int64Value)
 	as.Equal(float64(13), *nodeCpuUsage.DoubleValue)
 	as.Equal(float64(14), *nodeCpuTotal.DoubleValue)
 	as.Equal(float64(15), *nodeCpuAllocatable.DoubleValue)
