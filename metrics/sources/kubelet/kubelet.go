@@ -181,7 +181,7 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 	}
 
 	for _, metric := range LabeledMetrics {
-		if metric.HasLabeledMetric != nil && metric.HasLabeledMetric(&c.Spec) {
+		if metric.HasLabeledMetric != nil && metric.HasLabeledMetric(&c.Spec, c.Stats[0]) {
 			labeledMetrics := metric.GetLabeledMetric(&c.Spec, c.Stats[0])
 			cMetrics.LabeledMetrics = append(cMetrics.LabeledMetrics, labeledMetrics...)
 		}

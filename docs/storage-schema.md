@@ -31,6 +31,10 @@ Heapster exports the following metrics to its backends.
 | memory/cache | Cache memory usage. |
 | memory/rss | RSS memory usage. |
 | memory/working_set | Total working set usage. Working set is the memory being used and not easily dropped by the kernel. |
+| accelerator/memory_capacity | Memory capacity of an accelerator . |
+| accelerator/memory_usage | Memory used of an accelerator . |
+| accelerator/utility | Utility of an accelerator . |
+| accelerator/node_nvidia_capacity | Nvidia capacity of a node . |
 | network/rx | Cumulative number of bytes received over the network. |
 | network/rx_errors | Cumulative number of errors while receiving over the network. |
 | network/rx_errors_rate | Number of errors while receiving over the network per second. |

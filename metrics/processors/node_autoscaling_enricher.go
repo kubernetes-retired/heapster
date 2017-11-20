@@ -49,6 +49,7 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 			capacityMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
 			allocatableCpu, _ := node.Status.Allocatable[kube_api.ResourceCPU]
 			allocatableMem, _ := node.Status.Allocatable[kube_api.ResourceMemory]
+			capacityNvidia, _ := node.Status.Capacity[kube_api.ResourceNvidiaGPU]
 
 			cpuRequested := getInt(metricSet, &core.MetricCpuRequest)
 			cpuUsed := getInt(metricSet, &core.MetricCpuUsageRate)
@@ -68,6 +69,8 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 			}
 			setFloat(metricSet, &core.MetricNodeMemoryCapacity, float32(capacityMem.Value()))
 			setFloat(metricSet, &core.MetricNodeMemoryAllocatable, float32(allocatableMem.Value()))
+
+			setFloat(metricSet, &core.MetricNodeNvidiaCapacity, float32(capacityNvidia.Value()))
 		}
 	}
 	return batch, nil
