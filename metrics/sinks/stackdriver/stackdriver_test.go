@@ -33,13 +33,25 @@ var (
 		stackdriverClient: nil,
 	}
 
-	commonLabels = map[string]string{}
+	commonLabels     = map[string]string{}
+	containerLabels  = map[string]string{"type": "pod_container"}
+	podLabels        = map[string]string{"type": "pod"}
+	nodeLabels       = map[string]string{"type": "node"}
+	nodeDaemonLabels = map[string]string{"type": "sys_container"}
 )
 
 func generateIntMetric(value int64) core.MetricValue {
 	return core.MetricValue{
 		ValueType: core.ValueInt64,
 		IntValue:  value,
+	}
+}
+
+func generateLabeledIntMetric(value int64, labels map[string]string, name string) core.LabeledMetric {
+	return core.LabeledMetric{
+		Name:        name,
+		Labels:      labels,
+		MetricValue: generateIntMetric(value),
 	}
 }
 
@@ -60,12 +72,24 @@ func deepCopy(source map[string]string) map[string]string {
 
 // Test TranslateMetric
 
-func testTranslateMetric(as *assert.Assertions, value int64, name string, labels map[string]string, expectedName string) *sd_api.TypedValue {
+func testLegacyTranslateMetric(as *assert.Assertions, value int64, name string, labels map[string]string, expectedName string) *sd_api.TypedValue {
 	metricValue := generateIntMetric(value)
 	timestamp := time.Now()
 	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, labels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, labels, name, metricValue, createTime)
+
+	as.NotNil(ts)
+	as.Equal(ts.Metric.Type, expectedName)
+	as.Equal(len(ts.Points), 1)
+	return ts.Points[0].Value
+}
+
+func testTranslateMetric(as *assert.Assertions, value core.MetricValue, labels map[string]string, name string, expectedName string) *sd_api.TypedValue {
+	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
+
+	ts := sink.TranslateMetric(timestamp, labels, name, value, createTime)
 
 	as.NotNil(ts)
 	as.Equal(ts.Metric.Type, expectedName)
@@ -75,7 +99,7 @@ func testTranslateMetric(as *assert.Assertions, value int64, name string, labels
 
 func TestTranslateUptime(t *testing.T) {
 	as := assert.New(t)
-	value := testTranslateMetric(as, 30000, "uptime", commonLabels,
+	value := testLegacyTranslateMetric(as, 30000, "uptime", commonLabels,
 		"container.googleapis.com/container/uptime")
 
 	as.Equal(30.0, *value.DoubleValue)
@@ -83,7 +107,7 @@ func TestTranslateUptime(t *testing.T) {
 
 func TestTranslateCpuUsage(t *testing.T) {
 	as := assert.New(t)
-	value := testTranslateMetric(as, 3600000000000, "cpu/usage", commonLabels,
+	value := testLegacyTranslateMetric(as, 3600000000000, "cpu/usage", commonLabels,
 		"container.googleapis.com/container/cpu/usage_time")
 
 	as.Equal(3600.0, *value.DoubleValue)
@@ -91,7 +115,7 @@ func TestTranslateCpuUsage(t *testing.T) {
 
 func TestTranslateCpuLimit(t *testing.T) {
 	as := assert.New(t)
-	value := testTranslateMetric(as, 2000, "cpu/limit", commonLabels,
+	value := testLegacyTranslateMetric(as, 2000, "cpu/limit", commonLabels,
 		"container.googleapis.com/container/cpu/reserved_cores")
 
 	as.Equal(2.0, *value.DoubleValue)
@@ -105,7 +129,7 @@ func TestTranslateMemoryLimitNode(t *testing.T) {
 	labels := deepCopy(commonLabels)
 	labels["type"] = core.MetricSetTypeNode
 
-	ts := sink.TranslateMetric(timestamp, labels, name, metricValue, timestamp)
+	ts := sink.LegacyTranslateMetric(timestamp, labels, name, metricValue, timestamp)
 	var expected *sd_api.TimeSeries = nil
 
 	as := assert.New(t)
@@ -116,7 +140,7 @@ func TestTranslateMemoryLimitPod(t *testing.T) {
 	as := assert.New(t)
 	labels := deepCopy(commonLabels)
 	labels["type"] = core.MetricSetTypePod
-	value := testTranslateMetric(as, 2048, "memory/limit", labels,
+	value := testLegacyTranslateMetric(as, 2048, "memory/limit", labels,
 		"container.googleapis.com/container/memory/bytes_total")
 
 	as.Equal(int64(2048), *value.Int64Value)
@@ -124,7 +148,7 @@ func TestTranslateMemoryLimitPod(t *testing.T) {
 
 func TestTranslateMemoryNodeAllocatable(t *testing.T) {
 	as := assert.New(t)
-	value := testTranslateMetric(as, 2048, "memory/node_allocatable", commonLabels,
+	value := testLegacyTranslateMetric(as, 2048, "memory/node_allocatable", commonLabels,
 		"container.googleapis.com/container/memory/bytes_total")
 
 	as.Equal(int64(2048), *value.Int64Value)
@@ -136,7 +160,7 @@ func TestTranslateMemoryUsedEvictable(t *testing.T) {
 	timestamp := time.Now()
 	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/bytes_used")
@@ -151,7 +175,7 @@ func TestTranslateMemoryUsedNonEvictable(t *testing.T) {
 	timestamp := time.Now()
 	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/bytes_used")
@@ -166,7 +190,7 @@ func TestTranslateMemoryMajorPageFaults(t *testing.T) {
 	timestamp := time.Now()
 	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
@@ -181,7 +205,7 @@ func TestTranslateMemoryMinorPageFaults(t *testing.T) {
 	timestamp := time.Now()
 	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
@@ -190,7 +214,7 @@ func TestTranslateMemoryMinorPageFaults(t *testing.T) {
 	as.Equal(ts.Metric.Labels["fault_type"], "minor")
 }
 
-// Test TranslateLabeledMetric
+// Test LegacyTranslateLabeledMetric
 
 func TestTranslateFilesystemUsage(t *testing.T) {
 	metric := core.LabeledMetric{
@@ -203,7 +227,7 @@ func TestTranslateFilesystemUsage(t *testing.T) {
 	timestamp := time.Now()
 	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateLabeledMetric(timestamp, commonLabels, metric, createTime)
+	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_used")
@@ -222,7 +246,7 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 	timestamp := time.Now()
 	createTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateLabeledMetric(timestamp, commonLabels, metric, createTime)
+	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, createTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_total")
@@ -232,7 +256,7 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 
 // Test PreprocessMemoryMetrics
 
-func TestPreprocessMemoryMetrics(t *testing.T) {
+func TestComputeDerivedMetrics(t *testing.T) {
 	as := assert.New(t)
 
 	metricSet := &core.MetricSet{
@@ -244,8 +268,52 @@ func TestPreprocessMemoryMetrics(t *testing.T) {
 		},
 	}
 
-	computedMetrics := sink.preprocessMemoryMetrics(metricSet)
+	computedMetrics := sink.computeDerivedMetrics(metricSet)
 
 	as.Equal(int64(96), computedMetrics.MetricValues["memory/bytes_used"].IntValue)
 	as.Equal(int64(13), computedMetrics.MetricValues["memory/minor_page_faults"].IntValue)
+}
+
+func TestTranslateMetricSet(t *testing.T) {
+	as := assert.New(t)
+
+	containerUptime := testTranslateMetric(as, generateIntMetric(1000), containerLabels, "uptime", "kubernetes.io/container/uptime")
+	containerCpuUsage := testTranslateMetric(as, generateIntMetric(2000000000), containerLabels, "cpu/usage", "kubernetes.io/container/cpu/core_usage_time")
+	containerCpuRequest := testTranslateMetric(as, generateIntMetric(3000), containerLabels, "cpu/request", "kubernetes.io/container/cpu/requested_cores")
+	containerCpuLimit := testTranslateMetric(as, generateIntMetric(4000), containerLabels, "cpu/limit", "kubernetes.io/container/cpu/limit_cores")
+	containerMemoryUsage := testTranslateMetric(as, generateIntMetric(5), containerLabels, "memory/bytes_used", "kubernetes.io/container/memory/used_bytes")
+	containerMemoryRequest := testTranslateMetric(as, generateIntMetric(6), containerLabels, "memory/request", "kubernetes.io/container/memory/requested_bytes")
+	containerMemoryLimit := testTranslateMetric(as, generateIntMetric(7), containerLabels, "memory/limit", "kubernetes.io/container/memory/limit_bytes")
+	podNetworkBytesRx := testTranslateMetric(as, generateIntMetric(9), podLabels, "network/rx", "kubernetes.io/pod/network/bytes_rx")
+	podNetworkBytesTx := testTranslateMetric(as, generateIntMetric(10), podLabels, "network/tx", "kubernetes.io/pod/network/bytes_tx")
+	nodeCpuUsage := testTranslateMetric(as, generateIntMetric(13000000000), nodeLabels, "cpu/usage", "kubernetes.io/node/cpu/core_usage_time")
+	nodeCpuTotal := testTranslateMetric(as, generateFloatMetric(14), nodeLabels, "cpu/node_capacity", "kubernetes.io/node/cpu/total_cores")
+	nodeCpuAllocatable := testTranslateMetric(as, generateFloatMetric(15), nodeLabels, "cpu/node_allocatable", "kubernetes.io/node/cpu/allocatable_cores")
+	nodeMemoryUsage := testTranslateMetric(as, generateIntMetric(16), nodeLabels, "memory/bytes_used", "kubernetes.io/node/memory/used_bytes")
+	nodeMemoryTotal := testTranslateMetric(as, generateIntMetric(17), nodeLabels, "memory/node_capacity", "kubernetes.io/node/memory/total_bytes")
+	nodeMemoryAllocatable := testTranslateMetric(as, generateIntMetric(18), nodeLabels, "memory/node_allocatable", "kubernetes.io/node/memory/allocatable_bytes")
+	nodeNetworkBytesRx := testTranslateMetric(as, generateIntMetric(19), nodeLabels, "network/rx", "kubernetes.io/node/network/bytes_rx")
+	nodeNetworkBytesTx := testTranslateMetric(as, generateIntMetric(20), nodeLabels, "network/tx", "kubernetes.io/node/network/bytes_tx")
+	nodeDaemonCpuUsage := testTranslateMetric(as, generateIntMetric(21000000000), nodeDaemonLabels, "cpu/usage", "kubernetes.io/node_daemon/cpu/core_usage_time")
+	nodeDaemonMemoryUsage := testTranslateMetric(as, generateIntMetric(22), nodeDaemonLabels, "memory/bytes_used", "kubernetes.io/node_daemon/memory/used_bytes")
+
+	as.Equal(float64(1), *containerUptime.DoubleValue)
+	as.Equal(float64(2), *containerCpuUsage.DoubleValue)
+	as.Equal(float64(3), *containerCpuRequest.DoubleValue)
+	as.Equal(float64(4), *containerCpuLimit.DoubleValue)
+	as.Equal(int64(5), *containerMemoryUsage.Int64Value)
+	as.Equal(int64(6), *containerMemoryRequest.Int64Value)
+	as.Equal(int64(7), *containerMemoryLimit.Int64Value)
+	as.Equal(int64(9), *podNetworkBytesRx.Int64Value)
+	as.Equal(int64(10), *podNetworkBytesTx.Int64Value)
+	as.Equal(float64(13), *nodeCpuUsage.DoubleValue)
+	as.Equal(float64(14), *nodeCpuTotal.DoubleValue)
+	as.Equal(float64(15), *nodeCpuAllocatable.DoubleValue)
+	as.Equal(int64(16), *nodeMemoryUsage.Int64Value)
+	as.Equal(int64(17), *nodeMemoryTotal.Int64Value)
+	as.Equal(int64(18), *nodeMemoryAllocatable.Int64Value)
+	as.Equal(int64(19), *nodeNetworkBytesRx.Int64Value)
+	as.Equal(int64(20), *nodeNetworkBytesTx.Int64Value)
+	as.Equal(float64(21), *nodeDaemonCpuUsage.DoubleValue)
+	as.Equal(int64(22), *nodeDaemonMemoryUsage.Int64Value)
 }
