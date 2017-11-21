@@ -685,28 +685,6 @@ var MetricFilesystemAvailable = Metric{
 	},
 }
 
-var MetricVolumeTotal = Metric{
-	MetricDescriptor: MetricDescriptor{
-		Name:        "volume/total_bytes",
-		Description: "Total bytes reserved for a volume",
-		Type:        MetricGauge,
-		ValueType:   ValueInt64,
-		Units:       UnitsBytes,
-		Labels:      metricLabels,
-	},
-}
-
-var MetricVolumeUsage = Metric{
-	MetricDescriptor: MetricDescriptor{
-		Name:        "volume/used_bytes",
-		Description: "Usage bytes reserved for a volume",
-		Type:        MetricGauge,
-		ValueType:   ValueInt64,
-		Units:       UnitsBytes,
-		Labels:      metricLabels,
-	},
-}
-
 var MetricFilesystemInodes = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "filesystem/inodes",

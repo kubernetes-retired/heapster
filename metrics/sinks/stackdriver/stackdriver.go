@@ -32,6 +32,7 @@ import (
 	sd_api "google.golang.org/api/monitoring/v3"
 	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
+	"strings"
 )
 
 const (
@@ -310,7 +311,6 @@ func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest)
 		WithLabelValues(strconv.Itoa(responseCode)).
 		Add(float64(len(req.TimeSeries)))
 	requestLatency.Observe(time.Since(startTime).Seconds() / time.Millisecond.Seconds())
-
 }
 
 func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
@@ -531,18 +531,18 @@ func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels 
 	case core.MetricSetTypePod:
 		podLabels := sink.getPodResourceLabels(labels)
 		switch metric.Name {
-		case core.MetricVolumeUsage.MetricDescriptor.Name:
+		case core.MetricFilesystemUsage.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
 			ts := createTimeSeries("k8s_pod", podLabels, volumeUsedBytesMD, point)
 			ts.Metric.Labels = map[string]string{
-				"name": metric.Labels[core.LabelResourceID.Key],
+				core.LabelVolumeName.Key: strings.TrimPrefix(metric.Labels[core.LabelResourceID.Key], "Volume:"),
 			}
 			return ts
-		case core.MetricVolumeTotal.MetricDescriptor.Name:
+		case core.MetricFilesystemLimit.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
-			ts := createTimeSeries("k8s_pod", podLabels, volumeRequestedBytesMD, point)
+			ts := createTimeSeries("k8s_pod", podLabels, volumeTotalBytesMD, point)
 			ts.Metric.Labels = map[string]string{
-				"name": metric.Labels[core.LabelResourceID.Key],
+				core.LabelVolumeName.Key: strings.TrimPrefix(metric.Labels[core.LabelResourceID.Key], "Volume:"),
 			}
 			return ts
 		}
@@ -601,10 +601,10 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 		switch name {
 		case core.MetricNetworkRx.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, createTime, value.IntValue)
-			return createTimeSeries("k8s_pod", podLabels, networkPodRxMD, point)
+			return createTimeSeries("k8s_pod", podLabels, networkPodReceivedBytesMD, point)
 		case core.MetricNetworkTx.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, createTime, value.IntValue)
-			return createTimeSeries("k8s_pod", podLabels, networkPodTxMD, point)
+			return createTimeSeries("k8s_pod", podLabels, networkPodSentBytesMD, point)
 		}
 	case core.MetricSetTypeNode:
 		nodeLabels := sink.getNodeResourceLabels(labels)
@@ -640,10 +640,10 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 			return ts
 		case core.MetricNetworkRx.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, createTime, value.IntValue)
-			return createTimeSeries("k8s_node", nodeLabels, networkNodeRxMD, point)
+			return createTimeSeries("k8s_node", nodeLabels, networkNodeReceivedBytesMD, point)
 		case core.MetricNetworkTx.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, createTime, value.IntValue)
-			return createTimeSeries("k8s_node", nodeLabels, networkNodeTxMD, point)
+			return createTimeSeries("k8s_node", nodeLabels, networkNodeSentBytesMD, point)
 		}
 	case core.MetricSetTypeSystemContainer:
 		nodeLabels := sink.getNodeResourceLabels(labels)
@@ -652,6 +652,7 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
 			ts := createTimeSeries("k8s_node", nodeLabels, memoryNodeDaemonUsedBytesMD, point)
 			ts.Metric.Labels = map[string]string{
+				"component":   labels[core.LabelContainerName.Key],
 				"memory_type": "evictable",
 			}
 			return ts
@@ -659,12 +660,17 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
 			ts := createTimeSeries("k8s_node", nodeLabels, memoryNodeDaemonUsedBytesMD, point)
 			ts.Metric.Labels = map[string]string{
+				"component":   labels[core.LabelContainerName.Key],
 				"memory_type": "non-evictable",
 			}
 			return ts
 		case core.MetricCpuUsage.MetricDescriptor.Name:
 			point := sink.doublePoint(timestamp, createTime, float64(value.IntValue)/float64(time.Second/time.Nanosecond))
-			return createTimeSeries("k8s_node", nodeLabels, cpuNodeDaemonCoreUsageTimeMD, point)
+			ts := createTimeSeries("k8s_node", nodeLabels, cpuNodeDaemonCoreUsageTimeMD, point)
+			ts.Metric.Labels = map[string]string{
+				"component": labels[core.LabelContainerName.Key],
+			}
+			return ts
 		}
 	}
 	return nil

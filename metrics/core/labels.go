@@ -89,6 +89,10 @@ var (
 		Key:         "schedulable",
 		Description: "Node schedulable status.",
 	}
+	LabelVolumeName = LabelDescriptor{
+		Key:         "volume_name",
+		Description: "The name of the volume.",
+	}
 )
 
 type LabelDescriptor struct {
