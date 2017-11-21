@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package stats
+package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,6 +35,8 @@ type NodeStats struct {
 	// Stats of system daemons tracked as raw containers.
 	// The system containers are named according to the SystemContainer* constants.
 	// +optional
+	// +patchMergeKey=name
+	// +patchStrategy=merge
 	SystemContainers []ContainerStats `json:"systemContainers,omitempty" patchStrategy:"merge" patchMergeKey:"name"`
 	// The time at which data collection for the node-scoped (i.e. aggregate) stats was (re)started.
 	StartTime metav1.Time `json:"startTime"`
@@ -56,7 +58,7 @@ type NodeStats struct {
 	Runtime *RuntimeStats `json:"runtime,omitempty"`
 }
 
-// Stats pertaining to the underlying container runtime.
+// RuntimeStats are stats pertaining to the underlying container runtime.
 type RuntimeStats struct {
 	// Stats about the underlying filesystem where container images are stored.
 	// This filesystem could be the same as the primary (root) filesystem.
@@ -66,11 +68,11 @@ type RuntimeStats struct {
 }
 
 const (
-	// Container name for the system container tracking Kubelet usage.
+	// SystemContainerKubelet is the container name for the system container tracking Kubelet usage.
 	SystemContainerKubelet = "kubelet"
-	// Container name for the system container tracking the runtime (e.g. docker or rkt) usage.
+	// SystemContainerRuntime is the container name for the system container tracking the runtime (e.g. docker or rkt) usage.
 	SystemContainerRuntime = "runtime"
-	// Container name for the system container tracking non-kubernetes processes.
+	// SystemContainerMisc is the container name for the system container tracking non-kubernetes processes.
 	SystemContainerMisc = "misc"
 )
 
@@ -81,6 +83,8 @@ type PodStats struct {
 	// The time at which data collection for the pod-scoped (e.g. network) stats was (re)started.
 	StartTime metav1.Time `json:"startTime"`
 	// Stats of containers in the measured pod.
+	// +patchMergeKey=name
+	// +patchStrategy=merge
 	Containers []ContainerStats `json:"containers" patchStrategy:"merge" patchMergeKey:"name"`
 	// Stats pertaining to network resources.
 	// +optional
@@ -88,6 +92,8 @@ type PodStats struct {
 	// Stats pertaining to volume usage of filesystem resources.
 	// VolumeStats.UsedBytes is the number of bytes used by the Volume
 	// +optional
+	// +patchMergeKey=name
+	// +patchStrategy=merge
 	VolumeStats []VolumeStats `json:"volume,omitempty" patchStrategy:"merge" patchMergeKey:"name"`
 }
 
@@ -103,6 +109,8 @@ type ContainerStats struct {
 	// Stats pertaining to memory (RAM) resources.
 	// +optional
 	Memory *MemoryStats `json:"memory,omitempty"`
+	// Metrics for Accelerators. Each Accelerator corresponds to one element in the array.
+	Accelerators []AcceleratorStats `json:"accelerators,omitempty"`
 	// Stats pertaining to container rootfs usage of filesystem resources.
 	// Rootfs.UsedBytes is the number of bytes used for the container write layer.
 	// +optional
@@ -112,6 +120,8 @@ type ContainerStats struct {
 	// +optional
 	Logs *FsStats `json:"logs,omitempty"`
 	// User defined metrics that are exposed by containers in the pod. Typically, we expect only one container in the pod to be exposing user defined metrics. In the event of multiple containers exposing metrics, they will be combined here.
+	// +patchMergeKey=name
+	// +patchStrategy=merge
 	UserDefinedMetrics []UserDefinedMetric `json:"userDefinedMetrics,omitmepty" patchStrategy:"merge" patchMergeKey:"name"`
 }
 
@@ -180,6 +190,30 @@ type MemoryStats struct {
 	MajorPageFaults *uint64 `json:"majorPageFaults,omitempty"`
 }
 
+// AcceleratorStats contains stats for accelerators attached to the container.
+type AcceleratorStats struct {
+	// Make of the accelerator (nvidia, amd, google etc.)
+	Make string `json:"make"`
+
+	// Model of the accelerator (tesla-p100, tesla-k80 etc.)
+	Model string `json:"model"`
+
+	// ID of the accelerator.
+	ID string `json:"id"`
+
+	// Total accelerator memory.
+	// unit: bytes
+	MemoryTotal uint64 `json:"memoryTotal"`
+
+	// Total accelerator memory allocated.
+	// unit: bytes
+	MemoryUsed uint64 `json:"memoryUsed"`
+
+	// Percent of time over the past sample period (10s) during which
+	// the accelerator was actively processing.
+	DutyCycle uint64 `json:"dutyCycle"`
+}
+
 // VolumeStats contains data about Volume filesystem usage.
 type VolumeStats struct {
 	// Embedded FsStats
@@ -187,10 +221,21 @@ type VolumeStats struct {
 	// Name is the name given to the Volume
 	// +optional
 	Name string `json:"name,omitempty"`
+	// Reference to the PVC, if one exists
+	// +optional
+	PVCRef *PVCReference `json:"pvcRef,omitempty"`
+}
+
+// PVCReference contains enough information to describe the referenced PVC.
+type PVCReference struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
 }
 
 // FsStats contains data about filesystem usage.
 type FsStats struct {
+	// The time at which these stats were updated.
+	Time metav1.Time `json:"time"`
 	// AvailableBytes represents the storage space available (bytes) for the filesystem.
 	// +optional
 	AvailableBytes *uint64 `json:"availableBytes,omitempty"`
@@ -218,13 +263,13 @@ type FsStats struct {
 type UserDefinedMetricType string
 
 const (
-	// Instantaneous value. May increase or decrease.
+	// MetricGauge is an instantaneous value. May increase or decrease.
 	MetricGauge UserDefinedMetricType = "gauge"
 
-	// A counter-like value that is only expected to increase.
+	// MetricCumulative is a counter-like value that is only expected to increase.
 	MetricCumulative UserDefinedMetricType = "cumulative"
 
-	// Rate over a time period.
+	// MetricDelta is a rate over a time period.
 	MetricDelta UserDefinedMetricType = "delta"
 )
 

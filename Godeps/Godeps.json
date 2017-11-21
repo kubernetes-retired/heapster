@@ -1429,9 +1429,9 @@
 			"Rev": "6500775c58c43486978291879ac9e1b0e9fc953f"
 		},
 		{
-			"ImportPath": "k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats",
-			"Comment": "v1.6.0-alpha.3-211-gff12e56",
-			"Rev": "ff12e5688c81207b0cde38153c8fb268fe528864"
+			"ImportPath": "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1",
+			"Comment": "v1.9.0-alpha.3-142-g274bac23ce",
+			"Rev": "274bac23ce038619b338741a369f8a2e84bfb0cd"
 		},
 		{
 			"ImportPath": "k8s.io/metrics/pkg/apis/metrics",

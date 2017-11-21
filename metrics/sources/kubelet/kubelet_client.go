@@ -31,7 +31,7 @@ import (
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
 	kubelet_client "k8s.io/heapster/metrics/sources/kubelet/util"
-	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
+	stats "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 )
 
 type Host struct {
