@@ -34,7 +34,7 @@ var (
 	cpuRequestedCoresMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "DOUBLE",
-		Name:       "kubernetes.io/container/cpu/requested_cores",
+		Name:       "kubernetes.io/container/cpu/request_cores",
 	}
 
 	cpuLimitCoresMD = &metricMetadata{
@@ -52,7 +52,7 @@ var (
 	memoryRequestedBytesMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "INT64",
-		Name:       "kubernetes.io/container/memory/requested_bytes",
+		Name:       "kubernetes.io/container/memory/request_bytes",
 	}
 
 	memoryLimitBytesMD = &metricMetadata{
@@ -75,22 +75,22 @@ var (
 		Name:       "kubernetes.io/pod/volume/used_bytes",
 	}
 
-	volumeRequestedBytesMD = &metricMetadata{
+	volumeTotalBytesMD = &metricMetadata{
 		MetricKind: "GAUGE",
 		ValueType:  "INT64",
-		Name:       "kubernetes.io/pod/volume/requested_bytes",
+		Name:       "kubernetes.io/pod/volume/total_bytes",
 	}
 
-	networkPodRxMD = &metricMetadata{
+	networkPodReceivedBytesMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "INT64",
-		Name:       "kubernetes.io/pod/network/bytes_rx",
+		Name:       "kubernetes.io/pod/network/received_bytes_count",
 	}
 
-	networkPodTxMD = &metricMetadata{
+	networkPodSentBytesMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "INT64",
-		Name:       "kubernetes.io/pod/network/bytes_tx",
+		Name:       "kubernetes.io/pod/network/sent_bytes_count",
 	}
 
 	// Node metrics
@@ -131,16 +131,16 @@ var (
 		Name:       "kubernetes.io/node/memory/allocatable_bytes",
 	}
 
-	networkNodeRxMD = &metricMetadata{
+	networkNodeReceivedBytesMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "INT64",
-		Name:       "kubernetes.io/node/network/bytes_rx",
+		Name:       "kubernetes.io/node/network/received_bytes_count",
 	}
 
-	networkNodeTxMD = &metricMetadata{
+	networkNodeSentBytesMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "INT64",
-		Name:       "kubernetes.io/node/network/bytes_tx",
+		Name:       "kubernetes.io/node/network/sent_bytes_count",
 	}
 
 	cpuNodeDaemonCoreUsageTimeMD = &metricMetadata{
