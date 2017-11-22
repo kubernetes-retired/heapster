@@ -201,8 +201,8 @@
 		},
 		{
 			"ImportPath": "github.com/google/cadvisor/info/v1",
-			"Comment": "v0.25.0-182-gc99f241",
-			"Rev": "c99f2418fa7bbc6fc54159fa50f0043f882e9e7c"
+			"Comment": "v0.28.0-14-g5231853",
+			"Rev": "5231853e7124d03b32678c7d2b0f4651dfa6110c"
 		},
 		{
 			"ImportPath": "github.com/google/gofuzz",
