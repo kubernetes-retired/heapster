@@ -51,8 +51,8 @@ func (this *RateCalculator) Process(batch *core.DataBatch) (*core.DataBatch, err
 			glog.V(4).Infof("Skipping rate calculations for %s - new batch (%s) was not scraped strictly after old batch (%s)", key, newMs.ScrapeTime, oldMs.ScrapeTime)
 			continue
 		}
-		if !newMs.CreateTime.Equal(oldMs.CreateTime) {
-			glog.V(4).Infof("Skipping rates for %s - different create time new:%v  old:%v", key, newMs.CreateTime, oldMs.CreateTime)
+		if !newMs.CollectionStartTime.Equal(oldMs.CollectionStartTime) {
+			glog.V(4).Infof("Skipping rates for %s - different collection start time new:%v  old:%v", key, newMs.CollectionStartTime, oldMs.CollectionStartTime)
 			// Create time for container must be the same.
 			continue
 		}
