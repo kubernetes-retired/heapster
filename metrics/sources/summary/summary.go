@@ -146,11 +146,11 @@ func (this *summaryMetricsSource) cloneLabels(labels map[string]string) map[stri
 func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet, labels map[string]string, node *stats.NodeStats) {
 	glog.V(9).Infof("Decoding node stats for node %s...", node.NodeName)
 	nodeMetrics := &MetricSet{
-		Labels:         this.cloneLabels(labels),
-		MetricValues:   map[string]MetricValue{},
-		LabeledMetrics: []LabeledMetric{},
-		CreateTime:     node.StartTime.Time,
-		ScrapeTime:     this.getScrapeTime(node.CPU, node.Memory, node.Network),
+		Labels:              this.cloneLabels(labels),
+		MetricValues:        map[string]MetricValue{},
+		LabeledMetrics:      []LabeledMetric{},
+		CollectionStartTime: node.StartTime.Time,
+		ScrapeTime:          this.getScrapeTime(node.CPU, node.Memory, node.Network),
 	}
 	nodeMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
 
@@ -172,11 +172,11 @@ func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet,
 func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, nodeLabels map[string]string, pod *stats.PodStats) {
 	glog.V(9).Infof("Decoding pod stats for pod %s/%s (%s)...", pod.PodRef.Namespace, pod.PodRef.Name, pod.PodRef.UID)
 	podMetrics := &MetricSet{
-		Labels:         this.cloneLabels(nodeLabels),
-		MetricValues:   map[string]MetricValue{},
-		LabeledMetrics: []LabeledMetric{},
-		CreateTime:     pod.StartTime.Time,
-		ScrapeTime:     this.getScrapeTime(nil, nil, pod.Network),
+		Labels:              this.cloneLabels(nodeLabels),
+		MetricValues:        map[string]MetricValue{},
+		LabeledMetrics:      []LabeledMetric{},
+		CollectionStartTime: pod.StartTime.Time,
+		ScrapeTime:          this.getScrapeTime(nil, nil, pod.Network),
 	}
 	ref := pod.PodRef
 	podMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePod
@@ -198,8 +198,8 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 		if _, exist := metrics[key]; exist {
 			glog.V(2).Infof("Metrics reported from two containers with the same key: %v. Create time of "+
 				"containers are %v and %v. Metrics from the older container are going to be dropped.", key,
-				container.StartTime.Time, metrics[key].CreateTime)
-			if container.StartTime.Time.Before(metrics[key].CreateTime) {
+				container.StartTime.Time, metrics[key].CollectionStartTime)
+			if container.StartTime.Time.Before(metrics[key].CollectionStartTime) {
 				continue
 			}
 		}
@@ -210,11 +210,11 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *stats.ContainerStats, isSystemContainer bool) *MetricSet {
 	glog.V(9).Infof("Decoding container stats stats for container %s...", container.Name)
 	containerMetrics := &MetricSet{
-		Labels:         this.cloneLabels(podLabels),
-		MetricValues:   map[string]MetricValue{},
-		LabeledMetrics: []LabeledMetric{},
-		CreateTime:     container.StartTime.Time,
-		ScrapeTime:     this.getScrapeTime(container.CPU, container.Memory, nil),
+		Labels:              this.cloneLabels(podLabels),
+		MetricValues:        map[string]MetricValue{},
+		LabeledMetrics:      []LabeledMetric{},
+		CollectionStartTime: container.StartTime.Time,
+		ScrapeTime:          this.getScrapeTime(container.CPU, container.Memory, nil),
 	}
 	containerMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePodContainer
 	if isSystemContainer {

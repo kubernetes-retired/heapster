@@ -330,7 +330,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			continue
 		}
 		assert.Equal(t, m.Labels[core.LabelMetricSetType.Key], e.setType, e.key)
-		assert.Equal(t, m.CreateTime, startTime, e.key)
+		assert.Equal(t, m.CollectionStartTime, startTime, e.key)
 		assert.Equal(t, m.ScrapeTime, scrapeTime, e.key)
 		if e.cpu {
 			checkIntMetric(t, m, e.key, core.MetricCpuUsage, e.seed+offsetCPUUsageCoreSeconds)
