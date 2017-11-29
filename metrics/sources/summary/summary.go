@@ -226,6 +226,7 @@ func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]stri
 	this.decodeUptime(containerMetrics, container.StartTime.Time)
 	this.decodeCPUStats(containerMetrics, container.CPU)
 	this.decodeMemoryStats(containerMetrics, container.Memory)
+	this.decodeAcceleratorStats(containerMetrics, container.Accelerators)
 	this.decodeFsStats(containerMetrics, RootFsKey, container.Rootfs)
 	this.decodeFsStats(containerMetrics, LogsKey, container.Logs)
 	this.decodeUserDefinedMetrics(containerMetrics, container.UserDefinedMetrics)
@@ -263,6 +264,19 @@ func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *
 	this.addIntMetric(metrics, &MetricMemoryRSS, memory.RSSBytes)
 	this.addIntMetric(metrics, &MetricMemoryPageFaults, memory.PageFaults)
 	this.addIntMetric(metrics, &MetricMemoryMajorPageFaults, memory.MajorPageFaults)
+}
+
+func (this *summaryMetricsSource) decodeAcceleratorStats(metrics *MetricSet, accelerators []stats.AcceleratorStats) {
+	for _, accelerator := range accelerators {
+		acceleratorLabels := map[string]string{
+			LabelAcceleratorMake.Key:  accelerator.Make,
+			LabelAcceleratorModel.Key: accelerator.Model,
+			LabelAcceleratorID.Key:    accelerator.ID,
+		}
+		this.addLabeledIntMetric(metrics, &MetricAcceleratorMemoryTotal, acceleratorLabels, &accelerator.MemoryTotal)
+		this.addLabeledIntMetric(metrics, &MetricAcceleratorMemoryUsed, acceleratorLabels, &accelerator.MemoryUsed)
+		this.addLabeledIntMetric(metrics, &MetricAcceleratorDutyCycle, acceleratorLabels, &accelerator.DutyCycle)
+	}
 }
 
 func (this *summaryMetricsSource) decodeNetworkStats(metrics *MetricSet, network *stats.NetworkStats) {

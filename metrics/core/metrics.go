@@ -751,6 +751,39 @@ var MetricFilesystemInodesFree = Metric{
 	},
 }
 
+var MetricAcceleratorMemoryTotal = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "accelerator/memory_total",
+		Description: "Total accelerator memory (in bytes)",
+		Labels:      acceleratorLabels,
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+}
+
+var MetricAcceleratorMemoryUsed = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "accelerator/memory_used",
+		Description: "Total accelerator memory allocated (in bytes)",
+		Labels:      acceleratorLabels,
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+}
+
+var MetricAcceleratorDutyCycle = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "accelerator/duty_cycle",
+		Description: "Percent of time over the past sample period (10s) during which the accelerator was actively processing",
+		Labels:      acceleratorLabels,
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsCount,
+	},
+}
+
 func IsNodeAutoscalingMetric(name string) bool {
 	for _, autoscalingMetric := range NodeAutoscalingMetrics {
 		if autoscalingMetric.MetricDescriptor.Name == name {
