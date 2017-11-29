@@ -102,7 +102,7 @@ func (sink *StackdriverSink) Stop() {
 }
 
 func (sink *StackdriverSink) processMetrics(metricValues map[string]core.MetricValue,
-	timestamp time.Time, labels map[string]string, collectionStartTime time.Time) []*sd_api.TimeSeries {
+	timestamp time.Time, labels map[string]string, collectionStartTime time.Time, entityCreateTime time.Time) []*sd_api.TimeSeries {
 	timeseries := make([]*sd_api.TimeSeries, 0)
 	if sink.useOldResourceModel {
 		for name, value := range metricValues {
@@ -113,7 +113,7 @@ func (sink *StackdriverSink) processMetrics(metricValues map[string]core.MetricV
 	}
 	if sink.useNewResourceModel {
 		for name, value := range metricValues {
-			if ts := sink.TranslateMetric(timestamp, labels, name, value, collectionStartTime); ts != nil {
+			if ts := sink.TranslateMetric(timestamp, labels, name, value, collectionStartTime, entityCreateTime); ts != nil {
 				timeseries = append(timeseries, ts)
 			}
 		}
@@ -153,8 +153,8 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 
 		derivedMetrics := sink.computeDerivedMetrics(metricSet)
 
-		derivedTimeseries := sink.processMetrics(derivedMetrics.MetricValues, dataBatch.Timestamp, metricSet.Labels, metricSet.CollectionStartTime)
-		timeseries := sink.processMetrics(metricSet.MetricValues, dataBatch.Timestamp, metricSet.Labels, metricSet.CollectionStartTime)
+		derivedTimeseries := sink.processMetrics(derivedMetrics.MetricValues, dataBatch.Timestamp, metricSet.Labels, metricSet.CollectionStartTime, metricSet.EntityCreateTime)
+		timeseries := sink.processMetrics(metricSet.MetricValues, dataBatch.Timestamp, metricSet.Labels, metricSet.CollectionStartTime, metricSet.EntityCreateTime)
 
 		timeseries = append(timeseries, derivedTimeseries...)
 
@@ -550,7 +550,7 @@ func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels 
 	return nil
 }
 
-func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, collectionStartTime time.Time) *sd_api.TimeSeries {
+func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, collectionStartTime time.Time, entityCreateTime time.Time) *sd_api.TimeSeries {
 	if !collectionStartTime.Before(timestamp) {
 		glog.V(4).Infof("Error translating metric %v for pod %v: batch timestamp %v earlier than pod create time %v", name, labels["pod_name"], timestamp, collectionStartTime)
 		return nil
@@ -593,7 +593,11 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
 			return createTimeSeries("k8s_container", containerLabels, memoryRequestedBytesMD, point)
 		case core.MetricRestartCount.MetricDescriptor.Name:
-			point := sink.intPoint(timestamp, timestamp, value.IntValue)
+			if entityCreateTime.IsZero() {
+				glog.V(2).Infof("Skipping restart_count metric for container %s/%s/%s because entity create time is zero", containerLabels["namespace_name"], containerLabels["pod_name"], containerLabels["container_name"])
+				return nil
+			}
+			point := sink.intPoint(timestamp, entityCreateTime, value.IntValue)
 			return createTimeSeries("k8s_container", containerLabels, restartCountMD, point)
 		}
 	case core.MetricSetTypePod:

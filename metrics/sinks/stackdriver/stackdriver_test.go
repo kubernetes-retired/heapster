@@ -88,8 +88,9 @@ func testLegacyTranslateMetric(as *assert.Assertions, value int64, name string, 
 func testTranslateMetric(as *assert.Assertions, value core.MetricValue, labels map[string]string, name string, expectedName string) *sd_api.TypedValue {
 	timestamp := time.Now()
 	collectionStartTime := timestamp.Add(-time.Second)
+	entityCreateTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, labels, name, value, collectionStartTime)
+	ts := sink.TranslateMetric(timestamp, labels, name, value, collectionStartTime, entityCreateTime)
 
 	as.NotNil(ts)
 	as.Equal(ts.Metric.Type, expectedName)
