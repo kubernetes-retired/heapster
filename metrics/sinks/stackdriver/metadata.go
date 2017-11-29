@@ -222,4 +222,22 @@ var (
 		ValueType:  "INT64",
 		Name:       "container.googleapis.com/container/disk/bytes_total",
 	}
+
+	legacyAcceleratorMemoryTotalMD = &metricMetadata{
+		MetricKind: "GAUGE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/accelerator/memory_total",
+	}
+
+	legacyAcceleratorMemoryUsedMD = &metricMetadata{
+		MetricKind: "GAUGE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/accelerator/memory_used",
+	}
+
+	legacyAcceleratorDutyCycleMD = &metricMetadata{
+		MetricKind: "GAUGE",
+		ValueType:  "INT64",
+		Name:       "container.googleapis.com/container/accelerator/duty_cycle",
+	}
 )

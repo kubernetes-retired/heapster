@@ -266,6 +266,41 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 	as.Equal(*ts.Points[0].Value.Int64Value, int64(30000))
 }
 
+func testTranslateAcceleratorMetric(t *testing.T, sourceName string, stackdriverName string) {
+	value := int64(12345678)
+	make := "nvidia"
+	model := "Tesla P100"
+	acceleratorID := "GPU-deadbeef-1234-5678-90ab-feedfacecafe"
+
+	metric := generateLabeledIntMetric(
+		value,
+		map[string]string{
+			core.LabelAcceleratorMake.Key:  make,
+			core.LabelAcceleratorModel.Key: model,
+			core.LabelAcceleratorID.Key:    acceleratorID,
+		},
+		sourceName)
+
+	timestamp := time.Now()
+	createTime := timestamp.Add(-time.Second)
+
+	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, createTime)
+
+	as := assert.New(t)
+	as.Equal(stackdriverName, ts.Metric.Type)
+	as.Equal(1, len(ts.Points))
+	as.Equal(value, *ts.Points[0].Value.Int64Value)
+	as.Equal(make, ts.Metric.Labels[core.LabelAcceleratorMake.Key])
+	as.Equal(model, ts.Metric.Labels[core.LabelAcceleratorModel.Key])
+	as.Equal(acceleratorID, ts.Metric.Labels[core.LabelAcceleratorID.Key])
+}
+
+func TestTranslateAcceleratorMetrics(t *testing.T) {
+	testTranslateAcceleratorMetric(t, "accelerator/memory_total", "container.googleapis.com/container/accelerator/memory_total")
+	testTranslateAcceleratorMetric(t, "accelerator/memory_used", "container.googleapis.com/container/accelerator/memory_used")
+	testTranslateAcceleratorMetric(t, "accelerator/duty_cycle", "container.googleapis.com/container/accelerator/duty_cycle")
+}
+
 // Test PreprocessMemoryMetrics
 
 func TestComputeDerivedMetrics(t *testing.T) {
