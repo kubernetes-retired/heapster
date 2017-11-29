@@ -125,9 +125,9 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 
 	var metricSetKey string
 	cMetrics := &MetricSet{
-		CreateTime:   c.Spec.CreationTime,
-		ScrapeTime:   c.Stats[0].Timestamp,
-		MetricValues: map[string]MetricValue{},
+		CollectionStartTime: c.Spec.CreationTime,
+		ScrapeTime:          c.Stats[0].Timestamp,
+		MetricValues:        map[string]MetricValue{},
 		Labels: map[string]string{
 			LabelNodename.Key: this.nodename,
 			LabelHostname.Key: this.hostname,

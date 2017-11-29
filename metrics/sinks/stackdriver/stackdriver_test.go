@@ -75,9 +75,9 @@ func deepCopy(source map[string]string) map[string]string {
 func testLegacyTranslateMetric(as *assert.Assertions, value int64, name string, labels map[string]string, expectedName string) *sd_api.TypedValue {
 	metricValue := generateIntMetric(value)
 	timestamp := time.Now()
-	createTime := timestamp.Add(-time.Second)
+	collectionStartTime := timestamp.Add(-time.Second)
 
-	ts := sink.LegacyTranslateMetric(timestamp, labels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, labels, name, metricValue, collectionStartTime)
 
 	as.NotNil(ts)
 	as.Equal(ts.Metric.Type, expectedName)
@@ -87,9 +87,10 @@ func testLegacyTranslateMetric(as *assert.Assertions, value int64, name string, 
 
 func testTranslateMetric(as *assert.Assertions, value core.MetricValue, labels map[string]string, name string, expectedName string) *sd_api.TypedValue {
 	timestamp := time.Now()
-	createTime := timestamp.Add(-time.Second)
+	collectionStartTime := timestamp.Add(-time.Second)
+	entityCreateTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateMetric(timestamp, labels, name, value, createTime)
+	ts := sink.TranslateMetric(timestamp, labels, name, value, collectionStartTime, entityCreateTime)
 
 	as.NotNil(ts)
 	as.Equal(ts.Metric.Type, expectedName)
@@ -99,9 +100,9 @@ func testTranslateMetric(as *assert.Assertions, value core.MetricValue, labels m
 
 func testTranslateLabeledMetric(as *assert.Assertions, labels map[string]string, metric core.LabeledMetric, expectedName string) *sd_api.TypedValue {
 	timestamp := time.Now()
-	createTime := timestamp.Add(-time.Second)
+	collectionStartTime := timestamp.Add(-time.Second)
 
-	ts := sink.TranslateLabeledMetric(timestamp, labels, metric, createTime)
+	ts := sink.TranslateLabeledMetric(timestamp, labels, metric, collectionStartTime)
 
 	as.NotNil(ts)
 	as.Equal(ts.Metric.Type, expectedName)
@@ -170,9 +171,9 @@ func TestTranslateMemoryUsedEvictable(t *testing.T) {
 	metricValue := generateIntMetric(100)
 	name := "memory/bytes_used"
 	timestamp := time.Now()
-	createTime := timestamp.Add(-time.Second)
+	collectionStartTime := timestamp.Add(-time.Second)
 
-	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, collectionStartTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/bytes_used")
@@ -185,9 +186,9 @@ func TestTranslateMemoryUsedNonEvictable(t *testing.T) {
 	metricValue := generateIntMetric(200)
 	name := core.MetricMemoryWorkingSet.MetricDescriptor.Name
 	timestamp := time.Now()
-	createTime := timestamp.Add(-time.Second)
+	collectionStartTime := timestamp.Add(-time.Second)
 
-	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, collectionStartTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/bytes_used")
@@ -200,9 +201,9 @@ func TestTranslateMemoryMajorPageFaults(t *testing.T) {
 	metricValue := generateIntMetric(20)
 	name := "memory/major_page_faults"
 	timestamp := time.Now()
-	createTime := timestamp.Add(-time.Second)
+	collectionStartTime := timestamp.Add(-time.Second)
 
-	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, collectionStartTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
@@ -215,9 +216,9 @@ func TestTranslateMemoryMinorPageFaults(t *testing.T) {
 	metricValue := generateIntMetric(42)
 	name := "memory/minor_page_faults"
 	timestamp := time.Now()
-	createTime := timestamp.Add(-time.Second)
+	collectionStartTime := timestamp.Add(-time.Second)
 
-	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, createTime)
+	ts := sink.LegacyTranslateMetric(timestamp, commonLabels, name, metricValue, collectionStartTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
@@ -237,9 +238,9 @@ func TestTranslateFilesystemUsage(t *testing.T) {
 		Name: "filesystem/usage",
 	}
 	timestamp := time.Now()
-	createTime := timestamp.Add(-time.Second)
+	collectionStartTime := timestamp.Add(-time.Second)
 
-	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, createTime)
+	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, collectionStartTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_used")
@@ -256,9 +257,9 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 		Name: "filesystem/limit",
 	}
 	timestamp := time.Now()
-	createTime := timestamp.Add(-time.Second)
+	collectionStartTime := timestamp.Add(-time.Second)
 
-	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, createTime)
+	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, collectionStartTime)
 
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_total")

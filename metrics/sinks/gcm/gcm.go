@@ -68,7 +68,7 @@ func fullMetricType(name string) string {
 	return fmt.Sprintf("%s/%s/%s", customApiPrefix, metricDomain, name)
 }
 
-func createTimeSeries(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, createTime time.Time) *gcm.TimeSeries {
+func createTimeSeries(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, collectionStartTime time.Time) *gcm.TimeSeries {
 	point := &gcm.Point{
 		Interval: &gcm.TimeInterval{
 			StartTime: timestamp.Format(time.RFC3339),
@@ -95,7 +95,7 @@ func createTimeSeries(timestamp time.Time, labels map[string]string, metric stri
 	}
 	// For cumulative metric use the provided start time.
 	if val.MetricType == core.MetricCumulative {
-		point.Interval.StartTime = createTime.Format(time.RFC3339)
+		point.Interval.StartTime = collectionStartTime.Format(time.RFC3339)
 	}
 
 	return &gcm.TimeSeries{
@@ -108,7 +108,7 @@ func createTimeSeries(timestamp time.Time, labels map[string]string, metric stri
 	}
 }
 
-func (sink *gcmSink) getTimeSeries(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, createTime time.Time) *gcm.TimeSeries {
+func (sink *gcmSink) getTimeSeries(timestamp time.Time, labels map[string]string, metric string, val core.MetricValue, collectionStartTime time.Time) *gcm.TimeSeries {
 	finalLabels := make(map[string]string)
 	if core.IsNodeAutoscalingMetric(metric) {
 		// All and autoscaling. Do not populate for other filters.
@@ -133,10 +133,10 @@ func (sink *gcmSink) getTimeSeries(timestamp time.Time, labels map[string]string
 		}
 	}
 
-	return createTimeSeries(timestamp, finalLabels, metric, val, createTime)
+	return createTimeSeries(timestamp, finalLabels, metric, val, collectionStartTime)
 }
 
-func (sink *gcmSink) getTimeSeriesForLabeledMetrics(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, createTime time.Time) *gcm.TimeSeries {
+func (sink *gcmSink) getTimeSeriesForLabeledMetrics(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, collectionStartTime time.Time) *gcm.TimeSeries {
 	// Only all. There are no autoscaling labeled metrics.
 	if sink.metricFilter != metricsAll {
 		return nil
@@ -155,7 +155,7 @@ func (sink *gcmSink) getTimeSeriesForLabeledMetrics(timestamp time.Time, labels 
 		}
 	}
 
-	return createTimeSeries(timestamp, finalLabels, metric.Name, metric.MetricValue, createTime)
+	return createTimeSeries(timestamp, finalLabels, metric.Name, metric.MetricValue, collectionStartTime)
 }
 
 func fullProjectName(name string) string {
@@ -180,7 +180,7 @@ func (sink *gcmSink) ExportData(dataBatch *core.DataBatch) {
 	req := getReq()
 	for _, metricSet := range dataBatch.MetricSets {
 		for metric, val := range metricSet.MetricValues {
-			point := sink.getTimeSeries(dataBatch.Timestamp, metricSet.Labels, metric, val, metricSet.CreateTime)
+			point := sink.getTimeSeries(dataBatch.Timestamp, metricSet.Labels, metric, val, metricSet.CollectionStartTime)
 			if point != nil {
 				req.TimeSeries = append(req.TimeSeries, point)
 			}
@@ -190,7 +190,7 @@ func (sink *gcmSink) ExportData(dataBatch *core.DataBatch) {
 			}
 		}
 		for _, metric := range metricSet.LabeledMetrics {
-			point := sink.getTimeSeriesForLabeledMetrics(dataBatch.Timestamp, metricSet.Labels, metric, metricSet.CreateTime)
+			point := sink.getTimeSeriesForLabeledMetrics(dataBatch.Timestamp, metricSet.Labels, metric, metricSet.CollectionStartTime)
 			if point != nil {
 				req.TimeSeries = append(req.TimeSeries, point)
 			}
