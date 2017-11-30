@@ -49,6 +49,19 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 			capacityMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
 			allocatableCpu, _ := node.Status.Allocatable[kube_api.ResourceCPU]
 			allocatableMem, _ := node.Status.Allocatable[kube_api.ResourceMemory]
+			if capacityNvidia, exists := node.Status.Capacity[kube_api.ResourceNvidiaGPU]; exists {
+				metricSet.LabeledMetrics = append(metricSet.LabeledMetrics, core.LabeledMetric{
+					Name: "accelerator/node_capacity",
+					Labels: map[string]string{
+						core.LabelAcceleratorMake.Key: "nvidia",
+					},
+					MetricValue: core.MetricValue{
+						ValueType:  core.ValueFloat,
+						MetricType: core.MetricGauge,
+						FloatValue: float32(capacityNvidia.Value()),
+					},
+				})
+			}
 
 			cpuRequested := getInt(metricSet, &core.MetricCpuRequest)
 			cpuUsed := getInt(metricSet, &core.MetricCpuUsageRate)

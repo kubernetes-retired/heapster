@@ -356,21 +356,16 @@ func runMetricExportTest(fm kubeFramework, svc *kube_v1.Service) error {
 			core.MetricFilesystemLimit.MetricDescriptor.Name: {core.LabelResourceID.Key},
 			core.MetricFilesystemAvailable.Name:              {core.LabelResourceID.Key},
 			core.MetricFilesystemInodes.Name:                 {core.LabelResourceID.Key},
-			core.MetricFilesystemInodesFree.Name:             {core.LabelResourceID.Key}}
+			core.MetricFilesystemInodesFree.Name:             {core.LabelResourceID.Key},
+			core.MetricAcceleratorMemoryTotal.Name:           {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key},
+			core.MetricAcceleratorMemoryUsed.Name:            {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key},
+			core.MetricAcceleratorDutyCycle.Name:             {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key},
+			core.MetricNodeAcceleratorCapacity.Name:          {core.LabelAcceleratorMake.Key}}
 
 		for metricName, points := range ts.Metrics {
-			md, exists := mdMap[metricName]
+			_, exists := mdMap[metricName]
 			if !exists {
 				return fmt.Errorf("unexpected metric %q", metricName)
-			}
-
-			for _, point := range points {
-				for _, label := range md.Labels {
-					_, exists := point.Labels[label.Key]
-					if !exists {
-						return fmt.Errorf("metric %q point %v does not contain metric label: %v", metricName, point, label)
-					}
-				}
 			}
 
 			required := explicitRequirement[metricName]

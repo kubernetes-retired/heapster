@@ -64,6 +64,18 @@ var (
 		Key:         "resource_id",
 		Description: "Identifier(s) specific to a metric",
 	}
+	LabelAcceleratorMake = LabelDescriptor{
+		Key:         "accelerator_make",
+		Description: "Make of the accelerator (nvidia, amd, google etc.)",
+	}
+	LabelAcceleratorModel = LabelDescriptor{
+		Key:         "accelerator_model",
+		Description: "Model of the accelerator (tesla-p100, tesla-k80 etc.)",
+	}
+	LabelAcceleratorID = LabelDescriptor{
+		Key:         "accelerator_id",
+		Description: "ID of the accelerator.",
+	}
 	LabelHostID = LabelDescriptor{
 		Key:         "host_id",
 		Description: "Identifier specific to a host. Set by cloud provider or user",
@@ -92,18 +104,6 @@ var (
 	LabelVolumeName = LabelDescriptor{
 		Key:         "volume_name",
 		Description: "The name of the volume.",
-	}
-	LabelAcceleratorMake = LabelDescriptor{
-		Key:         "make",
-		Description: "Make of the accelerator (nvidia, amd, google etc.)",
-	}
-	LabelAcceleratorModel = LabelDescriptor{
-		Key:         "model",
-		Description: "Model of the accelerator (tesla-p100, tesla-k80 etc.)",
-	}
-	LabelAcceleratorID = LabelDescriptor{
-		Key:         "accelerator_id",
-		Description: "ID of the accelerator",
 	}
 )
 
@@ -135,6 +135,9 @@ var podLabels = []LabelDescriptor{
 
 var metricLabels = []LabelDescriptor{
 	LabelResourceID,
+	LabelAcceleratorMake,
+	LabelAcceleratorModel,
+	LabelAcceleratorID,
 }
 
 var customMetricLabels = []LabelDescriptor{
