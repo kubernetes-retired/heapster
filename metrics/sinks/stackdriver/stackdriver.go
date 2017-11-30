@@ -456,6 +456,33 @@ func (sink *StackdriverSink) LegacyTranslateLabeledMetric(timestamp time.Time, l
 			"device_name": metric.Labels[core.LabelResourceID.Key],
 		}
 		return ts
+	case core.MetricAcceleratorMemoryTotal.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+		ts := legacyCreateTimeSeries(resourceLabels, legacyAcceleratorMemoryTotalMD, point)
+		ts.Metric.Labels = map[string]string{
+			core.LabelAcceleratorMake.Key:  metric.Labels[core.LabelAcceleratorMake.Key],
+			core.LabelAcceleratorModel.Key: metric.Labels[core.LabelAcceleratorModel.Key],
+			core.LabelAcceleratorID.Key:    metric.Labels[core.LabelAcceleratorID.Key],
+		}
+		return ts
+	case core.MetricAcceleratorMemoryUsed.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+		ts := legacyCreateTimeSeries(resourceLabels, legacyAcceleratorMemoryUsedMD, point)
+		ts.Metric.Labels = map[string]string{
+			core.LabelAcceleratorMake.Key:  metric.Labels[core.LabelAcceleratorMake.Key],
+			core.LabelAcceleratorModel.Key: metric.Labels[core.LabelAcceleratorModel.Key],
+			core.LabelAcceleratorID.Key:    metric.Labels[core.LabelAcceleratorID.Key],
+		}
+		return ts
+	case core.MetricAcceleratorDutyCycle.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+		ts := legacyCreateTimeSeries(resourceLabels, legacyAcceleratorDutyCycleMD, point)
+		ts.Metric.Labels = map[string]string{
+			core.LabelAcceleratorMake.Key:  metric.Labels[core.LabelAcceleratorMake.Key],
+			core.LabelAcceleratorModel.Key: metric.Labels[core.LabelAcceleratorModel.Key],
+			core.LabelAcceleratorID.Key:    metric.Labels[core.LabelAcceleratorID.Key],
+		}
+		return ts
 	}
 	return nil
 }
