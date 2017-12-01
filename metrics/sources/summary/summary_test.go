@@ -153,8 +153,11 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				Name:      pName0,
 				Namespace: namespace0,
 			},
-			StartTime: metav1.NewTime(startTime),
-			Network:   genTestSummaryNetwork(seedPod0),
+			StartTime:        metav1.NewTime(startTime),
+			Network:          genTestSummaryNetwork(seedPod0),
+			EphemeralStorage: genTestSummaryFsStats(seedPod0),
+			CPU:              genTestSummaryCPU(seedPod0),
+			Memory:           genTestSummaryMemory(seedPod0),
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName00, seedPod0Container0),
 				genTestSummaryContainer(cName01, seedPod0Container1),
@@ -235,14 +238,15 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 
 	containerFs := []string{"/", "logs"}
 	expectations := []struct {
-		key          string
-		setType      string
-		seed         int64
-		cpu          bool
-		memory       bool
-		network      bool
-		accelerators bool
-		fs           []string
+		key              string
+		setType          string
+		seed             int64
+		cpu              bool
+		memory           bool
+		network          bool
+		accelerators     bool
+		ephemeralstorage bool
+		fs               []string
 	}{{
 		key:     core.NodeKey(nodeInfo.NodeName),
 		setType: core.MetricSetTypeNode,
@@ -270,10 +274,13 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		cpu:     true,
 		memory:  true,
 	}, {
-		key:     core.PodKey(namespace0, pName0),
-		setType: core.MetricSetTypePod,
-		seed:    seedPod0,
-		network: true,
+		key:              core.PodKey(namespace0, pName0),
+		setType:          core.MetricSetTypePod,
+		seed:             seedPod0,
+		network:          true,
+		cpu:              true,
+		memory:           true,
+		ephemeralstorage: true,
 	}, {
 		key:     core.PodKey(namespace0, pName1),
 		setType: core.MetricSetTypePod,
@@ -381,6 +388,9 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			checkAcceleratorMetric(t, m, e.key, core.MetricAcceleratorMemoryTotal, e.seed+offsetAcceleratorMemoryTotal)
 			checkAcceleratorMetric(t, m, e.key, core.MetricAcceleratorMemoryUsed, e.seed+offsetAcceleratorMemoryUsed)
 			checkAcceleratorMetric(t, m, e.key, core.MetricAcceleratorDutyCycle, e.seed+offsetAcceleratorDutyCycle)
+		}
+		if e.ephemeralstorage {
+			checkIntMetric(t, m, e.key, core.MetricEphemeralStorageUsage, e.seed+offsetFsUsed)
 		}
 		for _, label := range e.fs {
 			checkFsMetric(t, m, e.key, label, core.MetricFilesystemAvailable, e.seed+offsetFsAvailable)

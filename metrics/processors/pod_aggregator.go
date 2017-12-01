@@ -42,6 +42,8 @@ func (this *PodAggregator) Name() string {
 func (this *PodAggregator) Process(batch *core.DataBatch) (*core.DataBatch, error) {
 	newPods := make(map[string]*core.MetricSet)
 
+	// If pod already has pod-level metrics, it no longer needs to aggregates its container's metrics.
+	requireAggregate := make(map[string]bool)
 	for key, metricSet := range batch.MetricSets {
 		if metricSetType, found := metricSet.Labels[core.LabelMetricSetType.Key]; !found || metricSetType != core.MetricSetTypePodContainer {
 			continue
@@ -72,23 +74,27 @@ func (this *PodAggregator) Process(batch *core.DataBatch) (*core.DataBatch, erro
 			}
 
 			aggregatedValue, found := pod.MetricValues[metricName]
-			if found {
-				if aggregatedValue.ValueType != metricValue.ValueType {
-					glog.Errorf("PodAggregator: inconsistent type in %s", metricName)
-					continue
-				}
-
-				switch aggregatedValue.ValueType {
-				case core.ValueInt64:
-					aggregatedValue.IntValue += metricValue.IntValue
-				case core.ValueFloat:
-					aggregatedValue.FloatValue += metricValue.FloatValue
-				default:
-					return nil, fmt.Errorf("PodAggregator: type not supported in %s", metricName)
-				}
-			} else {
+			if !found {
+				requireAggregate[podKey+metricName] = true
 				aggregatedValue = metricValue
+			} else {
+				if requireAggregate[podKey+metricName] {
+					if aggregatedValue.ValueType != metricValue.ValueType {
+						glog.Errorf("PodAggregator: inconsistent type in %s", metricName)
+						continue
+					}
+
+					switch aggregatedValue.ValueType {
+					case core.ValueInt64:
+						aggregatedValue.IntValue += metricValue.IntValue
+					case core.ValueFloat:
+						aggregatedValue.FloatValue += metricValue.FloatValue
+					default:
+						return nil, fmt.Errorf("PodAggregator: type not supported in %s", metricName)
+					}
+				}
 			}
+
 			pod.MetricValues[metricName] = aggregatedValue
 		}
 	}

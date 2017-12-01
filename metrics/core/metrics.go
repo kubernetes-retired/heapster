@@ -29,6 +29,7 @@ const (
 var StandardMetrics = []Metric{
 	MetricUptime,
 	MetricCpuUsage,
+	MetricEphemeralStorageUsage,
 	MetricMemoryUsage,
 	MetricMemoryRSS,
 	MetricMemoryCache,
@@ -220,6 +221,15 @@ var MetricCpuUsage = Metric{
 	},
 }
 
+var MetricEphemeralStorageUsage = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "ephemeralstorage/usage",
+		Description: "Ephemeral storage usage",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+}
 var MetricMemoryUsage = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "memory/usage",
