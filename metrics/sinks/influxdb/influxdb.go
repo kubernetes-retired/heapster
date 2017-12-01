@@ -145,8 +145,10 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 			}
 
 			for key, value := range metricSet.Labels {
-				if value != "" {
-					point.Tags[key] = value
+				if _, exists := influxdbBlacklistLabels[key]; !exists {
+					if value != "" {
+						point.Tags[key] = value
+					}
 				}
 			}
 			for key, value := range labeledMetric.Labels {
