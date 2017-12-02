@@ -324,10 +324,15 @@ var MetricNetworkRx = Metric{
 		return spec.HasNetwork
 	},
 	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
+		var rxBytes uint64 = 0
+		for _, interfaceStat := range stat.Network.Interfaces {
+			rxBytes += interfaceStat.RxBytes
+		}
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Network.RxBytes)}
+			IntValue:   int64(rxBytes),
+		}
 	},
 }
 
@@ -343,10 +348,15 @@ var MetricNetworkRxErrors = Metric{
 		return spec.HasNetwork
 	},
 	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
+		var rxErrors uint64 = 0
+		for _, interfaceStat := range stat.Network.Interfaces {
+			rxErrors += interfaceStat.RxErrors
+		}
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Network.RxErrors)}
+			IntValue:   int64(rxErrors),
+		}
 	},
 }
 
@@ -362,10 +372,15 @@ var MetricNetworkTx = Metric{
 		return spec.HasNetwork
 	},
 	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
+		var txBytes uint64 = 0
+		for _, interfaceStat := range stat.Network.Interfaces {
+			txBytes += interfaceStat.TxBytes
+		}
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Network.TxBytes)}
+			IntValue:   int64(txBytes),
+		}
 	},
 }
 
@@ -381,10 +396,15 @@ var MetricNetworkTxErrors = Metric{
 		return spec.HasNetwork
 	},
 	GetValue: func(spec *cadvisor.ContainerSpec, stat *cadvisor.ContainerStats) MetricValue {
+		var txErrors uint64 = 0
+		for _, interfaceStat := range stat.Network.Interfaces {
+			txErrors += interfaceStat.TxErrors
+		}
 		return MetricValue{
 			ValueType:  ValueInt64,
 			MetricType: MetricCumulative,
-			IntValue:   int64(stat.Network.TxErrors)}
+			IntValue:   int64(txErrors),
+		}
 	},
 }
 
