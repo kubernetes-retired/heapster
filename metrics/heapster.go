@@ -86,7 +86,7 @@ func main() {
 		glog.Fatalf("Failed to get kubernetes address: %v", err)
 	}
 	sourceManager := createSourceManagerOrDie(opt.Sources)
-	sinkManager, metricSink, historicalSource := createAndInitSinksOrDie(opt.Sinks, opt.HistoricalSource, opt.SinkExportDataTimeout)
+	sinkManager, metricSink, historicalSource := createAndInitSinksOrDie(opt.Sinks, opt.HistoricalSource, opt.SinkExportDataTimeout, opt.DisableMetricSink)
 
 	podLister, nodeLister := getListersOrDie(kubernetesUrl)
 	dataProcessors := createDataProcessorsOrDie(kubernetesUrl, podLister, labelCopier)
@@ -189,10 +189,10 @@ func createSourceManagerOrDie(src flags.Uris) core.MetricsSource {
 	return sourceManager
 }
 
-func createAndInitSinksOrDie(sinkAddresses flags.Uris, historicalSource string, sinkExportDataTimeout time.Duration) (core.DataSink, *metricsink.MetricSink, core.HistoricalSource) {
+func createAndInitSinksOrDie(sinkAddresses flags.Uris, historicalSource string, sinkExportDataTimeout time.Duration, disableMetricSink bool) (core.DataSink, *metricsink.MetricSink, core.HistoricalSource) {
 	sinksFactory := sinks.NewSinkFactory()
-	metricSink, sinkList, histSource := sinksFactory.BuildAll(sinkAddresses, historicalSource)
-	if metricSink == nil {
+	metricSink, sinkList, histSource := sinksFactory.BuildAll(sinkAddresses, historicalSource, disableMetricSink)
+	if metricSink == nil && !disableMetricSink {
 		glog.Fatal("Failed to create metric sink")
 	}
 	if histSource == nil && len(historicalSource) > 0 {

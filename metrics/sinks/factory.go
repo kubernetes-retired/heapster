@@ -77,7 +77,7 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 	}
 }
 
-func (this *SinkFactory) BuildAll(uris flags.Uris, historicalUri string) (*metricsink.MetricSink, []core.DataSink, core.HistoricalSource) {
+func (this *SinkFactory) BuildAll(uris flags.Uris, historicalUri string, disableMetricSink bool) (*metricsink.MetricSink, []core.DataSink, core.HistoricalSource) {
 	result := make([]core.DataSink, 0, len(uris))
 	var metric *metricsink.MetricSink
 	var historical core.HistoricalSource
@@ -104,7 +104,7 @@ func (this *SinkFactory) BuildAll(uris flags.Uris, historicalUri string) (*metri
 		glog.Fatal("No available sink to use")
 	}
 
-	if metric == nil {
+	if metric == nil && !disableMetricSink {
 		uri := flags.Uri{}
 		uri.Set("metric")
 		sink, err := this.Build(uri)
