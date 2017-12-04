@@ -199,12 +199,6 @@ var (
 		Name:       "container.googleapis.com/container/memory/bytes_used",
 	}
 
-	legacyMemoryAllocatableBytesMD = &metricMetadata{
-		MetricKind: "GAUGE",
-		ValueType:  "INT64",
-		Name:       "container.googleapis.com/container/memory/allocatable_bytes",
-	}
-
 	legacyMemoryPageFaultsMD = &metricMetadata{
 		MetricKind: "CUMULATIVE",
 		ValueType:  "INT64",

@@ -218,7 +218,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName40, seedPod4Container0),
 				genTestSummaryTerminatedContainerNoStats(cName41),
-				genTestSummaryTerminatedContainerBlankStats(cName41),
+				genTestSummaryTerminatedContainerBlankStats(cName42),
 			},
 		}, {
 			PodRef: stats.PodReference{

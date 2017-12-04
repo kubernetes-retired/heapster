@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	gce "cloud.google.com/go/compute/metadata"
@@ -32,7 +33,6 @@ import (
 	sd_api "google.golang.org/api/monitoring/v3"
 	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
-	"strings"
 )
 
 const (
