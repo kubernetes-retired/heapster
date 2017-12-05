@@ -32,15 +32,16 @@ type InfluxdbClient interface {
 }
 
 type InfluxdbConfig struct {
-	User            string
-	Password        string
-	Secure          bool
-	Host            string
-	DbName          string
-	WithFields      bool
-	InsecureSsl     bool
-	RetentionPolicy string
-	ClusterName     string
+	User                  string
+	Password              string
+	Secure                bool
+	Host                  string
+	DbName                string
+	WithFields            bool
+	InsecureSsl           bool
+	RetentionPolicy       string
+	ClusterName           string
+	DisableCounterMetrics bool
 }
 
 func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
@@ -72,15 +73,16 @@ func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
 
 func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 	config := InfluxdbConfig{
-		User:            "root",
-		Password:        "root",
-		Host:            "localhost:8086",
-		DbName:          "k8s",
-		Secure:          false,
-		WithFields:      false,
-		InsecureSsl:     false,
-		RetentionPolicy: "0",
-		ClusterName:     "default",
+		User:                  "root",
+		Password:              "root",
+		Host:                  "localhost:8086",
+		DbName:                "k8s",
+		Secure:                false,
+		WithFields:            false,
+		InsecureSsl:           false,
+		RetentionPolicy:       "0",
+		ClusterName:           "default",
+		DisableCounterMetrics: false,
 	}
 
 	if len(uri.Host) > 0 {
@@ -125,6 +127,14 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 
 	if len(opts["cluster_name"]) >= 1 {
 		config.ClusterName = opts["cluster_name"][0]
+	}
+
+	if len(opts["disable_counter_metrics"]) >= 1 {
+		val, err := strconv.ParseBool(opts["disable_counter_metrics"][0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse `disable_counter_metrics` flag - %v", err)
+		}
+		config.DisableCounterMetrics = val
 	}
 
 	return &config, nil

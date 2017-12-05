@@ -35,7 +35,8 @@ The following options are available:
 * `secure` - Connect securely to InfluxDB (default: `false`)
 * `insecuressl` - Ignore SSL certificate validity (default: `false`)
 * `withfields` - Use [InfluxDB fields](storage-schema.md#using-fields) (default: `false`)
-* `cluster_name` - cluster name for different Kubernetes clusters. (default: `default`)
+* `cluster_name` - Cluster name for different Kubernetes clusters. (default: `default`)
+* `disable_counter_metrics` - Disable sink counter metrics to InfluxDB. (default: `false`)
 
 ### Stackdriver
 
