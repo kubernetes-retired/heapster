@@ -29,6 +29,7 @@ var LabelsToPopulate = []core.LabelDescriptor{
 	core.LabelPodNamespaceUID,
 	core.LabelHostname,
 	core.LabelHostID,
+	core.LabelNodename,
 }
 
 type PodAggregator struct {
