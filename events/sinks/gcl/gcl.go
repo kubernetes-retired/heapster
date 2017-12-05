@@ -87,7 +87,7 @@ func CreateGCLSink(uri *url.URL) (core.EventSink, error) {
 	// Create Google Cloud Logging service.
 	gclService, err := gcl.New(client)
 	if err != nil {
-		return nil, fmt.Errorf("error creating GCM service: %v", err)
+		return nil, fmt.Errorf("error creating GCL service: %v", err)
 	}
 
 	// Detect project ID
