@@ -26,11 +26,12 @@ type PointSavedToInfluxdb struct {
 }
 
 type FakeInfluxDBClient struct {
-	Pnts []PointSavedToInfluxdb
+	Pnts    []PointSavedToInfluxdb
+	Queries []influxdb.Query
 }
 
 func NewFakeInfluxDBClient() *FakeInfluxDBClient {
-	return &FakeInfluxDBClient{[]PointSavedToInfluxdb{}}
+	return &FakeInfluxDBClient{[]PointSavedToInfluxdb{}, []influxdb.Query{}}
 }
 
 func (client *FakeInfluxDBClient) Write(bps influxdb.BatchPoints) (*influxdb.Response, error) {
@@ -41,6 +42,8 @@ func (client *FakeInfluxDBClient) Write(bps influxdb.BatchPoints) (*influxdb.Res
 }
 
 func (client *FakeInfluxDBClient) Query(q influxdb.Query) (*influxdb.Response, error) {
+	client.Queries = append(client.Queries, q)
+
 	numQueries := strings.Count(q.Command, ";")
 
 	// return an empty result for each separate query
@@ -56,9 +59,10 @@ func (client *FakeInfluxDBClient) Ping() (time.Duration, string, error) {
 var Client = NewFakeInfluxDBClient()
 
 var Config = InfluxdbConfig{
-	User:     "root",
-	Password: "root",
-	Host:     "localhost:8086",
-	DbName:   "k8s",
-	Secure:   false,
+	User:            "root",
+	Password:        "root",
+	Host:            "localhost:8086",
+	DbName:          "k8s",
+	Secure:          false,
+	RetentionPolicy: "1d",
 }

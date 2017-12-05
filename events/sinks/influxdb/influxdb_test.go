@@ -15,6 +15,7 @@
 package influxdb
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -42,6 +43,15 @@ func NewFakeSink() fakeInfluxDBEventSink {
 		},
 		influxdb_common.Client,
 	}
+}
+
+func TestRetentionConfiguredOnDatabase(t *testing.T) {
+	fakeSink := NewFakeSink()
+	eventBatch := core.EventBatch{}
+	fakeSink.ExportEvents(&eventBatch)
+	retentionParameters := fmt.Sprintf("DURATION %s", influxdb_common.Config.RetentionPolicy)
+	databaseCreationQuery := fakeSink.fakeDbClient.Queries[0]
+	assert.Contains(t, databaseCreationQuery.Command, retentionParameters)
 }
 
 func TestStoreDataEmptyInput(t *testing.T) {
