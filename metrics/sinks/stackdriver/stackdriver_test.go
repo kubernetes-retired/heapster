@@ -291,9 +291,9 @@ func testTranslateAcceleratorMetric(t *testing.T, sourceName string, stackdriver
 	as.Equal(stackdriverName, ts.Metric.Type)
 	as.Equal(1, len(ts.Points))
 	as.Equal(value, *ts.Points[0].Value.Int64Value)
-	as.Equal(make, ts.Metric.Labels[core.LabelAcceleratorMake.Key])
-	as.Equal(model, ts.Metric.Labels[core.LabelAcceleratorModel.Key])
-	as.Equal(acceleratorID, ts.Metric.Labels[core.LabelAcceleratorID.Key])
+	as.Equal(make, ts.Metric.Labels["make"])
+	as.Equal(model, ts.Metric.Labels["model"])
+	as.Equal(acceleratorID, ts.Metric.Labels["accelerator_id"])
 }
 
 func TestTranslateAcceleratorMetrics(t *testing.T) {
