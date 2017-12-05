@@ -15,6 +15,7 @@
 package influxdb
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -42,6 +43,7 @@ type InfluxdbConfig struct {
 	RetentionPolicy       string
 	ClusterName           string
 	DisableCounterMetrics bool
+	Concurrency           int
 }
 
 func NewClient(c InfluxdbConfig) (InfluxdbClient, error) {
@@ -83,6 +85,7 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 		RetentionPolicy:       "0",
 		ClusterName:           "default",
 		DisableCounterMetrics: false,
+		Concurrency:           1,
 	}
 
 	if len(uri.Host) > 0 {
@@ -135,6 +138,19 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 			return nil, fmt.Errorf("failed to parse `disable_counter_metrics` flag - %v", err)
 		}
 		config.DisableCounterMetrics = val
+	}
+
+	if len(opts["concurrency"]) >= 1 {
+		concurrency, err := strconv.Atoi(opts["concurrency"][0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse `concurrency` flag - %v", err)
+		}
+
+		if concurrency <= 0 {
+			return nil, errors.New("`concurrency` flag can only be positive")
+		}
+
+		config.Concurrency = concurrency
 	}
 
 	return &config, nil
