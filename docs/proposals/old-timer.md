@@ -37,12 +37,12 @@ This made it unreliable for use by system components which need a historical
 view.
 
 Since we already persist metrics into a sink, it does not make sense for
-Heapster itself to persist long-term metrics to disk itself.  Instead, we can
+Heapster itself to persist long-term metrics to the disk itself.  Instead, we can
 just query the sink directly.
 
 ## API
 
-Oldtimer will present an api somewhat similar to the normal Heapster model.
+Oldtimer will present an API somewhat similar to the normal Heapster model.
 The structure of the URLs is designed to mirror those exposed by the model API.
 When used simply to retrieve historical data points, Oldtimer will return the
 same types as the model API.  When the used to retrieve aggregations, Oldtimer
@@ -169,7 +169,7 @@ section below).
 ### Example
 
 Suppose that one wanted to retrieve the 95th percentile of CPU usage for a
-given pod over the past 30 days, in 1 hour intervals, along with the maximum
+given pod over the past 30 days, in 1-hour intervals, along with the maximum
 usage for each interval.  Call the pod "somepod", in the namespace "somens".
 To fetch the results, you'd perform:
 
@@ -198,7 +198,7 @@ Which would then return:
 ## Sink Support and Functionality
 
 When Oldtimer receives a request, it will compose a query to the sink, send the
-query to the sink, and the transform the results into the appropriate API
+query to the sink, and then transform the results into the appropriate API
 formats.  Note that Oldtimer is designed to retrieve information that was
 originally written by Heapster itself.  Any information read by Oldtimer must
 have been stored according to the Heapster storage schema.
@@ -207,7 +207,7 @@ All computations, filtering, etc should be performed in the sink.  Oldtimer
 should only be composing queries.  Ergo, the feature set of Oldtimer must
 represent the lowest-common-denominator of features supported by the sinks.
 Oldtimer is meant to be an API for performing basic aggregations supported by
-all of the sinks, and is not meant to be a general purpose query tool.
+all of the sinks and is not meant to be a general purpose query tool.
 
 At the time of writing of this proposal, the following sinks were considered:
 Hawkular, InfluxDB, GCM, and OpenTSDB.  However, the aggregations supported are
