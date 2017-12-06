@@ -359,7 +359,11 @@ func runMetricExportTest(fm kubeFramework, svc *kube_v1.Service) error {
 			core.MetricFilesystemInodesFree.Name:             {core.LabelResourceID.Key},
 			core.MetricAcceleratorMemoryTotal.Name:           {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key},
 			core.MetricAcceleratorMemoryUsed.Name:            {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key},
-			core.MetricAcceleratorDutyCycle.Name:             {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key}}
+			core.MetricAcceleratorDutyCycle.Name:             {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key},
+			core.MetricDiskIORead.Name:                       {core.LabelResourceID.Key},
+			core.MetricDiskIOReadRate.Name:                   {core.LabelResourceID.Key},
+			core.MetricDiskIOWrite.Name:                      {core.LabelResourceID.Key},
+			core.MetricDiskIOWriteRate.Name:                  {core.LabelResourceID.Key}}
 
 		for metricName, points := range ts.Metrics {
 			md, exists := mdMap[metricName]
