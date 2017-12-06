@@ -14,7 +14,6 @@
 package kubelet
 
 import (
-	"encoding/json"
 	"net"
 	"net/http/httptest"
 	"strconv"
@@ -23,6 +22,7 @@ import (
 	"time"
 
 	cadvisor_api "github.com/google/cadvisor/info/v1"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -462,7 +462,7 @@ func TestScrapeMetrics(t *testing.T) {
 			},
 		},
 	}
-	data, err := json.Marshal(&response)
+	data, err := jsoniter.ConfigFastest.Marshal(&response)
 	require.NoError(t, err)
 	handler := util.FakeHandler{
 		StatusCode:   200,

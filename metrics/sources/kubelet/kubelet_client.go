@@ -19,7 +19,6 @@ package kubelet
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -30,6 +29,7 @@ import (
 
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
+	jsoniter "github.com/json-iterator/go"
 	kubelet_client "k8s.io/heapster/metrics/sources/kubelet/util"
 	stats "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 )
@@ -91,7 +91,7 @@ func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http
 	}
 	glog.V(10).Infof("Raw response from Kubelet at %s: %s", kubeletAddr, string(body))
 
-	err = json.Unmarshal(body, value)
+	err = jsoniter.ConfigFastest.Unmarshal(body, value)
 	if err != nil {
 		return fmt.Errorf("failed to parse output. Response: %q. Error: %v", string(body), err)
 	}
@@ -184,7 +184,7 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 		End:           end,
 		Subcontainers: true,
 	}
-	body, err := json.Marshal(request)
+	body, err := jsoniter.ConfigFastest.Marshal(request)
 	if err != nil {
 		return nil, err
 	}
