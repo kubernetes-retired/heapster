@@ -15,22 +15,26 @@
 package stackdriver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/url"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
 	gce "cloud.google.com/go/compute/metadata"
+	sd_api "cloud.google.com/go/monitoring/apiv3"
 	"github.com/golang/glog"
+	google_protobuf2 "github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/googleapis/gax-go"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/googleapi"
-	sd_api "google.golang.org/api/monitoring/v3"
+	google_api5 "google.golang.org/genproto/googleapis/api/metric"
+	google_api4 "google.golang.org/genproto/googleapis/api/monitoredres"
+	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
+	grpc_codes "google.golang.org/grpc/codes"
+	grpc_status "google.golang.org/grpc/status"
 	gce_util "k8s.io/heapster/common/gce"
 	"k8s.io/heapster/metrics/core"
 )
@@ -38,16 +42,14 @@ import (
 const (
 	maxTimeseriesPerRequest = 200
 	// 2 seconds on SD side, 1 extra for networking overhead
-	sdRequestLatencySec           = 3
-	httpResponseCodeUnknown       = -100
-	httpResponseCodeClientTimeout = -1
+	sdRequestLatencySec = 3
 )
 
 type StackdriverSink struct {
 	project               string
 	cluster               string
 	zone                  string
-	stackdriverClient     *sd_api.Service
+	stackdriverClient     *sd_api.MetricClient
 	minInterval           time.Duration
 	lastExportTime        time.Time
 	batchExportTimeoutSec int
@@ -57,8 +59,8 @@ type StackdriverSink struct {
 }
 
 type metricMetadata struct {
-	MetricKind string
-	ValueType  string
+	MetricKind google_api5.MetricDescriptor_MetricKind
+	ValueType  google_api5.MetricDescriptor_ValueType
 	Name       string
 }
 
@@ -102,8 +104,8 @@ func (sink *StackdriverSink) Stop() {
 }
 
 func (sink *StackdriverSink) processMetrics(metricValues map[string]core.MetricValue,
-	timestamp time.Time, labels map[string]string, collectionStartTime time.Time, entityCreateTime time.Time) []*sd_api.TimeSeries {
-	timeseries := make([]*sd_api.TimeSeries, 0)
+	timestamp time.Time, labels map[string]string, collectionStartTime time.Time, entityCreateTime time.Time) []*monitoringpb.TimeSeries {
+	timeseries := make([]*monitoringpb.TimeSeries, 0)
 	if sink.useOldResourceModel {
 		for name, value := range metricValues {
 			if ts := sink.LegacyTranslateMetric(timestamp, labels, name, value, collectionStartTime); ts != nil {
@@ -129,8 +131,8 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 	}
 	sink.lastExportTime = dataBatch.Timestamp
 
-	requests := []*sd_api.CreateTimeSeriesRequest{}
-	req := getReq()
+	requests := []*monitoringpb.CreateTimeSeriesRequest{}
+	req := getReq(sink.project)
 	for key, metricSet := range dataBatch.MetricSets {
 		switch metricSet.Labels["type"] {
 		case core.MetricSetTypeNode, core.MetricSetTypePod, core.MetricSetTypePodContainer, core.MetricSetTypeSystemContainer:
@@ -162,7 +164,7 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 			req.TimeSeries = append(req.TimeSeries, ts)
 			if len(req.TimeSeries) >= maxTimeseriesPerRequest {
 				requests = append(requests, req)
-				req = getReq()
+				req = getReq(sink.project)
 			}
 		}
 
@@ -174,7 +176,7 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 
 				if len(req.TimeSeries) >= maxTimeseriesPerRequest {
 					requests = append(requests, req)
-					req = getReq()
+					req = getReq(sink.project)
 				}
 			}
 			if sink.useNewResourceModel {
@@ -185,7 +187,7 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 
 				if len(req.TimeSeries) >= maxTimeseriesPerRequest {
 					requests = append(requests, req)
-					req = getReq()
+					req = getReq(sink.project)
 				}
 			}
 		}
@@ -198,11 +200,11 @@ func (sink *StackdriverSink) ExportData(dataBatch *core.DataBatch) {
 	go sink.sendRequests(requests)
 }
 
-func (sink *StackdriverSink) sendRequests(requests []*sd_api.CreateTimeSeriesRequest) {
+func (sink *StackdriverSink) sendRequests(requests []*monitoringpb.CreateTimeSeriesRequest) {
 	// Each worker can handle at least batchExportTimeout/sdRequestLatencySec requests within the specified period.
 	// 5 extra workers just in case.
 	workers := 5 + len(requests)/(sink.batchExportTimeoutSec/sdRequestLatencySec)
-	requestQueue := make(chan *sd_api.CreateTimeSeriesRequest)
+	requestQueue := make(chan *monitoringpb.CreateTimeSeriesRequest)
 	completedQueue := make(chan bool)
 
 	// Launch Go routines responsible for sending requests
@@ -224,9 +226,9 @@ forloop:
 			// TODO(piosz): consider cancelling requests in flight
 			// Report dropped requests in metrics.
 			for _, req := range requests[i:] {
-				requestsSent.WithLabelValues(strconv.Itoa(httpResponseCodeClientTimeout)).Inc()
+				requestsSent.WithLabelValues(grpc_codes.DeadlineExceeded.String()).Inc()
 				timeseriesSent.
-					WithLabelValues(strconv.Itoa(httpResponseCodeClientTimeout)).
+					WithLabelValues(grpc_codes.DeadlineExceeded.String()).
 					Add(float64(len(req.TimeSeries)))
 			}
 			break forloop
@@ -252,7 +254,7 @@ forloop:
 	}
 }
 
-func (sink *StackdriverSink) requestSender(reqQueue chan *sd_api.CreateTimeSeriesRequest, completedQueue chan bool) {
+func (sink *StackdriverSink) requestSender(reqQueue chan *monitoringpb.CreateTimeSeriesRequest, completedQueue chan bool) {
 	defer func() {
 		completedQueue <- true
 	}()
@@ -268,7 +270,7 @@ func (sink *StackdriverSink) requestSender(reqQueue chan *sd_api.CreateTimeSerie
 	}
 }
 
-func marshalRequestAndLog(printer func([]byte), req *sd_api.CreateTimeSeriesRequest) {
+func marshalRequestAndLog(printer func([]byte), req *monitoringpb.CreateTimeSeriesRequest) {
 	reqJson, errJson := json.Marshal(req)
 	if errJson != nil {
 		glog.Errorf("Couldn't marshal Stackdriver request %v", errJson)
@@ -277,11 +279,11 @@ func marshalRequestAndLog(printer func([]byte), req *sd_api.CreateTimeSeriesRequ
 	}
 }
 
-func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest) {
+func (sink *StackdriverSink) sendOneRequest(req *monitoringpb.CreateTimeSeriesRequest) {
 	startTime := time.Now()
-	empty, err := sink.stackdriverClient.Projects.TimeSeries.Create(fullProjectName(sink.project), req).Do()
+	err := sink.stackdriverClient.CreateTimeSeries(context.Background(), req, gax.WithGRPCOptions())
 
-	var responseCode int
+	var responseCode grpc_codes.Code
 	if err != nil {
 		glog.Warningf("Error while sending request to Stackdriver %v", err)
 		// Convert request to json and log it, but only if logging level is equal to 2 or more.
@@ -290,11 +292,10 @@ func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest)
 				glog.V(2).Infof("The request was: %s", reqJson)
 			}, req)
 		}
-		switch reflect.Indirect(reflect.ValueOf(err)).Type() {
-		case reflect.Indirect(reflect.ValueOf(&googleapi.Error{})).Type():
-			responseCode = err.(*googleapi.Error).Code
-		default:
-			responseCode = httpResponseCodeUnknown
+		if status, ok := grpc_status.FromError(err); ok {
+			responseCode = status.Code()
+		} else {
+			responseCode = grpc_codes.Unknown
 		}
 	} else {
 		// Convert request to json and log it, but only if logging level is equal to 10 or more.
@@ -303,12 +304,12 @@ func (sink *StackdriverSink) sendOneRequest(req *sd_api.CreateTimeSeriesRequest)
 				glog.V(10).Infof("Stackdriver request sent: %s", reqJson)
 			}, req)
 		}
-		responseCode = empty.ServerResponse.HTTPStatusCode
+		responseCode = grpc_codes.OK
 	}
 
-	requestsSent.WithLabelValues(strconv.Itoa(responseCode)).Inc()
+	requestsSent.WithLabelValues(responseCode.String()).Inc()
 	timeseriesSent.
-		WithLabelValues(strconv.Itoa(responseCode)).
+		WithLabelValues(responseCode.String()).
 		Add(float64(len(req.TimeSeries)))
 	requestLatency.Observe(time.Since(startTime).Seconds() / time.Millisecond.Seconds())
 }
@@ -377,9 +378,8 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 
-	// Create Google Cloud Monitoring service
-	client := oauth2.NewClient(oauth2.NoContext, google.ComputeTokenSource(""))
-	stackdriverClient, err := sd_api.New(client)
+	// Create Metric Client
+	stackdriverClient, err := sd_api.NewMetricClient(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +439,7 @@ func (sink *StackdriverSink) computeDerivedMetrics(metricSet *core.MetricSet) *c
 	return newMetricSet
 }
 
-func (sink *StackdriverSink) LegacyTranslateLabeledMetric(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, collectionStartTime time.Time) *sd_api.TimeSeries {
+func (sink *StackdriverSink) LegacyTranslateLabeledMetric(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, collectionStartTime time.Time) *monitoringpb.TimeSeries {
 	resourceLabels := sink.legacyGetResourceLabels(labels)
 	switch metric.Name {
 	case core.MetricFilesystemUsage.MetricDescriptor.Name:
@@ -487,7 +487,7 @@ func (sink *StackdriverSink) LegacyTranslateLabeledMetric(timestamp time.Time, l
 	return nil
 }
 
-func (sink *StackdriverSink) LegacyTranslateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, collectionStartTime time.Time) *sd_api.TimeSeries {
+func (sink *StackdriverSink) LegacyTranslateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, collectionStartTime time.Time) *monitoringpb.TimeSeries {
 	resourceLabels := sink.legacyGetResourceLabels(labels)
 	if !collectionStartTime.Before(timestamp) {
 		glog.V(4).Infof("Error translating metric %v for pod %v: batch timestamp %v earlier than pod create time %v", name, labels["pod_name"], timestamp, collectionStartTime)
@@ -553,7 +553,7 @@ func (sink *StackdriverSink) LegacyTranslateMetric(timestamp time.Time, labels m
 	return nil
 }
 
-func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, collectionStartTime time.Time) *sd_api.TimeSeries {
+func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels map[string]string, metric core.LabeledMetric, collectionStartTime time.Time) *monitoringpb.TimeSeries {
 	switch labels["type"] {
 	case core.MetricSetTypePod:
 		podLabels := sink.getPodResourceLabels(labels)
@@ -577,7 +577,7 @@ func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels 
 	return nil
 }
 
-func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, collectionStartTime time.Time, entityCreateTime time.Time) *sd_api.TimeSeries {
+func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[string]string, name string, value core.MetricValue, collectionStartTime time.Time, entityCreateTime time.Time) *monitoringpb.TimeSeries {
 	if !collectionStartTime.Before(timestamp) {
 		glog.V(4).Infof("Error translating metric %v for pod %v: batch timestamp %v earlier than pod create time %v", name, labels["pod_name"], timestamp, collectionStartTime)
 		return nil
@@ -751,48 +751,50 @@ func (sink *StackdriverSink) getNodeResourceLabels(labels map[string]string) map
 	}
 }
 
-func legacyCreateTimeSeries(resourceLabels map[string]string, metadata *metricMetadata, point *sd_api.Point) *sd_api.TimeSeries {
+func legacyCreateTimeSeries(resourceLabels map[string]string, metadata *metricMetadata, point *monitoringpb.Point) *monitoringpb.TimeSeries {
 	return createTimeSeries("gke_container", resourceLabels, metadata, point)
 }
 
-func createTimeSeries(resource string, resourceLabels map[string]string, metadata *metricMetadata, point *sd_api.Point) *sd_api.TimeSeries {
-	return &sd_api.TimeSeries{
-		Metric: &sd_api.Metric{
+func createTimeSeries(resource string, resourceLabels map[string]string, metadata *metricMetadata, point *monitoringpb.Point) *monitoringpb.TimeSeries {
+	return &monitoringpb.TimeSeries{
+		Metric: &google_api5.Metric{
 			Type: metadata.Name,
 		},
 		MetricKind: metadata.MetricKind,
 		ValueType:  metadata.ValueType,
-		Resource: &sd_api.MonitoredResource{
+		Resource: &google_api4.MonitoredResource{
 			Labels: resourceLabels,
 			Type:   resource,
 		},
-		Points: []*sd_api.Point{point},
+		Points: []*monitoringpb.Point{point},
 	}
 }
 
-func (sink *StackdriverSink) doublePoint(endTime time.Time, startTime time.Time, value float64) *sd_api.Point {
-	return &sd_api.Point{
-		Interval: &sd_api.TimeInterval{
-			EndTime:   endTime.Format(time.RFC3339),
-			StartTime: startTime.Format(time.RFC3339),
+func (sink *StackdriverSink) doublePoint(endTime time.Time, startTime time.Time, value float64) *monitoringpb.Point {
+	return &monitoringpb.Point{
+		Interval: &monitoringpb.TimeInterval{
+			EndTime:   &google_protobuf2.Timestamp{Seconds: endTime.Unix(), Nanos: int32(endTime.Nanosecond())},
+			StartTime: &google_protobuf2.Timestamp{Seconds: startTime.Unix(), Nanos: int32(startTime.Nanosecond())},
 		},
-		Value: &sd_api.TypedValue{
-			DoubleValue:     &value,
-			ForceSendFields: []string{"DoubleValue"},
+		Value: &monitoringpb.TypedValue{
+			Value: &monitoringpb.TypedValue_DoubleValue{
+				DoubleValue: value,
+			},
 		},
 	}
 
 }
 
-func (sink *StackdriverSink) intPoint(endTime time.Time, startTime time.Time, value int64) *sd_api.Point {
-	return &sd_api.Point{
-		Interval: &sd_api.TimeInterval{
-			EndTime:   endTime.Format(time.RFC3339),
-			StartTime: startTime.Format(time.RFC3339),
+func (sink *StackdriverSink) intPoint(endTime time.Time, startTime time.Time, value int64) *monitoringpb.Point {
+	return &monitoringpb.Point{
+		Interval: &monitoringpb.TimeInterval{
+			EndTime:   &google_protobuf2.Timestamp{Seconds: endTime.Unix(), Nanos: int32(endTime.Nanosecond())},
+			StartTime: &google_protobuf2.Timestamp{Seconds: startTime.Unix(), Nanos: int32(startTime.Nanosecond())},
 		},
-		Value: &sd_api.TypedValue{
-			Int64Value:      &value,
-			ForceSendFields: []string{"Int64Value"},
+		Value: &monitoringpb.TypedValue{
+			Value: &monitoringpb.TypedValue_Int64Value{
+				Int64Value: value,
+			},
 		},
 	}
 }
@@ -801,6 +803,9 @@ func fullProjectName(name string) string {
 	return fmt.Sprintf("projects/%s", name)
 }
 
-func getReq() *sd_api.CreateTimeSeriesRequest {
-	return &sd_api.CreateTimeSeriesRequest{TimeSeries: make([]*sd_api.TimeSeries, 0)}
+func getReq(project string) *monitoringpb.CreateTimeSeriesRequest {
+	return &monitoringpb.CreateTimeSeriesRequest{
+		TimeSeries: make([]*monitoringpb.TimeSeries, 0),
+		Name:       fullProjectName(project),
+	}
 }
