@@ -253,6 +253,11 @@
 			"Rev": "383332daed5595926c235f250b11433f67229c35"
 		},
 		{
+			"ImportPath": "github.com/json-iterator/go",
+			"Comment": "1.0.4-3-g051434f",
+			"Rev": "051434fab7e041ee2834e049ceae37492fc0412c"
+		},
+		{
 			"ImportPath": "github.com/juju/ratelimit",
 			"Rev": "77ed1c8a01217656d2080ad51981f6e99adaa177"
 		},
