@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	sd_api "google.golang.org/api/monitoring/v3"
+	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"k8s.io/heapster/metrics/core"
 )
 
@@ -72,7 +72,7 @@ func deepCopy(source map[string]string) map[string]string {
 
 // Test TranslateMetric
 
-func testLegacyTranslateMetric(as *assert.Assertions, value int64, name string, labels map[string]string, expectedName string) *sd_api.TypedValue {
+func testLegacyTranslateMetric(as *assert.Assertions, value int64, name string, labels map[string]string, expectedName string) *monitoringpb.TypedValue {
 	metricValue := generateIntMetric(value)
 	timestamp := time.Now()
 	collectionStartTime := timestamp.Add(-time.Second)
@@ -85,7 +85,7 @@ func testLegacyTranslateMetric(as *assert.Assertions, value int64, name string, 
 	return ts.Points[0].Value
 }
 
-func testTranslateMetric(as *assert.Assertions, value core.MetricValue, labels map[string]string, name string, expectedName string) *sd_api.TypedValue {
+func testTranslateMetric(as *assert.Assertions, value core.MetricValue, labels map[string]string, name string, expectedName string) *monitoringpb.TypedValue {
 	timestamp := time.Now()
 	collectionStartTime := timestamp.Add(-time.Second)
 	entityCreateTime := timestamp.Add(-time.Second)
@@ -98,7 +98,7 @@ func testTranslateMetric(as *assert.Assertions, value core.MetricValue, labels m
 	return ts.Points[0].Value
 }
 
-func testTranslateLabeledMetric(as *assert.Assertions, labels map[string]string, metric core.LabeledMetric, expectedName string) *sd_api.TypedValue {
+func testTranslateLabeledMetric(as *assert.Assertions, labels map[string]string, metric core.LabeledMetric, expectedName string) *monitoringpb.TypedValue {
 	timestamp := time.Now()
 	collectionStartTime := timestamp.Add(-time.Second)
 
@@ -115,7 +115,7 @@ func TestTranslateUptime(t *testing.T) {
 	value := testLegacyTranslateMetric(as, 30000, "uptime", commonLabels,
 		"container.googleapis.com/container/uptime")
 
-	as.Equal(30.0, *value.DoubleValue)
+	as.Equal(30.0, value.GetDoubleValue())
 }
 
 func TestTranslateCpuUsage(t *testing.T) {
@@ -123,7 +123,7 @@ func TestTranslateCpuUsage(t *testing.T) {
 	value := testLegacyTranslateMetric(as, 3600000000000, "cpu/usage", commonLabels,
 		"container.googleapis.com/container/cpu/usage_time")
 
-	as.Equal(3600.0, *value.DoubleValue)
+	as.Equal(3600.0, value.GetDoubleValue())
 }
 
 func TestTranslateCpuLimit(t *testing.T) {
@@ -131,7 +131,7 @@ func TestTranslateCpuLimit(t *testing.T) {
 	value := testLegacyTranslateMetric(as, 2000, "cpu/limit", commonLabels,
 		"container.googleapis.com/container/cpu/reserved_cores")
 
-	as.Equal(2.0, *value.DoubleValue)
+	as.Equal(2.0, value.GetDoubleValue())
 }
 
 func TestTranslateMemoryLimitNode(t *testing.T) {
@@ -143,7 +143,7 @@ func TestTranslateMemoryLimitNode(t *testing.T) {
 	labels["type"] = core.MetricSetTypeNode
 
 	ts := sink.LegacyTranslateMetric(timestamp, labels, name, metricValue, timestamp)
-	var expected *sd_api.TimeSeries = nil
+	var expected *monitoringpb.TimeSeries = nil
 
 	as := assert.New(t)
 	as.Equal(ts, expected)
@@ -156,7 +156,7 @@ func TestTranslateMemoryLimitPod(t *testing.T) {
 	value := testLegacyTranslateMetric(as, 2048, "memory/limit", labels,
 		"container.googleapis.com/container/memory/bytes_total")
 
-	as.Equal(int64(2048), *value.Int64Value)
+	as.Equal(int64(2048), value.GetInt64Value())
 }
 
 func TestTranslateMemoryNodeAllocatable(t *testing.T) {
@@ -164,7 +164,7 @@ func TestTranslateMemoryNodeAllocatable(t *testing.T) {
 	value := testLegacyTranslateMetric(as, 2048, "memory/node_allocatable", commonLabels,
 		"container.googleapis.com/container/memory/bytes_total")
 
-	as.Equal(int64(2048), *value.Int64Value)
+	as.Equal(int64(2048), value.GetInt64Value())
 }
 
 func TestTranslateMemoryUsedEvictable(t *testing.T) {
@@ -178,7 +178,7 @@ func TestTranslateMemoryUsedEvictable(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/bytes_used")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(*ts.Points[0].Value.Int64Value, int64(100))
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(100))
 	as.Equal(ts.Metric.Labels["memory_type"], "evictable")
 }
 
@@ -193,7 +193,7 @@ func TestTranslateMemoryUsedNonEvictable(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/bytes_used")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(*ts.Points[0].Value.Int64Value, int64(200))
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(200))
 	as.Equal(ts.Metric.Labels["memory_type"], "non-evictable")
 }
 
@@ -208,7 +208,7 @@ func TestTranslateMemoryMajorPageFaults(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(*ts.Points[0].Value.Int64Value, int64(20))
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(20))
 	as.Equal(ts.Metric.Labels["fault_type"], "major")
 }
 
@@ -223,7 +223,7 @@ func TestTranslateMemoryMinorPageFaults(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/memory/page_fault_count")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(*ts.Points[0].Value.Int64Value, int64(42))
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(42))
 	as.Equal(ts.Metric.Labels["fault_type"], "minor")
 }
 
@@ -245,7 +245,7 @@ func TestTranslateFilesystemUsage(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_used")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(*ts.Points[0].Value.Int64Value, int64(10000))
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(10000))
 }
 
 func TestTranslateFilesystemLimit(t *testing.T) {
@@ -264,7 +264,7 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 	as := assert.New(t)
 	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/bytes_total")
 	as.Equal(len(ts.Points), 1)
-	as.Equal(*ts.Points[0].Value.Int64Value, int64(30000))
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(30000))
 }
 
 func testTranslateAcceleratorMetric(t *testing.T, sourceName string, stackdriverName string) {
@@ -290,7 +290,7 @@ func testTranslateAcceleratorMetric(t *testing.T, sourceName string, stackdriver
 	as := assert.New(t)
 	as.Equal(stackdriverName, ts.Metric.Type)
 	as.Equal(1, len(ts.Points))
-	as.Equal(value, *ts.Points[0].Value.Int64Value)
+	as.Equal(value, ts.Points[0].Value.GetInt64Value())
 	as.Equal(make, ts.Metric.Labels["make"])
 	as.Equal(model, ts.Metric.Labels["model"])
 	as.Equal(acceleratorID, ts.Metric.Labels["accelerator_id"])
@@ -348,26 +348,26 @@ func TestTranslateMetricSet(t *testing.T) {
 	nodeDaemonCpuUsage := testTranslateMetric(as, generateIntMetric(21000000000), nodeDaemonLabels, "cpu/usage", "kubernetes.io/node_daemon/cpu/core_usage_time")
 	nodeDaemonMemoryUsage := testTranslateMetric(as, generateIntMetric(22), nodeDaemonLabels, "memory/bytes_used", "kubernetes.io/node_daemon/memory/used_bytes")
 
-	as.Equal(float64(1), *containerUptime.DoubleValue)
-	as.Equal(float64(2), *containerCpuUsage.DoubleValue)
-	as.Equal(float64(3), *containerCpuRequest.DoubleValue)
-	as.Equal(float64(4), *containerCpuLimit.DoubleValue)
-	as.Equal(int64(5), *containerMemoryUsage.Int64Value)
-	as.Equal(int64(6), *containerMemoryRequest.Int64Value)
-	as.Equal(int64(7), *containerMemoryLimit.Int64Value)
-	as.Equal(int64(8), *containerRestartCount.Int64Value)
-	as.Equal(int64(9), *podNetworkBytesRx.Int64Value)
-	as.Equal(int64(10), *podNetworkBytesTx.Int64Value)
-	as.Equal(int64(11), *podVolumeTotal.Int64Value)
-	as.Equal(int64(12), *podVolumeUsed.Int64Value)
-	as.Equal(float64(13), *nodeCpuUsage.DoubleValue)
-	as.Equal(float64(14), *nodeCpuTotal.DoubleValue)
-	as.Equal(float64(15), *nodeCpuAllocatable.DoubleValue)
-	as.Equal(int64(16), *nodeMemoryUsage.Int64Value)
-	as.Equal(int64(17), *nodeMemoryTotal.Int64Value)
-	as.Equal(int64(18), *nodeMemoryAllocatable.Int64Value)
-	as.Equal(int64(19), *nodeNetworkBytesRx.Int64Value)
-	as.Equal(int64(20), *nodeNetworkBytesTx.Int64Value)
-	as.Equal(float64(21), *nodeDaemonCpuUsage.DoubleValue)
-	as.Equal(int64(22), *nodeDaemonMemoryUsage.Int64Value)
+	as.Equal(float64(1), containerUptime.GetDoubleValue())
+	as.Equal(float64(2), containerCpuUsage.GetDoubleValue())
+	as.Equal(float64(3), containerCpuRequest.GetDoubleValue())
+	as.Equal(float64(4), containerCpuLimit.GetDoubleValue())
+	as.Equal(int64(5), containerMemoryUsage.GetInt64Value())
+	as.Equal(int64(6), containerMemoryRequest.GetInt64Value())
+	as.Equal(int64(7), containerMemoryLimit.GetInt64Value())
+	as.Equal(int64(8), containerRestartCount.GetInt64Value())
+	as.Equal(int64(9), podNetworkBytesRx.GetInt64Value())
+	as.Equal(int64(10), podNetworkBytesTx.GetInt64Value())
+	as.Equal(int64(11), podVolumeTotal.GetInt64Value())
+	as.Equal(int64(12), podVolumeUsed.GetInt64Value())
+	as.Equal(float64(13), nodeCpuUsage.GetDoubleValue())
+	as.Equal(float64(14), nodeCpuTotal.GetDoubleValue())
+	as.Equal(float64(15), nodeCpuAllocatable.GetDoubleValue())
+	as.Equal(int64(16), nodeMemoryUsage.GetInt64Value())
+	as.Equal(int64(17), nodeMemoryTotal.GetInt64Value())
+	as.Equal(int64(18), nodeMemoryAllocatable.GetInt64Value())
+	as.Equal(int64(19), nodeNetworkBytesRx.GetInt64Value())
+	as.Equal(int64(20), nodeNetworkBytesTx.GetInt64Value())
+	as.Equal(float64(21), nodeDaemonCpuUsage.GetDoubleValue())
+	as.Equal(int64(22), nodeDaemonMemoryUsage.GetInt64Value())
 }
