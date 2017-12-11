@@ -34,7 +34,7 @@ type HawkularClientError struct {
 
 // Parameters is a struct used as initialization parameters to the client
 type Parameters struct {
-	Tenant      string // Technically optional, but requires setting Tenant() option everytime
+	Tenant      string // Technically optional, but requires setting Tenant() option every time
 	Url         string
 	TLSConfig   *tls.Config
 	Username    string
@@ -110,10 +110,16 @@ type Datapoint struct {
 
 // MarshalJSON is modified JSON marshalling for Datapoint object to modify time.Time to milliseconds since epoch
 func (d Datapoint) MarshalJSON() ([]byte, error) {
-	b, err := json.Marshal(map[string]interface{}{
+	structCopy := map[string]interface{}{
 		"timestamp": ToUnixMilli(d.Timestamp),
 		"value":     d.Value,
-	})
+	}
+
+	if len(d.Tags) > 0 {
+		structCopy["tags"] = d.Tags
+	}
+
+	b, err := json.Marshal(structCopy)
 
 	return b, err
 }
