@@ -34,7 +34,7 @@ import (
 
 func dummySink() *hawkularSink {
 	return &hawkularSink{
-		reg:    make(map[string]*metrics.MetricDefinition),
+		reg:    make(map[string]uint64),
 		models: make(map[string]*metrics.MetricDefinition),
 	}
 }
@@ -303,7 +303,7 @@ func TestRegister(t *testing.T) {
 		defer m.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 
-		if strings.Contains(r.RequestURI, "metrics?type=") {
+		if strings.Contains(r.RequestURI, "metrics?tags=descriptor_name%3A%2A&type=") {
 			typ := r.RequestURI[strings.Index(r.RequestURI, "type=")+5:]
 			definitionsCalled[typ] = true
 			if typ == "gauge" {
@@ -545,19 +545,7 @@ func TestTags(t *testing.T) {
 
 	assert.Equal(t, 1, tagsUpdated)
 
-	tags := hSink.reg["test-container/test-podid/test/metric/A/XYZ"].Tags
-	assert.Equal(t, 10, len(tags))
-	assert.Equal(t, "test-label", tags["projectId"])
-	assert.Equal(t, "test-container", tags[core.LabelContainerName.Key])
-	assert.Equal(t, "test-podid", tags[core.LabelPodId.Key])
-	assert.Equal(t, "test-container/test/metric/A", tags["group_id"])
-	assert.Equal(t, "test/metric/A", tags["descriptor_name"])
-	assert.Equal(t, "XYZ", tags[core.LabelResourceID.Key])
-	assert.Equal(t, "bytes", tags["units"])
-
-	assert.Equal(t, "testLabelA:testValueA,testLabelB:testValueB", tags[core.LabelLabels.Key])
-	assert.Equal(t, "testValueA", tags["labels.testLabelA"])
-	assert.Equal(t, "testValueB", tags["labels.testLabelB"])
+	assert.True(t, hSink.reg["test-container/test-podid/test/metric/A/XYZ"] > 0)
 
 	assert.Equal(t, 10, len(serverTags))
 	assert.Equal(t, "test-label", serverTags["projectId"])

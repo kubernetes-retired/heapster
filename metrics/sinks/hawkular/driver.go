@@ -198,7 +198,7 @@ func NewHawkularSink(u *url.URL) (core.DataSink, error) {
 }
 
 func (h *hawkularSink) init() error {
-	h.reg = make(map[string]*metrics.MetricDefinition)
+	h.reg = make(map[string]uint64)
 	h.models = make(map[string]*metrics.MetricDefinition)
 	h.modifiers = make([]metrics.Modifier, 0)
 	h.filters = make([]Filter, 0)
