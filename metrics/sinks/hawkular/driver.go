@@ -137,7 +137,7 @@ func (h *hawkularSink) ExportData(db *core.DataBatch) {
 		wg.Wait()
 		// glog.V(4).Infof("ExportData updated %d tags, total size of cached tags is %d\n", updatedTags, len(h.reg))
 	}
-	go h.expireCache()
+	h.expireCache(h.runId)
 }
 
 func metricValueToLabeledMetric(msValues map[string]core.MetricValue) []core.LabeledMetric {

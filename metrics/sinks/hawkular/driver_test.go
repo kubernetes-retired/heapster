@@ -644,8 +644,10 @@ func TestExpiringCache(t *testing.T) {
 	}
 
 	hSink.ExportData(&data)
+	hSink.regLock.RLock()
 	assert.Equal(t, total, len(hSink.expReg))
 	assert.Equal(t, uint64(1), hSink.expReg["test-container/test-podid/test/metric/9"].ttl)
+	hSink.regLock.RUnlock()
 
 	// Now delete part of the metrics and then check that they're expired
 	delete(metrics, "test/metric/1")
@@ -653,12 +655,16 @@ func TestExpiringCache(t *testing.T) {
 
 	data.Timestamp = time.Now()
 	hSink.ExportData(&data)
+	hSink.regLock.RLock()
 	assert.Equal(t, total, len(hSink.expReg))
 	assert.Equal(t, uint64(2), hSink.expReg["test-container/test-podid/test/metric/9"].ttl)
+	hSink.regLock.RUnlock()
 
 	data.Timestamp = time.Now()
 	hSink.ExportData(&data)
+	hSink.regLock.RLock()
 	assert.Equal(t, total-2, len(hSink.expReg))
+	hSink.regLock.RUnlock()
 }
 
 func TestUserPass(t *testing.T) {

@@ -75,14 +75,12 @@ func (h *hawkularSink) checkCache(key string, hash uint64) bool {
 }
 
 // expireCache will process the map and check for any item that has been expired and release it
-func (h *hawkularSink) expireCache() {
+func (h *hawkularSink) expireCache(runId uint64) {
 	h.regLock.Lock()
 	defer h.regLock.Unlock()
 
-	expireAge := h.runId - h.cacheAge
-
 	for k, v := range h.expReg {
-		if v.ttl <= expireAge {
+		if (v.ttl + h.cacheAge) <= runId {
 			delete(h.expReg, k)
 		}
 	}
