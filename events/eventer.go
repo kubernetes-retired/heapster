@@ -35,6 +35,7 @@ import (
 	"k8s.io/heapster/events/sinks"
 	"k8s.io/heapster/events/sources"
 	"k8s.io/heapster/version"
+	_ "k8s.io/kubernetes/pkg/master"
 )
 
 var (

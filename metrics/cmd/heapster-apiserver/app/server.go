@@ -25,7 +25,7 @@ import (
 	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/heapster/metrics/options"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/api/legacyscheme"
 )
 
 type HeapsterAPIServer struct {

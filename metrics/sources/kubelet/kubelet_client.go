@@ -19,27 +19,29 @@ package kubelet
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/golang/glog"
 	cadvisor "github.com/google/cadvisor/info/v1"
+	jsoniter "github.com/json-iterator/go"
 	kubelet_client "k8s.io/heapster/metrics/sources/kubelet/util"
-	"k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
+	stats "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 )
 
 type Host struct {
-	IP       string
+	IP       net.IP
 	Port     int
 	Resource string
 }
 
 func (h Host) String() string {
-	return fmt.Sprintf("%s:%d", h.IP, h.Port)
+	return net.JoinHostPort(h.IP.String(), strconv.Itoa(h.Port))
 }
 
 type KubeletClient struct {
@@ -89,7 +91,7 @@ func (self *KubeletClient) postRequestAndGetValue(client *http.Client, req *http
 	}
 	glog.V(10).Infof("Raw response from Kubelet at %s: %s", kubeletAddr, string(body))
 
-	err = json.Unmarshal(body, value)
+	err = jsoniter.ConfigFastest.Unmarshal(body, value)
 	if err != nil {
 		return fmt.Errorf("failed to parse output. Response: %q. Error: %v", string(body), err)
 	}
@@ -128,33 +130,39 @@ type statsRequest struct {
 	Subcontainers bool `json:"subcontainers,omitempty"`
 }
 
-// Get stats for all non-Kubernetes containers.
-func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) ([]cadvisor.ContainerInfo, error) {
-	scheme := "http"
+func (self *KubeletClient) getScheme() string {
 	if self.config != nil && self.config.EnableHttps {
-		scheme = "https"
+		return "https"
+	} else {
+		return "http"
+	}
+}
+
+func (self *KubeletClient) getUrl(host Host, path string) string {
+	url := url.URL{
+		Scheme: self.getScheme(),
+		Host:   host.String(),
+		Path:   path,
 	}
 
-	url := fmt.Sprintf("%s://%s:%d/stats/container/", scheme, host.IP, host.Port)
+	return url.String()
+}
+
+// Get stats for all non-Kubernetes containers.
+func (self *KubeletClient) GetAllRawContainers(host Host, start, end time.Time) ([]cadvisor.ContainerInfo, error) {
+	url := self.getUrl(host, "/stats/container/")
 
 	return self.getAllContainers(url, start, end)
 }
 
-func (self *KubeletClient) GetSummary(host Host) (*v1alpha1.Summary, error) {
-	url := url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%d", host.IP, host.Port),
-		Path:   "/stats/summary/",
-	}
-	if self.config != nil && self.config.EnableHttps {
-		url.Scheme = "https"
-	}
+func (self *KubeletClient) GetSummary(host Host) (*stats.Summary, error) {
+	url := self.getUrl(host, "/stats/summary/")
 
-	req, err := http.NewRequest("GET", url.String(), nil)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	summary := &v1alpha1.Summary{}
+	summary := &stats.Summary{}
 	client := self.client
 	if client == nil {
 		client = http.DefaultClient
@@ -176,7 +184,7 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 		End:           end,
 		Subcontainers: true,
 	}
-	body, err := json.Marshal(request)
+	body, err := jsoniter.ConfigFastest.Marshal(request)
 	if err != nil {
 		return nil, err
 	}

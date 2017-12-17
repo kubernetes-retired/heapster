@@ -20,7 +20,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kube_rest "k8s.io/client-go/rest"
 	kubeClientCmd "k8s.io/client-go/tools/clientcmd"
 	kubeClientCmdApi "k8s.io/client-go/tools/clientcmd/api"
@@ -86,7 +86,7 @@ func GetKubeClientConfig(uri *url.URL) (*kube_rest.Config, error) {
 		if configOverrides.ClusterInfo.Server != "" {
 			kubeConfig.Host = configOverrides.ClusterInfo.Server
 		}
-		kubeConfig.GroupVersion = &schema.GroupVersion{Version: APIVersion}
+		kubeConfig.GroupVersion = &metav1.SchemeGroupVersion
 		kubeConfig.Insecure = configOverrides.ClusterInfo.InsecureSkipTLSVerify
 		if configOverrides.ClusterInfo.InsecureSkipTLSVerify {
 			kubeConfig.TLSClientConfig.CAFile = ""
@@ -120,7 +120,7 @@ func GetKubeClientConfig(uri *url.URL) (*kube_rest.Config, error) {
 					Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
 				},
 			}
-			kubeConfig.GroupVersion = &schema.GroupVersion{Version: APIVersion}
+			kubeConfig.GroupVersion = &metav1.SchemeGroupVersion
 		}
 	}
 	if len(kubeConfig.Host) == 0 {

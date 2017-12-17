@@ -11,7 +11,7 @@ ifndef TEMP_DIR
 TEMP_DIR:=$(shell mktemp -d /tmp/heapster.XXXXXX)
 endif
 
-VERSION?=v1.5.0-beta.0
+VERSION?=v1.5.0-beta.3
 GIT_COMMIT:=$(shell git rev-parse --short HEAD)
 
 TESTUSER=
@@ -34,7 +34,7 @@ ifeq ($(INTERACTIVE), 1)
 	TTY=-t
 endif
 
-SUPPORTED_KUBE_VERSIONS=1.8.0
+SUPPORTED_KUBE_VERSIONS=1.9.0-beta.1
 TEST_NAMESPACE=heapster-e2e-tests
 
 HEAPSTER_LDFLAGS=-w -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)

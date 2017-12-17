@@ -10,10 +10,12 @@ go_library(
     srcs = [
         "admissionregistration_client.go",
         "doc.go",
-        "externaladmissionhookconfiguration.go",
         "generated_expansion.go",
         "initializerconfiguration.go",
+        "mutatingwebhookconfiguration.go",
+        "validatingwebhookconfiguration.go",
     ],
+    importpath = "k8s.io/client-go/kubernetes/typed/admissionregistration/v1alpha1",
     deps = [
         "//vendor/k8s.io/api/admissionregistration/v1alpha1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",

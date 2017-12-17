@@ -118,11 +118,17 @@ func (this *LabeledMetric) GetValue() interface{} {
 }
 
 type MetricSet struct {
-	CreateTime     time.Time
-	ScrapeTime     time.Time
-	MetricValues   map[string]MetricValue
-	Labels         map[string]string
-	LabeledMetrics []LabeledMetric
+	// CollectionStartTime is a time since when the metrics are collected for this entity.
+	// It is affected by events like entity (e.g. pod) creation, entity restart (e.g. for container),
+	// Kubelet restart.
+	CollectionStartTime time.Time
+	// EntityCreateTime is a time of entity creation and persists through entity restarts and
+	// Kubelet restarts.
+	EntityCreateTime time.Time
+	ScrapeTime       time.Time
+	MetricValues     map[string]MetricValue
+	Labels           map[string]string
+	LabeledMetrics   []LabeledMetric
 }
 
 type DataBatch struct {

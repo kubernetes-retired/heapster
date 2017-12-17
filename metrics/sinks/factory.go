@@ -34,6 +34,7 @@ import (
 	"k8s.io/heapster/metrics/sinks/opentsdb"
 	"k8s.io/heapster/metrics/sinks/riemann"
 	"k8s.io/heapster/metrics/sinks/stackdriver"
+	"k8s.io/heapster/metrics/sinks/statsd"
 	"k8s.io/heapster/metrics/sinks/wavefront"
 )
 
@@ -48,6 +49,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return gcm.CreateGCMSink(&uri.Val)
 	case "stackdriver":
 		return stackdriver.CreateStackdriverSink(&uri.Val)
+	case "statsd":
+		return statsd.NewStatsdSink(&uri.Val)
 	case "graphite":
 		return graphite.NewGraphiteSink(&uri.Val)
 	case "hawkular":
@@ -77,7 +80,7 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 	}
 }
 
-func (this *SinkFactory) BuildAll(uris flags.Uris, historicalUri string) (*metricsink.MetricSink, []core.DataSink, core.HistoricalSource) {
+func (this *SinkFactory) BuildAll(uris flags.Uris, historicalUri string, disableMetricSink bool) (*metricsink.MetricSink, []core.DataSink, core.HistoricalSource) {
 	result := make([]core.DataSink, 0, len(uris))
 	var metric *metricsink.MetricSink
 	var historical core.HistoricalSource
@@ -104,7 +107,7 @@ func (this *SinkFactory) BuildAll(uris flags.Uris, historicalUri string) (*metri
 		glog.Fatal("No available sink to use")
 	}
 
-	if metric == nil {
+	if metric == nil && !disableMetricSink {
 		uri := flags.Uri{}
 		uri.Set("metric")
 		sink, err := this.Build(uri)

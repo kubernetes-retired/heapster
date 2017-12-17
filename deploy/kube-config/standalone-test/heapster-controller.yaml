@@ -15,9 +15,10 @@ spec:
       labels:
         k8s-app: heapster-test
     spec:
+      serviceAccountName: heapster
       containers:
       - name: heapster-test
-        image: gcr.io/google_containers/heapster-amd64:v1.4.0
+        image: gcr.io/google_containers/heapster-amd64:v1.4.2
         imagePullPolicy: Always
         command:
         - /heapster

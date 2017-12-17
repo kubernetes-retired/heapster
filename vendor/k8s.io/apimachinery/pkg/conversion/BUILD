@@ -10,9 +10,9 @@ go_test(
     name = "go_default_test",
     srcs = [
         "converter_test.go",
-        "deep_copy_test.go",
         "helper_test.go",
     ],
+    importpath = "k8s.io/apimachinery/pkg/conversion",
     library = ":go_default_library",
     deps = [
         "//vendor/github.com/google/gofuzz:go_default_library",
@@ -24,12 +24,12 @@ go_test(
 go_library(
     name = "go_default_library",
     srcs = [
-        "cloner.go",
         "converter.go",
         "deep_equal.go",
         "doc.go",
         "helper.go",
     ],
+    importpath = "k8s.io/apimachinery/pkg/conversion",
     deps = ["//vendor/k8s.io/apimachinery/third_party/forked/golang/reflect:go_default_library"],
 )
 

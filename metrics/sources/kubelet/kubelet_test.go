@@ -14,7 +14,7 @@
 package kubelet
 
 import (
-	"encoding/json"
+	"net"
 	"net/http/httptest"
 	"strconv"
 	"strings"
@@ -22,6 +22,7 @@ import (
 	"time"
 
 	cadvisor_api "github.com/google/cadvisor/info/v1"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	kube_api "k8s.io/api/core/v1"
@@ -398,10 +399,10 @@ var nodes = []kube_api.Node{
 
 func TestGetNodeHostnameAndIP(t *testing.T) {
 	for _, node := range nodes {
-		hostname, ip, err := getNodeHostnameAndIP(&node)
+		hostname, ip, err := GetNodeHostnameAndIP(&node)
 		assert.NoError(t, err)
 		assert.Equal(t, hostname, "testNode")
-		assert.Equal(t, ip, "127.0.0.1")
+		assert.True(t, ip.Equal(net.ParseIP("127.0.0.1")))
 	}
 }
 
@@ -457,7 +458,7 @@ func TestScrapeMetrics(t *testing.T) {
 			},
 		},
 	}
-	data, err := json.Marshal(&response)
+	data, err := jsoniter.ConfigFastest.Marshal(&response)
 	require.NoError(t, err)
 	handler := util.FakeHandler{
 		StatusCode:   200,
@@ -475,7 +476,7 @@ func TestScrapeMetrics(t *testing.T) {
 	}
 
 	split := strings.SplitN(strings.Replace(server.URL, "http://", "", 1), ":", 2)
-	mtrcSrc.host.IP = split[0]
+	mtrcSrc.host.IP = net.ParseIP(split[0])
 	mtrcSrc.host.Port, err = strconv.Atoi(split[1])
 
 	start := time.Now()

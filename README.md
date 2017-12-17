@@ -2,9 +2,11 @@
 
 [![GoDoc](https://godoc.org/k8s.io/heapster?status.svg)](https://godoc.org/k8s.io/heapster) [![Build Status](https://travis-ci.org/kubernetes/heapster.svg?branch=master)](https://travis-ci.org/kubernetes/heapster)  [![Go Report Card](https://goreportcard.com/badge/github.com/kubernetes/heapster)](https://goreportcard.com/report/github.com/kubernetes/heapster)
 
-Heapster enables Container Cluster Monitoring and Performance Analysis for [Kubernetes](https://github.com/kubernetes/kubernetes) (versions v1.0.6 and higher), and platforms which include it. 
+Heapster enables Container Cluster Monitoring and Performance Analysis for [Kubernetes](https://github.com/kubernetes/kubernetes) (versions v1.0.6 and higher), and platforms which include it.
 
-Heapster collects and interprets various signals like compute resource usage, lifecycle events, etc, and exports cluster metrics via [REST endpoints](docs/model.md).
+Heapster collects and interprets various signals like compute resource usage, lifecycle events, etc.
+Note that the model API, formerly used provide REST access to its collected metrics, is now deprecated.
+Please see [the model documentation](docs/model.md) for more details.
 
 Heapster supports multiple sources of data.
 More information [here](docs/source-configuration.md).

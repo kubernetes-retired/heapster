@@ -26,13 +26,15 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	kclient "k8s.io/client-go/kubernetes"
 	kclientcmd "k8s.io/client-go/tools/clientcmd"
 	kclientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/api/legacyscheme"
+	_ "k8s.io/kubernetes/pkg/master"
 )
 
 type kubeFramework interface {
@@ -45,6 +47,12 @@ type kubeFramework interface {
 	// Parses and Returns a service object contained in 'filePath'
 	ParseService(filePath string) (*v1.Service, error)
 
+	// Parses and Returns a clusterrolebinding object contained in 'filePath'
+	ParseClusterRoleBinding(filePath string) (*rbacv1.ClusterRoleBinding, error)
+
+	// Parses and Returns a serviceaccount object contained in 'filePath'
+	ParseServiceAccount(filePath string) (*v1.ServiceAccount, error)
+
 	// Creates a kube service.
 	CreateService(ns string, service *v1.Service) (*v1.Service, error)
 
@@ -53,6 +61,12 @@ type kubeFramework interface {
 
 	// Creates a kube replication controller.
 	CreateRC(ns string, rc *v1.ReplicationController) (*v1.ReplicationController, error)
+
+	// Creates a kube cluster role binding.
+	CreateClusterRoleBinding(clusterRoleBinding *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error)
+
+	// Creates a kube cluster service account.
+	CreateServiceAccount(ns string, serviceAccount *v1.ServiceAccount) (*v1.ServiceAccount, error)
 
 	// Deletes a namespace
 	DeleteNs(ns string) error
@@ -356,6 +370,15 @@ func (self *realKubeFramework) loadObject(filePath string) (runtime.Object, erro
 	return obj, err
 }
 
+func (self *realKubeFramework) loadClusterRoleBindingObject(filePath string) (runtime.Object, error) {
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read object: %v", err)
+	}
+	obj, _, err := api.Codecs.UniversalDecoder(rbacv1.SchemeGroupVersion).Decode(data, nil, nil)
+	return obj, err
+}
+
 func (self *realKubeFramework) ParseRC(filePath string) (*v1.ReplicationController, error) {
 	obj, err := self.loadObject(filePath)
 	if err != nil {
@@ -381,10 +404,45 @@ func (self *realKubeFramework) ParseService(filePath string) (*v1.Service, error
 	return service, nil
 }
 
-func (self *realKubeFramework) CreateService(ns string, service *v1.Service) (*v1.Service, error) {
+func (self realKubeFramework) CreateService(ns string, service *v1.Service) (*v1.Service, error) {
 	service.Namespace = ns
 	newSvc, err := self.kubeClient.CoreV1().Services(ns).Create(service)
 	return newSvc, err
+}
+
+func (self *realKubeFramework) ParseClusterRoleBinding(filePath string) (*rbacv1.ClusterRoleBinding, error) {
+	obj, err := self.loadClusterRoleBindingObject(filePath)
+	if err != nil {
+		return nil, err
+	}
+	clusterRoleBinding, ok := obj.(*rbacv1.ClusterRoleBinding)
+	if !ok {
+		return nil, fmt.Errorf("Failed to cast clusterRoleBinding: %v", obj)
+	}
+	return clusterRoleBinding, nil
+}
+
+func (self *realKubeFramework) CreateClusterRoleBinding(clusterRoleBinding *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
+	newClusterRoleBinding, err := self.kubeClient.RbacV1().ClusterRoleBindings().Create(clusterRoleBinding)
+	return newClusterRoleBinding, err
+}
+
+func (self *realKubeFramework) ParseServiceAccount(filePath string) (*v1.ServiceAccount, error) {
+	obj, err := self.loadObject(filePath)
+	if err != nil {
+		return nil, err
+	}
+	serviceAccount, ok := obj.(*v1.ServiceAccount)
+	if !ok {
+		return nil, fmt.Errorf("Failed to cast serviceAccount: %v", obj)
+	}
+	return serviceAccount, nil
+}
+
+func (self *realKubeFramework) CreateServiceAccount(ns string, serviceAccount *v1.ServiceAccount) (*v1.ServiceAccount, error) {
+	serviceAccount.Namespace = ns
+	newServiceAccount, err := self.kubeClient.CoreV1().ServiceAccounts(ns).Create(serviceAccount)
+	return newServiceAccount, err
 }
 
 func (self *realKubeFramework) DeleteNs(ns string) error {
@@ -502,6 +560,7 @@ func (rkf *realKubeFramework) WaitUntilPodRunning(ns string, podLabels map[strin
 		}
 		time.Sleep(time.Second)
 	}
+
 	return fmt.Errorf("pod not in running state after %d", timeout/time.Second)
 }
 

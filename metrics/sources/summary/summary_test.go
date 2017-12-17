@@ -16,6 +16,7 @@ package summary
 
 import (
 	"encoding/json"
+	"net"
 	"net/http/httptest"
 	"strconv"
 	"strings"
@@ -28,7 +29,7 @@ import (
 	util "k8s.io/client-go/util/testing"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sources/kubelet"
-	"k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
+	stats "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 )
 
 const (
@@ -47,6 +48,9 @@ const (
 	offsetFsUsed
 	offsetFsCapacity
 	offsetFsAvailable
+	offsetAcceleratorMemoryTotal
+	offsetAcceleratorMemoryUsed
+	offsetAcceleratorDutyCycle
 )
 
 const (
@@ -65,6 +69,8 @@ const (
 	seedPod3Container0 = 9000
 	seedPod4           = 10000
 	seedPod4Container0 = 11000
+	seedPod5           = 12000
+	seedPod5Container0 = 13000
 )
 
 const (
@@ -76,6 +82,7 @@ const (
 	pName2 = "pod0" // ensure pName2 conflicts with pName0, but is in a different namespace
 	pName3 = "pod2"
 	pName4 = "pod4" // Regression test for #1838
+	pName5 = "pod5"
 
 	cName00 = "c0"
 	cName01 = "c1"
@@ -86,6 +93,7 @@ const (
 	cName40 = "c4" // Running, with cpu / memory stats
 	cName41 = "c4" // Terminated, has no CPU / Memory stats
 	cName42 = "c4" // Terminated, has blank CPU / Memory stats
+	cName50 = "c5"
 )
 
 var (
@@ -126,43 +134,43 @@ func testingSummaryMetricsSource() *summaryMetricsSource {
 func TestDecodeSummaryMetrics(t *testing.T) {
 
 	ms := testingSummaryMetricsSource()
-	summary := v1alpha1.Summary{
-		Node: v1alpha1.NodeStats{
+	summary := stats.Summary{
+		Node: stats.NodeStats{
 			NodeName:  nodeInfo.NodeName,
 			StartTime: metav1.NewTime(startTime),
 			CPU:       genTestSummaryCPU(seedNode),
 			Memory:    genTestSummaryMemory(seedNode),
 			Network:   genTestSummaryNetwork(seedNode),
-			SystemContainers: []v1alpha1.ContainerStats{
-				genTestSummaryContainer(v1alpha1.SystemContainerKubelet, seedKubelet),
-				genTestSummaryContainer(v1alpha1.SystemContainerRuntime, seedRuntime),
-				genTestSummaryContainer(v1alpha1.SystemContainerMisc, seedMisc),
+			SystemContainers: []stats.ContainerStats{
+				genTestSummaryContainer(stats.SystemContainerKubelet, seedKubelet),
+				genTestSummaryContainer(stats.SystemContainerRuntime, seedRuntime),
+				genTestSummaryContainer(stats.SystemContainerMisc, seedMisc),
 			},
 			Fs: genTestSummaryFsStats(seedNode),
 		},
-		Pods: []v1alpha1.PodStats{{
-			PodRef: v1alpha1.PodReference{
+		Pods: []stats.PodStats{{
+			PodRef: stats.PodReference{
 				Name:      pName0,
 				Namespace: namespace0,
 			},
 			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod0),
-			Containers: []v1alpha1.ContainerStats{
+			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName00, seedPod0Container0),
 				genTestSummaryContainer(cName01, seedPod0Container1),
 				genTestSummaryTerminatedContainer(cName00, seedPod0Container0),
 			},
 		}, {
-			PodRef: v1alpha1.PodReference{
+			PodRef: stats.PodReference{
 				Name:      pName1,
 				Namespace: namespace0,
 			},
 			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod1),
-			Containers: []v1alpha1.ContainerStats{
+			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName10, seedPod1Container),
 			},
-			VolumeStats: []v1alpha1.VolumeStats{{
+			VolumeStats: []stats.VolumeStats{{
 				Name:    "A",
 				FsStats: *genTestSummaryFsStats(seedPod1),
 			}, {
@@ -170,27 +178,27 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				FsStats: *genTestSummaryFsStats(seedPod1),
 			}},
 		}, {
-			PodRef: v1alpha1.PodReference{
+			PodRef: stats.PodReference{
 				Name:      pName2,
 				Namespace: namespace1,
 			},
 			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod2),
-			Containers: []v1alpha1.ContainerStats{
+			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName20, seedPod2Container0),
 				genTestSummaryContainer(cName21, seedPod2Container1),
 			},
 		}, {
-			PodRef: v1alpha1.PodReference{
+			PodRef: stats.PodReference{
 				Name:      pName3,
 				Namespace: namespace0,
 			},
-			Containers: []v1alpha1.ContainerStats{
+			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName30, seedPod3Container0),
 			},
-			VolumeStats: []v1alpha1.VolumeStats{{
+			VolumeStats: []stats.VolumeStats{{
 				Name: "C",
-				FsStats: v1alpha1.FsStats{
+				FsStats: stats.FsStats{
 					AvailableBytes: &availableFsBytes,
 					UsedBytes:      &usedFsBytes,
 					CapacityBytes:  &totalFsBytes,
@@ -201,29 +209,40 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			},
 			},
 		}, {
-			PodRef: v1alpha1.PodReference{
+			PodRef: stats.PodReference{
 				Name:      pName4,
 				Namespace: namespace0,
 			},
 			StartTime: metav1.NewTime(startTime),
 			Network:   genTestSummaryNetwork(seedPod4),
-			Containers: []v1alpha1.ContainerStats{
+			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName40, seedPod4Container0),
 				genTestSummaryTerminatedContainerNoStats(cName41),
-				genTestSummaryTerminatedContainerBlankStats(cName41),
+				genTestSummaryTerminatedContainerBlankStats(cName42),
+			},
+		}, {
+			PodRef: stats.PodReference{
+				Name:      pName5,
+				Namespace: namespace0,
+			},
+			Network:   genTestSummaryNetwork(seedPod5),
+			StartTime: metav1.NewTime(startTime),
+			Containers: []stats.ContainerStats{
+				genTestSummaryContainerWithAccelerator(cName50, seedPod5Container0),
 			},
 		}},
 	}
 
 	containerFs := []string{"/", "logs"}
 	expectations := []struct {
-		key     string
-		setType string
-		seed    int64
-		cpu     bool
-		memory  bool
-		network bool
-		fs      []string
+		key          string
+		setType      string
+		seed         int64
+		cpu          bool
+		memory       bool
+		network      bool
+		accelerators bool
+		fs           []string
 	}{{
 		key:     core.NodeKey(nodeInfo.NodeName),
 		setType: core.MetricSetTypeNode,
@@ -270,6 +289,11 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		key:     core.PodKey(namespace0, pName4),
 		setType: core.MetricSetTypePod,
 		seed:    seedPod4,
+		network: true,
+	}, {
+		key:     core.PodKey(namespace0, pName5),
+		setType: core.MetricSetTypePod,
+		seed:    seedPod5,
 		network: true,
 	}, {
 		key:     core.PodContainerKey(namespace0, pName0, cName00),
@@ -320,6 +344,12 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		cpu:     true,
 		memory:  true,
 		fs:      containerFs,
+	}, {
+		key:          core.PodContainerKey(namespace0, pName5, cName50),
+		setType:      core.MetricSetTypePodContainer,
+		seed:         seedPod5Container0,
+		cpu:          true,
+		accelerators: true,
 	}}
 
 	metrics := ms.decodeSummary(&summary)
@@ -329,7 +359,7 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			continue
 		}
 		assert.Equal(t, m.Labels[core.LabelMetricSetType.Key], e.setType, e.key)
-		assert.Equal(t, m.CreateTime, startTime, e.key)
+		assert.Equal(t, m.CollectionStartTime, startTime, e.key)
 		assert.Equal(t, m.ScrapeTime, scrapeTime, e.key)
 		if e.cpu {
 			checkIntMetric(t, m, e.key, core.MetricCpuUsage, e.seed+offsetCPUUsageCoreSeconds)
@@ -346,6 +376,11 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			checkIntMetric(t, m, e.key, core.MetricNetworkRxErrors, e.seed+offsetNetRxErrors)
 			checkIntMetric(t, m, e.key, core.MetricNetworkTx, e.seed+offsetNetTxBytes)
 			checkIntMetric(t, m, e.key, core.MetricNetworkTxErrors, e.seed+offsetNetTxErrors)
+		}
+		if e.accelerators {
+			checkAcceleratorMetric(t, m, e.key, core.MetricAcceleratorMemoryTotal, e.seed+offsetAcceleratorMemoryTotal)
+			checkAcceleratorMetric(t, m, e.key, core.MetricAcceleratorMemoryUsed, e.seed+offsetAcceleratorMemoryUsed)
+			checkAcceleratorMetric(t, m, e.key, core.MetricAcceleratorDutyCycle, e.seed+offsetAcceleratorDutyCycle)
 		}
 		for _, label := range e.fs {
 			checkFsMetric(t, m, e.key, label, core.MetricFilesystemAvailable, e.seed+offsetFsAvailable)
@@ -374,8 +409,8 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 	}
 }
 
-func genTestSummaryTerminatedContainer(name string, seed int) v1alpha1.ContainerStats {
-	return v1alpha1.ContainerStats{
+func genTestSummaryTerminatedContainer(name string, seed int) stats.ContainerStats {
+	return stats.ContainerStats{
 		Name:      name,
 		StartTime: metav1.NewTime(startTime.Add(-time.Minute)),
 		CPU:       genTestSummaryZeroCPU(seed),
@@ -385,15 +420,15 @@ func genTestSummaryTerminatedContainer(name string, seed int) v1alpha1.Container
 	}
 }
 
-func genTestSummaryTerminatedContainerNoStats(name string) v1alpha1.ContainerStats {
-	return v1alpha1.ContainerStats{
+func genTestSummaryTerminatedContainerNoStats(name string) stats.ContainerStats {
+	return stats.ContainerStats{
 		Name:      name,
 		StartTime: metav1.NewTime(startTime.Add(-time.Minute)),
 	}
 }
 
-func genTestSummaryTerminatedContainerBlankStats(name string) v1alpha1.ContainerStats {
-	return v1alpha1.ContainerStats{
+func genTestSummaryTerminatedContainerBlankStats(name string) stats.ContainerStats {
+	return stats.ContainerStats{
 		Name:      name,
 		StartTime: metav1.NewTime(startTime.Add(-time.Minute)),
 		CPU:       genTestSummaryBlankCPU(),
@@ -401,8 +436,8 @@ func genTestSummaryTerminatedContainerBlankStats(name string) v1alpha1.Container
 	}
 }
 
-func genTestSummaryContainer(name string, seed int) v1alpha1.ContainerStats {
-	return v1alpha1.ContainerStats{
+func genTestSummaryContainer(name string, seed int) stats.ContainerStats {
+	return stats.ContainerStats{
 		Name:      name,
 		StartTime: metav1.NewTime(startTime),
 		CPU:       genTestSummaryCPU(seed),
@@ -412,8 +447,30 @@ func genTestSummaryContainer(name string, seed int) v1alpha1.ContainerStats {
 	}
 }
 
-func genTestSummaryZeroCPU(seed int) *v1alpha1.CPUStats {
-	cpu := v1alpha1.CPUStats{
+func genTestSummaryContainerWithAccelerator(name string, seed int) stats.ContainerStats {
+	return stats.ContainerStats{
+		Name:         name,
+		StartTime:    metav1.NewTime(startTime),
+		CPU:          genTestSummaryCPU(seed),
+		Accelerators: genTestSummaryAccelerator(seed),
+	}
+}
+
+func genTestSummaryAccelerator(seed int) []stats.AcceleratorStats {
+	return []stats.AcceleratorStats{
+		{
+			Make:        "nvidia",
+			Model:       "Tesla P100",
+			ID:          "GPU-deadbeef-1234-5678-90ab-feedfacecafe",
+			MemoryTotal: *uint64Val(seed, offsetAcceleratorMemoryTotal),
+			MemoryUsed:  *uint64Val(seed, offsetAcceleratorMemoryUsed),
+			DutyCycle:   *uint64Val(seed, offsetAcceleratorDutyCycle),
+		},
+	}
+}
+
+func genTestSummaryZeroCPU(seed int) *stats.CPUStats {
+	cpu := stats.CPUStats{
 		Time:                 metav1.NewTime(scrapeTime),
 		UsageNanoCores:       uint64Val(seed, -seed),
 		UsageCoreNanoSeconds: uint64Val(seed, offsetCPUUsageCoreSeconds),
@@ -422,8 +479,8 @@ func genTestSummaryZeroCPU(seed int) *v1alpha1.CPUStats {
 	return &cpu
 }
 
-func genTestSummaryCPU(seed int) *v1alpha1.CPUStats {
-	cpu := v1alpha1.CPUStats{
+func genTestSummaryCPU(seed int) *stats.CPUStats {
+	cpu := stats.CPUStats{
 		Time:                 metav1.NewTime(scrapeTime),
 		UsageNanoCores:       uint64Val(seed, offsetCPUUsageCores),
 		UsageCoreNanoSeconds: uint64Val(seed, offsetCPUUsageCoreSeconds),
@@ -432,14 +489,14 @@ func genTestSummaryCPU(seed int) *v1alpha1.CPUStats {
 	return &cpu
 }
 
-func genTestSummaryBlankCPU() *v1alpha1.CPUStats {
-	return &v1alpha1.CPUStats{
+func genTestSummaryBlankCPU() *stats.CPUStats {
+	return &stats.CPUStats{
 		Time: metav1.NewTime(scrapeTime),
 	}
 }
 
-func genTestSummaryZeroMemory(seed int) *v1alpha1.MemoryStats {
-	return &v1alpha1.MemoryStats{
+func genTestSummaryZeroMemory(seed int) *stats.MemoryStats {
+	return &stats.MemoryStats{
 		Time:            metav1.NewTime(scrapeTime),
 		UsageBytes:      uint64Val(seed, offsetMemUsageBytes),
 		WorkingSetBytes: uint64Val(seed, offsetMemWorkingSetBytes),
@@ -449,8 +506,8 @@ func genTestSummaryZeroMemory(seed int) *v1alpha1.MemoryStats {
 	}
 }
 
-func genTestSummaryMemory(seed int) *v1alpha1.MemoryStats {
-	return &v1alpha1.MemoryStats{
+func genTestSummaryMemory(seed int) *stats.MemoryStats {
+	return &stats.MemoryStats{
 		Time:            metav1.NewTime(scrapeTime),
 		UsageBytes:      uint64Val(seed, offsetMemUsageBytes),
 		WorkingSetBytes: uint64Val(seed, offsetMemWorkingSetBytes),
@@ -460,14 +517,14 @@ func genTestSummaryMemory(seed int) *v1alpha1.MemoryStats {
 	}
 }
 
-func genTestSummaryBlankMemory() *v1alpha1.MemoryStats {
-	return &v1alpha1.MemoryStats{
+func genTestSummaryBlankMemory() *stats.MemoryStats {
+	return &stats.MemoryStats{
 		Time: metav1.NewTime(scrapeTime),
 	}
 }
 
-func genTestSummaryNetwork(seed int) *v1alpha1.NetworkStats {
-	return &v1alpha1.NetworkStats{
+func genTestSummaryNetwork(seed int) *stats.NetworkStats {
+	return &stats.NetworkStats{
 		Time:     metav1.NewTime(scrapeTime),
 		RxBytes:  uint64Val(seed, offsetNetRxBytes),
 		RxErrors: uint64Val(seed, offsetNetRxErrors),
@@ -476,8 +533,8 @@ func genTestSummaryNetwork(seed int) *v1alpha1.NetworkStats {
 	}
 }
 
-func genTestSummaryFsStats(seed int) *v1alpha1.FsStats {
-	return &v1alpha1.FsStats{
+func genTestSummaryFsStats(seed int) *stats.FsStats {
+	return &stats.FsStats{
 		AvailableBytes: uint64Val(seed, offsetFsAvailable),
 		CapacityBytes:  uint64Val(seed, offsetFsCapacity),
 		UsedBytes:      uint64Val(seed, offsetFsUsed),
@@ -508,9 +565,19 @@ func checkFsMetric(t *testing.T, metrics *core.MetricSet, key, label string, met
 	assert.Fail(t, "missing filesystem metric", "%q:[%q]:%q", key, metric.Name, label)
 }
 
+func checkAcceleratorMetric(t *testing.T, metrics *core.MetricSet, key string, metric core.Metric, value int64) {
+	for _, m := range metrics.LabeledMetrics {
+		if m.Name == metric.Name {
+			assert.Equal(t, value, m.IntValue, "%q:%q", key, metric.Name)
+			return
+		}
+	}
+	assert.Fail(t, "missing accelerator metric", "%q:[%q]", key, metric.Name)
+}
+
 func TestScrapeSummaryMetrics(t *testing.T) {
-	summary := v1alpha1.Summary{
-		Node: v1alpha1.NodeStats{
+	summary := stats.Summary{
+		Node: stats.NodeStats{
 			NodeName:  nodeInfo.NodeName,
 			StartTime: metav1.NewTime(startTime),
 		},
@@ -527,7 +594,7 @@ func TestScrapeSummaryMetrics(t *testing.T) {
 
 	ms := testingSummaryMetricsSource()
 	split := strings.SplitN(strings.Replace(server.URL, "http://", "", 1), ":", 2)
-	ms.node.IP = split[0]
+	ms.node.IP = net.ParseIP(split[0])
 	ms.node.Port, err = strconv.Atoi(split[1])
 	require.NoError(t, err)
 
