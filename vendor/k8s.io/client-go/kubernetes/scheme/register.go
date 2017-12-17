@@ -18,6 +18,7 @@ package scheme
 
 import (
 	admissionregistrationv1alpha1 "k8s.io/api/admissionregistration/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	authenticationv1 "k8s.io/api/authentication/v1"
@@ -40,6 +41,7 @@ import (
 	schedulingv1alpha1 "k8s.io/api/scheduling/v1alpha1"
 	settingsv1alpha1 "k8s.io/api/settings/v1alpha1"
 	storagev1 "k8s.io/api/storage/v1"
+	storagev1alpha1 "k8s.io/api/storage/v1alpha1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -74,6 +76,7 @@ func AddToScheme(scheme *runtime.Scheme) {
 	admissionregistrationv1alpha1.AddToScheme(scheme)
 	appsv1beta1.AddToScheme(scheme)
 	appsv1beta2.AddToScheme(scheme)
+	appsv1.AddToScheme(scheme)
 	authenticationv1.AddToScheme(scheme)
 	authenticationv1beta1.AddToScheme(scheme)
 	authorizationv1.AddToScheme(scheme)
@@ -93,6 +96,7 @@ func AddToScheme(scheme *runtime.Scheme) {
 	rbacv1alpha1.AddToScheme(scheme)
 	schedulingv1alpha1.AddToScheme(scheme)
 	settingsv1alpha1.AddToScheme(scheme)
+	storagev1alpha1.AddToScheme(scheme)
 	storagev1beta1.AddToScheme(scheme)
 	storagev1.AddToScheme(scheme)
 

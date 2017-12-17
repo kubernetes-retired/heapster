@@ -31,8 +31,8 @@ func TestRateCalculator(t *testing.T) {
 		Timestamp: now.Add(-time.Minute),
 		MetricSets: map[string]*core.MetricSet{
 			key: {
-				CreateTime: now.Add(-time.Hour),
-				ScrapeTime: now.Add(-60 * time.Second),
+				CollectionStartTime: now.Add(-time.Hour),
+				ScrapeTime:          now.Add(-60 * time.Second),
 
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePodContainer,
@@ -58,8 +58,8 @@ func TestRateCalculator(t *testing.T) {
 		MetricSets: map[string]*core.MetricSet{
 
 			key: {
-				CreateTime: now.Add(-time.Hour),
-				ScrapeTime: now,
+				CollectionStartTime: now.Add(-time.Hour),
+				ScrapeTime:          now,
 
 				Labels: map[string]string{
 					core.LabelMetricSetType.Key: core.MetricSetTypePodContainer,

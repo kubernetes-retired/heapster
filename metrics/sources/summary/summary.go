@@ -30,7 +30,7 @@ import (
 	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/util"
-	"k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
+	stats "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 )
 
 var (
@@ -87,7 +87,7 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) (*DataBatc
 		MetricSets: map[string]*MetricSet{},
 	}
 
-	summary, err := func() (*v1alpha1.Summary, error) {
+	summary, err := func() (*stats.Summary, error) {
 		startTime := time.Now()
 		defer summaryRequestLatency.WithLabelValues(this.node.HostName).Observe(float64(time.Since(startTime)))
 		return this.kubeletClient.GetSummary(this.node.Host)
@@ -110,12 +110,12 @@ const (
 // For backwards compatibility, map summary system names into original names.
 // TODO: Migrate to the new system names and remove this.
 var systemNameMap = map[string]string{
-	v1alpha1.SystemContainerRuntime: "docker-daemon",
-	v1alpha1.SystemContainerMisc:    "system",
+	stats.SystemContainerRuntime: "docker-daemon",
+	stats.SystemContainerMisc:    "system",
 }
 
-// decodeSummary translates the kubelet v1alpha1.Summary API into the flattened heapster MetricSet API.
-func (this *summaryMetricsSource) decodeSummary(summary *v1alpha1.Summary) map[string]*MetricSet {
+// decodeSummary translates the kubelet stats.Summary API into the flattened heapster MetricSet API.
+func (this *summaryMetricsSource) decodeSummary(summary *stats.Summary) map[string]*MetricSet {
 	glog.V(9).Infof("Begin summary decode")
 	result := map[string]*MetricSet{}
 
@@ -143,14 +143,14 @@ func (this *summaryMetricsSource) cloneLabels(labels map[string]string) map[stri
 	return clone
 }
 
-func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet, labels map[string]string, node *v1alpha1.NodeStats) {
+func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet, labels map[string]string, node *stats.NodeStats) {
 	glog.V(9).Infof("Decoding node stats for node %s...", node.NodeName)
 	nodeMetrics := &MetricSet{
-		Labels:         this.cloneLabels(labels),
-		MetricValues:   map[string]MetricValue{},
-		LabeledMetrics: []LabeledMetric{},
-		CreateTime:     node.StartTime.Time,
-		ScrapeTime:     this.getScrapeTime(node.CPU, node.Memory, node.Network),
+		Labels:              this.cloneLabels(labels),
+		MetricValues:        map[string]MetricValue{},
+		LabeledMetrics:      []LabeledMetric{},
+		CollectionStartTime: node.StartTime.Time,
+		ScrapeTime:          this.getScrapeTime(node.CPU, node.Memory, node.Network),
 	}
 	nodeMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypeNode
 
@@ -169,14 +169,14 @@ func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet,
 	}
 }
 
-func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, nodeLabels map[string]string, pod *v1alpha1.PodStats) {
+func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, nodeLabels map[string]string, pod *stats.PodStats) {
 	glog.V(9).Infof("Decoding pod stats for pod %s/%s (%s)...", pod.PodRef.Namespace, pod.PodRef.Name, pod.PodRef.UID)
 	podMetrics := &MetricSet{
-		Labels:         this.cloneLabels(nodeLabels),
-		MetricValues:   map[string]MetricValue{},
-		LabeledMetrics: []LabeledMetric{},
-		CreateTime:     pod.StartTime.Time,
-		ScrapeTime:     this.getScrapeTime(nil, nil, pod.Network),
+		Labels:              this.cloneLabels(nodeLabels),
+		MetricValues:        map[string]MetricValue{},
+		LabeledMetrics:      []LabeledMetric{},
+		CollectionStartTime: pod.StartTime.Time,
+		ScrapeTime:          this.getScrapeTime(nil, nil, pod.Network),
 	}
 	ref := pod.PodRef
 	podMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePod
@@ -198,8 +198,8 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 		if _, exist := metrics[key]; exist {
 			glog.V(2).Infof("Metrics reported from two containers with the same key: %v. Create time of "+
 				"containers are %v and %v. Metrics from the older container are going to be dropped.", key,
-				container.StartTime.Time, metrics[key].CreateTime)
-			if container.StartTime.Time.Before(metrics[key].CreateTime) {
+				container.StartTime.Time, metrics[key].CollectionStartTime)
+			if container.StartTime.Time.Before(metrics[key].CollectionStartTime) {
 				continue
 			}
 		}
@@ -207,14 +207,14 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 	}
 }
 
-func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *v1alpha1.ContainerStats, isSystemContainer bool) *MetricSet {
+func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]string, container *stats.ContainerStats, isSystemContainer bool) *MetricSet {
 	glog.V(9).Infof("Decoding container stats stats for container %s...", container.Name)
 	containerMetrics := &MetricSet{
-		Labels:         this.cloneLabels(podLabels),
-		MetricValues:   map[string]MetricValue{},
-		LabeledMetrics: []LabeledMetric{},
-		CreateTime:     container.StartTime.Time,
-		ScrapeTime:     this.getScrapeTime(container.CPU, container.Memory, nil),
+		Labels:              this.cloneLabels(podLabels),
+		MetricValues:        map[string]MetricValue{},
+		LabeledMetrics:      []LabeledMetric{},
+		CollectionStartTime: container.StartTime.Time,
+		ScrapeTime:          this.getScrapeTime(container.CPU, container.Memory, nil),
 	}
 	containerMetrics.Labels[LabelMetricSetType.Key] = MetricSetTypePodContainer
 	if isSystemContainer {
@@ -226,6 +226,7 @@ func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]stri
 	this.decodeUptime(containerMetrics, container.StartTime.Time)
 	this.decodeCPUStats(containerMetrics, container.CPU)
 	this.decodeMemoryStats(containerMetrics, container.Memory)
+	this.decodeAcceleratorStats(containerMetrics, container.Accelerators)
 	this.decodeFsStats(containerMetrics, RootFsKey, container.Rootfs)
 	this.decodeFsStats(containerMetrics, LogsKey, container.Logs)
 	this.decodeUserDefinedMetrics(containerMetrics, container.UserDefinedMetrics)
@@ -243,7 +244,7 @@ func (this *summaryMetricsSource) decodeUptime(metrics *MetricSet, startTime tim
 	this.addIntMetric(metrics, &MetricUptime, &uptime)
 }
 
-func (this *summaryMetricsSource) decodeCPUStats(metrics *MetricSet, cpu *v1alpha1.CPUStats) {
+func (this *summaryMetricsSource) decodeCPUStats(metrics *MetricSet, cpu *stats.CPUStats) {
 	if cpu == nil {
 		glog.V(9).Infof("missing cpu usage metric!")
 		return
@@ -252,7 +253,7 @@ func (this *summaryMetricsSource) decodeCPUStats(metrics *MetricSet, cpu *v1alph
 	this.addIntMetric(metrics, &MetricCpuUsage, cpu.UsageCoreNanoSeconds)
 }
 
-func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *v1alpha1.MemoryStats) {
+func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *stats.MemoryStats) {
 	if memory == nil {
 		glog.V(9).Infof("missing memory metrics!")
 		return
@@ -265,7 +266,20 @@ func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *
 	this.addIntMetric(metrics, &MetricMemoryMajorPageFaults, memory.MajorPageFaults)
 }
 
-func (this *summaryMetricsSource) decodeNetworkStats(metrics *MetricSet, network *v1alpha1.NetworkStats) {
+func (this *summaryMetricsSource) decodeAcceleratorStats(metrics *MetricSet, accelerators []stats.AcceleratorStats) {
+	for _, accelerator := range accelerators {
+		acceleratorLabels := map[string]string{
+			LabelAcceleratorMake.Key:  accelerator.Make,
+			LabelAcceleratorModel.Key: accelerator.Model,
+			LabelAcceleratorID.Key:    accelerator.ID,
+		}
+		this.addLabeledIntMetric(metrics, &MetricAcceleratorMemoryTotal, acceleratorLabels, &accelerator.MemoryTotal)
+		this.addLabeledIntMetric(metrics, &MetricAcceleratorMemoryUsed, acceleratorLabels, &accelerator.MemoryUsed)
+		this.addLabeledIntMetric(metrics, &MetricAcceleratorDutyCycle, acceleratorLabels, &accelerator.DutyCycle)
+	}
+}
+
+func (this *summaryMetricsSource) decodeNetworkStats(metrics *MetricSet, network *stats.NetworkStats) {
 	if network == nil {
 		glog.V(9).Infof("missing network metrics!")
 		return
@@ -277,7 +291,7 @@ func (this *summaryMetricsSource) decodeNetworkStats(metrics *MetricSet, network
 	this.addIntMetric(metrics, &MetricNetworkTxErrors, network.TxErrors)
 }
 
-func (this *summaryMetricsSource) decodeFsStats(metrics *MetricSet, fsKey string, fs *v1alpha1.FsStats) {
+func (this *summaryMetricsSource) decodeFsStats(metrics *MetricSet, fsKey string, fs *stats.FsStats) {
 	if fs == nil {
 		glog.V(9).Infof("missing fs metrics!")
 		return
@@ -287,17 +301,19 @@ func (this *summaryMetricsSource) decodeFsStats(metrics *MetricSet, fsKey string
 	this.addLabeledIntMetric(metrics, &MetricFilesystemUsage, fsLabels, fs.UsedBytes)
 	this.addLabeledIntMetric(metrics, &MetricFilesystemLimit, fsLabels, fs.CapacityBytes)
 	this.addLabeledIntMetric(metrics, &MetricFilesystemAvailable, fsLabels, fs.AvailableBytes)
+	this.addLabeledIntMetric(metrics, &MetricFilesystemInodes, fsLabels, fs.Inodes)
+	this.addLabeledIntMetric(metrics, &MetricFilesystemInodesFree, fsLabels, fs.InodesFree)
 }
 
-func (this *summaryMetricsSource) decodeUserDefinedMetrics(metrics *MetricSet, udm []v1alpha1.UserDefinedMetric) {
+func (this *summaryMetricsSource) decodeUserDefinedMetrics(metrics *MetricSet, udm []stats.UserDefinedMetric) {
 	for _, metric := range udm {
 		mv := MetricValue{}
 		switch metric.Type {
-		case v1alpha1.MetricGauge:
+		case stats.MetricGauge:
 			mv.MetricType = MetricGauge
-		case v1alpha1.MetricCumulative:
+		case stats.MetricCumulative:
 			mv.MetricType = MetricCumulative
-		case v1alpha1.MetricDelta:
+		case stats.MetricDelta:
 			mv.MetricType = MetricDelta
 		default:
 			glog.V(4).Infof("Skipping %s: unknown custom metric type: %v", metric.Name, metric.Type)
@@ -312,7 +328,7 @@ func (this *summaryMetricsSource) decodeUserDefinedMetrics(metrics *MetricSet, u
 	}
 }
 
-func (this *summaryMetricsSource) getScrapeTime(cpu *v1alpha1.CPUStats, memory *v1alpha1.MemoryStats, network *v1alpha1.NetworkStats) time.Time {
+func (this *summaryMetricsSource) getScrapeTime(cpu *stats.CPUStats, memory *stats.MemoryStats, network *stats.NetworkStats) time.Time {
 	// Assume CPU, memory and network scrape times are the same.
 	switch {
 	case cpu != nil && !cpu.Time.IsZero():
@@ -360,7 +376,7 @@ func (this *summaryMetricsSource) addLabeledIntMetric(metrics *MetricSet, metric
 }
 
 // Translate system container names to the legacy names for backwards compatibility.
-func (this *summaryMetricsSource) getSystemContainerName(c *v1alpha1.ContainerStats) string {
+func (this *summaryMetricsSource) getSystemContainerName(c *stats.ContainerStats) string {
 	if legacyName, ok := systemNameMap[c.Name]; ok {
 		return legacyName
 	}
@@ -394,37 +410,24 @@ func (this *summaryProvider) GetMetricsSources() []MetricsSource {
 }
 
 func (this *summaryProvider) getNodeInfo(node *kube_api.Node) (NodeInfo, error) {
-	for _, c := range node.Status.Conditions {
-		if c.Type == kube_api.NodeReady && c.Status != kube_api.ConditionTrue {
-			return NodeInfo{}, fmt.Errorf("Node %v is not ready", node.Name)
-		}
+	hostname, ip, err := kubelet.GetNodeHostnameAndIP(node)
+	if err != nil {
+		return NodeInfo{}, err
+	}
+
+	if hostname == "" {
+		hostname = node.Name
 	}
 	info := NodeInfo{
 		NodeName: node.Name,
-		HostName: node.Name,
+		HostName: hostname,
 		HostID:   node.Spec.ExternalID,
 		Host: kubelet.Host{
+			IP:   ip,
 			Port: this.kubeletClient.GetPort(),
 		},
 		KubeletVersion: node.Status.NodeInfo.KubeletVersion,
 	}
-
-	for _, addr := range node.Status.Addresses {
-		if addr.Type == kube_api.NodeHostName && addr.Address != "" {
-			info.HostName = addr.Address
-		}
-		if addr.Type == kube_api.NodeInternalIP && addr.Address != "" {
-			info.IP = addr.Address
-		}
-		if addr.Type == kube_api.NodeExternalIP && addr.Address != "" && info.IP == "" {
-			info.IP = addr.Address
-		}
-	}
-
-	if info.IP == "" {
-		return info, fmt.Errorf("Node %v has no valid hostname and/or IP address: %v %v", node.Name, info.HostName, info.IP)
-	}
-
 	return info, nil
 }
 

@@ -65,11 +65,11 @@ func TestFuzzInput(t *testing.T) {
 
 func generateMetricSet(objectType string, labels []core.LabelDescriptor) *core.MetricSet {
 	ms := &core.MetricSet{
-		CreateTime:     time.Now().Add(-time.Hour),
-		ScrapeTime:     time.Now(),
-		Labels:         make(map[string]string),
-		MetricValues:   make(map[string]core.MetricValue),
-		LabeledMetrics: make([]core.LabeledMetric, len(labels)),
+		CollectionStartTime: time.Now().Add(-time.Hour),
+		ScrapeTime:          time.Now(),
+		Labels:              make(map[string]string),
+		MetricValues:        make(map[string]core.MetricValue),
+		LabeledMetrics:      make([]core.LabeledMetric, len(labels)),
 	}
 	// Add all necessary labels
 	for _, label := range labels {

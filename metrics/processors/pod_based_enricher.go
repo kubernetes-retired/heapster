@@ -87,6 +87,16 @@ func (this *PodBasedEnricher) addContainerInfo(key string, containerMs *core.Met
 		}
 	}
 
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if key == core.PodContainerKey(pod.Namespace, pod.Name, containerStatus.Name) {
+			containerMs.MetricValues[core.MetricRestartCount.Name] = intValue(int64(containerStatus.RestartCount))
+			if !pod.Status.StartTime.IsZero() {
+				containerMs.EntityCreateTime = pod.Status.StartTime.Time
+			}
+			break
+		}
+	}
+
 	containerMs.Labels[core.LabelPodId.Key] = string(pod.UID)
 	this.labelCopier.Copy(pod.Labels, containerMs.Labels)
 
@@ -110,6 +120,9 @@ func (this *PodBasedEnricher) addContainerInfo(key string, containerMs *core.Met
 					core.LabelHostID.Key:        containerMs.Labels[core.LabelHostID.Key],
 				},
 			}
+			if !pod.Status.StartTime.IsZero() {
+				podMs.EntityCreateTime = pod.Status.StartTime.Time
+			}
 			newMs[podKey] = podMs
 			this.addPodInfo(podKey, podMs, pod, batch, newMs)
 		}
@@ -118,8 +131,11 @@ func (this *PodBasedEnricher) addContainerInfo(key string, containerMs *core.Met
 
 func (this *PodBasedEnricher) addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *core.DataBatch, newMs map[string]*core.MetricSet) {
 
-	// Add UID to pod
+	// Add UID and create time to pod
 	podMs.Labels[core.LabelPodId.Key] = string(pod.UID)
+	if !pod.Status.StartTime.IsZero() {
+		podMs.EntityCreateTime = pod.Status.StartTime.Time
+	}
 	this.labelCopier.Copy(pod.Labels, podMs.Labels)
 
 	// Add cpu/mem requests and limits to containers
@@ -145,6 +161,7 @@ func (this *PodBasedEnricher) addPodInfo(key string, podMs *core.MetricSet, pod 
 				core.LabelHostname.Key:           podMs.Labels[core.LabelHostname.Key],
 				core.LabelHostID.Key:             podMs.Labels[core.LabelHostID.Key],
 			},
+			EntityCreateTime: podMs.CollectionStartTime,
 		}
 		this.labelCopier.Copy(pod.Labels, containerMs.Labels)
 		updateContainerResourcesAndLimits(containerMs, container)

@@ -17,6 +17,10 @@ Heapster exports the following metrics to its backends.
 | filesystem/available | The number of available bytes remaining in a the filesystem |
 | filesystem/inodes | The number of available inodes in a the filesystem |
 | filesystem/inodes_free | The number of free inodes remaining in a the filesystem |
+| disk/io_read_bytes | Number of bytes read from a disk partition |
+| disk/io_write_bytes | Number of bytes written to a disk partition |
+| disk/io_read_bytes_rate | Number of bytes read from a disk partition per second |
+| disk/io_write_bytes_rate | Number of bytes written to a disk partition per second |
 | memory/limit | Memory hard limit in bytes. |
 | memory/major_page_faults | Number of major page faults. |
 | memory/major_page_faults_rate | Number of major page faults per second. |
@@ -31,6 +35,9 @@ Heapster exports the following metrics to its backends.
 | memory/cache | Cache memory usage. |
 | memory/rss | RSS memory usage. |
 | memory/working_set | Total working set usage. Working set is the memory being used and not easily dropped by the kernel. |
+| accelerator/memory_total | Memory capacity of an accelerator. |
+| accelerator/memory_used | Memory used of an accelerator. |
+| accelerator/duty_cycle | Duty cycle of an accelerator. |
 | network/rx | Cumulative number of bytes received over the network. |
 | network/rx_errors | Cumulative number of errors while receiving over the network. |
 | network/rx_errors_rate | Number of errors while receiving over the network per second. |
@@ -59,7 +66,10 @@ Heapster tags each metric with the following labels.
 | labels         | Comma-separated(Default) list of user-provided labels. Format is 'key:value'  |
 | namespace_id   | UID of the namespace of a Pod                                                 |
 | namespace_name | User-provided name of a Namespace                                             |
-| resource_id    | A unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage |
+| resource_id    | A unique identifier used to differentiate multiple metrics of the same type. e.x. Fs partitions under filesystem/usage, disk device name under disk/io_read_bytes |
+| make  | Make of the accelerator (nvidia, amd, google etc.) |
+| model | Model of the accelerator (tesla-p100, tesla-k80 etc.) |
+| accelerator_id    | ID of the accelerator |
 
 **Note**
   * Label separator can be configured with Heapster `--label-separator`. Comma-seperated label pairs is fine until we use [Bosun](http://bosun.org) as alert system and use `group by labels` to search for labels.

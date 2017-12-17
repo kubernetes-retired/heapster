@@ -20,10 +20,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,6 +54,7 @@ import (
 	"k8s.io/heapster/metrics/sources"
 	"k8s.io/heapster/metrics/util"
 	"k8s.io/heapster/version"
+	_ "k8s.io/kubernetes/pkg/master"
 )
 
 func main() {
@@ -85,7 +88,7 @@ func main() {
 		glog.Fatalf("Failed to get kubernetes address: %v", err)
 	}
 	sourceManager := createSourceManagerOrDie(opt.Sources)
-	sinkManager, metricSink, historicalSource := createAndInitSinksOrDie(opt.Sinks, opt.HistoricalSource)
+	sinkManager, metricSink, historicalSource := createAndInitSinksOrDie(opt.Sinks, opt.HistoricalSource, opt.SinkExportDataTimeout, opt.DisableMetricSink)
 
 	podLister, nodeLister := getListersOrDie(kubernetesUrl)
 	dataProcessors := createDataProcessorsOrDie(kubernetesUrl, podLister, labelCopier)
@@ -107,7 +110,7 @@ func main() {
 	handler := setupHandlers(metricSink, podLister, nodeLister, historicalSource, opt.DisableMetricExport)
 	healthz.InstallHandler(mux, healthzChecker(metricSink))
 
-	addr := fmt.Sprintf("%s:%d", opt.Ip, opt.Port)
+	addr := net.JoinHostPort(opt.Ip, strconv.Itoa(opt.Port))
 	glog.Infof("Starting heapster on port %d", opt.Port)
 
 	if len(opt.TLSCertFile) > 0 && len(opt.TLSKeyFile) > 0 {
@@ -188,10 +191,10 @@ func createSourceManagerOrDie(src flags.Uris) core.MetricsSource {
 	return sourceManager
 }
 
-func createAndInitSinksOrDie(sinkAddresses flags.Uris, historicalSource string) (core.DataSink, *metricsink.MetricSink, core.HistoricalSource) {
+func createAndInitSinksOrDie(sinkAddresses flags.Uris, historicalSource string, sinkExportDataTimeout time.Duration, disableMetricSink bool) (core.DataSink, *metricsink.MetricSink, core.HistoricalSource) {
 	sinksFactory := sinks.NewSinkFactory()
-	metricSink, sinkList, histSource := sinksFactory.BuildAll(sinkAddresses, historicalSource)
-	if metricSink == nil {
+	metricSink, sinkList, histSource := sinksFactory.BuildAll(sinkAddresses, historicalSource, disableMetricSink)
+	if metricSink == nil && !disableMetricSink {
 		glog.Fatal("Failed to create metric sink")
 	}
 	if histSource == nil && len(historicalSource) > 0 {
@@ -200,7 +203,7 @@ func createAndInitSinksOrDie(sinkAddresses flags.Uris, historicalSource string) 
 	for _, sink := range sinkList {
 		glog.Infof("Starting with %s", sink.Name())
 	}
-	sinkManager, err := sinks.NewDataSinkManager(sinkList, sinks.DefaultSinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
+	sinkManager, err := sinks.NewDataSinkManager(sinkList, sinkExportDataTimeout, sinks.DefaultSinkStopTimeout)
 	if err != nil {
 		glog.Fatalf("Failed to create sink manager: %v", err)
 	}

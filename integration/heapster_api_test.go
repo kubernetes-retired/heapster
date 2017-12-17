@@ -24,16 +24,19 @@ import (
 	"testing"
 	"time"
 
+	"os/exec"
+
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 	kube_v1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	api_v1 "k8s.io/heapster/metrics/api/v1/types"
 	"k8s.io/heapster/metrics/core"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/api/legacyscheme"
 	metrics_api "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
@@ -43,16 +46,18 @@ const (
 )
 
 var (
-	testZone               = flag.String("test_zone", "us-central1-b", "GCE zone where the test will be executed")
-	kubeVersions           = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
-	heapsterControllerFile = flag.String("heapster_controller", "../deploy/kube-config/standalone-test/heapster-controller.yaml", "Path to heapster replication controller file.")
-	heapsterServiceFile    = flag.String("heapster_service", "../deploy/kube-config/standalone-test/heapster-service.yaml", "Path to heapster service file.")
-	heapsterImage          = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
-	avoidBuild             = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
-	namespace              = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
-	maxRetries             = flag.Int("retries", 20, "Number of attempts before failing this test.")
-	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
-	testUser               = flag.String("test_user", "", "GCE user when copy file to host")
+	testZone                   = flag.String("test_zone", "us-central1-b", "GCE zone where the test will be executed")
+	kubeVersions               = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
+	heapsterControllerFile     = flag.String("heapster_controller", "../deploy/kube-config/standalone-test/heapster-controller.yaml", "Path to heapster replication controller file.")
+	heapsterServiceFile        = flag.String("heapster_service", "../deploy/kube-config/standalone-test/heapster-service.yaml", "Path to heapster service file.")
+	heapsterServiceAccountFile = flag.String("heapster_serviceaccount", "../deploy/kube-config/standalone-test/heapster-serviceaccount.yaml", "Path to heapster serviceaccount file.")
+	heapsterRBACFile           = flag.String("heapster_rbac", "../deploy/kube-config/standalone-test/heapster-rbac.yaml", "Path to heapster rbac file.")
+	heapsterImage              = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
+	avoidBuild                 = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
+	namespace                  = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
+	maxRetries                 = flag.Int("retries", 20, "Number of attempts before failing this test.")
+	runForever                 = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
+	testUser                   = flag.String("test_user", "", "GCE user when copy file to host")
 )
 
 func deleteAll(fm kubeFramework, ns string, service *kube_v1.Service, rc *kube_v1.ReplicationController) error {
@@ -66,7 +71,7 @@ func deleteAll(fm kubeFramework, ns string, service *kube_v1.Service, rc *kube_v
 	return nil
 }
 
-func createAll(fm kubeFramework, ns string, service **kube_v1.Service, rc **kube_v1.ReplicationController) error {
+func createAll(fm kubeFramework, ns string, service **kube_v1.Service, rc **kube_v1.ReplicationController, clusterRoleBinding **rbacv1.ClusterRoleBinding, serviceAccount **kube_v1.ServiceAccount) error {
 	glog.V(2).Infof("Creating ns %s...", ns)
 	namespace := kube_v1.Namespace{
 		TypeMeta: metav1.TypeMeta{
@@ -84,15 +89,6 @@ func createAll(fm kubeFramework, ns string, service **kube_v1.Service, rc **kube
 
 	glog.V(2).Infof("Created ns %s.", ns)
 
-	glog.V(2).Infof("Creating rc %s/%s...", ns, (*rc).Name)
-	if newRc, err := fm.CreateRC(ns, *rc); err != nil {
-		glog.V(2).Infof("Failed to create rc: %v", err)
-		return err
-	} else {
-		*rc = newRc
-	}
-	glog.V(2).Infof("Created rc %s/%s.", ns, (*rc).Name)
-
 	glog.V(2).Infof("Creating service %s/%s...", ns, (*service).Name)
 	if newSvc, err := fm.CreateService(ns, *service); err != nil {
 		glog.V(2).Infof("Failed to create service: %v", err)
@@ -101,6 +97,33 @@ func createAll(fm kubeFramework, ns string, service **kube_v1.Service, rc **kube
 		*service = newSvc
 	}
 	glog.V(2).Infof("Created service %s/%s.", ns, (*service).Name)
+
+	glog.V(2).Infof("Creating serviceAccount %s/%s...", ns, (*serviceAccount).Name)
+	if newSA, err := fm.CreateServiceAccount(ns, *serviceAccount); err != nil {
+		glog.V(2).Infof("Failed to create serviceaccount: %v", err)
+		return err
+	} else {
+		*serviceAccount = newSA
+	}
+	glog.V(2).Infof("Created serviceaccount %s/%s.", ns, (*serviceAccount).Name)
+
+	glog.V(2).Infof("Creating clusterRoleBinding %s...", (*clusterRoleBinding).Name)
+	if newClusterRoleBinding, err := fm.CreateClusterRoleBinding(*clusterRoleBinding); err != nil {
+		glog.V(2).Infof("Failed to create clusterRoleBinding: %v", err)
+		return err
+	} else {
+		*clusterRoleBinding = newClusterRoleBinding
+	}
+	glog.V(2).Infof("Created clusterRoleBinding %s.", (*clusterRoleBinding).Name)
+
+	glog.V(2).Infof("Creating rc %s/%s...", ns, (*rc).Name)
+	if newRc, err := fm.CreateRC(ns, *rc); err != nil {
+		glog.V(2).Infof("Failed to create rc: %v", err)
+		return err
+	} else {
+		*rc = newRc
+	}
+	glog.V(2).Infof("Created rc %s/%s.", ns, (*rc).Name)
 
 	return nil
 }
@@ -144,11 +167,11 @@ func buildAndPushHeapsterImage(hostnames []string, zone string) error {
 	return os.Chdir(curwd)
 }
 
-func getHeapsterRcAndSvc(fm kubeFramework) (*kube_v1.Service, *kube_v1.ReplicationController, error) {
+func getHeapsterAll(fm kubeFramework) (*kube_v1.Service, *kube_v1.ReplicationController, *rbacv1.ClusterRoleBinding, *kube_v1.ServiceAccount, error) {
 	// Add test docker image
 	rc, err := fm.ParseRC(*heapsterControllerFile)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse heapster controller - %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to parse heapster controller - %v", err)
 	}
 	for i := range rc.Spec.Template.Spec.Containers {
 		rc.Spec.Template.Spec.Containers[i].Image = *heapsterImage
@@ -159,10 +182,20 @@ func getHeapsterRcAndSvc(fm kubeFramework) (*kube_v1.Service, *kube_v1.Replicati
 
 	svc, err := fm.ParseService(*heapsterServiceFile)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse heapster service - %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to parse heapster service - %v", err)
 	}
 
-	return svc, rc, nil
+	serviceAccount, err := fm.ParseServiceAccount(*heapsterServiceAccountFile)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to parse heapster serviceaccount - %v", err)
+	}
+
+	clusterRoleBinding, err := fm.ParseClusterRoleBinding(*heapsterRBACFile)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to parse heapster clusterRoleBinding - %v", err)
+	}
+
+	return svc, rc, clusterRoleBinding, serviceAccount, nil
 }
 
 func buildAndPushDockerImages(fm kubeFramework, zone string) error {
@@ -253,7 +286,11 @@ func runMetricExportTest(fm kubeFramework, svc *kube_v1.Service) error {
 		return err
 	}
 	expectedPods := make([]string, 0, len(podList))
+	var heapsterPodName string
 	for _, pod := range podList {
+		if strings.Contains(pod.Name, "heapster") {
+			heapsterPodName = pod.Name
+		}
 		expectedPods = append(expectedPods, pod.Name)
 	}
 	glog.V(0).Infof("Expected pods: %v", expectedPods)
@@ -269,6 +306,14 @@ func runMetricExportTest(fm kubeFramework, svc *kube_v1.Service) error {
 		return err
 	}
 	if len(timeseries) == 0 {
+		glog.Error("Retrieve heapster container logs")
+		cmd := exec.Command("kubectl", []string{"logs", fmt.Sprintf("--namespace=%s", *namespace), heapsterPodName, "-c", "heapster-test"}...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			glog.Errorf("Retrieve heapster container logs error: %v", err)
+		}
+		glog.Errorf(string(out))
+
 		return fmt.Errorf("expected non zero timeseries")
 	}
 	schema, err := getSchema(fm, svc)
@@ -357,7 +402,14 @@ func runMetricExportTest(fm kubeFramework, svc *kube_v1.Service) error {
 			core.MetricFilesystemLimit.MetricDescriptor.Name: {core.LabelResourceID.Key},
 			core.MetricFilesystemAvailable.Name:              {core.LabelResourceID.Key},
 			core.MetricFilesystemInodes.Name:                 {core.LabelResourceID.Key},
-			core.MetricFilesystemInodesFree.Name:             {core.LabelResourceID.Key}}
+			core.MetricFilesystemInodesFree.Name:             {core.LabelResourceID.Key},
+			core.MetricAcceleratorMemoryTotal.Name:           {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key},
+			core.MetricAcceleratorMemoryUsed.Name:            {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key},
+			core.MetricAcceleratorDutyCycle.Name:             {core.LabelAcceleratorMake.Key, core.LabelAcceleratorModel.Key, core.LabelAcceleratorID.Key},
+			core.MetricDiskIORead.Name:                       {core.LabelResourceID.Key},
+			core.MetricDiskIOReadRate.Name:                   {core.LabelResourceID.Key},
+			core.MetricDiskIOWrite.Name:                      {core.LabelResourceID.Key},
+			core.MetricDiskIOWriteRate.Name:                  {core.LabelResourceID.Key}}
 
 		for metricName, points := range ts.Metrics {
 			md, exists := mdMap[metricName]
@@ -639,8 +691,8 @@ func runModelTest(fm kubeFramework, svc *kube_v1.Service) error {
 
 const (
 	apiPrefix           = "apis"
-	metricsApiGroupName = "metrics"
-	metricsApiVersion   = "v1alpha1"
+	metricsApiGroupName = "metrics.k8s.io"
+	metricsApiVersion   = "v1beta1"
 )
 
 var baseMetricsUrl = fmt.Sprintf("%s/%s/%s", apiPrefix, metricsApiGroupName, metricsApiVersion)
@@ -995,8 +1047,8 @@ func apiTest(kubeVersion string, zone string) error {
 	if err := buildAndPushDockerImages(fm, zone); err != nil {
 		return err
 	}
-	// Create heapster pod and service.
-	svc, rc, err := getHeapsterRcAndSvc(fm)
+	// Create heapster pod, service, clusterRoleBinding and serviceaccount.
+	svc, rc, clusterRoleBinding, serviceAccount, err := getHeapsterAll(fm)
 	if err != nil {
 		return err
 	}
@@ -1004,7 +1056,7 @@ func apiTest(kubeVersion string, zone string) error {
 	if err := deleteAll(fm, ns, svc, rc); err != nil {
 		return err
 	}
-	if err := createAll(fm, ns, &svc, &rc); err != nil {
+	if err := createAll(fm, ns, &svc, &rc, &clusterRoleBinding, &serviceAccount); err != nil {
 		return err
 	}
 	if err := fm.WaitUntilPodRunning(ns, rc.Spec.Template.Labels, time.Minute); err != nil {
@@ -1013,6 +1065,7 @@ func apiTest(kubeVersion string, zone string) error {
 	if err := fm.WaitUntilServiceActive(svc, time.Minute); err != nil {
 		return err
 	}
+
 	testFuncs := []func() error{
 		func() error {
 			glog.V(2).Infof("Heapster metric export test...")
