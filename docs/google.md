@@ -20,6 +20,5 @@ To access the Google Cloud Monitoring dashboard go to: [https://app.google.stack
 
 It is also possible to query the Google Cloud Monitoring data directly using their [custom metric read API](https://cloud.google.com/monitoring/custom-metrics).
 
-
 ### Events Dashboard
 To access events via Google Cloud Logging dashboard go to [Google Developer Console](https://cloud.google.com) and select 'Logs' under 'Monitoring' in your project. In the Logs dashboard, select `custom.googleapis.com` as the logs source.
