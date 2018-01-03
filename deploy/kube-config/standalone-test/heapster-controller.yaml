@@ -27,6 +27,8 @@ spec:
         - name: ssl-certs
           mountPath: /etc/ssl/certs
           readOnly: true
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       volumes:
       - name: ssl-certs
         hostPath:

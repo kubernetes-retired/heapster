@@ -25,6 +25,8 @@ spec:
         command:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
+      nodeSelector:
+        beta.kubernetes.io/os: linux
 ---
 apiVersion: v1
 kind: Service
