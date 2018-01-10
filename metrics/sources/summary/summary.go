@@ -89,7 +89,7 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) (*DataBatc
 
 	summary, err := func() (*stats.Summary, error) {
 		startTime := time.Now()
-		defer summaryRequestLatency.WithLabelValues(this.node.HostName).Observe(float64(time.Since(startTime)))
+		defer summaryRequestLatency.WithLabelValues(this.node.HostName).Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
 		return this.kubeletClient.GetSummary(this.node.Host)
 	}()
 
