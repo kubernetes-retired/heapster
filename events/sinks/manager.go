@@ -29,13 +29,13 @@ const (
 )
 
 var (
-	// Time spent exporting events to sink in microseconds.
+	// Time spent exporting events to sink in milliseconds.
 	exporterDuration = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
 			Namespace: "eventer",
 			Subsystem: "exporter",
-			Name:      "duration_microseconds",
-			Help:      "Time spent exporting events to sink in microseconds.",
+			Name:      "duration_milliseconds",
+			Help:      "Time spent exporting events to sink in milliseconds.",
 		},
 		[]string{"exporter"},
 	)
@@ -137,8 +137,10 @@ func (this *sinkManager) Stop() {
 
 func export(s core.EventSink, data *core.EventBatch) {
 	startTime := time.Now()
-	defer exporterDuration.
-		WithLabelValues(s.Name()).
-		Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	defer func() {
+		exporterDuration.
+			WithLabelValues(s.Name()).
+			Observe(float64(time.Since(startTime)) / float64(time.Millisecond))
+	}()
 	s.ExportEvents(data)
 }
