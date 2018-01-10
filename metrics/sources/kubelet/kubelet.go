@@ -260,7 +260,9 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) (*DataBatc
 
 func (this *kubeletMetricsSource) scrapeKubelet(client *KubeletClient, host Host, start, end time.Time) ([]cadvisor.ContainerInfo, error) {
 	startTime := time.Now()
-	defer kubeletRequestLatency.WithLabelValues(this.hostname).Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	defer func() {
+		kubeletRequestLatency.WithLabelValues(this.hostname).Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	}()
 	return client.GetAllRawContainers(host, start, end)
 }
 

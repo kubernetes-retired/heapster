@@ -149,9 +149,11 @@ func (rm *realManager) housekeep(start, end time.Time) {
 
 func process(p core.DataProcessor, data *core.DataBatch) (*core.DataBatch, error) {
 	startTime := time.Now()
-	defer processorDuration.
-		WithLabelValues(p.Name()).
-		Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	defer func() {
+		processorDuration.
+			WithLabelValues(p.Name()).
+			Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	}()
 
 	return p.Process(data)
 }

@@ -164,12 +164,16 @@ responseloop:
 func scrape(s MetricsSource, start, end time.Time) (*DataBatch, error) {
 	sourceName := s.Name()
 	startTime := time.Now()
-	defer lastScrapeTimestamp.
-		WithLabelValues(sourceName).
-		Set(float64(time.Now().Unix()))
-	defer scraperDuration.
-		WithLabelValues(sourceName).
-		Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	defer func() {
+		lastScrapeTimestamp.
+			WithLabelValues(sourceName).
+			Set(float64(time.Now().Unix()))
+	}()
+	defer func() {
+		scraperDuration.
+			WithLabelValues(sourceName).
+			Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	}()
 
 	return s.ScrapeMetrics(start, end)
 }
