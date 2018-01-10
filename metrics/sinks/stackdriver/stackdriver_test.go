@@ -29,7 +29,7 @@ var (
 
 	sink = &StackdriverSink{
 		project:           testProjectId,
-		zone:              zone,
+		heapsterZone:      zone,
 		stackdriverClient: nil,
 	}
 
