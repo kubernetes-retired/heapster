@@ -29,13 +29,13 @@ const (
 )
 
 var (
-	// The Time spent in a processor in microseconds.
+	// The Time spent in a processor in milliseconds.
 	processorDuration = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
 			Namespace: "heapster",
 			Subsystem: "processor",
-			Name:      "duration_microseconds",
-			Help:      "The Time spent in a processor in microseconds.",
+			Name:      "duration_milliseconds",
+			Help:      "The Time spent in a processor in milliseconds.",
 		},
 		[]string{"processor"},
 	)
@@ -152,7 +152,7 @@ func process(p core.DataProcessor, data *core.DataBatch) (*core.DataBatch, error
 	defer func() {
 		processorDuration.
 			WithLabelValues(p.Name()).
-			Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+			Observe(float64(time.Since(startTime)) / float64(time.Millisecond))
 	}()
 
 	return p.Process(data)

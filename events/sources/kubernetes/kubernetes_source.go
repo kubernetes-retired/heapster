@@ -55,8 +55,8 @@ var (
 		prometheus.SummaryOpts{
 			Namespace: "eventer",
 			Subsystem: "scraper",
-			Name:      "duration_microseconds",
-			Help:      "Time spent scraping events in microseconds.",
+			Name:      "duration_milliseconds",
+			Help:      "Time spent scraping events in milliseconds.",
 		})
 )
 

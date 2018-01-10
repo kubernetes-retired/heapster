@@ -38,8 +38,8 @@ var (
 		prometheus.SummaryOpts{
 			Namespace: "heapster",
 			Subsystem: "kubelet_summary",
-			Name:      "request_duration_microseconds",
-			Help:      "The Kubelet summary request latencies in microseconds.",
+			Name:      "request_duration_milliseconds",
+			Help:      "The Kubelet summary request latencies in milliseconds.",
 		},
 		[]string{"node"},
 	)
@@ -90,7 +90,7 @@ func (this *summaryMetricsSource) ScrapeMetrics(start, end time.Time) (*DataBatc
 	summary, err := func() (*stats.Summary, error) {
 		startTime := time.Now()
 		defer func() {
-			summaryRequestLatency.WithLabelValues(this.node.HostName).Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+			summaryRequestLatency.WithLabelValues(this.node.HostName).Observe(float64(time.Since(startTime)) / float64(time.Millisecond))
 		}()
 		return this.kubeletClient.GetSummary(this.node.Host)
 	}()

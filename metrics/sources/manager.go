@@ -42,13 +42,13 @@ var (
 		[]string{"source"},
 	)
 
-	// Time spent exporting scraping sources in microseconds..
+	// Time spent exporting scraping sources in milliseconds.
 	scraperDuration = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
 			Namespace: "heapster",
 			Subsystem: "scraper",
-			Name:      "duration_microseconds",
-			Help:      "Time spent scraping sources in microseconds.",
+			Name:      "duration_milliseconds",
+			Help:      "Time spent scraping sources in milliseconds.",
 		},
 		[]string{"source"},
 	)
@@ -172,7 +172,7 @@ func scrape(s MetricsSource, start, end time.Time) (*DataBatch, error) {
 	defer func() {
 		scraperDuration.
 			WithLabelValues(sourceName).
-			Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+			Observe(float64(time.Since(startTime)) / float64(time.Millisecond))
 	}()
 
 	return s.ScrapeMetrics(start, end)
