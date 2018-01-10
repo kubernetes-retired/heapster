@@ -137,8 +137,10 @@ func (this *sinkManager) Stop() {
 
 func export(s core.EventSink, data *core.EventBatch) {
 	startTime := time.Now()
-	defer exporterDuration.
-		WithLabelValues(s.Name()).
-		Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	defer func() {
+		exporterDuration.
+			WithLabelValues(s.Name()).
+			Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+	}()
 	s.ExportEvents(data)
 }
