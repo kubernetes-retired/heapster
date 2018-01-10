@@ -55,8 +55,8 @@ var (
 		prometheus.SummaryOpts{
 			Namespace: "eventer",
 			Subsystem: "scraper",
-			Name:      "duration_microseconds",
-			Help:      "Time spent scraping events in microseconds.",
+			Name:      "duration_milliseconds",
+			Help:      "Time spent scraping events in milliseconds.",
 		})
 )
 
@@ -82,7 +82,7 @@ func (this *KubernetesEventSource) GetNewEvents() *core.EventBatch {
 		lastEventTimestamp.Set(float64(time.Now().Unix()))
 	}()
 	defer func() {
-		scrapEventsDuration.Observe(float64(time.Since(startTime)) / float64(time.Microsecond))
+		scrapEventsDuration.Observe(float64(time.Since(startTime)) / float64(time.Millisecond))
 	}()
 	result := core.EventBatch{
 		Timestamp: time.Now(),
