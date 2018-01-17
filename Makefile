@@ -1,6 +1,6 @@
 all: build
 
-PREFIX?=k8s.gcr.io
+PREFIX?=staging-k8s.gcr.io
 FLAGS=
 ARCH?=amd64
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
