@@ -15,32 +15,34 @@
 package kafka
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/url"
+	"strconv"
 	"time"
 
+	kafka "github.com/Shopify/sarama"
 	"github.com/golang/glog"
-	"github.com/optiopay/kafka"
-	"github.com/optiopay/kafka/proto"
 )
 
 const (
-	brokerClientID           = "kafka-sink"
-	brokerDialTimeout        = 10 * time.Second
-	brokerDialRetryLimit     = 1
-	brokerDialRetryWait      = 0
-	brokerAllowTopicCreation = true
-	brokerLeaderRetryLimit   = 1
-	brokerLeaderRetryWait    = 0
-	metricsTopic             = "heapster-metrics"
-	eventsTopic              = "heapster-events"
+	brokerClientID         = "kafka-sink"
+	brokerDialTimeout      = 10 * time.Second
+	brokerDialRetryLimit   = 1
+	brokerDialRetryWait    = 0
+	brokerLeaderRetryLimit = 1
+	brokerLeaderRetryWait  = 0
+	metricsTopic           = "heapster-metrics"
+	eventsTopic            = "heapster-events"
 )
 
 const (
 	TimeSeriesTopic = "timeseriestopic"
 	EventsTopic     = "eventstopic"
-	compression     = "compression"
 )
 
 type KafkaClient interface {
@@ -50,7 +52,7 @@ type KafkaClient interface {
 }
 
 type kafkaSink struct {
-	producer  kafka.DistributingProducer
+	producer  kafka.AsyncProducer
 	dataTopic string
 }
 
@@ -61,10 +63,10 @@ func (sink *kafkaSink) ProduceKafkaMessage(msgData interface{}) error {
 		return fmt.Errorf("failed to transform the items to json : %s", err)
 	}
 
-	message := &proto.Message{Value: []byte(string(msgJson))}
-	_, err = sink.producer.Distribute(sink.dataTopic, message)
-	if err != nil {
-		return fmt.Errorf("failed to produce message to %s: %s", sink.dataTopic, err)
+	sink.producer.Input() <- &kafka.ProducerMessage{
+		Topic: sink.dataTopic,
+		Key:   nil,
+		Value: kafka.ByteEncoder([]byte(string(msgJson))),
 	}
 	end := time.Now()
 	glog.V(4).Infof("Exported %d data to kafka in %s", len([]byte(string(msgJson))), end.Sub(start))
@@ -76,33 +78,20 @@ func (sink *kafkaSink) Name() string {
 }
 
 func (sink *kafkaSink) Stop() {
-	// nothing needs to be done.
+	sink.producer.Close()
 }
 
 // setupProducer returns a producer of kafka server
-func setupProducer(sinkBrokerHosts []string, topic string, brokerConf kafka.BrokerConf, compression proto.Compression) (kafka.DistributingProducer, error) {
+func setupProducer(sinkBrokerHosts []string, config *kafka.Config) (kafka.AsyncProducer, error) {
 	glog.V(3).Infof("attempting to setup kafka sink")
-	broker, err := kafka.Dial(sinkBrokerHosts, brokerConf)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to kafka cluster: %s", err)
-	}
-	defer broker.Close()
 
 	//create kafka producer
-	conf := kafka.NewProducerConf()
-	conf.RequiredAcks = proto.RequiredAcksLocal
-	conf.Compression = compression
-	producer := broker.Producer(conf)
-
-	// create RoundRobinProducer with the default producer.
-	count, err := broker.PartitionCount(topic)
+	producer, err := kafka.NewAsyncProducer(sinkBrokerHosts, config)
 	if err != nil {
-		count = 1
-		glog.Warningf("Failed to get partition count of topic %q: %s", topic, err)
+		return nil, err
 	}
-	sinkProducer := kafka.NewRoundRobinProducer(producer, count)
 	glog.V(3).Infof("kafka sink setup successfully")
-	return sinkProducer, nil
+	return producer, nil
 }
 
 func getTopic(opts map[string][]string, topicType string) (string, error) {
@@ -123,19 +112,73 @@ func getTopic(opts map[string][]string, topicType string) (string, error) {
 	return topic, nil
 }
 
-func getCompression(opts map[string][]string) (proto.Compression, error) {
-	if len(opts[compression]) == 0 {
-		return proto.CompressionNone, nil
+func getCompression(opts url.Values) (kafka.CompressionCodec, error) {
+	if len(opts["compression"]) == 0 {
+		return kafka.CompressionNone, nil
 	}
-	comp := opts[compression][0]
+	comp := opts["compression"][0]
 	switch comp {
 	case "none":
-		return proto.CompressionNone, nil
+		return kafka.CompressionNone, nil
 	case "gzip":
-		return proto.CompressionGzip, nil
+		return kafka.CompressionGZIP, nil
+	case "snappy":
+		return kafka.CompressionSnappy, nil
+	case "lz4":
+		return kafka.CompressionLZ4, nil
 	default:
-		return proto.CompressionNone, fmt.Errorf("Compression '%s' is illegal. Use none or gzip", comp)
+		return kafka.CompressionNone, fmt.Errorf("Compression '%s' is illegal. Use none or gzip", comp)
 	}
+}
+
+func getTlsConfiguration(opts url.Values) (*tls.Config, error) {
+	if len(opts["cacert"]) == 0 &&
+		(len(opts["cert"]) == 0 || len(opts["key"]) == 0) {
+		return nil, nil
+	}
+	t := &tls.Config{}
+	if len(opts["cacert"]) != 0 {
+		caFile := opts["cacert"][0]
+		caCert, err := ioutil.ReadFile(caFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		t.RootCAs = caCertPool
+	}
+
+	if len(opts["cert"]) != 0 && len(opts["key"]) != 0 {
+		certFile := opts["cert"][0]
+		keyFile := opts["key"][0]
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, err
+		}
+		t.Certificates = []tls.Certificate{cert}
+	}
+	if len(opts["insecuressl"]) != 0 {
+		insecuressl := opts["insecuressl"][0]
+		insecure, err := strconv.ParseBool(insecuressl)
+		if err != nil {
+			return nil, err
+		}
+		t.InsecureSkipVerify = insecure
+	}
+
+	return t, nil
+}
+
+func getSASLConfiguration(opts url.Values) (string, string, error) {
+	if len(opts["user"]) == 0 {
+		return "", "", nil
+	}
+	user := opts["user"][0]
+	if len(opts["password"]) == 0 {
+		return "", "", nil
+	}
+	password := opts["password"][0]
+	return user, password, nil
 }
 
 func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
@@ -143,7 +186,7 @@ func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse url's query string: %s", err)
 	}
-	glog.V(3).Infof("kafka sink option: %v", opts)
+	glog.V(6).Infof("kafka sink option: %v", opts)
 
 	topic, err := getTopic(opts, topicType)
 	if err != nil {
@@ -155,6 +198,16 @@ func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
 		return nil, err
 	}
 
+	tlsConfig, err := getTlsConfiguration(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	saslUser, saslPassword, err := getSASLConfiguration(opts)
+	if err != nil {
+		return nil, err
+	}
+
 	var kafkaBrokers []string
 	if len(opts["brokers"]) < 1 {
 		return nil, fmt.Errorf("There is no broker assigned for connecting kafka")
@@ -162,18 +215,32 @@ func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
 	kafkaBrokers = append(kafkaBrokers, opts["brokers"]...)
 	glog.V(2).Infof("initializing kafka sink with brokers - %v", kafkaBrokers)
 
+	kafka.Logger = GologAdapterLogger{}
+
 	//structure the config of broker
-	brokerConf := kafka.NewBrokerConf(brokerClientID)
-	brokerConf.DialTimeout = brokerDialTimeout
-	brokerConf.DialRetryLimit = brokerDialRetryLimit
-	brokerConf.DialRetryWait = brokerDialRetryWait
-	brokerConf.LeaderRetryLimit = brokerLeaderRetryLimit
-	brokerConf.LeaderRetryWait = brokerLeaderRetryWait
-	brokerConf.AllowTopicCreation = brokerAllowTopicCreation
-	brokerConf.Logger = &GologAdapterLogger{}
+	config := kafka.NewConfig()
+	config.ClientID = brokerClientID
+	config.Net.DialTimeout = brokerDialTimeout
+	config.Metadata.Retry.Max = brokerDialRetryLimit
+	config.Metadata.Retry.Backoff = brokerDialRetryWait
+	config.Producer.Retry.Max = brokerLeaderRetryLimit
+	config.Producer.Retry.Backoff = brokerLeaderRetryWait
+	config.Producer.Compression = compression
+	config.Producer.Partitioner = kafka.NewRoundRobinPartitioner
+	config.Producer.RequiredAcks = kafka.WaitForLocal
+
+	if tlsConfig != nil {
+		config.Net.TLS.Config = tlsConfig
+		config.Net.TLS.Enable = true
+	}
+	if saslUser != "" && saslPassword != "" {
+		config.Net.SASL.Enable = true
+		config.Net.SASL.User = saslUser
+		config.Net.SASL.Password = saslPassword
+	}
 
 	// set up producer of kafka server.
-	sinkProducer, err := setupProducer(kafkaBrokers, topic, brokerConf, compression)
+	sinkProducer, err := setupProducer(kafkaBrokers, config)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to setup Producer: - %v", err)
 	}

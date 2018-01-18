@@ -193,7 +193,13 @@ Options can be set in query string, like this:
 * `brokers` - Kafka's brokers' list.
 * `timeseriestopic` - Kafka's topic for timeseries. Default value : `heapster-metrics`
 * `eventstopic` - Kafka's topic for events. Default value : `heapster-events`
-* `compression` - Kafka's compression for both topics. Must be `gzip` or `none`. Default value : none
+* `compression` - Kafka's compression for both topics. Must be `gzip` or `none` or `snappy` or `lz4`. Default value : none
+* `user` - Kafka's SASL PLAIN username. Must be set with `password` option.
+* `password` - Kafka's SASL PLAIN password. Must be set with `user` option.
+* `cacert` - Kafka's SSL Certificate Authority file path.
+* `cert` - Kafka's SSL Client Certificate file path (In case of Two-way SSL). Must be set with `key` option.
+* `key` - Kafka's SSL Client Private Key file path (In case of Two-way SSL). Must be set with `cert` option.
+* `insecuressl` - Kafka's Ignore SSL certificate validity. Default value : `false`
 
 For example,
 
