@@ -62,6 +62,10 @@ test-unit-cov: clean sanitize build
 	hooks/coverage.sh
 
 test-integration: clean build
+	gcloud version
+	gcloud components update --version 144.0.0
+	gcloud auth list
+	gcloud auth activate-service-account --key-file=/etc/service-account/service-account.json
 	go test -v --timeout=60m ./integration/... --vmodule=*=2 $(FLAGS) --namespace=$(TEST_NAMESPACE) --kube_versions=$(SUPPORTED_KUBE_VERSIONS) --test_user=$(TESTUSER) --logtostderr
 
 container:
