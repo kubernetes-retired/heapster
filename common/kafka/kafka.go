@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"strconv"
 	"time"
@@ -52,7 +51,7 @@ type KafkaClient interface {
 }
 
 type kafkaSink struct {
-	producer  kafka.AsyncProducer
+	producer  kafka.SyncProducer
 	dataTopic string
 }
 
@@ -63,10 +62,13 @@ func (sink *kafkaSink) ProduceKafkaMessage(msgData interface{}) error {
 		return fmt.Errorf("failed to transform the items to json : %s", err)
 	}
 
-	sink.producer.Input() <- &kafka.ProducerMessage{
+	_, _, err = sink.producer.SendMessage(&kafka.ProducerMessage{
 		Topic: sink.dataTopic,
 		Key:   nil,
 		Value: kafka.ByteEncoder([]byte(string(msgJson))),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to produce message to %s: %s", sink.dataTopic, err)
 	}
 	end := time.Now()
 	glog.V(4).Infof("Exported %d data to kafka in %s", len([]byte(string(msgJson))), end.Sub(start))
@@ -79,19 +81,6 @@ func (sink *kafkaSink) Name() string {
 
 func (sink *kafkaSink) Stop() {
 	sink.producer.Close()
-}
-
-// setupProducer returns a producer of kafka server
-func setupProducer(sinkBrokerHosts []string, config *kafka.Config) (kafka.AsyncProducer, error) {
-	glog.V(3).Infof("attempting to setup kafka sink")
-
-	//create kafka producer
-	producer, err := kafka.NewAsyncProducer(sinkBrokerHosts, config)
-	if err != nil {
-		return nil, err
-	}
-	glog.V(3).Infof("kafka sink setup successfully")
-	return producer, nil
 }
 
 func getTopic(opts map[string][]string, topicType string) (string, error) {
@@ -127,21 +116,21 @@ func getCompression(opts url.Values) (kafka.CompressionCodec, error) {
 	case "lz4":
 		return kafka.CompressionLZ4, nil
 	default:
-		return kafka.CompressionNone, fmt.Errorf("Compression '%s' is illegal. Use none or gzip", comp)
+		return -1, fmt.Errorf("Compression '%s' is illegal. Use none, snappy, lz4 or gzip", comp)
 	}
 }
 
-func getTlsConfiguration(opts url.Values) (*tls.Config, error) {
+func getTlsConfiguration(opts url.Values) (*tls.Config, bool, error) {
 	if len(opts["cacert"]) == 0 &&
 		(len(opts["cert"]) == 0 || len(opts["key"]) == 0) {
-		return nil, nil
+		return nil, false, nil
 	}
 	t := &tls.Config{}
 	if len(opts["cacert"]) != 0 {
 		caFile := opts["cacert"][0]
 		caCert, err := ioutil.ReadFile(caFile)
 		if err != nil {
-			log.Fatal(err)
+			return nil, false, err
 		}
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
@@ -153,7 +142,7 @@ func getTlsConfiguration(opts url.Values) (*tls.Config, error) {
 		keyFile := opts["key"][0]
 		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		t.Certificates = []tls.Certificate{cert}
 	}
@@ -161,24 +150,24 @@ func getTlsConfiguration(opts url.Values) (*tls.Config, error) {
 		insecuressl := opts["insecuressl"][0]
 		insecure, err := strconv.ParseBool(insecuressl)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		t.InsecureSkipVerify = insecure
 	}
 
-	return t, nil
+	return t, true, nil
 }
 
-func getSASLConfiguration(opts url.Values) (string, string, error) {
+func getSASLConfiguration(opts url.Values) (string, string, bool, error) {
 	if len(opts["user"]) == 0 {
-		return "", "", nil
+		return "", "", false, nil
 	}
 	user := opts["user"][0]
 	if len(opts["password"]) == 0 {
-		return "", "", nil
+		return "", "", false, nil
 	}
 	password := opts["password"][0]
-	return user, password, nil
+	return user, password, true, nil
 }
 
 func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
@@ -194,16 +183,6 @@ func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
 	}
 
 	compression, err := getCompression(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	tlsConfig, err := getTlsConfiguration(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	saslUser, saslPassword, err := getSASLConfiguration(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -228,23 +207,27 @@ func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
 	config.Producer.Compression = compression
 	config.Producer.Partitioner = kafka.NewRoundRobinPartitioner
 	config.Producer.RequiredAcks = kafka.WaitForLocal
+	config.Producer.Return.Errors = true
+	config.Producer.Return.Successes = true
 
-	if tlsConfig != nil {
-		config.Net.TLS.Config = tlsConfig
-		config.Net.TLS.Enable = true
+	config.Net.TLS.Config, config.Net.TLS.Enable, err = getTlsConfiguration(opts)
+	if err != nil {
+		return nil, err
 	}
-	if saslUser != "" && saslPassword != "" {
-		config.Net.SASL.Enable = true
-		config.Net.SASL.User = saslUser
-		config.Net.SASL.Password = saslPassword
+
+	config.Net.SASL.User, config.Net.SASL.Password, config.Net.SASL.Enable, err = getSASLConfiguration(opts)
+	if err != nil {
+		return nil, err
 	}
 
 	// set up producer of kafka server.
-	sinkProducer, err := setupProducer(kafkaBrokers, config)
+	glog.V(3).Infof("attempting to setup kafka sink")
+	sinkProducer, err := kafka.NewSyncProducer(kafkaBrokers, config)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to setup Producer: - %v", err)
 	}
 
+	glog.V(3).Infof("kafka sink setup successfully")
 	return &kafkaSink{
 		producer:  sinkProducer,
 		dataTopic: topic,
