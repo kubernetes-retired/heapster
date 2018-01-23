@@ -1,0 +1,8 @@
+language: go
+sudo: false
+install: go get -t -v -tags debug0 ./...
+script: go test -tags debug0 ./...
+go:
+    - 1.9.x
+    - 1.8.x
+    - tip
