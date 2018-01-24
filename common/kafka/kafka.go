@@ -65,13 +65,13 @@ func (sink *kafkaSink) ProduceKafkaMessage(msgData interface{}) error {
 	_, _, err = sink.producer.SendMessage(&kafka.ProducerMessage{
 		Topic: sink.dataTopic,
 		Key:   nil,
-		Value: kafka.ByteEncoder([]byte(string(msgJson))),
+		Value: kafka.ByteEncoder(msgJson),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to produce message to %s: %s", sink.dataTopic, err)
 	}
 	end := time.Now()
-	glog.V(4).Infof("Exported %d data to kafka in %s", len([]byte(string(msgJson))), end.Sub(start))
+	glog.V(4).Infof("Exported %d data to kafka in %s", len(msgJson), end.Sub(start))
 	return nil
 }
 
