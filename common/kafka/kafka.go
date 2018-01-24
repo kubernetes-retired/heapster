@@ -116,7 +116,7 @@ func getCompression(opts url.Values) (kafka.CompressionCodec, error) {
 	case "lz4":
 		return kafka.CompressionLZ4, nil
 	default:
-		return -1, fmt.Errorf("Compression '%s' is illegal. Use none, snappy, lz4 or gzip", comp)
+		return kafka.CompressionNone, fmt.Errorf("Compression '%s' is illegal. Use none, snappy, lz4 or gzip", comp)
 	}
 }
 
