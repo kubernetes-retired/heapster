@@ -90,7 +90,9 @@ func (rm *realManager) Housekeep() {
 }
 
 func (rm *realManager) housekeep() {
-	defer lastHousekeepTimestamp.Set(float64(time.Now().Unix()))
+	defer func() {
+		lastHousekeepTimestamp.Set(float64(time.Now().Unix()))
+	}()
 
 	LatestScrapeTime = time.Now()
 

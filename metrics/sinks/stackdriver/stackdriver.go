@@ -46,8 +46,9 @@ const (
 
 type StackdriverSink struct {
 	project               string
-	cluster               string
-	zone                  string
+	clusterName           string
+	clusterLocation       string
+	heapsterZone          string
 	stackdriverClient     *sd_api.MetricClient
 	minInterval           time.Duration
 	lastExportTime        time.Time
@@ -329,6 +330,8 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 	cluster_name := ""
 	if len(opts["cluster_name"]) >= 1 {
 		cluster_name = opts["cluster_name"][0]
+	} else {
+		glog.Warning("Cluster name required but not provided, using empty cluster name.")
 	}
 
 	minInterval := time.Nanosecond
@@ -365,10 +368,17 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 
-	// Detect zone
-	zone, err := gce.Zone()
+	// Detect zone for old resource model
+	heapsterZone, err := gce.Zone()
 	if err != nil {
 		return nil, err
+	}
+
+	clusterLocation := heapsterZone
+	if len(opts["cluster_location"]) >= 1 {
+		clusterLocation = opts["cluster_location"][0]
+	} else if useNewResourceModel {
+		glog.Warning("Cluster location required with new resource model but not provided. Falling back to the zone where Heapster runs.")
 	}
 
 	// Create Metric Client
@@ -379,8 +389,9 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 
 	sink := &StackdriverSink{
 		project:               projectId,
-		cluster:               cluster_name,
-		zone:                  zone,
+		clusterName:           cluster_name,
+		clusterLocation:       clusterLocation,
+		heapsterZone:          heapsterZone,
 		stackdriverClient:     stackdriverClient,
 		minInterval:           minInterval,
 		batchExportTimeoutSec: batchExportTimeoutSec,
@@ -703,8 +714,8 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 func (sink *StackdriverSink) legacyGetResourceLabels(labels map[string]string) map[string]string {
 	return map[string]string{
 		"project_id":     sink.project,
-		"cluster_name":   sink.cluster,
-		"zone":           sink.zone, // TODO(kawych): revisit how the location is set
+		"cluster_name":   sink.clusterName,
+		"zone":           sink.heapsterZone,
 		"instance_id":    labels[core.LabelHostID.Key],
 		"namespace_id":   labels[core.LabelPodNamespaceUID.Key],
 		"pod_id":         labels[core.LabelPodId.Key],
@@ -715,8 +726,8 @@ func (sink *StackdriverSink) legacyGetResourceLabels(labels map[string]string) m
 func (sink *StackdriverSink) getContainerResourceLabels(labels map[string]string) map[string]string {
 	return map[string]string{
 		"project_id":     sink.project,
-		"location":       sink.zone, // TODO(kawych): revisit how the location is set
-		"cluster_name":   sink.cluster,
+		"location":       sink.clusterLocation,
+		"cluster_name":   sink.clusterName,
 		"namespace_name": labels[core.LabelNamespaceName.Key],
 		"node_name":      labels[core.LabelNodename.Key],
 		"pod_name":       labels[core.LabelPodName.Key],
@@ -727,8 +738,8 @@ func (sink *StackdriverSink) getContainerResourceLabels(labels map[string]string
 func (sink *StackdriverSink) getPodResourceLabels(labels map[string]string) map[string]string {
 	return map[string]string{
 		"project_id":     sink.project,
-		"location":       sink.zone, // TODO(kawych): revisit how the location is set
-		"cluster_name":   sink.cluster,
+		"location":       sink.clusterLocation,
+		"cluster_name":   sink.clusterName,
 		"namespace_name": labels[core.LabelNamespaceName.Key],
 		"node_name":      labels[core.LabelNodename.Key],
 		"pod_name":       labels[core.LabelPodName.Key],
@@ -738,8 +749,8 @@ func (sink *StackdriverSink) getPodResourceLabels(labels map[string]string) map[
 func (sink *StackdriverSink) getNodeResourceLabels(labels map[string]string) map[string]string {
 	return map[string]string{
 		"project_id":   sink.project,
-		"location":     sink.zone, // TODO(kawych): revisit how the location is set
-		"cluster_name": sink.cluster,
+		"location":     sink.clusterLocation,
+		"cluster_name": sink.clusterName,
 		"node_name":    labels[core.LabelNodename.Key],
 	}
 }

@@ -50,8 +50,8 @@ var (
 		prometheus.SummaryOpts{
 			Namespace: "heapster",
 			Subsystem: "kubelet",
-			Name:      "request_duration_microseconds",
-			Help:      "The Kubelet request latencies in microseconds.",
+			Name:      "request_duration_milliseconds",
+			Help:      "The Kubelet request latencies in milliseconds.",
 		},
 		[]string{"node"},
 	)
@@ -260,7 +260,9 @@ func (this *kubeletMetricsSource) ScrapeMetrics(start, end time.Time) (*DataBatc
 
 func (this *kubeletMetricsSource) scrapeKubelet(client *KubeletClient, host Host, start, end time.Time) ([]cadvisor.ContainerInfo, error) {
 	startTime := time.Now()
-	defer kubeletRequestLatency.WithLabelValues(this.hostname).Observe(float64(time.Since(startTime)))
+	defer func() {
+		kubeletRequestLatency.WithLabelValues(this.hostname).Observe(float64(time.Since(startTime)) / float64(time.Millisecond))
+	}()
 	return client.GetAllRawContainers(host, start, end)
 }
 

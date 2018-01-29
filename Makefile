@@ -1,6 +1,6 @@
 all: build
 
-PREFIX?=gcr.io/google_containers
+PREFIX?=staging-k8s.gcr.io
 FLAGS=
 ARCH?=amd64
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x

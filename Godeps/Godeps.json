@@ -45,6 +45,11 @@
 			"Rev": "5bd2802263f21d8788851d5305584c82a5c75d7e"
 		},
 		{
+			"ImportPath": "github.com/Shopify/sarama",
+			"Comment": "v1.15.0-22-gd0cc7fe",
+			"Rev": "d0cc7fec83626dc42723e528d845d10bf8d82b7f"
+		},
+		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
 			"Rev": "3ac7bf7a47d159a033b107610db8a1b6575507a4"
 		},
@@ -179,6 +184,20 @@
 			"ImportPath": "github.com/docker/distribution/reference",
 			"Comment": "v2.6.0-rc.1-209-gedc3ab2",
 			"Rev": "edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c"
+		},
+		{
+			"ImportPath": "github.com/eapache/go-resiliency/breaker",
+			"Comment": "v1.0.0-10-gef9aaa7",
+			"Rev": "ef9aaa7ea8bd2448429af1a77cf41b2b3b34bdd6"
+		},
+		{
+			"ImportPath": "github.com/eapache/go-xerial-snappy",
+			"Rev": "bb955e01b9346ac19dc29eb16586c90ded99a98c"
+		},
+		{
+			"ImportPath": "github.com/eapache/queue",
+			"Comment": "v1.1.0",
+			"Rev": "44cc805cf13205b55f69e14bcb69867d1ae92f98"
 		},
 		{
 			"ImportPath": "github.com/elazarl/go-bindata-assetfs",
@@ -457,12 +476,14 @@
 			"Rev": "bc8e0950689f19fafd454acd517abe7b251cf54f"
 		},
 		{
-			"ImportPath": "github.com/optiopay/kafka/proto",
-			"Rev": "bc8e0950689f19fafd454acd517abe7b251cf54f"
+			"ImportPath": "github.com/pierrec/lz4",
+			"Comment": "v1.1-2-ged8d4cc",
+			"Rev": "ed8d4cc3b461464e69798080a0092bd028910298"
 		},
 		{
-			"ImportPath": "github.com/pborman/uuid",
-			"Rev": "ca53cad383cad2479bbba7f7a1a05797ec1386e4"
+			"ImportPath": "github.com/pierrec/xxHash/xxHash32",
+			"Comment": "v0.1-11-ga0006b1",
+			"Rev": "a0006b13c722f7f12368c00a3d3c2ae8a999a0c6"
 		},
 		{
 			"ImportPath": "github.com/peterbourgon/diskv",
@@ -507,6 +528,10 @@
 		{
 			"ImportPath": "github.com/prometheus/procfs/xfs",
 			"Rev": "65c1f6f8f0fc1e2185eb9863a3bc751496404259"
+		},
+		{
+			"ImportPath": "github.com/rcrowley/go-metrics",
+			"Rev": "e181e095bae94582363434144c61a9653aff6e50"
 		},
 		{
 			"ImportPath": "github.com/riemann/riemann-go-client",

@@ -94,7 +94,7 @@ func TestPodEnricher(t *testing.T) {
 			Containers: []kube_api.Container{
 				{
 					Name:  "c1",
-					Image: "gcr.io/google_containers/pause:2.0",
+					Image: "k8s.gcr.io/pause:2.0",
 					Resources: kube_api.ResourceRequirements{
 						Requests: kube_api.ResourceList{
 							kube_api.ResourceCPU:    *resource.NewMilliQuantity(100, resource.DecimalSI),
@@ -104,7 +104,7 @@ func TestPodEnricher(t *testing.T) {
 				},
 				{
 					Name:  "nginx",
-					Image: "gcr.io/google_containers/pause:2.0",
+					Image: "k8s.gcr.io/pause:2.0",
 					Resources: kube_api.ResourceRequirements{
 						Requests: kube_api.ResourceList{
 							kube_api.ResourceCPU:    *resource.NewMilliQuantity(333, resource.DecimalSI),

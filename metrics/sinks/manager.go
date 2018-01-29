@@ -152,8 +152,6 @@ func export(s core.DataSink, data *core.DataBatch) {
 		lastExportTimestamp.
 			WithLabelValues(s.Name()).
 			Set(float64(time.Now().Unix()))
-	}()
-	defer func() {
 		exporterDuration.
 			WithLabelValues(s.Name()).
 			Observe(float64(time.Since(startTime)) / float64(time.Millisecond))

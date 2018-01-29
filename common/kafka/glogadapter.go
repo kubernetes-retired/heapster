@@ -16,7 +16,7 @@ package kafka
 // GologAdapterLogger is an adapter between golog and the Logger
 // interface defined in kafka api.
 //
-// * https://github.com/optiopay/kafka/blob/master/log.go
+// * https://github.com/Shopify/sarama/blob/master/sarama.go
 
 import (
 	"github.com/golang/glog"
@@ -25,18 +25,14 @@ import (
 type GologAdapterLogger struct {
 }
 
-func (GologAdapterLogger) Debug(msg string, args ...interface{}) {
-	glog.V(6).Infof(msg, args)
+func (GologAdapterLogger) Print(v ...interface{}) {
+	glog.Info(v)
 }
 
-func (GologAdapterLogger) Info(msg string, args ...interface{}) {
-	glog.Infof(msg, args)
+func (GologAdapterLogger) Printf(format string, args ...interface{}) {
+	glog.Infof(format, args)
 }
 
-func (GologAdapterLogger) Warn(msg string, args ...interface{}) {
-	glog.Warningf(msg, args)
-}
-
-func (GologAdapterLogger) Error(msg string, args ...interface{}) {
-	glog.Errorf(msg, args)
+func (GologAdapterLogger) Println(v ...interface{}) {
+	glog.Infoln(v)
 }
