@@ -32,6 +32,7 @@ import (
 	logsink "k8s.io/heapster/metrics/sinks/log"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/sinks/opentsdb"
+	"k8s.io/heapster/metrics/sinks/plugin"
 	"k8s.io/heapster/metrics/sinks/riemann"
 	"k8s.io/heapster/metrics/sinks/stackdriver"
 	"k8s.io/heapster/metrics/sinks/statsd"
@@ -75,6 +76,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return riemann.CreateRiemannSink(&uri.Val)
 	case "honeycomb":
 		return honeycomb.NewHoneycombSink(&uri.Val)
+	case "plugin":
+		return plugin.NewGoPluginSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
