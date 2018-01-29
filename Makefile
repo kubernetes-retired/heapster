@@ -5,7 +5,7 @@ FLAGS=
 ARCH?=amd64
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
 ML_PLATFORMS=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
-GOLANG_VERSION?=1.8
+GOLANG_VERSION?=1.9
 
 ifndef TEMP_DIR
 TEMP_DIR:=$(shell mktemp -d /tmp/heapster.XXXXXX)
@@ -37,7 +37,7 @@ endif
 SUPPORTED_KUBE_VERSIONS=1.7.0-beta.2
 TEST_NAMESPACE=heapster-e2e-tests
 
-HEAPSTER_LDFLAGS=-w -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)
+HEAPSTER_LDFLAGS=-w -s -X k8s.io/heapster/version.HeapsterVersion=$(VERSION) -X k8s.io/heapster/version.GitCommit=$(GIT_COMMIT)
 
 fmt:
 	find . -type f -name "*.go" | grep -v "./vendor*" | xargs gofmt -s -w
