@@ -224,6 +224,10 @@
 			"Rev": "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 		},
 		{
+			"ImportPath": "github.com/golang/protobuf/ptypes",
+			"Rev": "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
+		},
+		{
 			"ImportPath": "github.com/golang/protobuf/ptypes/any",
 			"Rev": "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 		},
@@ -282,6 +286,18 @@
 			"Rev": "f52d055dc48aec25854ed7d31862f78913cf17d1"
 		},
 		{
+			"ImportPath": "github.com/hashicorp/go-hclog",
+			"Rev": "5bcb0f17e36442247290887cc914a6e507afa5c4"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/go-plugin",
+			"Rev": "e53f54cbf51efde642d4711313e829a1ff0c236d"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/yamux",
+			"Rev": "683f49123a33db61abfb241b7ac5e4af4dc54d55"
+		},
+		{
 			"ImportPath": "github.com/hawkular/hawkular-client-go/metrics",
 			"Comment": "v0.6.0-22-g4863013",
 			"Rev": "4863013673fcb807cda3b5103964b084566a4665"
@@ -338,6 +354,15 @@
 		{
 			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 			"Rev": "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
+		},
+		{
+			"ImportPath": "github.com/mitchellh/go-testing-interface",
+			"Rev": "a61a99592b77c9ba629d254a693acffaeb4b7e28"
+		},
+		{
+			"ImportPath": "github.com/oklog/run",
+			"Comment": "v1.0.0",
+			"Rev": "4dadeb3030eda0273a12382bb2348ffc7c9d1a39"
 		},
 		{
 			"ImportPath": "github.com/pborman/uuid",
@@ -663,6 +688,16 @@
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/grpclog",
+			"Comment": "v1.3.0",
+			"Rev": "d2e1b51f33ff8c5e4a15560ff049d200e83726c5"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/health",
+			"Comment": "v1.3.0",
+			"Rev": "d2e1b51f33ff8c5e4a15560ff049d200e83726c5"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/health/grpc_health_v1",
 			"Comment": "v1.3.0",
 			"Rev": "d2e1b51f33ff8c5e4a15560ff049d200e83726c5"
 		},

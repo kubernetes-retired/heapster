@@ -363,6 +363,50 @@ For example,
 
     --sink="honeycomb:?dataset=mydataset&writekey=secretwritekey"
 
+### Go-Plugin
+To use the go-plugin sink add the following flag:
+
+    --sink="plugin:<?<OPTIONS>>"
+
+Options can be set in query string, like this:
+
+* `cmd` - Command to use to launch go-plugin.
+
+For example,
+
+    --sink="plugin:?cmd=/my-plugin"
+
+Example of metric plugin,
+```
+package main
+
+import (
+	"log"
+
+	goplugin "github.com/hashicorp/go-plugin"
+	plugin_common "k8s.io/heapster/common/plugin"
+	"k8s.io/heapster/metrics/sinks/plugin"
+)
+
+type MyMetricSink struct{}
+
+func (MyMetricSink) WriteMetricsPoint(point *plugin.PluginSinkPoint) error {
+	log.Printf("%+v", point)
+	return nil
+}
+
+func main() {
+	goplugin.Serve(&goplugin.ServeConfig{
+		HandshakeConfig: plugin_common.Handshake,
+		Plugins: map[string]goplugin.Plugin{
+			"metrics": &plugin.MetricSinkPlugin{Impl: &MyMetricSink{}},
+		},
+		GRPCServer: goplugin.DefaultGRPCServer,
+	})
+}
+
+```
+
 ## Using multiple sinks
 
 Heapster can be configured to send k8s metrics and events to multiple sinks by specifying the`--sink=...` flag multiple times.
