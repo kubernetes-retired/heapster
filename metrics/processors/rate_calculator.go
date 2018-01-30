@@ -67,6 +67,7 @@ func (this *RateCalculator) Process(batch *core.DataBatch) (*core.DataBatch, err
 					if itemNew.Name == metricName {
 						metricValNew, foundNew = itemNew.MetricValue, true
 						for _, itemOld := range oldMs.LabeledMetrics {
+							//Fix negative value on "disk/io_read_bytes_rate" and "disk/io_write_bytes_rate"
 							if itemOld.Name == metricName && itemOld.Labels["resource_id"] == itemNew.Labels["resource_id"] {
 								metricValOld, foundOld = itemOld.MetricValue, true
 								break
