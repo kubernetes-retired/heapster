@@ -66,6 +66,41 @@ func TestPodAggregator(t *testing.T) {
 					},
 				},
 			},
+
+			core.PodKey("ns1", "pod2"): {
+				Labels: map[string]string{
+					core.LabelMetricSetType.Key: core.MetricSetTypePod,
+					core.LabelPodName.Key:       "pod2",
+					core.LabelNamespaceName.Key: "ns1",
+				},
+				MetricValues: map[string]core.MetricValue{
+					"m1": {
+						ValueType:  core.ValueInt64,
+						MetricType: core.MetricGauge,
+						IntValue:   100,
+					},
+				},
+			},
+
+			core.PodContainerKey("ns1", "pod2", "c1"): {
+				Labels: map[string]string{
+					core.LabelMetricSetType.Key: core.MetricSetTypePodContainer,
+					core.LabelPodName.Key:       "pod2",
+					core.LabelNamespaceName.Key: "ns1",
+				},
+				MetricValues: map[string]core.MetricValue{
+					"m1": {
+						ValueType:  core.ValueInt64,
+						MetricType: core.MetricGauge,
+						IntValue:   10,
+					},
+					"m2": {
+						ValueType:  core.ValueInt64,
+						MetricType: core.MetricGauge,
+						IntValue:   20,
+					},
+				},
+			},
 		},
 	}
 	processor := PodAggregator{}
@@ -93,4 +128,16 @@ func TestPodAggregator(t *testing.T) {
 	labelNsName, found := pod.Labels[core.LabelNamespaceName.Key]
 	assert.True(t, found)
 	assert.Equal(t, "ns1", labelNsName)
+
+	pod, found = result.MetricSets[core.PodKey("ns1", "pod2")]
+	assert.True(t, found)
+
+	m1, found = pod.MetricValues["m1"]
+	assert.True(t, found)
+	assert.Equal(t, int64(100), m1.IntValue)
+
+	m2, found = pod.MetricValues["m2"]
+	assert.True(t, found)
+	assert.Equal(t, int64(20), m2.IntValue)
+
 }

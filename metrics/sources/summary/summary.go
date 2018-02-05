@@ -188,6 +188,9 @@ func (this *summaryMetricsSource) decodePodStats(metrics map[string]*MetricSet, 
 
 	this.decodeUptime(podMetrics, pod.StartTime.Time)
 	this.decodeNetworkStats(podMetrics, pod.Network)
+	this.decodeCPUStats(podMetrics, pod.CPU)
+	this.decodeMemoryStats(podMetrics, pod.Memory)
+	this.decodeEphemeralStorageStats(podMetrics, pod.EphemeralStorage)
 	for _, vol := range pod.VolumeStats {
 		this.decodeFsStats(podMetrics, VolumeResourcePrefix+vol.Name, &vol.FsStats)
 	}
@@ -253,6 +256,14 @@ func (this *summaryMetricsSource) decodeCPUStats(metrics *MetricSet, cpu *stats.
 	}
 
 	this.addIntMetric(metrics, &MetricCpuUsage, cpu.UsageCoreNanoSeconds)
+}
+
+func (this *summaryMetricsSource) decodeEphemeralStorageStats(metrics *MetricSet, storage *stats.FsStats) {
+	if storage == nil {
+		glog.V(9).Infof("missing storage usage metric!")
+		return
+	}
+	this.addIntMetric(metrics, &MetricEphemeralStorageUsage, storage.UsedBytes)
 }
 
 func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *stats.MemoryStats) {

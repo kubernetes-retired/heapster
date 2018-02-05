@@ -86,6 +86,12 @@ type PodStats struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	Containers []ContainerStats `json:"containers" patchStrategy:"merge" patchMergeKey:"name"`
+	// Stats pertaining to CPU resources consumed by pod cgroup (which includes all containers' resource usage and pod overhead).
+	// +optional
+	CPU *CPUStats `json:"cpu,omitempty"`
+	// Stats pertaining to memory (RAM) resources consumed by pod cgroup (which includes all containers' resource usage and pod overhead).
+	// +optional
+	Memory *MemoryStats `json:"memory,omitempty"`
 	// Stats pertaining to network resources.
 	// +optional
 	Network *NetworkStats `json:"network,omitempty"`
@@ -95,6 +101,9 @@ type PodStats struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	VolumeStats []VolumeStats `json:"volume,omitempty" patchStrategy:"merge" patchMergeKey:"name"`
+	// EphemeralStorage reports the total filesystem usage for the containers and emptyDir-backed volumes in the measured Pod.
+	// +optional
+	EphemeralStorage *FsStats `json:"ephemeral-storage,omitempty"`
 }
 
 // ContainerStats holds container-level unprocessed sample stats.
