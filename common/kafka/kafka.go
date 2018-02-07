@@ -170,7 +170,6 @@ func getSASLConfiguration(opts url.Values) (string, string, bool, error) {
 	return user, password, true, nil
 }
 
-// getOptionsWithoutSecrets return sink options with *** for secret options.
 func getOptionsWithoutSecrets(values url.Values) string {
 	var password []string
 	if len(values["password"]) != 0 {
