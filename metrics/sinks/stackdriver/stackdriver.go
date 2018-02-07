@@ -729,7 +729,6 @@ func (sink *StackdriverSink) getContainerResourceLabels(labels map[string]string
 		"location":       sink.clusterLocation,
 		"cluster_name":   sink.clusterName,
 		"namespace_name": labels[core.LabelNamespaceName.Key],
-		"node_name":      labels[core.LabelNodename.Key],
 		"pod_name":       labels[core.LabelPodName.Key],
 		"container_name": labels[core.LabelContainerName.Key],
 	}
@@ -741,7 +740,6 @@ func (sink *StackdriverSink) getPodResourceLabels(labels map[string]string) map[
 		"location":       sink.clusterLocation,
 		"cluster_name":   sink.clusterName,
 		"namespace_name": labels[core.LabelNamespaceName.Key],
-		"node_name":      labels[core.LabelNodename.Key],
 		"pod_name":       labels[core.LabelPodName.Key],
 	}
 }
