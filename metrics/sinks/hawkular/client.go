@@ -16,8 +16,8 @@ package hawkular
 
 import (
 	"fmt"
+	"hash/fnv"
 	"math"
-	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -28,33 +28,97 @@ import (
 	"k8s.io/heapster/metrics/core"
 )
 
-// Fetches definitions from the server and checks that they're matching the descriptors
-func (h *hawkularSink) updateDefinitions(mt metrics.MetricType) error {
-	m := make([]metrics.Modifier, len(h.modifiers), len(h.modifiers)+1)
-	copy(m, h.modifiers)
-	m = append(m, metrics.Filters(metrics.TypeFilter(mt)))
-
-	mds, err := h.client.Definitions(m...)
-	if err != nil {
-		return err
-	}
-
-	h.regLock.Lock()
-	defer h.regLock.Unlock()
-
-	for _, p := range mds {
-		// If no descriptorTag is found, this metric does not belong to Heapster
-		if mk, found := p.Tags[descriptorTag]; found {
-			if model, f := h.models[mk]; f && !h.recent(p, model) {
-				if err := h.client.UpdateTags(mt, p.ID, p.Tags, h.modifiers...); err != nil {
-					return err
-				}
-			}
-			h.reg[p.ID] = p
+// cacheDefinitions Fetches all known definitions from all tenants (all projects in Openshift)
+func (h *hawkularSink) cacheDefinitions() error {
+	if !h.disablePreCaching {
+		mds, err := h.client.AllDefinitions(h.modifiers...)
+		if err != nil {
+			return err
+		}
+		err = h.updateDefinitions(mds)
+		if err != nil {
+			return err
 		}
 	}
 
+	glog.V(4).Infof("Hawkular definition pre-caching completed, cached %d definitions\n", len(h.expReg))
+
 	return nil
+}
+
+// cache inserts the item to the cache
+func (h *hawkularSink) cache(md *metrics.MetricDefinition) {
+	h.pushToCache(md.ID, hashDefinition(md))
+}
+
+// toCache inserts the item and updates the TTL in the cache to current time
+func (h *hawkularSink) pushToCache(key string, hash uint64) {
+	h.regLock.Lock()
+	h.expReg[key] = &expiringItem{
+		hash: hash,
+		ttl:  h.runId,
+	}
+	h.regLock.Unlock()
+}
+
+// checkCache returns false if the cached instance is not current. Updates the TTL in the cache
+func (h *hawkularSink) checkCache(key string, hash uint64) bool {
+	h.regLock.Lock()
+	defer h.regLock.Unlock()
+	_, found := h.expReg[key]
+	if !found || h.expReg[key].hash != hash {
+		return false
+	}
+	// Update the TTL
+	h.expReg[key].ttl = h.runId
+	return true
+}
+
+// expireCache will process the map and check for any item that has been expired and release it
+func (h *hawkularSink) expireCache(runId uint64) {
+	h.regLock.Lock()
+	defer h.regLock.Unlock()
+
+	for k, v := range h.expReg {
+		if (v.ttl + h.cacheAge) <= runId {
+			delete(h.expReg, k)
+		}
+	}
+}
+
+// Fetches definitions from the server and checks that they're matching the descriptors
+func (h *hawkularSink) updateDefinitions(mds []*metrics.MetricDefinition) error {
+	for _, p := range mds {
+		if model, f := h.models[p.Tags[descriptorTag]]; f && !h.recent(p, model) {
+			if err := h.client.UpdateTags(p.Type, p.ID, p.Tags, h.modifiers...); err != nil {
+				return err
+			}
+		}
+		h.cache(p)
+	}
+
+	return nil
+}
+
+func hashDefinition(md *metrics.MetricDefinition) uint64 {
+	h := fnv.New64a()
+
+	h.Write([]byte(md.Type))
+	h.Write([]byte(md.ID))
+
+	helper := fnv.New64a()
+
+	var hashCode uint64
+
+	for k, v := range md.Tags {
+		helper.Reset()
+		helper.Write([]byte(k))
+		helper.Write([]byte(v))
+		vH := helper.Sum64()
+		hashCode = hashCode ^ vH
+	}
+
+	return hashCode
 }
 
 // Checks that stored definition is up to date with the model
@@ -150,13 +214,33 @@ func (h *hawkularSink) nodeName(ms *core.MetricSet) string {
 	return ms.Labels[core.LabelNodename.Key]
 }
 
-func (h *hawkularSink) createDefinitionFromModel(ms *core.MetricSet, metric core.LabeledMetric) (*metrics.MetricDefinition, error) {
+func (h *hawkularSink) createDefinitionFromModel(ms *core.MetricSet, metric core.LabeledMetric) (*metrics.MetricDefinition, uint64) {
 	if md, f := h.models[metric.Name]; f {
+		hasher := fnv.New64a()
+
+		hasher.Write([]byte(md.Type))
+		hasher.Write([]byte(md.ID))
+
+		helper := fnv.New64a()
+
+		var hashCode uint64
+
+		helperFunc := func(k string, v string, hashCode uint64) uint64 {
+			helper.Reset()
+			helper.Write([]byte(k))
+			helper.Write([]byte(v))
+			vH := helper.Sum64()
+			hashCode = hashCode ^ vH
+
+			return hashCode
+		}
+
 		// Copy the original map
 		mdd := *md
-		tags := make(map[string]string)
+		tags := make(map[string]string, len(mdd.Tags)+len(ms.Labels)+len(metric.Labels)+2+8) // 8 is just arbitrary extra for potential splits
 		for k, v := range mdd.Tags {
 			tags[k] = v
+			hashCode = helperFunc(k, v, hashCode)
 		}
 		mdd.Tags = tags
 
@@ -170,7 +254,9 @@ func (h *hawkularSink) createDefinitionFromModel(ms *core.MetricSet, metric core
 					if len(labelKeyValue) != 2 {
 						glog.V(4).Infof("Could not split the label %v into its key and value pair. This label will not be added as a tag in Hawkular Metrics.", label)
 					} else {
-						mdd.Tags[h.labelTagPrefix+labelKeyValue[0]] = labelKeyValue[1]
+						labelKey := h.labelTagPrefix + labelKeyValue[0]
+						mdd.Tags[labelKey] = labelKeyValue[1]
+						hashCode = helperFunc(labelKey, labelKeyValue[1], hashCode)
 					}
 				}
 			}
@@ -179,18 +265,23 @@ func (h *hawkularSink) createDefinitionFromModel(ms *core.MetricSet, metric core
 		// Set the labeled values
 		for k, v := range metric.Labels {
 			mdd.Tags[k] = v
+			hashCode = helperFunc(k, v, hashCode)
 		}
 
-		mdd.Tags[groupTag] = h.groupName(ms, metric.Name)
+		groupName := h.groupName(ms, metric.Name)
+		mdd.Tags[groupTag] = groupName
 		mdd.Tags[descriptorTag] = metric.Name
 
-		return &mdd, nil
+		hashCode = helperFunc(groupTag, groupName, hashCode)
+		hashCode = helperFunc(descriptorTag, metric.Name, hashCode)
+
+		return &mdd, hashCode
 	}
-	return nil, fmt.Errorf("Could not find definition model with name %s", metric.Name)
+	return nil, 0
+	// return nil, fmt.Errorf("Could not find definition model with name %s", metric.Name)
 }
 
-func (h *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric core.LabeledMetric, m ...metrics.Modifier) error {
-
+func (h *hawkularSink) registerLabeledIfNecessaryInline(ms *core.MetricSet, metric core.LabeledMetric, wg *sync.WaitGroup, m ...metrics.Modifier) error {
 	var key string
 	if resourceID, found := metric.Labels[core.LabelResourceID.Key]; found {
 		key = h.idName(ms, metric.Name+separator+resourceID)
@@ -198,32 +289,23 @@ func (h *hawkularSink) registerLabeledIfNecessary(ms *core.MetricSet, metric cor
 		key = h.idName(ms, metric.Name)
 	}
 
-	mdd, err := h.createDefinitionFromModel(ms, metric)
-	if err != nil {
-		return err
+	mdd, mddHash := h.createDefinitionFromModel(ms, metric)
+	if mddHash != 0 && !h.checkCache(key, mddHash) {
+
+		wg.Add(1)
+		go func(ms *core.MetricSet, labeledMetric core.LabeledMetric, m ...metrics.Modifier) {
+			defer wg.Done()
+			m = append(m, h.modifiers...)
+			// Create metric, use updateTags instead of Create because we don't care about uniqueness
+			if err := h.client.UpdateTags(heapsterTypeToHawkularType(metric.MetricType), key, mdd.Tags, m...); err != nil {
+				// Log error and don't add this key to the lookup table
+				glog.Errorf("Could not update tags: %s", err)
+				return
+				// return err
+			}
+			h.pushToCache(key, mddHash)
+		}(ms, metric, m...)
 	}
-
-	h.regLock.RLock()
-	if _, found := h.reg[key]; !found || !reflect.DeepEqual(mdd.Tags, h.reg[key].Tags) {
-		// I'm going to release the lock to allow concurrent processing, even if that
-		// can cause dual updates (highly unlikely). The UpdateTags is idempotent in any case.
-		h.regLock.RUnlock()
-		m = append(m, h.modifiers...)
-
-		// Create metric, use updateTags instead of Create because we don't care about uniqueness
-		if err := h.client.UpdateTags(heapsterTypeToHawkularType(metric.MetricType), key, mdd.Tags, m...); err != nil {
-			// Log error and don't add this key to the lookup table
-			glog.Errorf("Could not update tags: %s", err)
-			return err
-		}
-
-		h.regLock.Lock()
-		h.reg[key] = mdd
-		h.regLock.Unlock()
-	} else {
-		h.regLock.RUnlock()
-	}
-
 	return nil
 }
 

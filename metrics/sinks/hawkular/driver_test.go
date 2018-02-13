@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -34,7 +35,7 @@ import (
 
 func dummySink() *hawkularSink {
 	return &hawkularSink{
-		reg:    make(map[string]*metrics.MetricDefinition),
+		expReg: make(map[string]*expiringItem),
 		models: make(map[string]*metrics.MetricDefinition),
 	}
 }
@@ -295,40 +296,45 @@ func integSink(uri string) (*hawkularSink, error) {
 // Test that the tags for metric is updated..
 func TestRegister(t *testing.T) {
 	m := &sync.Mutex{}
-	definitionsCalled := make(map[string]bool)
+	// definitionsCalled := make(map[string]bool)
 	updateTagsCalled := false
+	requests := 0
 
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		m.Lock()
 		defer m.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 
-		if strings.Contains(r.RequestURI, "metrics?type=") {
-			typ := r.RequestURI[strings.Index(r.RequestURI, "type=")+5:]
-			definitionsCalled[typ] = true
-			if typ == "gauge" {
-				fmt.Fprintln(w, `[{ "id": "test.create.gauge.1", "tenantId": "test-heapster", "type": "gauge", "tags": { "descriptor_name": "test/metric/1" } }]`)
-			} else {
+		if strings.Contains(r.RequestURI, "tenants") {
+			fmt.Fprintln(w, `[{ "id": "test-heapster"},{"id": "fgahj-fgas-basf-gegsg" }]`)
+		} else {
+			tenant := r.Header.Get("Hawkular-Tenant")
+			if tenant != "test-heapster" {
+				requests++
 				w.WriteHeader(http.StatusNoContent)
+				return
 			}
-		} else if strings.Contains(r.RequestURI, "/tags") && r.Method == "PUT" {
-			updateTagsCalled = true
-			// assert.True(t, strings.Contains(r.RequestURI, "k1:d1"), "Tag k1 was not updated with value d1")
-			defer r.Body.Close()
-			b, err := ioutil.ReadAll(r.Body)
-			assert.NoError(t, err)
+			if strings.Contains(r.RequestURI, "metrics?tags=descriptor_name%3A%2A") || strings.Contains(r.RequestURI, "openshift") {
+				requests++
+				fmt.Fprintln(w, `[{ "id": "test.create.gauge.1", "tenantId": "test-heapster", "type": "gauge", "tags": { "descriptor_name": "test/metric/1" } }]`)
+			} else if strings.Contains(r.RequestURI, "/tags") && r.Method == "PUT" {
+				updateTagsCalled = true
+				defer r.Body.Close()
+				b, err := ioutil.ReadAll(r.Body)
+				assert.NoError(t, err)
 
-			tags := make(map[string]string)
-			err = json.Unmarshal(b, &tags)
-			assert.NoError(t, err)
+				tags := make(map[string]string)
+				err = json.Unmarshal(b, &tags)
+				assert.NoError(t, err)
 
-			_, kt1 := tags["k1_description"]
-			_, dt := tags["descriptor_name"]
+				_, kt1 := tags["k1_description"]
+				_, dt := tags["descriptor_name"]
 
-			assert.True(t, kt1, "k1_description tag is missing")
-			assert.True(t, dt, "descriptor_name is missing")
+				assert.True(t, kt1, "k1_description tag is missing")
+				assert.True(t, dt, "descriptor_name is missing")
 
-			w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusOK)
+			}
 		}
 	}))
 	defer s.Close()
@@ -362,14 +368,12 @@ func TestRegister(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(hSink.models))
-	assert.Equal(t, 1, len(hSink.reg))
+	assert.Equal(t, 1, len(hSink.expReg))
 
-	assert.True(t, definitionsCalled["gauge"], "Gauge definitions were not fetched")
-	assert.True(t, definitionsCalled["counter"], "Counter definitions were not fetched")
 	assert.True(t, updateTagsCalled, "Updating outdated tags was not called")
+	assert.Equal(t, 1, requests)
 
 	// Try without pre caching
-	definitionsCalled = make(map[string]bool)
 	updateTagsCalled = false
 
 	hSink, err = integSink(s.URL + "?tenant=test-heapster&disablePreCache=true")
@@ -379,10 +383,8 @@ func TestRegister(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(hSink.models))
-	assert.Equal(t, 0, len(hSink.reg))
+	assert.Equal(t, 0, len(hSink.expReg))
 
-	assert.False(t, definitionsCalled["gauge"], "Gauge definitions were fetched")
-	assert.False(t, definitionsCalled["counter"], "Counter definitions were fetched")
 	assert.False(t, updateTagsCalled, "Updating outdated tags was called")
 }
 
@@ -541,23 +543,13 @@ func TestTags(t *testing.T) {
 	//register the metric definitions
 	hSink.Register([]core.MetricDescriptor{smd})
 	//register the metrics themselves
-	hSink.registerLabeledIfNecessary(&metricSet, labeledMetric)
+	wg := &sync.WaitGroup{}
+	hSink.registerLabeledIfNecessaryInline(&metricSet, labeledMetric, wg)
 
+	wg.Wait()
 	assert.Equal(t, 1, tagsUpdated)
 
-	tags := hSink.reg["test-container/test-podid/test/metric/A/XYZ"].Tags
-	assert.Equal(t, 10, len(tags))
-	assert.Equal(t, "test-label", tags["projectId"])
-	assert.Equal(t, "test-container", tags[core.LabelContainerName.Key])
-	assert.Equal(t, "test-podid", tags[core.LabelPodId.Key])
-	assert.Equal(t, "test-container/test/metric/A", tags["group_id"])
-	assert.Equal(t, "test/metric/A", tags["descriptor_name"])
-	assert.Equal(t, "XYZ", tags[core.LabelResourceID.Key])
-	assert.Equal(t, "bytes", tags["units"])
-
-	assert.Equal(t, "testLabelA:testValueA,testLabelB:testValueB", tags[core.LabelLabels.Key])
-	assert.Equal(t, "testValueA", tags["labels.testLabelA"])
-	assert.Equal(t, "testValueB", tags["labels.testLabelB"])
+	assert.True(t, hSink.expReg["test-container/test-podid/test/metric/A/XYZ"].hash > 0)
 
 	assert.Equal(t, 10, len(serverTags))
 	assert.Equal(t, "test-label", serverTags["projectId"])
@@ -575,18 +567,91 @@ func TestTags(t *testing.T) {
 	// Make modifications to the metrics and check that they're updated correctly
 
 	// First, no changes - no update should happen
-	hSink.registerLabeledIfNecessary(&metricSet, labeledMetric)
+	hSink.registerLabeledIfNecessaryInline(&metricSet, labeledMetric, wg)
+	wg.Wait()
 	assert.Equal(t, 1, tagsUpdated)
 
 	// Now modify the labels and expect an update
 	metricSet.Labels[core.LabelLabels.Key] = "testLabelA:testValueA,testLabelB:testValueB,testLabelC:testValueC"
-	hSink.registerLabeledIfNecessary(&metricSet, labeledMetric)
+	hSink.registerLabeledIfNecessaryInline(&metricSet, labeledMetric, wg)
+	wg.Wait()
 	assert.Equal(t, 2, tagsUpdated)
 
 	assert.Equal(t, "testLabelA:testValueA,testLabelB:testValueB,testLabelC:testValueC", serverTags[core.LabelLabels.Key])
 	assert.Equal(t, "testValueA", serverTags["labels.testLabelA"])
 	assert.Equal(t, "testValueB", serverTags["labels.testLabelB"])
 	assert.Equal(t, "testValueC", serverTags["labels.testLabelC"])
+}
+
+func TestExpiringCache(t *testing.T) {
+	total := 10
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer s.Close()
+
+	hSink, err := integSink(s.URL + "?tenant=test-heapster&labelToTenant=projectId&batchSize=20&concurrencyLimit=5")
+	assert.NoError(t, err)
+
+	l := make(map[string]string)
+	l["projectId"] = "test-label"
+	l[core.LabelContainerName.Key] = "test-container"
+	l[core.LabelPodId.Key] = "test-podid"
+
+	metrics := make(map[string]core.MetricValue, total)
+	descriptors := make([]core.MetricDescriptor, total)
+	for i := 0; i < total; i++ {
+		id := fmt.Sprintf("test/metric/%d", i)
+		metrics[id] = core.MetricValue{
+			ValueType:  core.ValueInt64,
+			MetricType: core.MetricCumulative,
+			IntValue:   123 * int64(i),
+		}
+		descriptors = append(descriptors, core.MetricDescriptor{
+			Name:      id,
+			Units:     core.UnitsBytes,
+			ValueType: core.ValueInt64,
+			Type:      core.MetricGauge,
+		})
+	}
+
+	err = hSink.Register(descriptors)
+	assert.NoError(t, err)
+
+	metricSet := core.MetricSet{
+		Labels:       l,
+		MetricValues: metrics,
+	}
+
+	data := core.DataBatch{
+		Timestamp: time.Now(),
+		MetricSets: map[string]*core.MetricSet{
+			"pod1": &metricSet,
+		},
+	}
+
+	hSink.ExportData(&data)
+	hSink.regLock.RLock()
+	assert.Equal(t, total, len(hSink.expReg))
+	assert.Equal(t, uint64(1), hSink.expReg["test-container/test-podid/test/metric/9"].ttl)
+	hSink.regLock.RUnlock()
+
+	// Now delete part of the metrics and then check that they're expired
+	delete(metrics, "test/metric/1")
+	delete(metrics, "test/metric/6")
+
+	data.Timestamp = time.Now()
+	hSink.ExportData(&data)
+	hSink.regLock.RLock()
+	assert.Equal(t, total, len(hSink.expReg))
+	assert.Equal(t, uint64(2), hSink.expReg["test-container/test-podid/test/metric/9"].ttl)
+	hSink.regLock.RUnlock()
+
+	data.Timestamp = time.Now()
+	hSink.ExportData(&data)
+	hSink.regLock.RLock()
+	assert.Equal(t, total-2, len(hSink.expReg))
+	hSink.regLock.RUnlock()
 }
 
 func TestUserPass(t *testing.T) {
@@ -603,6 +668,7 @@ func TestUserPass(t *testing.T) {
 
 	hSink, err := integSink(s.URL + "?user=tester&pass=hidden")
 	assert.NoError(t, err)
+	assert.Equal(t, 1, len(hSink.modifiers))
 
 	// md := make([]core.MetricDescriptor, 0, 1)
 	ld := core.LabelDescriptor{
@@ -731,7 +797,6 @@ func TestFiltering(t *testing.T) {
 
 	assert.Equal(t, 1, len(mH))
 }
-
 func TestBatchingTimeseries(t *testing.T) {
 	total := 1000
 	m := &sync.Mutex{}
@@ -802,4 +867,73 @@ func TestBatchingTimeseries(t *testing.T) {
 		}
 		newIds[v] = true
 	}
+}
+
+func BenchmarkTagsUpdates(b *testing.B) {
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer s.Close()
+	hSink, err := integSink(s.URL + "?tenant=test-heapster&labelToTenant=projectId&batchSize=1000&concurrencyLimit=16")
+	if err != nil {
+		b.FailNow()
+	}
+
+	smd := core.MetricDescriptor{
+		Name:      "test/metric/A",
+		Units:     core.UnitsBytes,
+		ValueType: core.ValueInt64,
+		Type:      core.MetricGauge,
+		Labels:    []core.LabelDescriptor{},
+	}
+
+	//register the metric definitions
+	hSink.Register([]core.MetricDescriptor{smd})
+	total := 10000
+
+	mset := make(map[string]*core.MetricSet)
+	for i := 0; i < total; i++ {
+		id := fmt.Sprintf("pod-%d", i)
+
+		l := make(map[string]string)
+		l["projectId"] = strconv.Itoa(i)
+		for i := 0; i < 32; i++ {
+			tagName := fmt.Sprintf("tag_name_%d", i)
+			tagValue := fmt.Sprintf("tag_value_%d", i)
+			l[tagName] = tagValue
+			l[core.LabelPodId.Key] = id
+		}
+
+		metrics := make(map[string]core.MetricValue)
+		metrics["test/metric/A"] = core.MetricValue{
+			ValueType:  core.ValueInt64,
+			MetricType: core.MetricCumulative,
+			IntValue:   123,
+		}
+
+		metricSet := core.MetricSet{
+			Labels:       l,
+			MetricValues: metrics,
+		}
+		mset[id] = &metricSet
+	}
+
+	data := core.DataBatch{
+		Timestamp:  time.Now(),
+		MetricSets: mset,
+	}
+
+	fmt.Printf("Generated data with %d metricSets\n", len(data.MetricSets))
+	hSink.init()
+	hSink.Register([]core.MetricDescriptor{smd})
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		for a := 0; a < 10; a++ {
+			data.Timestamp = time.Now()
+			hSink.ExportData(&data)
+		}
+	}
+
+	fmt.Printf("Amount of unique definitions: %d\n", len(hSink.expReg))
 }
