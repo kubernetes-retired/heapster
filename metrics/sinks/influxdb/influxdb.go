@@ -211,7 +211,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	bp := influxdb.BatchPoints{
 		Points:          dataPoints,
 		Database:        sink.c.DbName,
-		RetentionPolicy: "default",
+		RetentionPolicy: sink.c.RetentionPolicyName,
 	}
 
 	start := time.Now()
@@ -277,7 +277,7 @@ func (sink *influxdbSink) createDatabase() error {
 
 func (sink *influxdbSink) createRetentionPolicy() error {
 	q := influxdb.Query{
-		Command: fmt.Sprintf(`CREATE RETENTION POLICY "default" ON %s DURATION %s REPLICATION 1 DEFAULT`, sink.c.DbName, sink.c.RetentionPolicy),
+		Command: fmt.Sprintf(`CREATE RETENTION POLICY "%s" ON %s DURATION %s REPLICATION 1 DEFAULT`, sink.c.RetentionPolicyName, sink.c.DbName, sink.c.RetentionPolicy),
 	}
 
 	if resp, err := sink.client.Query(q); err != nil {
@@ -286,7 +286,7 @@ func (sink *influxdbSink) createRetentionPolicy() error {
 		}
 	}
 
-	glog.Infof("Created retention policy 'default' in database %q on influxDB server at %q", sink.c.DbName, sink.c.Host)
+	glog.Infof("Created retention policy '%s' in database %q on influxDB server at %q", sink.c.RetentionPolicyName, sink.c.DbName, sink.c.Host)
 	return nil
 }
 
