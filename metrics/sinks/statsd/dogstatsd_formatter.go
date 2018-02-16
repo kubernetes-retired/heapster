@@ -16,18 +16,18 @@ package statsd
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	"k8s.io/heapster/metrics/core"
+	"regexp"
 	"sort"
 	"strings"
-	"github.com/golang/glog"
-	"regexp"
 )
 
 type DogstatsdFormatter struct {
 	delimReplacer *strings.Replacer
 }
 
-var allowedChars ="[a-zA-Z_][a-zA-Z0-9_]*"
+var allowedChars = "[a-zA-Z_][a-zA-Z0-9_]*"
 var replacer *regexp.Regexp
 
 func (formatter *DogstatsdFormatter) Format(prefix string, name string, labels map[string]string, customizeLabel CustomizeLabel, metricValue core.MetricValue) (res string, err error) {
@@ -75,8 +75,8 @@ func (formatter *DogstatsdFormatter) expandUserLabels(labels map[string]string) 
 	return res
 }
 
-func sanitizeLabel(src string) string{
-	return replacer.ReplaceAllString(src,"_")
+func sanitizeLabel(src string) string {
+	return replacer.ReplaceAllString(src, "_")
 }
 
 func NewDogstatsdFormatter() Formatter {
