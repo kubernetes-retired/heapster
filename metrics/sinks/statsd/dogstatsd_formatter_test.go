@@ -39,9 +39,9 @@ var dogstatsMetricValue = core.MetricValue{
 }
 
 func TestDogStatsFormatWithoutLabels(t *testing.T) {
-	expectedMsg := "testprefix.testmetric:1000|g"
+	expectedMsg := "testprefix.testmetric:1000|g|#"
 
-	formatter := NewInfluxstatsdFormatter()
+	formatter := NewDogstatsdFormatter()
 	assert.NotNil(t, formatter)
 
 	msg, err := formatter.Format(dogstatsPrefix, dogstatsMetricName, nil, SnakeToLowerCamel, dogstatsMetricValue)
@@ -50,9 +50,9 @@ func TestDogStatsFormatWithoutLabels(t *testing.T) {
 }
 
 func TestDogStatsFormatWithLabels(t *testing.T) {
-	expectedMsg := "testprefix.testmetric:1000|g|#testTag1=value1,testTag2=value2,testTag3=value3"
+	expectedMsg := "testprefix.testmetric:1000|g|#testTag1:value1,testTag2:value2,testTag3:value3"
 
-	formatter := NewInfluxstatsdFormatter()
+	formatter := NewDogstatsdFormatter()
 	assert.NotNil(t, formatter)
 
 	msg, err := formatter.Format(dogstatsPrefix, dogstatsMetricName, dogstatsLabels, SnakeToLowerCamel, dogstatsMetricValue)
@@ -61,9 +61,9 @@ func TestDogStatsFormatWithLabels(t *testing.T) {
 }
 
 func TestDogStatsFormatWithoutPrefix(t *testing.T) {
-	expectedMsg := "testmetric:1000|g|#TestTag1=value1,TestTag2=value2,TestTag3=value3"
+	expectedMsg := "testmetric:1000|g|#TestTag1:value1,TestTag2:value2,TestTag3:value3"
 
-	formatter := NewInfluxstatsdFormatter()
+	formatter := NewDogstatsdFormatter()
 	assert.NotNil(t, formatter)
 
 	msg, err := formatter.Format("", dogstatsMetricName, dogstatsLabels, SnakeToUpperCamel, dogstatsMetricValue)

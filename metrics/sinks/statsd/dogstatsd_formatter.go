@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"k8s.io/heapster/metrics/core"
-	"regexp"
 	"sort"
 	"strings"
 )
@@ -27,11 +26,7 @@ type DogstatsdFormatter struct {
 	delimReplacer *strings.Replacer
 }
 
-var allowedChars = "[a-zA-Z_][a-zA-Z0-9_]*"
-var replacer *regexp.Regexp
-
 func (formatter *DogstatsdFormatter) Format(prefix string, name string, labels map[string]string, customizeLabel CustomizeLabel, metricValue core.MetricValue) (res string, err error) {
-	replacer = regexp.MustCompile(allowedChars)
 	expandedLabels := formatter.expandUserLabels(labels)
 	keys := make([]string, len(expandedLabels))
 	finalizedLabels := make([]string, len(expandedLabels))
@@ -43,13 +38,13 @@ func (formatter *DogstatsdFormatter) Format(prefix string, name string, labels m
 	for _, k := range keys {
 		v := expandedLabels[k]
 		if v != "" {
-			finalizedLabels[idx] = fmt.Sprintf("%s:%s", customizeLabel(sanitizeLabel(k)), formatter.delimReplacer.Replace(v))
+			finalizedLabels[idx] = fmt.Sprintf("%s:%s", customizeLabel(formatter.delimReplacer.Replace(k)), formatter.delimReplacer.Replace(v))
 			idx++
 		}
 	}
 
 	res = fmt.Sprintf("%s:%v|g|#%s",
-		fmt.Sprintf("%s%s", sanitizeLabel(prefix), sanitizeLabel(name)), metricValue.GetValue(),
+		fmt.Sprintf("%s%s", formatter.delimReplacer.Replace(prefix), formatter.delimReplacer.Replace(name)), metricValue.GetValue(),
 		strings.Join(finalizedLabels, ","))
 
 	return res, nil
@@ -73,10 +68,6 @@ func (formatter *DogstatsdFormatter) expandUserLabels(labels map[string]string) 
 		}
 	}
 	return res
-}
-
-func sanitizeLabel(src string) string {
-	return replacer.ReplaceAllString(src, "_")
 }
 
 func NewDogstatsdFormatter() Formatter {
