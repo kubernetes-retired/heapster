@@ -46,6 +46,8 @@ func NewFormatter(protocolType string) (formatter Formatter, err error) {
 		return NewEtsystatsdFormatter(), nil
 	case "influxstatsd":
 		return NewInfluxstatsdFormatter(), nil
+	case "dogstatsd":
+		return NewDogstatsdFormatter(), nil
 	default:
 		return nil, fmt.Errorf("Unknown statd formatter %s", protocolType)
 	}
