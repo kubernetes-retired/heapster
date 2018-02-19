@@ -82,7 +82,7 @@
                   }
                 ],
                 "measurement": "cpu/usage_rate",
-                "query": "SELECT sum(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
                 "rawQuery": false,
                 "refId": "A",
                 "resultFormat": "time_series",
@@ -144,7 +144,7 @@
                   }
                 ],
                 "measurement": "cpu/limit",
-                "query": "SELECT sum(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
                 "rawQuery": false,
                 "refId": "B",
                 "resultFormat": "time_series",
@@ -206,7 +206,7 @@
                   }
                 ],
                 "measurement": "cpu/request",
-                "query": "SELECT sum(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
                 "rawQuery": false,
                 "refId": "C",
                 "resultFormat": "time_series",
@@ -328,7 +328,7 @@
                   }
                 ],
                 "measurement": "memory/usage",
-                "query": "SELECT sum(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
                 "rawQuery": false,
                 "refId": "A",
                 "resultFormat": "time_series",
@@ -390,7 +390,7 @@
                   }
                 ],
                 "measurement": "memory/limit",
-                "query": "SELECT sum(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
                 "rawQuery": false,
                 "refId": "B",
                 "resultFormat": "time_series",
@@ -452,7 +452,7 @@
                   }
                 ],
                 "measurement": "memory/request",
-                "query": "SELECT sum(\"value\") FROM \"memory/request\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/request\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
                 "rawQuery": false,
                 "refId": "C",
                 "resultFormat": "time_series",
@@ -514,7 +514,7 @@
                   }
                 ],
                 "measurement": "memory/working_set",
-                "query": "SELECT sum(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'pod_container' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval), \"container_name\" fill(null)",
                 "rawQuery": false,
                 "refId": "D",
                 "resultFormat": "time_series",
@@ -630,7 +630,7 @@
                   }
                 ],
                 "measurement": "network/tx_rate",
-                "query": "SELECT sum(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'pod' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'pod' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval) fill(null)",
                 "rawQuery": false,
                 "refId": "A",
                 "resultFormat": "time_series",
@@ -686,7 +686,7 @@
                   }
                 ],
                 "measurement": "network/rx_rate",
-                "query": "SELECT sum(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'pod' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'pod' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval) fill(null)",
                 "rawQuery": false,
                 "refId": "B",
                 "resultFormat": "time_series",
@@ -802,7 +802,7 @@
                   }
                 ],
                 "measurement": "filesystem/usage",
-                "query": "SELECT sum(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'pod' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'pod' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval) fill(null)",
                 "rawQuery": false,
                 "refId": "A",
                 "resultFormat": "time_series",
@@ -858,7 +858,7 @@
                   }
                 ],
                 "measurement": "filesystem/limit",
-                "query": "SELECT sum(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'pod' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'pod' AND \"namespace_name\" =~ /$namespace$/ AND \"pod_name\" =~ /$podname$/ AND $timeFilter GROUP BY time($interval) fill(null)",
                 "rawQuery": false,
                 "refId": "B",
                 "resultFormat": "time_series",

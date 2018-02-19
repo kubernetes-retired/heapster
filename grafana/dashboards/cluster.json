@@ -76,7 +76,7 @@
                   }
                 ],
                 "measurement": "cpu/usage_rate",
-                "query": "SELECT sum(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -119,7 +119,7 @@
                   }
                 ],
                 "measurement": "cpu/limit",
-                "query": "SELECT sum(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
@@ -162,7 +162,7 @@
                   }
                 ],
                 "measurement": "cpu/request",
-                "query": "SELECT sum(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "C",
                 "resultFormat": "time_series",
                 "select": [
@@ -279,7 +279,7 @@
                   }
                 ],
                 "measurement": "cpu/usage_rate",
-                "query": "SELECT sum(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -328,7 +328,7 @@
                   }
                 ],
                 "measurement": "cpu/limit",
-                "query": "SELECT sum(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
@@ -377,7 +377,7 @@
                   }
                 ],
                 "measurement": "cpu/request",
-                "query": "SELECT sum(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "C",
                 "resultFormat": "time_series",
                 "select": [
@@ -486,7 +486,7 @@
                   }
                 ],
                 "measurement": "cpu/usage_rate",
-                "query": "SELECT sum(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/usage_rate\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -541,7 +541,7 @@
                   }
                 ],
                 "measurement": "cpu/limit",
-                "query": "SELECT sum(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/limit\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
@@ -596,7 +596,7 @@
                   }
                 ],
                 "measurement": "cpu/request",
-                "query": "SELECT sum(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"cpu/request\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "C",
                 "resultFormat": "time_series",
                 "select": [
@@ -713,7 +713,7 @@
                   }
                 ],
                 "measurement": "memory/usage",
-                "query": "SELECT sum(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
@@ -756,7 +756,7 @@
                   }
                 ],
                 "measurement": "memory/working_set",
-                "query": "SELECT sum(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "C",
                 "resultFormat": "time_series",
                 "select": [
@@ -800,7 +800,7 @@
                 ],
                 "hide": false,
                 "measurement": "memory/limit",
-                "query": "SELECT sum(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -844,7 +844,7 @@
                 ],
                 "hide": false,
                 "measurement": "memory/request",
-                "query": "SELECT sum(\"value\") FROM \"memory/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "D",
                 "resultFormat": "time_series",
                 "select": [
@@ -953,7 +953,7 @@
                   }
                 ],
                 "measurement": "memory/usage",
-                "query": "SELECT sum(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
@@ -1002,7 +1002,7 @@
                   }
                 ],
                 "measurement": "memory/working_set",
-                "query": "SELECT sum(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -1051,7 +1051,7 @@
                   }
                 ],
                 "measurement": "memory/limit",
-                "query": "SELECT sum(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "C",
                 "resultFormat": "time_series",
                 "select": [
@@ -1100,7 +1100,7 @@
                   }
                 ],
                 "measurement": "memory/request",
-                "query": "SELECT sum(\"value\") FROM \"memory/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/request\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "D",
                 "resultFormat": "time_series",
                 "select": [
@@ -1217,7 +1217,7 @@
                   }
                 ],
                 "measurement": "memory/usage",
-                "query": "SELECT sum(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/usage\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
@@ -1272,7 +1272,7 @@
                   }
                 ],
                 "measurement": "memory/working_set",
-                "query": "SELECT sum(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/working_set\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -1327,7 +1327,7 @@
                   }
                 ],
                 "measurement": "memory/limit",
-                "query": "SELECT sum(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/limit\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "C",
                 "resultFormat": "time_series",
                 "select": [
@@ -1382,7 +1382,7 @@
                   }
                 ],
                 "measurement": "memory/request",
-                "query": "SELECT sum(\"value\") FROM \"memory/request\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"memory/request\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "D",
                 "resultFormat": "time_series",
                 "select": [
@@ -1491,7 +1491,7 @@
                   }
                 ],
                 "measurement": "network/tx_rate",
-                "query": "SELECT sum(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -1534,7 +1534,7 @@
                   }
                 ],
                 "measurement": "network/rx_rate",
-                "query": "SELECT sum(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
@@ -1643,7 +1643,7 @@
                   }
                 ],
                 "measurement": "network/tx_rate",
-                "query": "SELECT sum(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "rawQuery": false,
                 "refId": "A",
                 "resultFormat": "time_series",
@@ -1693,7 +1693,7 @@
                   }
                 ],
                 "measurement": "network/rx_rate",
-                "query": "SELECT sum(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "rawQuery": false,
                 "refId": "B",
                 "resultFormat": "time_series",
@@ -1803,7 +1803,7 @@
                   }
                 ],
                 "measurement": "network/tx_rate",
-                "query": "SELECT sum(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"network/tx_rate\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "rawQuery": false,
                 "refId": "A",
                 "resultFormat": "time_series",
@@ -1859,7 +1859,7 @@
                   }
                 ],
                 "measurement": "network/rx_rate",
-                "query": "SELECT sum(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"network/rx_rate\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "rawQuery": false,
                 "refId": "B",
                 "resultFormat": "time_series",
@@ -1969,7 +1969,7 @@
                   }
                 ],
                 "measurement": "filesystem/usage",
-                "query": "SELECT sum(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -2012,7 +2012,7 @@
                   }
                 ],
                 "measurement": "filesystem/limit",
-                "query": "SELECT sum(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
+                "query": "SELECT max(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval) fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
@@ -2121,7 +2121,7 @@
                   }
                 ],
                 "measurement": "filesystem/usage",
-                "query": "SELECT sum(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -2170,7 +2170,7 @@
                   }
                 ],
                 "measurement": "filesystem/limit",
-                "query": "SELECT sum(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'node' AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
@@ -2279,7 +2279,7 @@
                   }
                 ],
                 "measurement": "filesystem/usage",
-                "query": "SELECT sum(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"filesystem/usage\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "A",
                 "resultFormat": "time_series",
                 "select": [
@@ -2334,7 +2334,7 @@
                   }
                 ],
                 "measurement": "filesystem/limit",
-                "query": "SELECT sum(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
+                "query": "SELECT max(\"value\") FROM \"filesystem/limit\" WHERE \"type\" = 'node' AND \"nodename\" =~ /$nodename$/ AND $timeFilter GROUP BY time($interval), \"nodename\" fill(null)",
                 "refId": "B",
                 "resultFormat": "time_series",
                 "select": [
