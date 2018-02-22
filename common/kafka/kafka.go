@@ -170,8 +170,7 @@ func getSASLConfiguration(opts url.Values) (string, string, bool, error) {
 	return user, password, true, nil
 }
 
-// usageKafkaclient return sink options with *** for password option.
-func usageKafkaclient(values url.Values) string {
+func getOptionsWithoutSecrets(values url.Values) string {
 	var password []string
 	if len(values["password"]) != 0 {
 		password = values["password"]
@@ -187,7 +186,7 @@ func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse url's query string: %s", err)
 	}
-	glog.V(3).Info(usageKafkaclient(opts))
+	glog.V(3).Info(getOptionsWithoutSecrets(opts))
 
 	topic, err := getTopic(opts, topicType)
 	if err != nil {
