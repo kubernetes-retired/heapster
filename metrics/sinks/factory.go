@@ -87,7 +87,7 @@ func (this *SinkFactory) BuildAll(uris flags.Uris, historicalUri string, disable
 	for _, uri := range uris {
 		sink, err := this.Build(uri)
 		if err != nil {
-			glog.Errorf("Failed to create %s sink: %v", sink.Name(), err)
+			glog.Errorf("Failed to create %s sink: %v", uri.Key, err)
 			continue
 		}
 		if uri.Key == "metric" {
