@@ -59,7 +59,7 @@ func (this *SinkFactory) BuildAll(uris flags.Uris) []core.EventSink {
 	for _, uri := range uris {
 		sink, err := this.Build(uri)
 		if err != nil {
-			glog.Errorf("Failed to create sink: %v", err)
+			glog.Errorf("Failed to create %s sink: %v", uri, err)
 			continue
 		}
 		result = append(result, sink)
