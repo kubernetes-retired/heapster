@@ -1,4 +1,5 @@
 {
+  "dashboard": {
     "id": null,
     "title": "Pods",
     "originalTitle": "Pods",
@@ -1054,4 +1055,6 @@
     "schemaVersion": 8,
     "version": 14,
     "links": []
+  },
+  "overwrite": false
 }
