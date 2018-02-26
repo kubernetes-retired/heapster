@@ -15,9 +15,12 @@
 package v1alpha1
 
 import (
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api/v1"
 )
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // resource usage metrics of a node.
 type NodeMetrics struct {
@@ -33,6 +36,9 @@ type NodeMetrics struct {
 	Usage v1.ResourceList `json:"usage"`
 }
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // NodeMetricsList is a list of NodeMetrics.
 type NodeMetricsList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -43,6 +49,9 @@ type NodeMetricsList struct {
 	// List of node metrics.
 	Items []NodeMetrics `json:"items"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // resource usage metrics of a pod.
 type PodMetrics struct {
@@ -57,6 +66,9 @@ type PodMetrics struct {
 	// Metrics for all containers are collected within the same time window.
 	Containers []ContainerMetrics `json:"containers"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PodMetricsList is a list of PodMetrics.
 type PodMetricsList struct {

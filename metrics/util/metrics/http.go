@@ -61,10 +61,41 @@ func InstrumentRouteFunc(handlerName string, routeFunc restful.RouteFunction) re
 	opts.Help = "The HTTP response sizes in bytes."
 	resSz := prometheus.NewSummary(opts)
 
-	regReqCnt := prometheus.MustRegisterOrGet(reqCnt).(*prometheus.CounterVec)
-	regReqDur := prometheus.MustRegisterOrGet(reqDur).(prometheus.Summary)
-	regReqSz := prometheus.MustRegisterOrGet(reqSz).(prometheus.Summary)
-	regResSz := prometheus.MustRegisterOrGet(resSz).(prometheus.Summary)
+	//regReqCnt := prometheus.MustRegisterOrGet(reqCnt).(*prometheus.CounterVec)
+	//regReqDur := prometheus.MustRegisterOrGet(reqDur).(prometheus.Summary)
+	//regReqSz := prometheus.MustRegisterOrGet(reqSz).(prometheus.Summary)
+	//regResSz := prometheus.MustRegisterOrGet(resSz).(prometheus.Summary)
+	if err := prometheus.Register(reqCnt); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			reqCnt = are.ExistingCollector.(*prometheus.CounterVec)
+		} else {
+			panic(err)
+		}
+	}
+
+	if err := prometheus.Register(reqDur); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			reqDur = are.ExistingCollector.(prometheus.Summary)
+		} else {
+			panic(err)
+		}
+	}
+
+	if err := prometheus.Register(reqSz); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			reqSz = are.ExistingCollector.(prometheus.Summary)
+		} else {
+			panic(err)
+		}
+	}
+
+	if err := prometheus.Register(resSz); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			resSz = are.ExistingCollector.(prometheus.Summary)
+		} else {
+			panic(err)
+		}
+	}
 
 	return restful.RouteFunction(func(request *restful.Request, response *restful.Response) {
 		now := time.Now()
@@ -95,10 +126,10 @@ func InstrumentRouteFunc(handlerName string, routeFunc restful.RouteFunction) re
 
 		method := strings.ToLower(request.Request.Method)
 		code := strconv.Itoa(delegate.status)
-		regReqCnt.WithLabelValues(method, code).Inc()
-		regReqDur.Observe(elapsed)
-		regResSz.Observe(float64(delegate.written))
-		regReqSz.Observe(float64(<-out))
+		reqCnt.WithLabelValues(method, code).Inc()
+		reqDur.Observe(elapsed)
+		resSz.Observe(float64(delegate.written))
+		reqSz.Observe(float64(<-out))
 	})
 }
 

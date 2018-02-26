@@ -15,9 +15,9 @@
 package metrics
 
 import (
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/pkg/api"
 )
 
 // GroupName is the group name use in this package
@@ -47,7 +47,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&NodeMetricsList{},
 		&PodMetrics{},
 		&PodMetricsList{},
-		&api.ListOptions{},
+		&v1.ListOptions{},
 	)
 	return nil
 }

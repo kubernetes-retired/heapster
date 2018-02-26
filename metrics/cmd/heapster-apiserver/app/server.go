@@ -19,11 +19,12 @@ package app
 
 import (
 	"fmt"
+	"net"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/client-go/kubernetes/scheme"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/heapster/metrics/options"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
 )
@@ -60,27 +61,26 @@ func NewHeapsterApiServer(s *options.HeapsterRunOptions, metricSink *metricsink.
 }
 
 func newAPIServer(s *options.HeapsterRunOptions) (*genericapiserver.GenericAPIServer, error) {
-	if err := s.SecureServing.MaybeDefaultWithSelfSignedCerts("heapster.kube-system"); err != nil {
+	if err := s.SecureServing.MaybeDefaultWithSelfSignedCerts("heapster.kube-system", []string{}, []net.IP{}); err != nil {
 		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
 	}
 
-	serverConfig := genericapiserver.NewConfig().
-		WithSerializer(api.Codecs)
+	serverConfig := genericapiserver.NewConfig(scheme.Codecs)
 
-	if err := s.SecureServing.ApplyTo(serverConfig); err != nil {
+	if err := s.SecureServing.ApplyTo(&serverConfig.SecureServing); err != nil {
 		return nil, err
 	}
 
 	if !s.DisableAuthForTesting {
-		if err := s.Authentication.ApplyTo(serverConfig); err != nil {
+		if err := s.Authentication.ApplyTo(&serverConfig.Authentication, serverConfig.SecureServing, serverConfig.OpenAPIConfig); err != nil {
 			return nil, err
 		}
-		if err := s.Authorization.ApplyTo(serverConfig); err != nil {
+		if err := s.Authorization.ApplyTo(&serverConfig.Authorization); err != nil {
 			return nil, err
 		}
 	}
 
 	serverConfig.SwaggerConfig = genericapiserver.DefaultSwaggerConfig()
 
-	return serverConfig.Complete().New()
+	return serverConfig.Complete(nil).New("server", genericapiserver.EmptyDelegate)
 }

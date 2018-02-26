@@ -26,11 +26,11 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
+	kube_v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
-	kube_v1 "k8s.io/client-go/pkg/api/v1"
 	api_v1 "k8s.io/heapster/metrics/api/v1/types"
 	metrics_api "k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/core"

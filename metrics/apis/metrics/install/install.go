@@ -18,13 +18,13 @@ import (
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go//kubernetes/scheme/"
 	"k8s.io/heapster/metrics/apis/metrics"
 	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 )
 
 func init() {
-	Install(api.GroupFactoryRegistry, api.Registry, api.Scheme)
+	Install(api.GroupFactoryRegistry, scheme.Registry, scheme.Scheme)
 }
 
 // Install registers the API group and adds types to a scheme

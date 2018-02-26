@@ -9,14 +9,11 @@ reviewers:
 - mikedanese
 - liggitt
 - nikhiljindal
-- bprashanth
 - gmarek
-- kargakis
 - justinsb
 - roberthbailey
 - ncdc
 - eparis
-- timothysc
 - dims
 - hongchaodeng
 - krousey
@@ -24,7 +21,6 @@ reviewers:
 - euank
 - markturansky
 - fgrzadkowski
-- satnam6502
 - fabioy
 - ingvagabund
 - david-mcmahon
@@ -33,3 +29,4 @@ reviewers:
 - feihujiang
 - sdminonne
 - goltermann
+- enj

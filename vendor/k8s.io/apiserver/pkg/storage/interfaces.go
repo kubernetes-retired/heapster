@@ -26,7 +26,11 @@ import (
 )
 
 // Versioner abstracts setting and retrieving metadata fields from database response
-// onto the object ot list.
+// onto the object ot list. It is required to maintain storage invariants - updating an
+// object twice with the same data except for the ResourceVersion and SelfLink must be
+// a no-op. A resourceVersion of type uint64 is a 'raw' resourceVersion,
+// intended to be sent directly to or from the backend. A resourceVersion of
+// type string is a 'safe' resourceVersion, intended for consumption by users.
 type Versioner interface {
 	// UpdateObject sets storage metadata into an API object. Returns an error if the object
 	// cannot be updated correctly. May return nil if the requested object does not need metadata
@@ -34,11 +38,26 @@ type Versioner interface {
 	UpdateObject(obj runtime.Object, resourceVersion uint64) error
 	// UpdateList sets the resource version into an API list object. Returns an error if the object
 	// cannot be updated correctly. May return nil if the requested object does not need metadata
-	// from database.
-	UpdateList(obj runtime.Object, resourceVersion uint64) error
+	// from database. continueValue is optional and indicates that more results are available if
+	// the client passes that value to the server in a subsequent call.
+	UpdateList(obj runtime.Object, resourceVersion uint64, continueValue string) error
+	// PrepareObjectForStorage should set SelfLink and ResourceVersion to the empty value. Should
+	// return an error if the specified object cannot be updated.
+	PrepareObjectForStorage(obj runtime.Object) error
 	// ObjectResourceVersion returns the resource version (for persistence) of the specified object.
 	// Should return an error if the specified object does not have a persistable version.
 	ObjectResourceVersion(obj runtime.Object) (uint64, error)
+
+	// ParseWatchResourceVersion takes a resource version argument and
+	// converts it to the storage backend we should pass to helper.Watch().
+	// Because resourceVersion is an opaque value, the default watch
+	// behavior for non-zero watch is to watch the next value (if you pass
+	// "1", you will see updates from "2" onwards).
+	ParseWatchResourceVersion(resourceVersion string) (uint64, error)
+	// ParseListResourceVersion takes a resource version argument and
+	// converts it to the storage backend version. Appropriate for
+	// everything that's not intended as an argument for watch.
+	ParseListResourceVersion(resourceVersion string) (uint64, error)
 }
 
 // ResponseMeta contains information about the database metadata that is associated with
@@ -64,14 +83,12 @@ type MatchValue struct {
 // to that function.
 type TriggerPublisherFunc func(obj runtime.Object) []MatchValue
 
-// FilterFunc takes an API object and returns true if the object satisfies some requirements.
-// TODO: We will remove this type and use SelectionPredicate everywhere.
-type FilterFunc func(obj runtime.Object) bool
-
 // Everything accepts all objects.
 var Everything = SelectionPredicate{
 	Label: labels.Everything(),
 	Field: fields.Everything(),
+	// TODO: split this into a new top level constant?
+	IncludeUninitialized: true,
 }
 
 // Pass an UpdateFunc to Interface.GuaranteedUpdate to make an update
