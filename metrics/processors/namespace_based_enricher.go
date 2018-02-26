@@ -20,9 +20,9 @@ import (
 
 	"github.com/golang/glog"
 
+	kube_api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	kube_client "k8s.io/client-go/kubernetes"
-	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/core"
@@ -87,7 +87,7 @@ func NewNamespaceBasedEnricher(url *url.URL) (*NamespaceBasedEnricher, error) {
 	lw := cache.NewListWatchFromClient(kubeClient.Core().RESTClient(), "namespaces", kube_api.NamespaceAll, fields.Everything())
 	store := cache.NewStore(cache.MetaNamespaceKeyFunc)
 	reflector := cache.NewReflector(lw, &kube_api.Namespace{}, store, time.Hour)
-	reflector.Run()
+	reflector.Run(make(chan struct{}))
 
 	return &NamespaceBasedEnricher{
 		store:     store,

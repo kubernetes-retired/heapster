@@ -20,7 +20,6 @@ import (
 	"net/url"
 	"strconv"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	kube_rest "k8s.io/client-go/rest"
 	kubeClientCmd "k8s.io/client-go/tools/clientcmd"
 	kubeClientCmdApi "k8s.io/client-go/tools/clientcmd/api"
@@ -39,7 +38,7 @@ const (
 func getConfigOverrides(uri *url.URL) (*kubeClientCmd.ConfigOverrides, error) {
 	kubeConfigOverride := kubeClientCmd.ConfigOverrides{
 		ClusterInfo: kubeClientCmdApi.Cluster{
-			APIVersion: APIVersion,
+		//APIVersion: APIVersion,
 		},
 	}
 	if len(uri.Scheme) != 0 && len(uri.Host) != 0 {
@@ -49,7 +48,7 @@ func getConfigOverrides(uri *url.URL) (*kubeClientCmd.ConfigOverrides, error) {
 	opts := uri.Query()
 
 	if len(opts["apiVersion"]) >= 1 {
-		kubeConfigOverride.ClusterInfo.APIVersion = opts["apiVersion"][0]
+		//kubeConfigOverride.ClusterInfo.APIVersion = opts["apiVersion"][0]
 	}
 
 	if len(opts["insecure"]) > 0 {
@@ -92,8 +91,7 @@ func GetKubeClientConfig(uri *url.URL) (*kube_rest.Config, error) {
 		if configOverrides.ClusterInfo.Server != "" {
 			kubeConfig.Host = configOverrides.ClusterInfo.Server
 		}
-		kubeConfig.GroupVersion = &schema.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion}
-		kubeConfig.Insecure = configOverrides.ClusterInfo.InsecureSkipTLSVerify
+		kubeConfig.TLSClientConfig.Insecure = configOverrides.ClusterInfo.InsecureSkipTLSVerify
 		if configOverrides.ClusterInfo.InsecureSkipTLSVerify {
 			kubeConfig.TLSClientConfig.CAFile = ""
 		}
@@ -121,10 +119,12 @@ func GetKubeClientConfig(uri *url.URL) (*kube_rest.Config, error) {
 			}
 		} else {
 			kubeConfig = &kube_rest.Config{
-				Host:     configOverrides.ClusterInfo.Server,
-				Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
+				Host: configOverrides.ClusterInfo.Server,
+				//nsecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
+				TLSClientConfig: kube_rest.TLSClientConfig{
+					Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
+				},
 			}
-			kubeConfig.GroupVersion = &schema.GroupVersion{Version: configOverrides.ClusterInfo.APIVersion}
 		}
 	}
 	if len(kubeConfig.Host) == 0 {

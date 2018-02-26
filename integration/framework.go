@@ -25,12 +25,12 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	kclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/kubernetes/scheme/"
 	kclientcmd "k8s.io/client-go/tools/clientcmd"
 	kclientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -354,7 +354,7 @@ func (self *realKubeFramework) loadObject(filePath string) (runtime.Object, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to read object: %v", err)
 	}
-	obj, _, err := api.Codecs.UniversalDecoder(v1.SchemeGroupVersion).Decode(data, nil, nil)
+	obj, _, err := scheme.Codecs.UniversalDecoder(v1.SchemeGroupVersion).Decode(data, nil, nil)
 	return obj, err
 }
 

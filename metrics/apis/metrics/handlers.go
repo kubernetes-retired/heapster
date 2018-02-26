@@ -26,16 +26,17 @@ import (
 	restful "github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 
+	kube_v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	kube_v1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/heapster/metrics/core"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
 )
 
+// +k8s:deepcopy-gen=false
 type Api struct {
 	metricSink *metricsink.MetricSink
 	podLister  v1listers.PodLister

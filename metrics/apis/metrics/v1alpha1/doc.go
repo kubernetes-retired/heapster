@@ -12,4 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +k8s:deepcopy-gen=package
+
+// +groupName=metrics.k8s.io
 package v1alpha1 // import "k8s.io/heapster/metrics/apis/metrics/v1alpha1"

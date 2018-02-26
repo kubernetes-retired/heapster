@@ -10,7 +10,6 @@ reviewers:
 - mikedanese
 - liggitt
 - nikhiljindal
-- bprashanth
 - gmarek
 - davidopp
 - saad-ali
@@ -19,7 +18,6 @@ reviewers:
 - roberthbailey
 - ncdc
 - eparis
-- timothysc
 - jlowdermilk
 - piosz
 - dims
@@ -33,3 +31,4 @@ reviewers:
 - feihujiang
 - sdminonne
 - goltermann
+- enj

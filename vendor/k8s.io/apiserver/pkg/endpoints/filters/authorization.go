@@ -22,13 +22,14 @@ import (
 
 	"github.com/golang/glog"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
-	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
+	"k8s.io/apiserver/pkg/endpoints/request"
 )
 
 // WithAuthorizationCheck passes all authorized requests on to handler, and returns a forbidden error otherwise.
-func WithAuthorization(handler http.Handler, requestContextMapper request.RequestContextMapper, a authorizer.Authorizer) http.Handler {
+func WithAuthorization(handler http.Handler, requestContextMapper request.RequestContextMapper, a authorizer.Authorizer, s runtime.NegotiatedSerializer) http.Handler {
 	if a == nil {
 		glog.Warningf("Authorization is disabled")
 		return handler
@@ -46,7 +47,8 @@ func WithAuthorization(handler http.Handler, requestContextMapper request.Reques
 			return
 		}
 		authorized, reason, err := a.Authorize(attributes)
-		if authorized {
+		// an authorizer like RBAC could encounter evaluation errors and still allow the request, so authorizer decision is checked before error here.
+		if authorized == authorizer.DecisionAllow {
 			handler.ServeHTTP(w, req)
 			return
 		}
@@ -56,7 +58,7 @@ func WithAuthorization(handler http.Handler, requestContextMapper request.Reques
 		}
 
 		glog.V(4).Infof("Forbidden: %#v, Reason: %q", req.RequestURI, reason)
-		responsewriters.Forbidden(attributes, w, req, reason)
+		responsewriters.Forbidden(ctx, attributes, w, req, reason, s)
 	})
 }
 

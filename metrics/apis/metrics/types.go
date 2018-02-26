@@ -15,14 +15,17 @@
 package metrics
 
 import (
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api"
 )
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // resource usage metrics of a node.
 type NodeMetrics struct {
 	metav1.TypeMeta `json:",inline"`
-	api.ObjectMeta  `json:"metadata,omitempty"`
+	v1.ObjectMeta   `json:"metadata,omitempty"`
 
 	// The following fields define time interval from which metrics were
 	// collected from the interval [Timestamp-Window, Timestamp].
@@ -30,8 +33,11 @@ type NodeMetrics struct {
 	Window    metav1.Duration `json:"window"`
 
 	// The memory usage is the memory working set.
-	Usage api.ResourceList `json:"usage"`
+	Usage v1.ResourceList `json:"usage"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // NodeMetricsList is a list of NodeMetrics.
 type NodeMetricsList struct {
@@ -44,10 +50,13 @@ type NodeMetricsList struct {
 	Items []NodeMetrics `json:"items"`
 }
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // resource usage metrics of a pod.
 type PodMetrics struct {
 	metav1.TypeMeta `json:",inline"`
-	api.ObjectMeta  `json:"metadata,omitempty"`
+	v1.ObjectMeta   `json:"metadata,omitempty"`
 
 	// The following fields define time interval from which metrics were
 	// collected from the interval [Timestamp-Window, Timestamp].
@@ -57,6 +66,9 @@ type PodMetrics struct {
 	// Metrics for all containers are collected within the same time window.
 	Containers []ContainerMetrics `json:"containers"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PodMetricsList is a list of PodMetrics.
 type PodMetricsList struct {
@@ -74,5 +86,5 @@ type ContainerMetrics struct {
 	// Container name corresponding to the one from pod.spec.containers.
 	Name string `json:"name"`
 	// The memory usage is the memory working set.
-	Usage api.ResourceList `json:"usage"`
+	Usage v1.ResourceList `json:"usage"`
 }

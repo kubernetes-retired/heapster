@@ -17,26 +17,26 @@ package util
 import (
 	"fmt"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/heapster/metrics/core"
 )
 
-func ParseResourceList(ms *core.MetricSet) (api.ResourceList, error) {
+func ParseResourceList(ms *core.MetricSet) (v1.ResourceList, error) {
 	cpu, found := ms.MetricValues[core.MetricCpuUsageRate.MetricDescriptor.Name]
 	if !found {
-		return api.ResourceList{}, fmt.Errorf("cpu not found")
+		return v1.ResourceList{}, fmt.Errorf("cpu not found")
 	}
 	mem, found := ms.MetricValues[core.MetricMemoryWorkingSet.MetricDescriptor.Name]
 	if !found {
-		return api.ResourceList{}, fmt.Errorf("memory not found")
+		return v1.ResourceList{}, fmt.Errorf("memory not found")
 	}
 
-	return api.ResourceList{
-		api.ResourceCPU: *resource.NewMilliQuantity(
+	return v1.ResourceList{
+		v1.ResourceCPU: *resource.NewMilliQuantity(
 			cpu.IntValue,
 			resource.DecimalSI),
-		api.ResourceMemory: *resource.NewQuantity(
+		v1.ResourceMemory: *resource.NewQuantity(
 			mem.IntValue,
 			resource.BinarySI),
 	}, nil

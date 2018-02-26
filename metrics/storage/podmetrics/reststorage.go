@@ -20,6 +20,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,8 +30,6 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/heapster/metrics/core"
 	metricsink "k8s.io/heapster/metrics/sinks/metric"
 	"k8s.io/heapster/metrics/storage/util"
@@ -108,7 +107,7 @@ func (m *MetricStorage) Get(ctx genericapirequest.Context, name string, opts *me
 		return &metrics.PodMetrics{}, errMsg
 	}
 	if pod == nil {
-		return &metrics.PodMetrics{}, errors.NewNotFound(api.Resource("Pod"), fmt.Sprintf("%v/%v", namespace, name))
+		return &metrics.PodMetrics{}, errors.NewNotFound(v1.Resource("Pod"), fmt.Sprintf("%v/%v", namespace, name))
 	}
 
 	podMetrics := m.getPodMetrics(pod)

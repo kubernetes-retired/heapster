@@ -20,8 +20,8 @@ import (
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/storage"
 )
 
@@ -44,16 +44,28 @@ func (a APIObjectVersioner) UpdateObject(obj runtime.Object, resourceVersion uin
 }
 
 // UpdateList implements Versioner
-func (a APIObjectVersioner) UpdateList(obj runtime.Object, resourceVersion uint64) error {
-	listMeta, err := metav1.ListMetaFor(obj)
-	if err != nil || listMeta == nil {
+func (a APIObjectVersioner) UpdateList(obj runtime.Object, resourceVersion uint64, nextKey string) error {
+	listAccessor, err := meta.ListAccessor(obj)
+	if err != nil || listAccessor == nil {
 		return err
 	}
 	versionString := ""
 	if resourceVersion != 0 {
 		versionString = strconv.FormatUint(resourceVersion, 10)
 	}
-	listMeta.ResourceVersion = versionString
+	listAccessor.SetResourceVersion(versionString)
+	listAccessor.SetContinue(nextKey)
+	return nil
+}
+
+// PrepareObjectForStorage clears resource version and self link prior to writing to etcd.
+func (a APIObjectVersioner) PrepareObjectForStorage(obj runtime.Object) error {
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return err
+	}
+	accessor.SetResourceVersion("")
+	accessor.SetSelfLink("")
 	return nil
 }
 
@@ -68,6 +80,44 @@ func (a APIObjectVersioner) ObjectResourceVersion(obj runtime.Object) (uint64, e
 		return 0, nil
 	}
 	return strconv.ParseUint(version, 10, 64)
+}
+
+// ParseWatchResourceVersion takes a resource version argument and converts it to
+// the etcd version we should pass to helper.Watch(). Because resourceVersion is
+// an opaque value, the default watch behavior for non-zero watch is to watch
+// the next value (if you pass "1", you will see updates from "2" onwards).
+func (a APIObjectVersioner) ParseWatchResourceVersion(resourceVersion string) (uint64, error) {
+	if resourceVersion == "" || resourceVersion == "0" {
+		return 0, nil
+	}
+	version, err := strconv.ParseUint(resourceVersion, 10, 64)
+	if err != nil {
+		return 0, storage.NewInvalidError(field.ErrorList{
+			// Validation errors are supposed to return version-specific field
+			// paths, but this is probably close enough.
+			field.Invalid(field.NewPath("resourceVersion"), resourceVersion, err.Error()),
+		})
+	}
+	return version, nil
+}
+
+// ParseListResourceVersion takes a resource version argument and converts it to
+// the etcd version.
+// TODO: reevaluate whether it is really clearer to have both this and the
+// Watch version of this function, since they perform the same logic.
+func (a APIObjectVersioner) ParseListResourceVersion(resourceVersion string) (uint64, error) {
+	if resourceVersion == "" {
+		return 0, nil
+	}
+	version, err := strconv.ParseUint(resourceVersion, 10, 64)
+	if err != nil {
+		return 0, storage.NewInvalidError(field.ErrorList{
+			// Validation errors are supposed to return version-specific field
+			// paths, but this is probably close enough.
+			field.Invalid(field.NewPath("resourceVersion"), resourceVersion, err.Error()),
+		})
+	}
+	return version, nil
 }
 
 // APIObjectVersioner implements Versioner
