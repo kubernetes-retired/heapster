@@ -81,7 +81,7 @@ To use the GCL sink add the following flag:
 This sink supports monitoring metrics only.
 To use the StatsD sink add the following flag:
 ```
-  --sink="statsd:udp://<HOST>:<PORT>[?<OPTIONS>]"
+  --sink=statsd:udp://<HOST>:<PORT>[?<OPTIONS>]
 ```
 
 The following options are available:
@@ -95,7 +95,7 @@ The following options are available:
 
 For example.
 ```
-  --sink="statsd:udp://127.0.0.1:4125?prefix=kubernetes.example.&protocolType=influxstatsd&numMetricsPerMsg=10&renameLabels=type:k8s_type,host_name:k8s_host_name&allowedLabels=container_name,namespace_name,type,host_name&labelStyle=lowerCamelCase"
+  --sink=statsd:udp://127.0.0.1:4125?prefix=kubernetes.example.&protocolType=influxstatsd&numMetricsPerMsg=10&renameLabels=type:k8s_type,host_name:k8s_host_name&allowedLabels=container_name,namespace_name,type,host_name&labelStyle=lowerCamelCase
 ```
 
 #### etsystatsd metrics format
