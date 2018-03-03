@@ -49,15 +49,14 @@ build:
 	# Copy the whole directory to a temporary dir and set the base image
 	cp -r ./* $(TEMP_DIR)
 
-	cd $(TEMP_DIR) && sed -i "s|BASEIMAGE|$(BASEIMAGE)|g" Dockerfile
-
-	# Compile the binary inside a container for reliable builds
-	docker run --rm -it -v $(TEMP_DIR):/build -w /go/src/github.com/influxdb/influxdb golang:$(GOLANG_VERSION) /bin/bash -c "\
-		curl -sSL https://github.com/influxdata/influxdb/archive/$(VERSION).tar.gz | tar -xz --strip-components=1 \
-		&& go get github.com/sparrc/gdm \
-		&& gdm restore \
-		&& ln -s /go/src/github.com/influxdb/influxdb /go/src/github.com/influxdata/ \
-		&& GOARCH=$(ARCH) CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags=\"-s\" -o /build/influxd ./cmd/influxd"
+	cd $(TEMP_DIR) && \
+	echo $(TEMP_DIR) && \
+	sed -i- "s|BASEIMAGE|$(BASEIMAGE)|g" Dockerfile && \
+	sed -i- "s|GOLANG_VERSION|$(GOLANG_VERSION)|g" Dockerfile && \
+	sed -i- "s|VERSION|$(VERSION)|g" Dockerfile && \
+	sed -i- "s|ARCH|$(ARCH)|g" Dockerfile && \
+	rm Dockerfile && \
+	mv Dockerfile- Dockerfile
 
 	docker build --pull -t $(PREFIX)/heapster-influxdb-$(ARCH):$(VERSION) $(TEMP_DIR)
 
