@@ -362,6 +362,22 @@ Options can be set in query string, like this:
 For example,
 
     --sink="honeycomb:?dataset=mydataset&writekey=secretwritekey"
+    
+### Metricly
+
+This sink supports monitoring metrics only.
+
+To use the Metricly sink add the following flag:
+
+    --sink="metricly:<METRICLY_API_SERVER_URL>[?<OPTIONS>]"
+
+Options can be set in query string, like this:
+
+* `apiKey` - Metricly kubernetes datasource api key
+
+For example,
+
+    --sink="metricly:https://api.app.metricly.com/ingest?apiKey=<uuid>"
 
 ## Using multiple sinks
 
