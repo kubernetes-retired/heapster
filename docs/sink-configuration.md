@@ -374,6 +374,7 @@ To use the Metricly sink add the following flag:
 Options can be set in query string, like this:
 
 * `apiKey` - Metricly kubernetes datasource api key
+* `elementBatchSize` - Number of elements per payload that is sent to Metricly, the default size is `20`
 
 For example,
 

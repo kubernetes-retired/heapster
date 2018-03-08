@@ -14,17 +14,23 @@
 package metricly
 
 import (
+	"net/url"
+	"strings"
+
 	"github.com/golang/glog"
 	"github.com/metricly/go-client/api"
 	metricly_core "github.com/metricly/go-client/model/core"
 	"k8s.io/heapster/common/metricly"
 	"k8s.io/heapster/metrics/core"
-	"net/url"
-	"strings"
+)
+
+const (
+	defaultElementsPayloadSize = 20
 )
 
 type MetriclyMetricsSink struct {
 	client api.Client
+	config metricly.MetriclyConfig
 }
 
 func (sink *MetriclyMetricsSink) Name() string {
@@ -34,19 +40,48 @@ func (sink *MetriclyMetricsSink) Name() string {
 func (sink *MetriclyMetricsSink) Stop() {
 }
 
+type chunk struct {
+	start, end int
+}
+
 func (sink *MetriclyMetricsSink) ExportData(batch *core.DataBatch) {
 	glog.Info("Start exporting data batch to metricly ...")
 	elements := DataBatchToElements(batch)
-	if err := sink.client.PostElements(elements); err != nil {
-		glog.Errorf("Error occurred  during exporting elements with response:  %s", err)
+	elementsPayloadSize := defaultElementsPayloadSize
+	if sink.config.ElementBatchSize > 0 {
+		elementsPayloadSize = sink.config.ElementBatchSize
 	}
-	glog.Info("Exported ", len(elements), " elements")
+	total := len(elements)
+	chunks := partition(total, elementsPayloadSize)
+	jobs := make(chan chunk, len(chunks))
+	count := make(chan int)
+	for _, c := range chunks {
+		jobs <- c
+	}
+	close(jobs)
+
+	for c := range jobs {
+		go func(c chunk) {
+			if err := sink.send(elements[c.start:c.end]); err == nil {
+				count <- c.end - c.start
+			} else {
+				glog.Warningf("Error occurred during exporting %d elements with response:  %v", c.end-c.start, err)
+				count <- 0
+			}
+		}(c)
+	}
+
+	var sent int
+	for i := 0; i < len(chunks); i++ {
+		sent += <-count
+	}
+	glog.Infof("Exported %d out of %d elements using %d workers", sent, len(elements), len(chunks))
 }
 
 func NewMetriclySink(uri *url.URL) (core.DataSink, error) {
 	config, _ := metricly.Config(uri)
 	glog.Info("Create metricly sink using config: ", config)
-	return &MetriclyMetricsSink{client: api.NewClient(config.ApiURL, config.ApiKey)}, nil
+	return &MetriclyMetricsSink{client: api.NewClient(config.ApiURL, config.ApiKey), config: config}, nil
 }
 
 func DataBatchToElements(batch *core.DataBatch) []metricly_core.Element {
@@ -138,4 +173,21 @@ func LinkElements(elements []metricly_core.Element) {
 
 func sanitizeMetricId(metricId string) string {
 	return strings.Replace(metricId, "/", ".", -1)
+}
+
+func partition(total, batch int) []chunk {
+	partitions := total / batch
+	var chunks []chunk
+	var i int
+	for i = 0; i < partitions; i++ {
+		chunks = append(chunks, chunk{start: i * batch, end: (i + 1) * batch})
+	}
+	if total%batch != 0 {
+		chunks = append(chunks, chunk{start: i * batch, end: total})
+	}
+	return chunks
+}
+
+func (sink *MetriclyMetricsSink) send(elements []metricly_core.Element) error {
+	return sink.client.PostElements(elements)
 }

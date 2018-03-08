@@ -13,11 +13,15 @@
 // limitations under the License.
 package metricly
 
-import "net/url"
+import (
+	"net/url"
+	"strconv"
+)
 
 type MetriclyConfig struct {
-	ApiURL string
-	ApiKey string
+	ApiURL           string
+	ApiKey           string
+	ElementBatchSize int
 }
 
 func Config(uri *url.URL) (MetriclyConfig, error) {
@@ -32,6 +36,11 @@ func Config(uri *url.URL) (MetriclyConfig, error) {
 	opts := uri.Query()
 	if len(opts["apiKey"]) > 0 {
 		config.ApiKey = opts["apiKey"][0]
+	}
+	if len(opts["elementBatchSize"]) > 0 {
+		if ebs, err := strconv.Atoi(opts["elementBatchSize"][0]); ebs > 0 && err == nil {
+			config.ElementBatchSize = ebs
+		}
 	}
 	return config, nil
 }
