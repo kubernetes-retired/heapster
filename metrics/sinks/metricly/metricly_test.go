@@ -14,10 +14,11 @@
 package metricly
 
 import (
-	metricly_core "github.com/metricly/go-client/model/core"
-	"k8s.io/heapster/metrics/core"
 	"testing"
 	"time"
+
+	metricly_core "github.com/metricly/go-client/model/core"
+	"k8s.io/heapster/metrics/core"
 )
 
 func TestConvertDataBatchToElements(t *testing.T) {
@@ -27,20 +28,20 @@ func TestConvertDataBatchToElements(t *testing.T) {
 	elements := DataBatchToElements(batch)
 	//then
 	if len(elements) != 1 {
-		t.Errorf("there should be 1 element in elements, but actual =  %d", len(elements))
+		t.Errorf("There should be 1 element in elements, but actual =  %d", len(elements))
 	}
 	e := elements[0]
 	if e.Id != "namespace:kube-system/pod:heapster-ww9r6" {
-		t.Errorf("element id is wrong")
+		t.Errorf("The element id is wrong")
 	}
 	if len(e.Tags()) != 9 {
-		t.Errorf("element has wrong numbe of tags")
+		t.Errorf("The element has the wrong number of tags")
 	}
 	if len(e.Metrics()) != 2 {
-		t.Errorf("element has wrong number of metrics")
+		t.Errorf("The element has the wrong number of metrics")
 	}
 	if len(e.Samples()) != 2 {
-		t.Errorf("element has wrong number of samples")
+		t.Errorf("The element has the wrong number of samples")
 	}
 
 }
@@ -96,7 +97,7 @@ func TestLinkElements(t *testing.T) {
 	LinkElements(elements)
 	//then
 	if len(elements) != 6 {
-		t.Errorf("there should be 6 elements in elements, but actual =  %d", len(elements))
+		t.Errorf("There should be 6 elements in elements, but actual =  %d", len(elements))
 	}
 	cluster := elements[0]
 	podContainer := elements[1]
@@ -105,22 +106,22 @@ func TestLinkElements(t *testing.T) {
 	ns := elements[4]
 	sysContainer := elements[5]
 	if len(cluster.Relations()) != 0 {
-		t.Errorf("cluster element should have no relations")
+		t.Errorf("The cluster element should have no relations")
 	}
 	if len(podContainer.Relations()) != 0 {
-		t.Errorf("pod_container element should have no relations")
+		t.Errorf("The pod_container element should have no relations")
 	}
 	if len(pod.Relations()) != 1 {
-		t.Errorf("pod element should have 1 relation, but only has %d", len(pod.Relations()))
+		t.Errorf("The pod element should have 1 relation, but only has %d", len(pod.Relations()))
 	}
 	if len(node.Relations()) != 3 {
-		t.Errorf("node elment should have 3 relations, but only has %d", len(node.Relations()))
+		t.Errorf("The node elment should have 3 relations, but only has %d", len(node.Relations()))
 	}
 	if len(ns.Relations()) != 2 {
-		t.Errorf("ns element should have 2 relations, but only has %d", len(ns.Relations()))
+		t.Errorf("The ns element should have 2 relations, but only has %d", len(ns.Relations()))
 	}
 	if len(sysContainer.Relations()) != 0 {
-		t.Errorf("sys_container element should have no relations")
+		t.Errorf("The sys_container element should have no relations")
 	}
 }
 

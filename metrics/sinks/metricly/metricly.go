@@ -80,7 +80,7 @@ func (sink *MetriclyMetricsSink) ExportData(batch *core.DataBatch) {
 
 func NewMetriclySink(uri *url.URL) (core.DataSink, error) {
 	config, _ := metricly.Config(uri)
-	glog.Info("Create metricly sink using config: ", config)
+	glog.Info("Create Metricly sink using config: ", config)
 	return &MetriclyMetricsSink{client: api.NewClient(config.ApiURL, config.ApiKey), config: config}, nil
 }
 
