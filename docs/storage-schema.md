@@ -120,7 +120,7 @@ For example, we have the measurement 'cpu' with fields 'node_reservation', 'node
 Also, all labels are stored as tags.
 Here the measurement list: cpu, filesystem, memory, network, uptime
 
-Also, standard Grafana dashboard are not working with this new schema, you have to use [new dashboards](/grafana/dashboards/influxdb_withfields)
+Also, standard Grafana dashboard is not working with this new schema, you have to use [new dashboards](/grafana/dashboards/influxdb_withfields)
 
 ### Google Cloud Monitoring
 
