@@ -335,7 +335,7 @@ func (this *summaryMetricsSource) decodeUserDefinedMetrics(metrics *MetricSet, u
 
 		// TODO: Handle double-precision values.
 		mv.ValueType = ValueFloat
-		mv.FloatValue = float32(metric.Value)
+		mv.FloatValue = metric.Value
 
 		metrics.MetricValues[CustomMetricPrefix+metric.Name] = mv
 	}
