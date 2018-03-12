@@ -55,7 +55,7 @@ func generateLabeledIntMetric(value int64, labels map[string]string, name string
 	}
 }
 
-func generateFloatMetric(value float32) core.MetricValue {
+func generateFloatMetric(value float64) core.MetricValue {
 	return core.MetricValue{
 		ValueType:  core.ValueFloat,
 		FloatValue: value,
