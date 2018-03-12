@@ -76,8 +76,8 @@ func (this *RateCalculator) Process(batch *core.DataBatch) (*core.DataBatch, err
 
 					if foundNew && foundOld {
 						if targetMetric.MetricDescriptor.ValueType == core.ValueFloat {
-							newVal := 1e9 * float32(metricValNew.IntValue-metricValOld.IntValue) /
-								float32(newMs.ScrapeTime.UnixNano()-oldMs.ScrapeTime.UnixNano())
+							newVal := 1e9 * float64(metricValNew.IntValue-metricValOld.IntValue) /
+								float64(newMs.ScrapeTime.UnixNano()-oldMs.ScrapeTime.UnixNano())
 
 							newMs.LabeledMetrics = append(newMs.LabeledMetrics, core.LabeledMetric{
 								Name:   targetMetric.MetricDescriptor.Name,
@@ -109,8 +109,8 @@ func (this *RateCalculator) Process(batch *core.DataBatch) (*core.DataBatch, err
 					}
 
 				} else if foundNew && foundOld && targetMetric.MetricDescriptor.ValueType == core.ValueFloat {
-					newVal := 1e9 * float32(metricValNew.IntValue-metricValOld.IntValue) /
-						float32(newMs.ScrapeTime.UnixNano()-oldMs.ScrapeTime.UnixNano())
+					newVal := 1e9 * float64(metricValNew.IntValue-metricValOld.IntValue) /
+						float64(newMs.ScrapeTime.UnixNano()-oldMs.ScrapeTime.UnixNano())
 
 					newMs.MetricValues[targetMetric.MetricDescriptor.Name] = core.MetricValue{
 						ValueType:  core.ValueFloat,

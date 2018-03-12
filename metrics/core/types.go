@@ -86,7 +86,7 @@ func (self *UnitsType) String() string {
 
 type MetricValue struct {
 	IntValue   int64
-	FloatValue float32
+	FloatValue float64
 	MetricType MetricType
 	ValueType  ValueType
 }
