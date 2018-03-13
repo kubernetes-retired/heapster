@@ -1,0 +1,109 @@
+# Automate the build and release of the image using Google Container Builder.
+#
+# How to use it:
+# gcloud container builds submit --config cloudbuild.yaml --no-source --substitutions _VERSION=v1.5.0-test
+# gcloud container builds submit --config cloudbuild.yaml --no-source --substitutions _ARCH="amd64 arm",_VERSION=v1.5.0-test
+#
+# Subtitutions:
+# _PREFIX: name of the docker registry for the docker image.
+# _GO_SRC_DIR: name of the directory where to checkout the k8s/heapster code.
+# _VERSION: string used in the docker image as the tag {image}:{version}. #1
+# _GOLANG_VERSION: golang image version to use. #1
+# _ARCH: build target architecture. #1
+#
+# 1) Empty means Makefile default.
+
+timeout: 10800s
+
+substitutions:
+  { "_PREFIX": "gcr.io/k8s-image-staging",
+    "_GO_SRC_DIR": "src/k8s.io",
+    "_VERSION": "",
+    "_GOLANG_VERSION": "",
+    "_ARCH": ""}
+
+steps:
+- name: gcr.io/cloud-builders/git
+  entrypoint: bash
+  args:
+  - "-c"
+  - |
+    set -e
+    mkdir -p ${_GO_SRC_DIR}
+    cd ${_GO_SRC_DIR}
+    git clone https://github.com/kubernetes/heapster.git
+
+- name: gcr.io/cloud-builders/docker
+  entrypoint: bash
+  dir: "${_GO_SRC_DIR}/heapster"
+  args:
+  - "-c"
+  - |
+    set -e
+    docker_image="golang"
+    golang_version="1.8"
+    if [[ "${_GOLANG_VERSION}" != "" ]] ; then
+      echo "Using golang:${_GOLANG_VERSION}"
+      golang_version="${_GOLANG_VERSION}"
+    else
+      echo "Use default Makefile golang version"
+      makefile_go_line=$(cat Makefile | grep "^GOLANG_VERSION?=")
+      makefile_golang=${makefile_go_line/GOLANG_VERSION?=/}
+      golang_version="${makefile_golang}"
+    fi
+    echo "Using golang:${golang_version} as golang:local_image"
+    docker pull golang:${golang_version}
+    docker tag golang:${golang_version} golang:local_image
+
+- name: golang:local_image
+  entrypoint: bash
+  args:
+  - "-c"
+  - |
+    set -e
+    export GOPATH=$(pwd)
+    workspace=$(pwd)
+    cd ${_GO_SRC_DIR}/heapster
+    all_archs=$(cat Makefile | grep "^ALL_ARCHITECTURES=")
+    all_archs=${all_archs/ALL_ARCHITECTURES=/}
+    if [[ "${_ARCH}" != "" ]] ; then
+      all_archs="${_ARCH}"
+    fi
+    for arch in ${all_archs} ; do
+      out_dir="${workspace}/${arch}"
+      mkdir ${out_dir}
+      # test-unit is not working for all the archs
+      # ARCH=${arch} make test-unit
+      ARCH=${arch} make build
+      cp heapster ${out_dir}/
+      cp eventer ${out_dir}/
+      cp /etc/ssl/certs/ca-certificates.crt ${out_dir}/
+    done
+
+# this docker image doesn't have make
+- name: gcr.io/cloud-builders/docker
+  entrypoint: bash
+  args:
+  - "-c"
+  - |
+    set -e
+    workspace=$(pwd)
+    makefile="${workspace}/${_GO_SRC_DIR}/heapster/Makefile"
+    all_archs=$(cat ${makefile} | grep "^ALL_ARCHITECTURES=")
+    all_archs=${all_archs/ALL_ARCHITECTURES=/}
+    if [[ "${_ARCH}" != "" ]] ; then
+      all_archs="${_ARCH}"
+    fi
+    image_version=$(cat ${makefile} | grep "^VERSION?=")
+    image_version=${image_version/VERSION?=/}
+    if [[ "${_VERSION}" != "" ]] ; then
+      image_version="${_VERSION}"
+    fi
+    for arch in ${all_archs} ; do
+      out_dir="${workspace}/${arch}"
+      echo "Building docker image for ${arch} from files in ${out_dir}"
+      cp ${_GO_SRC_DIR}/heapster/deploy/docker/Dockerfile ${out_dir}/
+      docker build -t ${_PREFIX}/heapster-${arch}:${image_version} ${out_dir}/
+      docker push ${_PREFIX}/heapster-${arch}:${image_version}
+    done
+
