@@ -45,7 +45,7 @@ type chunk struct {
 }
 
 func (sink *MetriclyMetricsSink) ExportData(batch *core.DataBatch) {
-	glog.Info("Start exporting data batch to metricly ...")
+	glog.Info("Start exporting data batch to Metricly ...")
 	elements := DataBatchToElements(batch)
 	elementsPayloadSize := defaultElementsPayloadSize
 	if sink.config.ElementBatchSize > 0 {
