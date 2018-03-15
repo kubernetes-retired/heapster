@@ -46,7 +46,7 @@ type chunk struct {
 
 func (sink *MetriclyMetricsSink) ExportData(batch *core.DataBatch) {
 	glog.Info("Start exporting data batch to Metricly ...")
-	elements := DataBatchToElements(batch)
+	elements := DataBatchToElements(sink.config, batch)
 	elementsPayloadSize := defaultElementsPayloadSize
 	if sink.config.ElementBatchSize > 0 {
 		elementsPayloadSize = sink.config.ElementBatchSize
@@ -84,10 +84,14 @@ func NewMetriclySink(uri *url.URL) (core.DataSink, error) {
 	return &MetriclyMetricsSink{client: api.NewClient(config.ApiURL, config.ApiKey), config: config}, nil
 }
 
-func DataBatchToElements(batch *core.DataBatch) []metricly_core.Element {
+func DataBatchToElements(config metricly.MetriclyConfig, batch *core.DataBatch) []metricly_core.Element {
 	ts := batch.Timestamp.Unix() * 1000
 	var elements []metricly_core.Element
 	for key, ms := range batch.MetricSets {
+		if !filter(config.InclusionFilters, config.ExclusionFilters, ms) {
+			glog.Info("metric set is dropped due to filtering, key: ", key)
+			continue
+		}
 		etype := ms.Labels["type"]
 		element := metricly_core.NewElement(key, key, etype, "")
 		// metric set labels to element tags
@@ -169,6 +173,39 @@ func LinkElements(elements []metricly_core.Element) {
 			}
 		}
 	}
+}
+
+//filter MetricSet against inclusion/exclusion filters and return true if it passes
+func filter(inf []metricly.Filter, exf []metricly.Filter, ms *core.MetricSet) bool {
+	return include(inf, ms) && !exclude(exf, ms)
+}
+
+func exclude(filters []metricly.Filter, ms *core.MetricSet) bool {
+	if len(filters) == 0 {
+		return false
+	}
+	for k, v := range ms.Labels {
+		for _, f := range filters {
+			if f.Type == "label" && k == f.Name && f.Regex.MatchString(v) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func include(filters []metricly.Filter, ms *core.MetricSet) bool {
+	if len(filters) == 0 {
+		return true
+	}
+	for k, v := range ms.Labels {
+		for _, f := range filters {
+			if f.Type == "label" && k == f.Name && f.Regex.MatchString(v) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func sanitizeMetricId(metricId string) string {

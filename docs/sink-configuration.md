@@ -375,6 +375,8 @@ Options can be set in query string, like this:
 
 * `apiKey` - Metricly kubernetes datasource api key
 * `elementBatchSize` - Number of elements per payload that is sent to Metricly, the default size is `20`
+* `filter` - Allows including or excluding metric sets to be posted to Metricly, any number of filter parameters can be given with a syntax of `filter=label:{type:pod.*}` and/or `filter=!label:{type:pod_container}`. Right now, only `label` fitler type is supported and its name and value regex are separated by `:`. The `!` before the `label` means it is an exculsion filter.
+
 
 For example,
 
