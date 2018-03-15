@@ -15,13 +15,33 @@ package metricly
 
 import (
 	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
+
+	"github.com/golang/glog"
 )
+
+var (
+	FilterRegex = regexp.MustCompile("\\s*(.+)\\s*:\\s*{(.+):(.*)}")
+)
+
+//Filter defines the filter type and its values
+//Type: type of the filter, only label is supported currently
+//Name: name of the filter
+//Regex: the regex that matches the name of the filter
+type Filter struct {
+	Type  string
+	Name  string
+	Regex *regexp.Regexp
+}
 
 type MetriclyConfig struct {
 	ApiURL           string
 	ApiKey           string
 	ElementBatchSize int
+	InclusionFilters []Filter
+	ExclusionFilters []Filter
 }
 
 func Config(uri *url.URL) (MetriclyConfig, error) {
@@ -42,5 +62,40 @@ func Config(uri *url.URL) (MetriclyConfig, error) {
 			config.ElementBatchSize = ebs
 		}
 	}
+	if len(opts["filter"]) > 0 {
+		for _, s := range opts["filter"] {
+			if strings.HasPrefix(s, "!") {
+				f, err := parseFilter(s[1:])
+				if err != nil {
+					glog.Warningf("Failed to parse filter %s, error: %s ", s, err.Error())
+					continue
+				}
+				config.ExclusionFilters = append(config.ExclusionFilters, f)
+
+			} else {
+				f, err := parseFilter(s)
+				if err != nil {
+					glog.Warningf("Failed to parsing filter %s, error: %s ", s, err.Error())
+					continue
+				}
+				config.InclusionFilters = append(config.InclusionFilters, f)
+
+			}
+		}
+	}
 	return config, nil
+}
+
+func parseFilter(s string) (Filter, error) {
+	matches := FilterRegex.FindStringSubmatch(s)
+	re, err := regexp.Compile(matches[3])
+	if err != nil {
+		return Filter{}, err
+	}
+	filter := Filter{
+		Type:  matches[1],
+		Name:  matches[2],
+		Regex: re,
+	}
+	return filter, nil
 }

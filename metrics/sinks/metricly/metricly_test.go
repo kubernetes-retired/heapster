@@ -14,10 +14,12 @@
 package metricly
 
 import (
+	"regexp"
 	"testing"
 	"time"
 
 	metricly_core "github.com/metricly/go-client/model/core"
+	"k8s.io/heapster/common/metricly"
 	"k8s.io/heapster/metrics/core"
 )
 
@@ -25,7 +27,7 @@ func TestConvertDataBatchToElements(t *testing.T) {
 	//given
 	batch := createDataBatch()
 	//when
-	elements := DataBatchToElements(batch)
+	elements := DataBatchToElements(metricly.MetriclyConfig{}, batch)
 	//then
 	if len(elements) != 1 {
 		t.Errorf("There should be 1 element in elements, but actual =  %d", len(elements))
@@ -88,6 +90,83 @@ func createDataBatch() *core.DataBatch {
 	}
 
 	return &batch
+}
+
+func TestInclusionFilter(t *testing.T) {
+	//given
+	re, _ := regexp.Compile("pod.*")
+	filters := []metricly.Filter{
+		{
+			Type:  "label",
+			Name:  "type",
+			Regex: re,
+		},
+	}
+	ms := &core.MetricSet{
+		Labels: map[string]string{
+			"type": "pod",
+		},
+	}
+	//when & then
+	if !include(filters, ms) {
+		t.Errorf("The metric set should be included and return true")
+	}
+}
+
+func TestExclusionFilter(t *testing.T) {
+	re, _ := regexp.Compile("sys_.*")
+	filters := []metricly.Filter{
+		{
+			Type:  "label",
+			Name:  "type",
+			Regex: re,
+		},
+	}
+	ms := &core.MetricSet{
+		Labels: map[string]string{
+			"type": "sys_container",
+		},
+	}
+	if !exclude(filters, ms) {
+		t.Errorf("The metric set should be excluded and return true")
+	}
+}
+
+func TestFilter(t *testing.T) {
+	//given
+	ire, _ := regexp.Compile("pod.*")
+	ifilters := []metricly.Filter{
+		{
+			Type:  "label",
+			Name:  "type",
+			Regex: ire,
+		},
+	}
+	ere, _ := regexp.Compile("pod_container")
+	efilters := []metricly.Filter{
+		{
+			Type:  "label",
+			Name:  "type",
+			Regex: ere,
+		},
+	}
+	pod := &core.MetricSet{
+		Labels: map[string]string{
+			"type": "pod",
+		},
+	}
+	container := &core.MetricSet{
+		Labels: map[string]string{
+			"type": "pod_container",
+		},
+	}
+	//when & then
+	if !filter(ifilters, efilters, pod) {
+		t.Errorf("pod should be pass the filter")
+	}
+	if filter(ifilters, efilters, container) {
+		t.Errorf("pod container should not pass the filter")
+	}
 }
 
 func TestLinkElements(t *testing.T) {
