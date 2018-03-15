@@ -20,7 +20,7 @@ import (
 
 func TestParsingMetriclyConfig(t *testing.T) {
 	//given
-	metriclyURI := "https://api.uat.netuitive.com/ingest?apiKey=datasourceApiKey&elementBatchSize=60&filter=label:{type:pod.*}&filter=!label:{type:pod_container}"
+	metriclyURI := "https://api.app.metricly.com/ingest?apiKey=datasourceApiKey&elementBatchSize=60&filter=label:{type:pod.*}&filter=!label:{type:pod_container}"
 	uri, err := url.Parse(metriclyURI)
 	if err != nil {
 		t.Fatalf("Error when parsing Metricly URL: %s", err.Error())
@@ -31,8 +31,8 @@ func TestParsingMetriclyConfig(t *testing.T) {
 		t.Fatalf("Error when configuring Metricly URL: %s", err.Error())
 	}
 	//then
-	if config.ApiURL != "https://api.uat.netuitive.com/ingest" {
-		t.Fatalf("The Api URL is wrong, actual=%s, expected=%s", config.ApiURL, "https://api.uat.netuitive.com/ingest")
+	if config.ApiURL != "https://api.app.metricly.com/ingest" {
+		t.Fatalf("The Api URL is wrong, actual=%s, expected=%s", config.ApiURL, "https://api.app.metricly.com/ingest")
 	}
 	if config.ApiKey != "datasourceApiKey" {
 		t.Fatalf("The Api Key is wrong, actual=%s, expected=%s", config.ApiKey, "datasourceApiKey")

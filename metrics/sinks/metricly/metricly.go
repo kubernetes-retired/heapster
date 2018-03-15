@@ -89,7 +89,7 @@ func DataBatchToElements(config metricly.MetriclyConfig, batch *core.DataBatch) 
 	var elements []metricly_core.Element
 	for key, ms := range batch.MetricSets {
 		if !filter(config.InclusionFilters, config.ExclusionFilters, ms) {
-			glog.Info("metric set is dropped due to filtering, key: ", key)
+			glog.V(1).Info("metric set is dropped due to filtering, key: ", key)
 			continue
 		}
 		etype := ms.Labels["type"]
