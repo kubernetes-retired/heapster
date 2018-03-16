@@ -36,6 +36,9 @@ func TestConvertDataBatchToElements(t *testing.T) {
 	if e.Id != "namespace:kube-system/pod:heapster-ww9r6" {
 		t.Errorf("The element id is wrong")
 	}
+	if e.Name != "kube-system/heapster-ww9r6" {
+		t.Errorf("The element name is not propertly shortened")
+	}
 	if len(e.Tags()) != 10 {
 		t.Errorf("The element has the wrong number of tags")
 	}

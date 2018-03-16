@@ -93,7 +93,7 @@ func DataBatchToElements(config metricly.MetriclyConfig, batch *core.DataBatch) 
 			continue
 		}
 		etype := ms.Labels["type"]
-		element := metricly_core.NewElement(key, key, etype, "")
+		element := metricly_core.NewElement(key, shortenName(key), etype, "")
 		// metric set labels to element tags
 		for lname, lvalue := range ms.Labels {
 			if lname == "labels" {
@@ -180,6 +180,15 @@ func LinkElements(elements []metricly_core.Element) {
 			}
 		}
 	}
+}
+
+func shortenName(fqn string) string {
+	var names []string
+	for _, s := range strings.Split(fqn, "/") {
+		kv := strings.SplitN(s, ":", 2)
+		names = append(names, kv[1])
+	}
+	return strings.Join(names, "/")
 }
 
 //filter MetricSet against inclusion/exclusion filters and return true if it passes
