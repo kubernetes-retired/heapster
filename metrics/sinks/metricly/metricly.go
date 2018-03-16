@@ -96,7 +96,14 @@ func DataBatchToElements(config metricly.MetriclyConfig, batch *core.DataBatch) 
 		element := metricly_core.NewElement(key, key, etype, "")
 		// metric set labels to element tags
 		for lname, lvalue := range ms.Labels {
-			element.AddTag(lname, lvalue)
+			if lname == "labels" {
+				for _, l := range strings.Split(lvalue, ",") {
+					kv := strings.SplitN(l, ":", 2)
+					element.AddTag(kv[0], kv[1])
+				}
+			} else {
+				element.AddTag(lname, lvalue)
+			}
 		}
 		// metrics
 		for mname, mvalue := range ms.MetricValues {

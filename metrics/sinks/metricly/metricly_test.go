@@ -36,8 +36,16 @@ func TestConvertDataBatchToElements(t *testing.T) {
 	if e.Id != "namespace:kube-system/pod:heapster-ww9r6" {
 		t.Errorf("The element id is wrong")
 	}
-	if len(e.Tags()) != 9 {
+	if len(e.Tags()) != 10 {
 		t.Errorf("The element has the wrong number of tags")
+	}
+	tagMode, found := e.Tag("addonmanager.kubernetes.io/mode")
+	if !found || tagMode.Value != "Reconcile" {
+		t.Errorf("Custom Label 'addonmanager.kubernetes.io/mode' is not converted to an expected element tag")
+	}
+	tagApp, found := e.Tag("k8s-app")
+	if !found || tagApp.Value != "heapster" {
+		t.Errorf("Custom Label 'k8s-app' is not converted to an expected element tag")
 	}
 	if len(e.Metrics()) != 2 {
 		t.Errorf("The element has the wrong number of metrics")
