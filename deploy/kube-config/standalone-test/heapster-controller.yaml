@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: heapster-test
-        image: gcr.io/google_containers/heapster-amd64:v1.5.1
+        image: gcr.io/google_containers/heapster-amd64:v1.5.2
         imagePullPolicy: Always
         command:
         - /heapster
