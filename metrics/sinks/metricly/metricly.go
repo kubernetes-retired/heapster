@@ -186,7 +186,11 @@ func shortenName(fqn string) string {
 	var names []string
 	for _, s := range strings.Split(fqn, "/") {
 		kv := strings.SplitN(s, ":", 2)
-		names = append(names, kv[1])
+		if len(kv) == 2 {
+			names = append(names, kv[1])
+		} else {
+			names = append(names, kv[0])
+		}
 	}
 	return strings.Join(names, "/")
 }

@@ -23,6 +23,14 @@ import (
 	"k8s.io/heapster/metrics/core"
 )
 
+func TestShortenNameWithoutType(t *testing.T) {
+	//given
+	fqn := "cluster"
+	//when & then
+	if shortenName(fqn) != "cluster" {
+		t.Errorf("Shorten fqn failed on single name with no type")
+	}
+}
 func TestConvertDataBatchToElements(t *testing.T) {
 	//given
 	batch := createDataBatch()
