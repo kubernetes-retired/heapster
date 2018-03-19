@@ -645,10 +645,10 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 		nodeLabels := sink.getNodeResourceLabels(labels)
 		switch name {
 		case core.MetricNodeCpuCapacity.MetricDescriptor.Name:
-			point := sink.doublePoint(timestamp, timestamp, float64(value.FloatValue))
+			point := sink.doublePoint(timestamp, timestamp, float64(value.FloatValue)/1000)
 			return createTimeSeries("k8s_node", nodeLabels, cpuTotalCoresMD, point)
 		case core.MetricNodeCpuAllocatable.MetricDescriptor.Name:
-			point := sink.doublePoint(timestamp, timestamp, float64(value.FloatValue))
+			point := sink.doublePoint(timestamp, timestamp, float64(value.FloatValue)/1000)
 			return createTimeSeries("k8s_node", nodeLabels, cpuAllocatableCoresMD, point)
 		case core.MetricCpuUsage.MetricDescriptor.Name:
 			point := sink.doublePoint(timestamp, collectionStartTime, float64(value.IntValue)/float64(time.Second/time.Nanosecond))
