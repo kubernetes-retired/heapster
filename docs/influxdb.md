@@ -48,4 +48,4 @@ See also the [debugging documentation](debugging.md).
     $ kubectl get services --namespace=kube-system monitoring-grafana monitoring-influxdb
     ```
 
-1. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](../deploy/kube-config/influxdb/influxdb-grafana-controller.yaml) and relaunch the controllers by running `kubectl apply -f deploy/kube-config/influxdb/influxdb-grafana-controller.yaml` and deleting and old influxdb pods.
+1. If you find InfluxDB to be using up a lot of CPU or memory, consider placing resource restrictions on the `InfluxDB & Grafana` pod. You can add `cpu: <millicores>` and `memory: <bytes>` in the [Controller Spec](../deploy/kube-config/influxdb/influxdb-grafana-controller.yaml) and relaunch the controllers by running `kubectl apply -f deploy/kube-config/influxdb/influxdb-grafana-controller.yaml` and deleting the old influxdb pods.
