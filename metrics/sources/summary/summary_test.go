@@ -48,6 +48,8 @@ const (
 	offsetFsUsed
 	offsetFsCapacity
 	offsetFsAvailable
+	offsetFsInodes
+	offsetFsInodesFree
 	offsetAcceleratorMemoryTotal
 	offsetAcceleratorMemoryUsed
 	offsetAcceleratorDutyCycle
@@ -396,6 +398,8 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 			checkFsMetric(t, m, e.key, label, core.MetricFilesystemAvailable, e.seed+offsetFsAvailable)
 			checkFsMetric(t, m, e.key, label, core.MetricFilesystemLimit, e.seed+offsetFsCapacity)
 			checkFsMetric(t, m, e.key, label, core.MetricFilesystemUsage, e.seed+offsetFsUsed)
+			checkFsMetric(t, m, e.key, label, core.MetricFilesystemInodesFree, e.seed+offsetFsInodesFree)
+			checkFsMetric(t, m, e.key, label, core.MetricFilesystemInodes, e.seed+offsetFsInodes)
 		}
 		delete(metrics, e.key)
 	}
@@ -411,6 +415,8 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 	assert.True(t, mappedVolumeStats["filesystem/available"] == int64(availableFsBytes))
 	assert.True(t, mappedVolumeStats["filesystem/usage"] == int64(usedFsBytes))
 	assert.True(t, mappedVolumeStats["filesystem/limit"] == int64(totalFsBytes))
+	assert.True(t, mappedVolumeStats["filesystem/inodes_free"] == int64(freeInode))
+	assert.True(t, mappedVolumeStats["filesystem/inodes"] == int64(totalInode))
 
 	delete(metrics, volumeInformationMetricsKey)
 
@@ -548,6 +554,8 @@ func genTestSummaryFsStats(seed int) *stats.FsStats {
 		AvailableBytes: uint64Val(seed, offsetFsAvailable),
 		CapacityBytes:  uint64Val(seed, offsetFsCapacity),
 		UsedBytes:      uint64Val(seed, offsetFsUsed),
+		InodesFree:     uint64Val(seed, offsetFsInodesFree),
+		Inodes:         uint64Val(seed, offsetFsInodes),
 	}
 }
 

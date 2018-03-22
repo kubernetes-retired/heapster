@@ -460,6 +460,20 @@ func (sink *StackdriverSink) LegacyTranslateLabeledMetric(timestamp time.Time, l
 			"device_name": metric.Labels[core.LabelResourceID.Key],
 		}
 		return ts
+	case core.MetricFilesystemInodesFree.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+		ts := legacyCreateTimeSeries(resourceLabels, legacyDiskInodesFreeMD, point)
+		ts.Metric.Labels = map[string]string{
+			"device_name": metric.Labels[core.LabelResourceID.Key],
+		}
+		return ts
+	case core.MetricFilesystemInodes.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+		ts := legacyCreateTimeSeries(resourceLabels, legacyDiskInodesTotalMD, point)
+		ts.Metric.Labels = map[string]string{
+			"device_name": metric.Labels[core.LabelResourceID.Key],
+		}
+		return ts
 	case core.MetricAcceleratorMemoryTotal.MetricDescriptor.Name:
 		point := sink.intPoint(timestamp, timestamp, metric.IntValue)
 		ts := legacyCreateTimeSeries(resourceLabels, legacyAcceleratorMemoryTotalMD, point)

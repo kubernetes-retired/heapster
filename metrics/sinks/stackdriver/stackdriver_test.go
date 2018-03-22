@@ -267,6 +267,44 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(30000))
 }
 
+func TestTranslateFilesystemInodesFree(t *testing.T) {
+	metric := core.LabeledMetric{
+		MetricValue: generateIntMetric(20000),
+		Labels: map[string]string{
+			core.LabelResourceID.Key: "resource id",
+		},
+		Name: "filesystem/inodes_free",
+	}
+	timestamp := time.Now()
+	collectionStartTime := timestamp.Add(-time.Second)
+
+	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, collectionStartTime)
+
+	as := assert.New(t)
+	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/inodes_free")
+	as.Equal(len(ts.Points), 1)
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(20000))
+}
+
+func TestTranslateFilesystemInodes(t *testing.T) {
+	metric := core.LabeledMetric{
+		MetricValue: generateIntMetric(30000),
+		Labels: map[string]string{
+			core.LabelResourceID.Key: "resource id",
+		},
+		Name: "filesystem/inodes",
+	}
+	timestamp := time.Now()
+	collectionStartTime := timestamp.Add(-time.Second)
+
+	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, collectionStartTime)
+
+	as := assert.New(t)
+	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/inodes_total")
+	as.Equal(len(ts.Points), 1)
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(30000))
+}
+
 func testTranslateAcceleratorMetric(t *testing.T, sourceName string, stackdriverName string) {
 	value := int64(12345678)
 	make := "nvidia"

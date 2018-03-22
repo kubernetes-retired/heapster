@@ -219,6 +219,18 @@ var (
 		Name:       "container.googleapis.com/container/disk/bytes_total",
 	}
 
+	legacyDiskInodesFreeMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "container.googleapis.com/container/disk/inodes_free",
+	}
+
+	legacyDiskInodesTotalMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "container.googleapis.com/container/disk/inodes_total",
+	}
+
 	legacyAcceleratorMemoryTotalMD = &metricMetadata{
 		MetricKind: google_api5.MetricDescriptor_GAUGE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
