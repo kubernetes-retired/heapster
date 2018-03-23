@@ -385,6 +385,10 @@ func TestTranslateMetricSet(t *testing.T) {
 	nodeNetworkBytesTx := testTranslateMetric(as, generateIntMetric(20), nodeLabels, "network/tx", "kubernetes.io/node/network/sent_bytes_count")
 	nodeDaemonCpuUsage := testTranslateMetric(as, generateIntMetric(21000000000), nodeDaemonLabels, "cpu/usage", "kubernetes.io/node_daemon/cpu/core_usage_time")
 	nodeDaemonMemoryUsage := testTranslateMetric(as, generateIntMetric(22), nodeDaemonLabels, "memory/bytes_used", "kubernetes.io/node_daemon/memory/used_bytes")
+	podVolumeTotalInodes := testTranslateLabeledMetric(as, podLabels, generateLabeledIntMetric(23, map[string]string{}, "filesystem/inodes"), "kubernetes.io/pod/volume/total_inodes")
+	podVolumeFreeInodes := testTranslateLabeledMetric(as, podLabels, generateLabeledIntMetric(24, map[string]string{}, "filesystem/inodes_free"), "kubernetes.io/pod/volume/free_inodes")
+	nodeVolumeTotalInodes := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(25, map[string]string{}, "filesystem/inodes"), "kubernetes.io/node/volume/total_inodes")
+	nodeVolumeFreeInodes := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(26, map[string]string{}, "filesystem/inodes_free"), "kubernetes.io/node/volume/free_inodes")
 
 	as.Equal(float64(1), containerUptime.GetDoubleValue())
 	as.Equal(float64(2), containerCpuUsage.GetDoubleValue())
@@ -408,4 +412,8 @@ func TestTranslateMetricSet(t *testing.T) {
 	as.Equal(int64(20), nodeNetworkBytesTx.GetInt64Value())
 	as.Equal(float64(21), nodeDaemonCpuUsage.GetDoubleValue())
 	as.Equal(int64(22), nodeDaemonMemoryUsage.GetInt64Value())
+	as.Equal(int64(23), podVolumeTotalInodes.GetInt64Value())
+	as.Equal(int64(24), podVolumeFreeInodes.GetInt64Value())
+	as.Equal(int64(25), nodeVolumeTotalInodes.GetInt64Value())
+	as.Equal(int64(26), nodeVolumeFreeInodes.GetInt64Value())
 }

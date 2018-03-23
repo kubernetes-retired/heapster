@@ -83,6 +83,18 @@ var (
 		Name:       "kubernetes.io/pod/volume/total_bytes",
 	}
 
+	volumeFreeInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/pod/volume/free_inodes",
+	}
+
+	volumeTotalInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/pod/volume/total_inodes",
+	}
+
 	networkPodReceivedBytesMD = &metricMetadata{
 		MetricKind: google_api5.MetricDescriptor_CUMULATIVE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
@@ -131,6 +143,18 @@ var (
 		MetricKind: google_api5.MetricDescriptor_GAUGE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
 		Name:       "kubernetes.io/node/memory/allocatable_bytes",
+	}
+
+	volumeNodeFreeInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/volume/free_inodes",
+	}
+
+	volumeNodeTotalInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/volume/total_inodes",
 	}
 
 	networkNodeReceivedBytesMD = &metricMetadata{
