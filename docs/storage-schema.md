@@ -12,6 +12,7 @@ Heapster exports the following metrics to its backends.
 | cpu/request | CPU request (the guaranteed amount of resources) in millicores. |
 | cpu/usage | Cumulative CPU usage on all cores. |
 | cpu/usage_rate | CPU usage on all cores in millicores. |
+| cpu/load | CPU load in milliloads, i.e., runnable threads * 1000 |
 | filesystem/usage | Total number of bytes consumed on a filesystem. |
 | filesystem/limit | The total size of filesystem in bytes. |
 | filesystem/available | The number of available bytes remaining in a the filesystem |
