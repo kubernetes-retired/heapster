@@ -19,14 +19,14 @@
 
 all: build
 
-VERSION?=v4.4.3
-DEB_VERSION?=4.4.3
+VERSION?=v4.6.3
+DEB_VERSION?=4.6.3
 
 PREFIX?=staging-k8s.gcr.io
 ARCH?=amd64
 TEMP_DIR:=$(shell mktemp -d)
 LDFLAGS=-w -X main.version=$(VERSION) -X main.commit=unknown-dev -X main.timestamp=0 -extldflags '-static'
-KUBE_CROSS_IMAGE=k8s.gcr.io/kube-cross:v1.8.3-2
+KUBE_CROSS_IMAGE=k8s.gcr.io/kube-cross:v1.9.3-2
 
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
 ML_PLATFORMS=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
