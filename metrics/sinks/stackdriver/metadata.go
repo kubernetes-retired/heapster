@@ -63,6 +63,24 @@ var (
 		Name:       "kubernetes.io/container/memory/limit_bytes",
 	}
 
+	ephemeralstorageContainerUsedBytesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/container/ephemeral_storage/used_bytes",
+	}
+
+	ephemeralstorageRequestedBytesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/container/ephemeral_storage/request_bytes",
+	}
+
+	ephemeralstorageLimitBytesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/container/ephemeral_storage/limit_bytes",
+	}
+
 	restartCountMD = &metricMetadata{
 		MetricKind: google_api5.MetricDescriptor_CUMULATIVE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
@@ -131,6 +149,24 @@ var (
 		MetricKind: google_api5.MetricDescriptor_GAUGE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
 		Name:       "kubernetes.io/node/memory/allocatable_bytes",
+	}
+
+	ephemeralstorageNodeUsedBytesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/ephemeral_storage/used_bytes",
+	}
+
+	ephemeralstorageTotalBytesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/ephemeral_storage/total_bytes",
+	}
+
+	ephemeralstorageAllocatableBytesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/ephemeral_storage/allocatable_bytes",
 	}
 
 	networkNodeReceivedBytesMD = &metricMetadata{

@@ -332,6 +332,9 @@ func TestTranslateMetricSet(t *testing.T) {
 	containerMemoryUsage := testTranslateMetric(as, generateIntMetric(5), containerLabels, "memory/bytes_used", "kubernetes.io/container/memory/used_bytes")
 	containerMemoryRequest := testTranslateMetric(as, generateIntMetric(6), containerLabels, "memory/request", "kubernetes.io/container/memory/request_bytes")
 	containerMemoryLimit := testTranslateMetric(as, generateIntMetric(7), containerLabels, "memory/limit", "kubernetes.io/container/memory/limit_bytes")
+	containerEphemeralStorageUsage := testTranslateMetric(as, generateIntMetric(5), containerLabels, "ephemeral_storage/usage", "kubernetes.io/container/ephemeral_storage/used_bytes")
+	containerEphemeralStorageRequest := testTranslateMetric(as, generateIntMetric(6), containerLabels, "ephemeral_storage/request", "kubernetes.io/container/ephemeral_storage/request_bytes")
+	containerEphemeralStorageLimit := testTranslateMetric(as, generateIntMetric(7), containerLabels, "ephemeral_storage/limit", "kubernetes.io/container/ephemeral_storage/limit_bytes")
 	containerRestartCount := testTranslateMetric(as, generateIntMetric(8), containerLabels, "restart_count", "kubernetes.io/container/restart_count")
 	podNetworkBytesRx := testTranslateMetric(as, generateIntMetric(9), podLabels, "network/rx", "kubernetes.io/pod/network/received_bytes_count")
 	podNetworkBytesTx := testTranslateMetric(as, generateIntMetric(10), podLabels, "network/tx", "kubernetes.io/pod/network/sent_bytes_count")
@@ -370,4 +373,7 @@ func TestTranslateMetricSet(t *testing.T) {
 	as.Equal(int64(20), nodeNetworkBytesTx.GetInt64Value())
 	as.Equal(float64(21), nodeDaemonCpuUsage.GetDoubleValue())
 	as.Equal(int64(22), nodeDaemonMemoryUsage.GetInt64Value())
+	as.Equal(int64(5), containerEphemeralStorageUsage.GetInt64Value())
+	as.Equal(int64(6), containerEphemeralStorageRequest.GetInt64Value())
+	as.Equal(int64(7), containerEphemeralStorageLimit.GetInt64Value())
 }

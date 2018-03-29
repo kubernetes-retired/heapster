@@ -181,6 +181,11 @@ func updateContainerResourcesAndLimits(metricSet *core.MetricSet, container kube
 	} else {
 		metricSet.MetricValues[core.MetricMemoryRequest.Name] = intValue(0)
 	}
+	if val, found := requests[kube_api.ResourceEphemeralStorage]; found {
+		metricSet.MetricValues[core.MetricEphemeralStorageRequest.Name] = intValue(val.Value())
+	} else {
+		metricSet.MetricValues[core.MetricEphemeralStorageRequest.Name] = intValue(0)
+	}
 
 	limits := container.Resources.Limits
 	if val, found := limits[kube_api.ResourceCPU]; found {
@@ -192,6 +197,11 @@ func updateContainerResourcesAndLimits(metricSet *core.MetricSet, container kube
 		metricSet.MetricValues[core.MetricMemoryLimit.Name] = intValue(val.Value())
 	} else {
 		metricSet.MetricValues[core.MetricMemoryLimit.Name] = intValue(0)
+	}
+	if val, found := limits[kube_api.ResourceEphemeralStorage]; found {
+		metricSet.MetricValues[core.MetricEphemeralStorageLimit.Name] = intValue(val.Value())
+	} else {
+		metricSet.MetricValues[core.MetricEphemeralStorageLimit.Name] = intValue(0)
 	}
 }
 

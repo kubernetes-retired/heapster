@@ -47,7 +47,9 @@ var AdditionalMetrics = []Metric{
 	MetricCpuRequest,
 	MetricCpuLimit,
 	MetricMemoryRequest,
-	MetricMemoryLimit}
+	MetricMemoryLimit,
+	MetricEphemeralStorageRequest,
+	MetricEphemeralStorageLimit}
 
 // Computed based on corresponding StandardMetrics.
 var RateMetrics = []Metric{
@@ -90,12 +92,16 @@ var LabeledMetrics = []Metric{
 var NodeAutoscalingMetrics = []Metric{
 	MetricNodeCpuCapacity,
 	MetricNodeMemoryCapacity,
+	MetricNodeEphemeralStorageCapacity,
 	MetricNodeCpuAllocatable,
 	MetricNodeMemoryAllocatable,
+	MetricNodeEphemeralStorageAllocatable,
 	MetricNodeCpuUtilization,
 	MetricNodeMemoryUtilization,
+	MetricNodeEphemeralStorageUtilization,
 	MetricNodeCpuReservation,
 	MetricNodeMemoryReservation,
+	MetricNodeEphemeralStorageReservation,
 }
 
 var CpuMetrics = []Metric{
@@ -244,7 +250,7 @@ var MetricCpuUsage = Metric{
 
 var MetricEphemeralStorageUsage = Metric{
 	MetricDescriptor: MetricDescriptor{
-		Name:        "ephemeralstorage/usage",
+		Name:        "ephemeral_storage/usage",
 		Description: "Ephemeral storage usage",
 		Type:        MetricGauge,
 		ValueType:   ValueInt64,
@@ -502,6 +508,26 @@ var MetricMemoryLimit = Metric{
 	},
 }
 
+var MetricEphemeralStorageRequest = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "ephemeral_storage/request",
+		Description: "ephemeral storage request (the guaranteed amount of resources) in bytes. This metric is Kubernetes specific.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+}
+
+var MetricEphemeralStorageLimit = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "ephemeral_storage/limit",
+		Description: "ephemeral storage hard limit in bytes.",
+		Type:        MetricGauge,
+		ValueType:   ValueInt64,
+		Units:       UnitsBytes,
+	},
+}
+
 // Definition of Rate Metrics.
 var MetricCpuUsageRate = Metric{
 	MetricDescriptor: MetricDescriptor{
@@ -593,6 +619,16 @@ var MetricNodeMemoryCapacity = Metric{
 	},
 }
 
+var MetricNodeEphemeralStorageCapacity = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "ephemeral_storage/node_capacity",
+		Description: "Ephemeral storage capacity of a node",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
 var MetricNodeCpuAllocatable = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "cpu/node_allocatable",
@@ -607,6 +643,16 @@ var MetricNodeMemoryAllocatable = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "memory/node_allocatable",
 		Description: "Memory allocatable of a node",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNodeEphemeralStorageAllocatable = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "ephemeral_storage/node_allocatable",
+		Description: "Ephemeral storage allocatable of a node",
 		Type:        MetricGauge,
 		ValueType:   ValueFloat,
 		Units:       UnitsCount,
@@ -633,6 +679,16 @@ var MetricNodeMemoryUtilization = Metric{
 	},
 }
 
+var MetricNodeEphemeralStorageUtilization = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "ephemeral_storage/node_utilization",
+		Description: "Ephemeral storage utilization as a share of storage capacity",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
 var MetricNodeCpuReservation = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "cpu/node_reservation",
@@ -647,6 +703,16 @@ var MetricNodeMemoryReservation = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "memory/node_reservation",
 		Description: "Share of memory that is reserved on the node",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNodeEphemeralStorageReservation = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "ephemeral_storage/node_reservation",
+		Description: "Share of ephemeral storage that is reserved on the node",
 		Type:        MetricGauge,
 		ValueType:   ValueFloat,
 		Units:       UnitsCount,
