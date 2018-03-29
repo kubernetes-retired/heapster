@@ -150,7 +150,7 @@ func (a *Api) getNodeMetrics(node string) *v1alpha1.NodeMetrics {
 	}
 
 	return &v1alpha1.NodeMetrics{
-		ObjectMeta: kube_v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:              node,
 			CreationTimestamp: metav1.NewTime(time.Now()),
 		},
@@ -248,7 +248,7 @@ func (a *Api) getPodMetrics(pod *kube_v1.Pod) *v1alpha1.PodMetrics {
 	}
 
 	res := &v1alpha1.PodMetrics{
-		ObjectMeta: kube_v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:              pod.Name,
 			Namespace:         pod.Namespace,
 			CreationTimestamp: metav1.NewTime(time.Now()),

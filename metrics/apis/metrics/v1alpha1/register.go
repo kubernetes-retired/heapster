@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 // GroupName is the group name use in this package
@@ -43,7 +42,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&NodeMetricsList{},
 		&PodMetrics{},
 		&PodMetricsList{},
-		&v1.ListOptions{},
+		&metav1.ListOptions{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

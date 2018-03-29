@@ -21,8 +21,8 @@ import (
 
 // resource usage metrics of a node.
 type NodeMetrics struct {
-	metav1.TypeMeta `json:",inline"`
-	v1.ObjectMeta   `json:"metadata,omitempty"`
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// The following fields define time interval from which metrics were
 	// collected from the interval [Timestamp-Window, Timestamp].
@@ -46,8 +46,8 @@ type NodeMetricsList struct {
 
 // resource usage metrics of a pod.
 type PodMetrics struct {
-	metav1.TypeMeta `json:",inline"`
-	v1.ObjectMeta   `json:"metadata,omitempty"`
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// The following fields define time interval from which metrics were
 	// collected from the interval [Timestamp-Window, Timestamp].
