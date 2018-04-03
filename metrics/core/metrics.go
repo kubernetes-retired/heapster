@@ -19,6 +19,7 @@ import (
 	"time"
 
 	cadvisor "github.com/google/cadvisor/info/v1"
+	kube_api "k8s.io/api/core/v1"
 )
 
 const (
@@ -147,6 +148,15 @@ var NetworkMetrics = []Metric{
 	MetricNetworkTxErrors,
 	MetricNetworkTxErrorsRate,
 	MetricNetworkTxRate,
+}
+
+// Maps from resource name to the metric that tracks container resource request
+// on that resource. The name of the metric is ResourceName/request where ResourceName
+// is the name of the resource requested in container resource requests.
+var ResourceRequestMetrics = map[kube_api.ResourceName]Metric{
+	kube_api.ResourceCPU:              MetricCpuRequest,
+	kube_api.ResourceMemory:           MetricMemoryRequest,
+	kube_api.ResourceEphemeralStorage: MetricEphemeralStorageRequest,
 }
 
 type MetricFamily string

@@ -83,6 +83,8 @@ var batches = []*core.DataBatch{
 	},
 }
 
+const otherResource = "example.com/resource1"
+
 func TestPodEnricher(t *testing.T) {
 	pod := kube_api.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -111,11 +113,13 @@ func TestPodEnricher(t *testing.T) {
 							kube_api.ResourceCPU:              *resource.NewMilliQuantity(333, resource.DecimalSI),
 							kube_api.ResourceMemory:           *resource.NewQuantity(1000, resource.DecimalSI),
 							kube_api.ResourceEphemeralStorage: *resource.NewQuantity(2000, resource.DecimalSI),
+							otherResource:                     *resource.NewQuantity(2, resource.DecimalSI),
 						},
 						Limits: kube_api.ResourceList{
 							kube_api.ResourceCPU:              *resource.NewMilliQuantity(2222, resource.DecimalSI),
 							kube_api.ResourceMemory:           *resource.NewQuantity(3333, resource.DecimalSI),
 							kube_api.ResourceEphemeralStorage: *resource.NewQuantity(5000, resource.DecimalSI),
+							otherResource:                     *resource.NewQuantity(2, resource.DecimalSI),
 						},
 					},
 				},
@@ -144,17 +148,17 @@ func TestPodEnricher(t *testing.T) {
 
 		podMs, found := batch.MetricSets[core.PodKey("ns1", "pod1")]
 		assert.True(t, found)
-		checkRequests(t, podMs, 433, 1555, 3000)
+		checkRequests(t, podMs, 433, 1555, 3000, 2)
 		checkLimits(t, podMs, 2222, 3333, 5000)
 
 		containerMs, found := batch.MetricSets[core.PodContainerKey("ns1", "pod1", "c1")]
 		assert.True(t, found)
-		checkRequests(t, containerMs, 100, 555, 1000)
+		checkRequests(t, containerMs, 100, 555, 1000, -1)
 		checkLimits(t, containerMs, 0, 0, 0)
 	}
 }
 
-func checkRequests(t *testing.T, ms *core.MetricSet, cpu, mem int64, storage int64) {
+func checkRequests(t *testing.T, ms *core.MetricSet, cpu, mem, storage, other int64) {
 	cpuVal, found := ms.MetricValues[core.MetricCpuRequest.Name]
 	assert.True(t, found)
 	assert.Equal(t, cpu, cpuVal.IntValue)
@@ -166,6 +170,12 @@ func checkRequests(t *testing.T, ms *core.MetricSet, cpu, mem int64, storage int
 	storageVal, found := ms.MetricValues[core.MetricEphemeralStorageRequest.Name]
 	assert.True(t, found)
 	assert.Equal(t, storage, storageVal.IntValue)
+
+	if other > 0 {
+		val, found := ms.MetricValues[otherResource+"/request"]
+		assert.True(t, found)
+		assert.Equal(t, other, val.IntValue)
+	}
 }
 
 func checkLimits(t *testing.T, ms *core.MetricSet, cpu, mem int64, storage int64) {
