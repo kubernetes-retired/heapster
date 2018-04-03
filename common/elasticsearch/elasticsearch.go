@@ -14,7 +14,9 @@
 package elasticsearch
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"time"
@@ -211,6 +213,21 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		startupFnsV2 = append(startupFnsV2, elastic2.SetHttpClient(awsClient), elastic2.SetSniff(false))
 		startupFnsV5 = append(startupFnsV5, elastic5.SetHttpClient(awsClient), elastic5.SetSniff(false))
 	} else {
+		httpClient := &http.Client{}
+		if len(opts["verifySSL"]) > 0 {
+			verifySSL, err := strconv.ParseBool(opts["verifySSL"][0])
+			if err != nil {
+				return nil, errors.New("Failed to parse URL's verifySSL value into a bool")
+			}
+			httpClient.Transport = &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: !verifySSL,
+				},
+			}
+		}
+		startupFnsV2 = append(startupFnsV2, elastic2.SetHttpClient(httpClient))
+		startupFnsV5 = append(startupFnsV5, elastic5.SetHttpClient(httpClient))
+
 		if len(opts["sniff"]) > 0 {
 			sniff, err := strconv.ParseBool(opts["sniff"][0])
 			if err != nil {
