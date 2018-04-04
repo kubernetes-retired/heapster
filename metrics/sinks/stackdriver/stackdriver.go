@@ -539,6 +539,13 @@ func (sink *StackdriverSink) LegacyTranslateMetric(timestamp time.Time, labels m
 			"memory_type": "evictable",
 		}
 		return ts
+	case "nvidia.com/gpu/request":
+		point := sink.intPoint(timestamp, timestamp, value.IntValue)
+		ts := legacyCreateTimeSeries(resourceLabels, legacyAcceleratorRequestMD, point)
+		ts.Metric.Labels = map[string]string{
+			"resource_name": "nvidia.com/gpu",
+		}
+		return ts
 	case core.MetricMemoryWorkingSet.MetricDescriptor.Name:
 		point := sink.intPoint(timestamp, timestamp, value.IntValue)
 		ts := legacyCreateTimeSeries(resourceLabels, legacyMemoryBytesUsedMD, point)
@@ -611,6 +618,13 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 			ts := createTimeSeries("k8s_container", containerLabels, memoryContainerUsedBytesMD, point)
 			ts.Metric.Labels = map[string]string{
 				"memory_type": "evictable",
+			}
+			return ts
+		case "nvidia.com/gpu/request":
+			point := sink.intPoint(timestamp, timestamp, value.IntValue)
+			ts := createTimeSeries("k8s_container", containerLabels, acceleratorRequestedMD, point)
+			ts.Metric.Labels = map[string]string{
+				"resource_name": "nvidia.com/gpu",
 			}
 			return ts
 		case core.MetricMemoryWorkingSet.MetricDescriptor.Name:
