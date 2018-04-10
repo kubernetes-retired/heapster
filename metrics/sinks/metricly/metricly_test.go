@@ -31,6 +31,27 @@ func TestShortenNameWithoutType(t *testing.T) {
 		t.Errorf("Shorten fqn failed on single name with no type")
 	}
 }
+
+func TestPrettyElementType(t *testing.T) {
+	if prettyElementType("cluster") != "Kubernetes Cluster" {
+		t.Errorf("pretty element type for 'cluster' failed to match expected 'Kubernetes Cluster'")
+	}
+	if prettyElementType("ns") != "Kubernetes Namespace" {
+		t.Errorf("pretty element type for 'ns' failed to match expected 'Kubernetes Namespace'")
+	}
+	if prettyElementType("node") != "Kubernetes Node" {
+		t.Errorf("pretty element type for 'node' failed to match expected 'Kubernetes Node'")
+	}
+	if prettyElementType("pod") != "Kubernetes Pod" {
+		t.Errorf("pretty element type for 'pod' failed to match expected 'Kubernetes Pod'")
+	}
+	if prettyElementType("pod_container") != "Kubernetes Pod Container" {
+		t.Errorf("pretty element type for 'pod_container' failed to match expected 'Kubernetes Pod Container'")
+	}
+	if prettyElementType("sys_container") != "Kubernetes Sys Container" {
+		t.Errorf("pretty element type for 'sys_container' failed to match expected 'Kubernetes Sys Container'")
+	}
+}
 func TestConvertDataBatchToElements(t *testing.T) {
 	//given
 	batch := createDataBatch()

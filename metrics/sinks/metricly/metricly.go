@@ -26,6 +26,7 @@ import (
 
 const (
 	defaultElementsPayloadSize = 20
+	elementTypePrefex          = "Kubernetes "
 )
 
 type MetriclyMetricsSink struct {
@@ -93,7 +94,7 @@ func DataBatchToElements(config metricly.MetriclyConfig, batch *core.DataBatch) 
 			continue
 		}
 		etype := ms.Labels["type"]
-		element := metricly_core.NewElement(key, shortenName(key), etype, "")
+		element := metricly_core.NewElement(key, shortenName(key), prettyElementType(etype), "")
 		// metric set labels to element tags
 		for lname, lvalue := range ms.Labels {
 			if lname == "labels" {
@@ -193,6 +194,14 @@ func shortenName(fqn string) string {
 		}
 	}
 	return strings.Join(names, "/")
+}
+
+func prettyElementType(etype string) string {
+	switch etype {
+	case "ns":
+		return elementTypePrefex + "Namespace"
+	}
+	return elementTypePrefex + strings.Title(strings.Replace(etype, "_", " ", -1))
 }
 
 //filter MetricSet against inclusion/exclusion filters and return true if it passes
