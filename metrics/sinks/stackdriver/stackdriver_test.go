@@ -387,8 +387,10 @@ func TestTranslateMetricSet(t *testing.T) {
 	nodeDaemonMemoryUsage := testTranslateMetric(as, generateIntMetric(22), nodeDaemonLabels, "memory/bytes_used", "kubernetes.io/node_daemon/memory/used_bytes")
 	podVolumeTotalInodes := testTranslateLabeledMetric(as, podLabels, generateLabeledIntMetric(23, map[string]string{}, "filesystem/inodes"), "kubernetes.io/pod/volume/total_inodes")
 	podVolumeFreeInodes := testTranslateLabeledMetric(as, podLabels, generateLabeledIntMetric(24, map[string]string{}, "filesystem/inodes_free"), "kubernetes.io/pod/volume/free_inodes")
-	nodeVolumeTotalInodes := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(25, map[string]string{}, "filesystem/inodes"), "kubernetes.io/node/volume/total_inodes")
-	nodeVolumeFreeInodes := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(26, map[string]string{}, "filesystem/inodes_free"), "kubernetes.io/node/volume/free_inodes")
+	nodeFsTotalInodes := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(25, map[string]string{}, "filesystem/inodes"), "kubernetes.io/node/fs/total_inodes")
+	nodeFsFreeInodes := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(26, map[string]string{}, "filesystem/inodes_free"), "kubernetes.io/node/fs/free_inodes")
+	nodeFsTotal := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(27, map[string]string{}, "filesystem/limit"), "kubernetes.io/node/fs/total_bytes")
+	nodeFsUsed := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(28, map[string]string{}, "filesystem/usage"), "kubernetes.io/node/fs/used_bytes")
 
 	as.Equal(float64(1), containerUptime.GetDoubleValue())
 	as.Equal(float64(2), containerCpuUsage.GetDoubleValue())
@@ -414,6 +416,8 @@ func TestTranslateMetricSet(t *testing.T) {
 	as.Equal(int64(22), nodeDaemonMemoryUsage.GetInt64Value())
 	as.Equal(int64(23), podVolumeTotalInodes.GetInt64Value())
 	as.Equal(int64(24), podVolumeFreeInodes.GetInt64Value())
-	as.Equal(int64(25), nodeVolumeTotalInodes.GetInt64Value())
-	as.Equal(int64(26), nodeVolumeFreeInodes.GetInt64Value())
+	as.Equal(int64(25), nodeFsTotalInodes.GetInt64Value())
+	as.Equal(int64(26), nodeFsFreeInodes.GetInt64Value())
+	as.Equal(int64(27), nodeFsTotal.GetInt64Value())
+	as.Equal(int64(28), nodeFsUsed.GetInt64Value())
 }

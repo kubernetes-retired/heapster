@@ -145,16 +145,28 @@ var (
 		Name:       "kubernetes.io/node/memory/allocatable_bytes",
 	}
 
-	volumeNodeFreeInodesMD = &metricMetadata{
+	fsNodeUsedBytesMD = &metricMetadata{
 		MetricKind: google_api5.MetricDescriptor_GAUGE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
-		Name:       "kubernetes.io/node/volume/free_inodes",
+		Name:       "kubernetes.io/node/fs/used_bytes",
 	}
 
-	volumeNodeTotalInodesMD = &metricMetadata{
+	fsNodeTotalBytesMD = &metricMetadata{
 		MetricKind: google_api5.MetricDescriptor_GAUGE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
-		Name:       "kubernetes.io/node/volume/total_inodes",
+		Name:       "kubernetes.io/node/fs/total_bytes",
+	}
+
+	fsNodeFreeInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/fs/free_inodes",
+	}
+
+	fsNodeTotalInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/fs/total_inodes",
 	}
 
 	networkNodeReceivedBytesMD = &metricMetadata{

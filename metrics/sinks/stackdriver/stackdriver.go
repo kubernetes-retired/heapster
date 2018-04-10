@@ -610,16 +610,30 @@ func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels 
 		switch metric.Name {
 		case core.MetricFilesystemInodesFree.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
-			ts := createTimeSeries("k8s_node", nodeLabels, volumeNodeFreeInodesMD, point)
+			ts := createTimeSeries("k8s_node", nodeLabels, fsNodeFreeInodesMD, point)
 			ts.Metric.Labels = map[string]string{
-				core.LabelVolumeName.Key: strings.TrimPrefix(metric.Labels[core.LabelResourceID.Key], "Volume:"),
+				core.LabelVolumeName.Key: metric.Labels[core.LabelResourceID.Key],
 			}
 			return ts
 		case core.MetricFilesystemInodes.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
-			ts := createTimeSeries("k8s_node", nodeLabels, volumeNodeTotalInodesMD, point)
+			ts := createTimeSeries("k8s_node", nodeLabels, fsNodeTotalInodesMD, point)
 			ts.Metric.Labels = map[string]string{
-				core.LabelVolumeName.Key: strings.TrimPrefix(metric.Labels[core.LabelResourceID.Key], "Volume:"),
+				core.LabelVolumeName.Key: metric.Labels[core.LabelResourceID.Key],
+			}
+			return ts
+		case core.MetricFilesystemUsage.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+			ts := createTimeSeries("k8s_node", nodeLabels, fsNodeUsedBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelVolumeName.Key: metric.Labels[core.LabelResourceID.Key],
+			}
+			return ts
+		case core.MetricFilesystemLimit.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+			ts := createTimeSeries("k8s_node", nodeLabels, fsNodeTotalBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelVolumeName.Key: metric.Labels[core.LabelResourceID.Key],
 			}
 			return ts
 		}
