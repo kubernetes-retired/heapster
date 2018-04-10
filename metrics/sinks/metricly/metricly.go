@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultElementsPayloadSize = 20
-	elementTypePrefex          = "Kubernetes "
+	elementTypePrefix          = "Kubernetes "
 )
 
 type MetriclyMetricsSink struct {
@@ -199,9 +199,9 @@ func shortenName(fqn string) string {
 func prettyElementType(etype string) string {
 	switch etype {
 	case "ns":
-		return elementTypePrefex + "Namespace"
+		return elementTypePrefix + "Namespace"
 	}
-	return elementTypePrefex + strings.Title(strings.Replace(etype, "_", " ", -1))
+	return elementTypePrefix + strings.Title(strings.Replace(etype, "_", " ", -1))
 }
 
 //filter MetricSet against inclusion/exclusion filters and return true if it passes
