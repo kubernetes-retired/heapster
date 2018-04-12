@@ -97,8 +97,9 @@ func TestPodEnricher(t *testing.T) {
 					Image: "k8s.gcr.io/pause:2.0",
 					Resources: kube_api.ResourceRequirements{
 						Requests: kube_api.ResourceList{
-							kube_api.ResourceCPU:    *resource.NewMilliQuantity(100, resource.DecimalSI),
-							kube_api.ResourceMemory: *resource.NewQuantity(555, resource.DecimalSI),
+							kube_api.ResourceCPU:              *resource.NewMilliQuantity(100, resource.DecimalSI),
+							kube_api.ResourceMemory:           *resource.NewQuantity(555, resource.DecimalSI),
+							kube_api.ResourceEphemeralStorage: *resource.NewQuantity(1000, resource.DecimalSI),
 						},
 					},
 				},
@@ -107,12 +108,14 @@ func TestPodEnricher(t *testing.T) {
 					Image: "k8s.gcr.io/pause:2.0",
 					Resources: kube_api.ResourceRequirements{
 						Requests: kube_api.ResourceList{
-							kube_api.ResourceCPU:    *resource.NewMilliQuantity(333, resource.DecimalSI),
-							kube_api.ResourceMemory: *resource.NewQuantity(1000, resource.DecimalSI),
+							kube_api.ResourceCPU:              *resource.NewMilliQuantity(333, resource.DecimalSI),
+							kube_api.ResourceMemory:           *resource.NewQuantity(1000, resource.DecimalSI),
+							kube_api.ResourceEphemeralStorage: *resource.NewQuantity(2000, resource.DecimalSI),
 						},
 						Limits: kube_api.ResourceList{
-							kube_api.ResourceCPU:    *resource.NewMilliQuantity(2222, resource.DecimalSI),
-							kube_api.ResourceMemory: *resource.NewQuantity(3333, resource.DecimalSI),
+							kube_api.ResourceCPU:              *resource.NewMilliQuantity(2222, resource.DecimalSI),
+							kube_api.ResourceMemory:           *resource.NewQuantity(3333, resource.DecimalSI),
+							kube_api.ResourceEphemeralStorage: *resource.NewQuantity(5000, resource.DecimalSI),
 						},
 					},
 				},
@@ -141,17 +144,17 @@ func TestPodEnricher(t *testing.T) {
 
 		podMs, found := batch.MetricSets[core.PodKey("ns1", "pod1")]
 		assert.True(t, found)
-		checkRequests(t, podMs, 433, 1555)
-		checkLimits(t, podMs, 2222, 3333)
+		checkRequests(t, podMs, 433, 1555, 3000)
+		checkLimits(t, podMs, 2222, 3333, 5000)
 
 		containerMs, found := batch.MetricSets[core.PodContainerKey("ns1", "pod1", "c1")]
 		assert.True(t, found)
-		checkRequests(t, containerMs, 100, 555)
-		checkLimits(t, containerMs, 0, 0)
+		checkRequests(t, containerMs, 100, 555, 1000)
+		checkLimits(t, containerMs, 0, 0, 0)
 	}
 }
 
-func checkRequests(t *testing.T, ms *core.MetricSet, cpu, mem int64) {
+func checkRequests(t *testing.T, ms *core.MetricSet, cpu, mem int64, storage int64) {
 	cpuVal, found := ms.MetricValues[core.MetricCpuRequest.Name]
 	assert.True(t, found)
 	assert.Equal(t, cpu, cpuVal.IntValue)
@@ -159,9 +162,13 @@ func checkRequests(t *testing.T, ms *core.MetricSet, cpu, mem int64) {
 	memVal, found := ms.MetricValues[core.MetricMemoryRequest.Name]
 	assert.True(t, found)
 	assert.Equal(t, mem, memVal.IntValue)
+
+	storageVal, found := ms.MetricValues[core.MetricEphemeralStorageRequest.Name]
+	assert.True(t, found)
+	assert.Equal(t, storage, storageVal.IntValue)
 }
 
-func checkLimits(t *testing.T, ms *core.MetricSet, cpu, mem int64) {
+func checkLimits(t *testing.T, ms *core.MetricSet, cpu, mem int64, storage int64) {
 	cpuVal, found := ms.MetricValues[core.MetricCpuLimit.Name]
 	assert.True(t, found)
 	assert.Equal(t, cpu, cpuVal.IntValue)
@@ -169,4 +176,8 @@ func checkLimits(t *testing.T, ms *core.MetricSet, cpu, mem int64) {
 	memVal, found := ms.MetricValues[core.MetricMemoryLimit.Name]
 	assert.True(t, found)
 	assert.Equal(t, mem, memVal.IntValue)
+
+	storageVal, found := ms.MetricValues[core.MetricEphemeralStorageLimit.Name]
+	assert.True(t, found)
+	assert.Equal(t, storage, storageVal.IntValue)
 }

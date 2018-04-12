@@ -264,6 +264,8 @@ func createDataProcessorsOrDie(kubernetesUrl *url.URL, podLister v1listers.PodLi
 		core.MetricCpuLimit.Name,
 		core.MetricMemoryRequest.Name,
 		core.MetricMemoryLimit.Name,
+		core.MetricEphemeralStorageRequest.Name,
+		core.MetricEphemeralStorageLimit.Name,
 	}
 
 	dataProcessors = append(dataProcessors,

@@ -161,6 +161,7 @@ func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet,
 	this.decodeMemoryStats(nodeMetrics, node.Memory)
 	this.decodeNetworkStats(nodeMetrics, node.Network)
 	this.decodeFsStats(nodeMetrics, RootFsKey, node.Fs)
+	this.decodeEphemeralStorageStats(nodeMetrics, node.Fs)
 	metrics[NodeKey(node.NodeName)] = nodeMetrics
 
 	for _, container := range node.SystemContainers {
@@ -234,6 +235,7 @@ func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]stri
 	this.decodeAcceleratorStats(containerMetrics, container.Accelerators)
 	this.decodeFsStats(containerMetrics, RootFsKey, container.Rootfs)
 	this.decodeFsStats(containerMetrics, LogsKey, container.Logs)
+	this.decodeEphemeralStorageStatsForContainer(containerMetrics, container.Rootfs, container.Logs)
 	this.decodeUserDefinedMetrics(containerMetrics, container.UserDefinedMetrics)
 
 	return containerMetrics
@@ -264,6 +266,15 @@ func (this *summaryMetricsSource) decodeEphemeralStorageStats(metrics *MetricSet
 		return
 	}
 	this.addIntMetric(metrics, &MetricEphemeralStorageUsage, storage.UsedBytes)
+}
+
+func (this *summaryMetricsSource) decodeEphemeralStorageStatsForContainer(metrics *MetricSet, rootfs *stats.FsStats, logs *stats.FsStats) {
+	if rootfs == nil || logs == nil {
+		glog.V(9).Infof("missing storage usage metric!")
+		return
+	}
+	usage := *rootfs.UsedBytes + *logs.UsedBytes
+	this.addIntMetric(metrics, &MetricEphemeralStorageUsage, &usage)
 }
 
 func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *stats.MemoryStats) {

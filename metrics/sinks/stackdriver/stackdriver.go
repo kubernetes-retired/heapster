@@ -623,6 +623,16 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 		case core.MetricMemoryRequest.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, timestamp, value.IntValue)
 			return createTimeSeries("k8s_container", containerLabels, memoryRequestedBytesMD, point)
+		case core.MetricEphemeralStorageLimit.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, value.IntValue)
+			return createTimeSeries("k8s_container", containerLabels, ephemeralstorageLimitBytesMD, point)
+		case core.MetricEphemeralStorageRequest.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, value.IntValue)
+			return createTimeSeries("k8s_container", containerLabels, ephemeralstorageRequestedBytesMD, point)
+		case core.MetricEphemeralStorageUsage.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, value.IntValue)
+			return createTimeSeries("k8s_container", containerLabels, ephemeralstorageContainerUsedBytesMD, point)
+
 		case core.MetricRestartCount.MetricDescriptor.Name:
 			if entityCreateTime.IsZero() {
 				glog.V(2).Infof("Skipping restart_count metric for container %s because entity create time is zero", core.PodContainerKey(containerLabels["namespace_name"], containerLabels["pod_name"], containerLabels["container_name"]))
@@ -679,6 +689,10 @@ func (sink *StackdriverSink) TranslateMetric(timestamp time.Time, labels map[str
 		case core.MetricNetworkTx.MetricDescriptor.Name:
 			point := sink.intPoint(timestamp, collectionStartTime, value.IntValue)
 			return createTimeSeries("k8s_node", nodeLabels, networkNodeSentBytesMD, point)
+		case core.MetricNodeEphemeralStorageCapacity.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, value.IntValue)
+			return createTimeSeries("k8s_node", nodeLabels, ephemeralstorageTotalBytesMD, point)
+
 		}
 	case core.MetricSetTypeSystemContainer:
 		nodeLabels := sink.getNodeResourceLabels(labels)
