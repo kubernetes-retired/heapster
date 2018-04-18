@@ -19,7 +19,7 @@
 
 all: build
 
-VERSION?=v1.5.1
+VERSION?=v1.5.2
 PREFIX?=staging-k8s.gcr.io
 ARCH?=amd64
 GOLANG_VERSION=1.10
