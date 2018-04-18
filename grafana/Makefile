@@ -19,8 +19,8 @@
 
 all: build
 
-VERSION?=v4.6.3
-DEB_VERSION?=4.6.3
+VERSION?=v5.0.4
+DEB_VERSION?=5.0.4
 
 PREFIX?=staging-k8s.gcr.io
 ARCH?=amd64
@@ -33,23 +33,23 @@ ML_PLATFORMS=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
 
 # Set default base image dynamically for each arch
 ifeq ($(ARCH),amd64)
-	BASEIMAGE?=busybox
+	BASEIMAGE?=busybox:glibc
 	CC=gcc
 endif
 ifeq ($(ARCH),arm)
-	BASEIMAGE?=armhf/busybox
+	BASEIMAGE?=armhf/busybox:glibc
 	CC=arm-linux-gnueabihf-gcc
 endif
 ifeq ($(ARCH),arm64)
-	BASEIMAGE?=aarch64/busybox
+	BASEIMAGE?=aarch64/busybox:glibc
 	CC=aarch64-linux-gnu-gcc
 endif
 ifeq ($(ARCH),ppc64le)
-	BASEIMAGE?=ppc64le/busybox
+	BASEIMAGE?=ppc64le/busybox:glibc
 	CC=powerpc64le-linux-gnu-gcc
 endif
 ifeq ($(ARCH),s390x)
-	BASEIMAGE?=s390x/busybox
+	BASEIMAGE?=s390x/busybox:glibc
 	CC=s390x-linux-gnu-gcc
 endif
 
