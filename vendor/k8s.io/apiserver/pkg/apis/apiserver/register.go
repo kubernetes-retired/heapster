@@ -17,7 +17,6 @@ limitations under the License.
 package apiserver
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -42,11 +41,10 @@ var (
 	AddToScheme   = SchemeBuilder.AddToScheme
 )
 
-// Adds the list of known types to api.Scheme.
+// Adds the list of known types to the given scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&AdmissionConfiguration{},
 	)
-	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }

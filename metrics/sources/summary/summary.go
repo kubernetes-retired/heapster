@@ -24,10 +24,10 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+	kube_api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kube_client "k8s.io/client-go/kubernetes"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/heapster/metrics/util"
 	stats "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
@@ -116,7 +116,7 @@ var systemNameMap = map[string]string{
 	stats.SystemContainerMisc:    "system",
 }
 
-// decodeSummary translates the kubelet stats.Summary API into the flattened heapster MetricSet API.
+// decodeSummary translates the kubelet statsSummary API into the flattened heapster MetricSet API.
 func (this *summaryMetricsSource) decodeSummary(summary *stats.Summary) map[string]*MetricSet {
 	glog.V(9).Infof("Begin summary decode")
 	result := map[string]*MetricSet{}
@@ -161,6 +161,7 @@ func (this *summaryMetricsSource) decodeNodeStats(metrics map[string]*MetricSet,
 	this.decodeMemoryStats(nodeMetrics, node.Memory)
 	this.decodeNetworkStats(nodeMetrics, node.Network)
 	this.decodeFsStats(nodeMetrics, RootFsKey, node.Fs)
+	this.decodeEphemeralStorageStats(nodeMetrics, node.Fs)
 	metrics[NodeKey(node.NodeName)] = nodeMetrics
 
 	for _, container := range node.SystemContainers {
@@ -234,6 +235,7 @@ func (this *summaryMetricsSource) decodeContainerStats(podLabels map[string]stri
 	this.decodeAcceleratorStats(containerMetrics, container.Accelerators)
 	this.decodeFsStats(containerMetrics, RootFsKey, container.Rootfs)
 	this.decodeFsStats(containerMetrics, LogsKey, container.Logs)
+	this.decodeEphemeralStorageStatsForContainer(containerMetrics, container.Rootfs, container.Logs)
 	this.decodeUserDefinedMetrics(containerMetrics, container.UserDefinedMetrics)
 
 	return containerMetrics
@@ -264,6 +266,15 @@ func (this *summaryMetricsSource) decodeEphemeralStorageStats(metrics *MetricSet
 		return
 	}
 	this.addIntMetric(metrics, &MetricEphemeralStorageUsage, storage.UsedBytes)
+}
+
+func (this *summaryMetricsSource) decodeEphemeralStorageStatsForContainer(metrics *MetricSet, rootfs *stats.FsStats, logs *stats.FsStats) {
+	if rootfs == nil || logs == nil {
+		glog.V(9).Infof("missing storage usage metric!")
+		return
+	}
+	usage := *rootfs.UsedBytes + *logs.UsedBytes
+	this.addIntMetric(metrics, &MetricEphemeralStorageUsage, &usage)
 }
 
 func (this *summaryMetricsSource) decodeMemoryStats(metrics *MetricSet, memory *stats.MemoryStats) {

@@ -69,4 +69,4 @@ Both changes require restarting Heapster though.
 Ensure Influxdb is up and reachable. Heapster attempts to create a database by default, which will fail eventually after a fixed number of retries.
 If the Grafana queries are stuck or slow, it is due to InfluxDB being unresponsive. Consider providing InfluxDB more compute resources (CPU and Memory).
 The default database on Influxdb is 'k8s'. 
-A `list series` query on 'k8s' database should list all the series being pushed by heapster. If you do not see any series, take a look at heapster logs.
+A `list series` query on 'k8s' database should list all the series being pushed by Heapster. If you do not see any series, take a look at Heapster logs.

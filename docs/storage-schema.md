@@ -12,6 +12,14 @@ Heapster exports the following metrics to its backends.
 | cpu/request | CPU request (the guaranteed amount of resources) in millicores. |
 | cpu/usage | Cumulative CPU usage on all cores. |
 | cpu/usage_rate | CPU usage on all cores in millicores. |
+| cpu/load | CPU load in milliloads, i.e., runnable threads * 1000 |
+| ephemeral_storage/limit | Local ephemeral storage hard limit in bytes. |
+| ephemeral_storage/request | Local ephemeral storage request (the guaranteed amount of resources) in bytes. |
+| ephemeral_storage/usage | Total local ephemeral storage usage. |
+| ephemeral_storage/node_capacity | Local ephemeral storage capacity of a node. |
+| ephemeral_storage/node_allocatable | Local ephemeral storage allocatable of a node. |
+| ephemeral_storage/node_reservation | Share of local ephemeral storage that is reserved on the node allocatable. |
+| ephemeral_storage/node_utilization | Local ephemeral utilization as a share of ephemeral storage allocatable. |
 | filesystem/usage | Total number of bytes consumed on a filesystem. |
 | filesystem/limit | The total size of filesystem in bytes. |
 | filesystem/available | The number of available bytes remaining in a the filesystem |

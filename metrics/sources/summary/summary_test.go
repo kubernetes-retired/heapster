@@ -240,23 +240,25 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 
 	containerFs := []string{"/", "logs"}
 	expectations := []struct {
-		key              string
-		setType          string
-		seed             int64
-		cpu              bool
-		memory           bool
-		network          bool
-		accelerators     bool
-		ephemeralstorage bool
-		fs               []string
+		key                       string
+		setType                   string
+		seed                      int64
+		cpu                       bool
+		memory                    bool
+		network                   bool
+		accelerators              bool
+		ephemeralstorage          bool
+		containerEphemeralstorage bool
+		fs                        []string
 	}{{
-		key:     core.NodeKey(nodeInfo.NodeName),
-		setType: core.MetricSetTypeNode,
-		seed:    seedNode,
-		cpu:     true,
-		memory:  true,
-		network: true,
-		fs:      []string{"/"},
+		key:              core.NodeKey(nodeInfo.NodeName),
+		setType:          core.MetricSetTypeNode,
+		seed:             seedNode,
+		cpu:              true,
+		memory:           true,
+		network:          true,
+		ephemeralstorage: true,
+		fs:               []string{"/"},
 	}, {
 		key:     core.NodeContainerKey(nodeInfo.NodeName, "kubelet"),
 		setType: core.MetricSetTypeSystemContainer,
@@ -310,7 +312,8 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		seed:    seedPod0Container0,
 		cpu:     true,
 		memory:  true,
-		fs:      containerFs,
+		containerEphemeralstorage: true,
+		fs: containerFs,
 	}, {
 		key:     core.PodContainerKey(namespace0, pName0, cName01),
 		setType: core.MetricSetTypePodContainer,
@@ -393,6 +396,9 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 		}
 		if e.ephemeralstorage {
 			checkIntMetric(t, m, e.key, core.MetricEphemeralStorageUsage, e.seed+offsetFsUsed)
+		}
+		if e.containerEphemeralstorage {
+			checkIntMetric(t, m, e.key, core.MetricEphemeralStorageUsage, 2*(e.seed+offsetFsUsed))
 		}
 		for _, label := range e.fs {
 			checkFsMetric(t, m, e.key, label, core.MetricFilesystemAvailable, e.seed+offsetFsAvailable)
@@ -541,11 +547,13 @@ func genTestSummaryBlankMemory() *stats.MemoryStats {
 
 func genTestSummaryNetwork(seed int) *stats.NetworkStats {
 	return &stats.NetworkStats{
-		Time:     metav1.NewTime(scrapeTime),
-		RxBytes:  uint64Val(seed, offsetNetRxBytes),
-		RxErrors: uint64Val(seed, offsetNetRxErrors),
-		TxBytes:  uint64Val(seed, offsetNetTxBytes),
-		TxErrors: uint64Val(seed, offsetNetTxErrors),
+		Time: metav1.NewTime(scrapeTime),
+		InterfaceStats: stats.InterfaceStats{
+			RxBytes:  uint64Val(seed, offsetNetRxBytes),
+			RxErrors: uint64Val(seed, offsetNetRxErrors),
+			TxBytes:  uint64Val(seed, offsetNetTxBytes),
+			TxErrors: uint64Val(seed, offsetNetTxErrors),
+		},
 	}
 }
 

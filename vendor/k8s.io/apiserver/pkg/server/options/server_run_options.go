@@ -19,10 +19,10 @@ package options
 import (
 	"fmt"
 	"net"
-	"strings"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apiserver/pkg/admission"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apiserver/pkg/server"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 
@@ -34,26 +34,23 @@ import (
 
 // ServerRunOptions contains the options while running a generic api server.
 type ServerRunOptions struct {
-	AdmissionControl           string
-	AdmissionControlConfigFile string
-	AdvertiseAddress           net.IP
+	AdvertiseAddress net.IP
 
 	CorsAllowedOriginList       []string
 	ExternalHost                string
 	MaxRequestsInFlight         int
 	MaxMutatingRequestsInFlight int
+	RequestTimeout              time.Duration
 	MinRequestTimeout           int
 	TargetRAMMB                 int
-	WatchCacheSizes             []string
 }
 
 func NewServerRunOptions() *ServerRunOptions {
-	defaults := server.NewConfig()
-
+	defaults := server.NewConfig(serializer.CodecFactory{})
 	return &ServerRunOptions{
-		AdmissionControl:            "AlwaysAdmit",
 		MaxRequestsInFlight:         defaults.MaxRequestsInFlight,
 		MaxMutatingRequestsInFlight: defaults.MaxMutatingRequestsInFlight,
+		RequestTimeout:              defaults.RequestTimeout,
 		MinRequestTimeout:           defaults.MinRequestTimeout,
 	}
 }
@@ -64,51 +61,55 @@ func (s *ServerRunOptions) ApplyTo(c *server.Config) error {
 	c.ExternalAddress = s.ExternalHost
 	c.MaxRequestsInFlight = s.MaxRequestsInFlight
 	c.MaxMutatingRequestsInFlight = s.MaxMutatingRequestsInFlight
+	c.RequestTimeout = s.RequestTimeout
 	c.MinRequestTimeout = s.MinRequestTimeout
 	c.PublicAddress = s.AdvertiseAddress
 
 	return nil
 }
 
-// DefaultAdvertiseAddress sets the field AdvertiseAddress if
-// unset. The field will be set based on the SecureServingOptions. If
-// the SecureServingOptions is not present, DefaultExternalAddress
-// will fall back to the insecure ServingOptions.
-func (s *ServerRunOptions) DefaultAdvertiseAddress(secure *SecureServingOptions, insecure *ServingOptions) error {
-	if s.AdvertiseAddress == nil || s.AdvertiseAddress.IsUnspecified() {
-		switch {
-		case secure != nil:
-			hostIP, err := secure.ServingOptions.DefaultExternalAddress()
-			if err != nil {
-				return fmt.Errorf("Unable to find suitable network address.error='%v'. "+
-					"Try to set the AdvertiseAddress directly or provide a valid BindAddress to fix this.", err)
-			}
-			s.AdvertiseAddress = hostIP
+// DefaultAdvertiseAddress sets the field AdvertiseAddress if unset. The field will be set based on the SecureServingOptions.
+func (s *ServerRunOptions) DefaultAdvertiseAddress(secure *SecureServingOptions) error {
+	if secure == nil {
+		return nil
+	}
 
-		case insecure != nil:
-			hostIP, err := insecure.DefaultExternalAddress()
-			if err != nil {
-				return fmt.Errorf("Unable to find suitable network address.error='%v'. "+
-					"Try to set the AdvertiseAddress directly or provide a valid BindAddress to fix this.", err)
-			}
-			s.AdvertiseAddress = hostIP
+	if s.AdvertiseAddress == nil || s.AdvertiseAddress.IsUnspecified() {
+		hostIP, err := secure.DefaultExternalAddress()
+		if err != nil {
+			return fmt.Errorf("Unable to find suitable network address.error='%v'. "+
+				"Try to set the AdvertiseAddress directly or provide a valid BindAddress to fix this.", err)
 		}
+		s.AdvertiseAddress = hostIP
 	}
 
 	return nil
+}
+
+// Validate checks validation of ServerRunOptions
+func (s *ServerRunOptions) Validate() []error {
+	errors := []error{}
+	if s.TargetRAMMB < 0 {
+		errors = append(errors, fmt.Errorf("--target-ram-mb can not be negative value"))
+	}
+	if s.MaxRequestsInFlight < 0 {
+		errors = append(errors, fmt.Errorf("--max-requests-inflight can not be negative value"))
+	}
+	if s.MaxMutatingRequestsInFlight < 0 {
+		errors = append(errors, fmt.Errorf("--max-mutating-requests-inflight can not be negative value"))
+	}
+
+	if s.RequestTimeout.Nanoseconds() < 0 {
+		errors = append(errors, fmt.Errorf("--request-timeout can not be negative value"))
+	}
+
+	return errors
 }
 
 // AddFlags adds flags for a specific APIServer to the specified FlagSet
 func (s *ServerRunOptions) AddUniversalFlags(fs *pflag.FlagSet) {
 	// Note: the weird ""+ in below lines seems to be the only way to get gofmt to
 	// arrange these text blocks sensibly. Grrr.
-
-	fs.StringVar(&s.AdmissionControl, "admission-control", s.AdmissionControl, ""+
-		"Ordered list of plug-ins to do admission control of resources into cluster. "+
-		"Comma-delimited list of: "+strings.Join(admission.GetPlugins(), ", ")+".")
-
-	fs.StringVar(&s.AdmissionControlConfigFile, "admission-control-config-file", s.AdmissionControlConfigFile,
-		"File with admission control configuration.")
 
 	fs.IPVar(&s.AdvertiseAddress, "advertise-address", s.AdvertiseAddress, ""+
 		"The IP address on which to advertise the apiserver to members of the cluster. This "+
@@ -126,12 +127,6 @@ func (s *ServerRunOptions) AddUniversalFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.ExternalHost, "external-hostname", s.ExternalHost,
 		"The hostname to use when generating externalized URLs for this master (e.g. Swagger API Docs).")
 
-	// TODO: remove post-1.6
-	fs.String("long-running-request-regexp", "", ""+
-		"A regular expression matching long running requests which should "+
-		"be excluded from maximum inflight request handling.")
-	fs.MarkDeprecated("long-running-request-regexp", "regular expression matching of long-running requests is no longer supported")
-
 	deprecatedMasterServiceNamespace := metav1.NamespaceDefault
 	fs.StringVar(&deprecatedMasterServiceNamespace, "master-service-namespace", deprecatedMasterServiceNamespace, ""+
 		"DEPRECATED: the namespace from which the kubernetes master services should be injected into pods.")
@@ -144,16 +139,16 @@ func (s *ServerRunOptions) AddUniversalFlags(fs *pflag.FlagSet) {
 		"The maximum number of mutating requests in flight at a given time. When the server exceeds this, "+
 		"it rejects requests. Zero for no limit.")
 
+	fs.DurationVar(&s.RequestTimeout, "request-timeout", s.RequestTimeout, ""+
+		"An optional field indicating the duration a handler must keep a request open before timing "+
+		"it out. This is the default request timeout for requests but may be overridden by flags such as "+
+		"--min-request-timeout for specific types of requests.")
+
 	fs.IntVar(&s.MinRequestTimeout, "min-request-timeout", s.MinRequestTimeout, ""+
 		"An optional field indicating the minimum number of seconds a handler must keep "+
 		"a request open before timing it out. Currently only honored by the watch request "+
 		"handler, which picks a randomized value above this number as the connection timeout, "+
 		"to spread out load.")
-
-	fs.StringSliceVar(&s.WatchCacheSizes, "watch-cache-sizes", s.WatchCacheSizes, ""+
-		"List of watch cache sizes for every resource (pods, nodes, etc.), comma separated. "+
-		"The individual override format: resource#size, where size is a number. It takes effect "+
-		"when watch-cache is enabled.")
 
 	utilfeature.DefaultFeatureGate.AddFlag(fs)
 }

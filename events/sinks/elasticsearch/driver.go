@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	kube_api "k8s.io/client-go/pkg/api/v1"
+	kube_api "k8s.io/api/core/v1"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	event_core "k8s.io/heapster/events/core"
 	"k8s.io/heapster/metrics/core"

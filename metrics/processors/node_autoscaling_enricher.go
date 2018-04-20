@@ -17,10 +17,10 @@ package processors
 import (
 	"net/url"
 
+	kube_api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kube_client "k8s.io/client-go/kubernetes"
 	v1listers "k8s.io/client-go/listers/core/v1"
-	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/core"
@@ -47,13 +47,17 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 			this.labelCopier.Copy(node.Labels, metricSet.Labels)
 			capacityCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
 			capacityMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
+			capacityEphemeralStorage, storageExist := node.Status.Capacity[kube_api.ResourceEphemeralStorage]
 			allocatableCpu, _ := node.Status.Allocatable[kube_api.ResourceCPU]
 			allocatableMem, _ := node.Status.Allocatable[kube_api.ResourceMemory]
+			allocatableEphemeralStorage, allocatableStorageExist := node.Status.Allocatable[kube_api.ResourceEphemeralStorage]
 
 			cpuRequested := getInt(metricSet, &core.MetricCpuRequest)
 			cpuUsed := getInt(metricSet, &core.MetricCpuUsageRate)
 			memRequested := getInt(metricSet, &core.MetricMemoryRequest)
 			memUsed := getInt(metricSet, &core.MetricMemoryUsage)
+			epheRequested := getInt(metricSet, &core.MetricEphemeralStorageRequest)
+			epheUsed := getInt(metricSet, &core.MetricEphemeralStorageUsage)
 
 			if allocatableCpu.MilliValue() != 0 {
 				setFloat(metricSet, &core.MetricNodeCpuUtilization, float64(cpuUsed)/float64(allocatableCpu.MilliValue()))
@@ -68,6 +72,15 @@ func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataB
 			}
 			setFloat(metricSet, &core.MetricNodeMemoryCapacity, float64(capacityMem.Value()))
 			setFloat(metricSet, &core.MetricNodeMemoryAllocatable, float64(allocatableMem.Value()))
+
+			if storageExist && allocatableStorageExist {
+				setFloat(metricSet, &core.MetricNodeEphemeralStorageCapacity, float64(capacityEphemeralStorage.Value()))
+				setFloat(metricSet, &core.MetricNodeEphemeralStorageAllocatable, float64(allocatableEphemeralStorage.Value()))
+				if allocatableEphemeralStorage.Value() != 0 {
+					setFloat(metricSet, &core.MetricNodeEphemeralStorageUtilization, float64(epheUsed)/float64(allocatableEphemeralStorage.Value()))
+					setFloat(metricSet, &core.MetricNodeEphemeralStorageReservation, float64(epheRequested)/float64(allocatableEphemeralStorage.Value()))
+				}
+			}
 		}
 	}
 	return batch, nil
