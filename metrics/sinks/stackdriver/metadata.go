@@ -180,7 +180,7 @@ var (
 		ValueType:  google_api5.MetricDescriptor_INT64,
 		Name:       "kubernetes.io/node/ephemeral_storage/allocatable_bytes",
 	}
-	
+
 	fsNodeUsedBytesMD = &metricMetadata{
 		MetricKind: google_api5.MetricDescriptor_GAUGE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
