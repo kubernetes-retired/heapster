@@ -19,7 +19,7 @@ If you're running Heapster in a Kubernetes pod you can use the following flag:
 
 	--source=kubernetes
 
-Heapster requires an authentication token to connect with the apiserver securely. By default, Heapster will use the inClusterConfig system to configure the secure connection. This requires kubernetes version `v1.0.3` or higher and a couple extra kubernetes configuration steps. Firstly, for your apiserver you must create an SSL certificate pair with a SAN that includes the ClusterIP of the kubernetes service. Look [here](https://github.com/kubernetes/kubernetes/blob/e4fde6d2cae2d924a4eb72d1e3b2639f057bb8c1/cluster/gce/util.sh#L497-L559) for an example of how to properly generate certs. Secondly, you need to pass the `ca.crt` that you generated to the `--root-ca-file` option of the controller-manager. This will distribute the root CA to `/var/run/secrets/kubernetes.io/serviceaccount/` of all pods. If you are using `ABAC` authorization (as opposed to `AllowAll` which is the default), you will also need to give the `system:serviceaccount:<namespace-of-heapster>:default` readonly access to the cluster (look [here](https://kubernetes.io/docs/admin/authorization/abac/#a-quick-note-on-service-accounts) for more info).
+Heapster requires an authentication token to connect with the apiserver securely. By default, Heapster will use the inClusterConfig system to configure the secure connection. This requires Kubernetes version `v1.0.3` or higher and a couple extra Kubernetes configuration steps. Firstly, for your apiserver you must create an SSL certificate pair with a SAN that includes the ClusterIP of the Kubernetes service. Look [here](https://github.com/kubernetes/kubernetes/blob/e4fde6d2cae2d924a4eb72d1e3b2639f057bb8c1/cluster/gce/util.sh#L497-L559) for an example of how to properly generate certs. Secondly, you need to pass the `ca.crt` that you generated to the `--root-ca-file` option of the controller-manager. This will distribute the root CA to `/var/run/secrets/kubernetes.io/serviceaccount/` of all pods. If you are using `ABAC` authorization (as opposed to `AllowAll` which is the default), you will also need to give the `system:serviceaccount:<namespace-of-heapster>:default` readonly access to the cluster (look [here](https://kubernetes.io/docs/admin/authorization/abac/#a-quick-note-on-service-accounts) for more info).
 
 If you don't want to setup inClusterConfig, you can still use Heapster! To run without auth, use the following config:
 
@@ -76,7 +76,7 @@ The following options are available:
 * `inClusterConfig` - Use kube config in service accounts associated with Heapster's namespace. (default: true)
 * `kubeletPort` - kubelet port to use (default: `10255`)
 * `kubeletHttps` - whether to use https to connect to kubelets (default: `false`)
-* `insecure` - whether to trust kubernetes certificates (default: `false`)
+* `insecure` - whether to trust Kubernetes certificates (default: `false`)
 * `auth` - client auth file to use. Set auth if the service accounts are not usable.
 * `useServiceAccount` - whether to use the service account token if one is mounted at `/var/run/secrets/kubernetes.io/serviceaccount/token` (default: `false`)
 
