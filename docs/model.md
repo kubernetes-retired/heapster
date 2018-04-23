@@ -9,7 +9,7 @@ It allows the extraction of up to 15 minutes of historical data for any Containe
 
 ** The Heapster Model API is deprecated.  Please use the metrics APIs in [k8s.io/metrics](https://github.com/kubernetes/metrics) or retrieve data directly from a sink. **
 
-We will not be making changes to or supporting the model API in the future, and do not reccomend its use.
+We will not be making changes to or supporting the model API in the future, and do not recommend its use.
 
 ### Why?
 
