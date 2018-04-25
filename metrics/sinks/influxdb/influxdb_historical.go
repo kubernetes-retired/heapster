@@ -519,7 +519,7 @@ func (sink *influxdbSink) GetLabeledAggregation(metricName string, labels map[st
 	return res, nil
 }
 
-// setAggregationValueIfPresent checks to to if the given metric value is present in the list of raw values, and if so,
+// setAggregationValueIfPresent checks if the given metric value is present in the list of raw values, and if so,
 // copies it to the output format
 func setAggregationValueIfPresent(aggName core.AggregationType, rawVal []interface{}, aggregations *core.AggregationValue, indexLookup map[core.AggregationType]int, wasInt map[string]bool) error {
 	if fieldIndex, ok := indexLookup[aggName]; ok {
