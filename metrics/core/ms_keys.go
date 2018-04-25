@@ -18,9 +18,9 @@ import (
 	"fmt"
 )
 
-// MetricsSet keys inside of DataBatch. The structure of the returned string is
+// MetricsSet keys are inside of DataBatch. The structure of the returned string is
 // an implementation detail and no component should rely on it as it may change
-// anytime. It it only guaranteed that it is unique for the unique combination of
+// anytime. It only guaranteed that it is unique for the unique combination of
 // passed parameters.
 
 func PodContainerKey(namespace, podName, containerName string) string {
