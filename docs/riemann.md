@@ -6,6 +6,7 @@ provided using Clojure.  When Heapster is configured with a Riemann sink, it
 will stream Riemann-format events to a separate Riemann instance.
 
 The following sink options are supported as URL parameters:
+
     host: default "riemann-heapster:5555"
         The host-port connection string for the Riemann instance.
     ttl:  default 60.0
