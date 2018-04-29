@@ -32,7 +32,7 @@ type LabelCopier struct {
 }
 
 // Copy copies the given set of pod labels into a set of metric labels, using the following logic:
-// - all labels, unless found in ignoredLabels, are concatenated into a Separator-seperated key:value pairs and stored under core.LabelLabels.Key
+// - all labels, unless found in ignoredLabels, are concatenated into a Separator-separated key:value pairs and stored under core.LabelLabels.Key
 // - labels found in storedLabels are additionally stored under key provided
 func (this *LabelCopier) Copy(in map[string]string, out map[string]string) {
 	labels := make([]string, 0, len(in))
