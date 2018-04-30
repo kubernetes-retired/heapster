@@ -198,11 +198,9 @@ func TestStoreMultipleDataInput(t *testing.T) {
 		},
 		LabeledMetrics: []core.LabeledMetric{
 			{
-				"labeledmetric",
-				map[string]string{
-					"foo": "bar",
-				},
-				metricValue,
+				Name:        "labeledmetric",
+				Labels:      map[string]string{"foo": "bar"},
+				MetricValue: metricValue,
 			},
 		},
 	}
