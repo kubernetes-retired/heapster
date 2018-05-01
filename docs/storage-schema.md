@@ -5,9 +5,9 @@ Heapster exports the following metrics to its backends.
 | Metric Name | Description |
 |------------|-------------|
 | cpu/limit | CPU hard limit in millicores. |
-| cpu/node_capacity | Cpu capacity of a node. |
-| cpu/node_allocatable | Cpu allocatable of a node. |
-| cpu/node_reservation | Share of cpu that is reserved on the node allocatable. |
+| cpu/node_capacity | CPU capacity of a node. |
+| cpu/node_allocatable | CPU allocatable of a node. |
+| cpu/node_reservation | Share of CPU that is reserved on the node allocatable. |
 | cpu/node_utilization | CPU utilization as a share of node allocatable. |
 | cpu/request | CPU request (the guaranteed amount of resources) in millicores. |
 | cpu/usage | Cumulative CPU usage on all cores. |
@@ -80,7 +80,7 @@ Heapster tags each metric with the following labels.
 | accelerator_id    | ID of the accelerator |
 
 **Note**
-  * Label separator can be configured with Heapster `--label-separator`. Comma-seperated label pairs is fine until we use [Bosun](http://bosun.org) as alert system and use `group by labels` to search for labels.
+  * Label separator can be configured with Heapster `--label-separator`. Comma-separated label pairs is fine until we use [Bosun](http://bosun.org) as alert system and use `group by labels` to search for labels.
     [Bosun(0.5.0) uses comma to split queried tag key and tag value](https://github.com/bosun-monitor/bosun/blob/0.5.0/opentsdb/tsdb.go#L566-L575). For example if the expression used for query InfluxDB from Bosun is like this:
 ```
 $limit = avg(influx("k8s", '''SELECT mean(value) as value FROM "memory/limit" WHERE type = 'node' GROUP BY nodename, labels''', "${INTERVAL}s", "", ""))
