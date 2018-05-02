@@ -5,7 +5,7 @@ Triage
 ------
 
 Triage is done on a weekly rotation by members of the
-@kubernetes/heapster-maintainers team.  Initially this will be limitted to
+@kubernetes/heapster-maintainers team.  Initially this will be limited to
 the following people:
 
 - @piosz
