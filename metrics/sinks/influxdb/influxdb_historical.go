@@ -36,8 +36,8 @@ func (sink *influxdbSink) Historical() core.HistoricalSource {
 
 // implementation of HistoricalSource for influxdbSink
 
-// Kube pod and namespace names are limitted to [a-zA-Z0-9-.], while docker also allows
-// underscores, so only allow these those characters.  When Influx actually supports bound
+// Kube pod and namespace names are limited to [a-zA-Z0-9-.], while docker also allows
+// underscores, so only allow these characters.  When Influx actually supports bound
 // parameters, this will be less necessary.
 var nameAllowedChars = regexp.MustCompile("^[a-zA-Z0-9_.-]+$")
 
