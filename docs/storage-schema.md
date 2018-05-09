@@ -46,6 +46,7 @@ Heapster exports the following metrics to its backends.
 | accelerator/memory_total | Memory capacity of an accelerator. |
 | accelerator/memory_used | Memory used of an accelerator. |
 | accelerator/duty_cycle | Duty cycle of an accelerator. |
+| accelerator/request | Number of accelerator devices requested by container. |
 | network/rx | Cumulative number of bytes received over the network. |
 | network/rx_errors | Cumulative number of errors while receiving over the network. |
 | network/rx_errors_rate | Number of errors while receiving over the network per second. |
