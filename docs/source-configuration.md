@@ -27,7 +27,7 @@ If you don't want to setup inClusterConfig, you can still use Heapster! To run w
 
 This requires the apiserver to be setup completely without auth, which can be done by binding the insecure port to all interfaces (see the apiserver `--insecure-bind-address` option) but *WARNING* be aware of the security repercussions. Only do this if you trust *EVERYONE* on your network.
 
-*Note: Remove "monitoring-token" volume from heaspter controller config if you are running without auth.*
+*Note: Remove "monitoring-token" volume from heapster controller config if you are running without auth.*
 
 Alternatively, you can use a heapster-only serviceaccount like this:
 
