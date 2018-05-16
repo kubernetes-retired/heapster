@@ -363,6 +363,35 @@ For example,
 
     --sink="honeycomb:?dataset=mydataset&writekey=secretwritekey"
 
+### Fluent
+This sink supports monitoring metrics only.
+fluentd's input plugin is forward <@type forward>.
+To use the fluent sink add the following flag:
+
+    --sink="fluent:<?<OPTIONS>>"
+
+Options can be set in query string, like this:
+
+* `tag` - fluent's topic for messages. Default value : `fluent`
+* `bufferd` - Default value : `false`
+
+  bufferd=true means that we enqueue the data to be sent to the fluentd process locally until we can actually connect and send them.
+
+  If you must detect if a message has been successfully sent to the fluentd server immediately, use the 'bufferd=false'
+
+For example,
+
+    --sink="--sink=fluent:http://localhost:24224?tag=metric.heapster"
+    or
+    --sink="--sink=fluent:http://localhost:24224?tag=metric.heapster&bufferd=true"
+
+    fluentd source type is forward:
+    <source>
+     @type forward
+     port 24224
+     bind 0.0.0.0
+    </source>
+
 ## Using multiple sinks
 
 Heapster can be configured to send k8s metrics and events to multiple sinks by specifying the`--sink=...` flag multiple times.

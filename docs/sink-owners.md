@@ -39,3 +39,4 @@ List of Owners
 | Librato         | :heavy_check_mark: | :x:                | @johanneswuerbach                             | :ok:           |
 | Honeycomb       | :heavy_check_mark: | :heavy_check_mark: | @emfree                                       | :new: #1762    |
 | StatsD          | :heavy_check_mark: | :x:                | @yogeswaran                                   | :ok:           |
+| fluent          | :heavy_check_mark: | :x:                | @JooyoungJeong                                | :new: #1934    |

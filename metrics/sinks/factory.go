@@ -22,6 +22,7 @@ import (
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/sinks/elasticsearch"
+	"k8s.io/heapster/metrics/sinks/fluent"
 	"k8s.io/heapster/metrics/sinks/gcm"
 	"k8s.io/heapster/metrics/sinks/graphite"
 	"k8s.io/heapster/metrics/sinks/hawkular"
@@ -75,6 +76,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.DataSink, error) {
 		return riemann.CreateRiemannSink(&uri.Val)
 	case "honeycomb":
 		return honeycomb.NewHoneycombSink(&uri.Val)
+	case "fluent":
+		return fluent.NewFluentSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
