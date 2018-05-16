@@ -107,6 +107,18 @@ var (
 		Name:       "kubernetes.io/pod/volume/total_bytes",
 	}
 
+	volumeFreeInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/pod/volume/free_inodes",
+	}
+
+	volumeTotalInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/pod/volume/total_inodes",
+	}
+
 	networkPodReceivedBytesMD = &metricMetadata{
 		MetricKind: google_api5.MetricDescriptor_CUMULATIVE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
@@ -173,6 +185,30 @@ var (
 		MetricKind: google_api5.MetricDescriptor_GAUGE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
 		Name:       "kubernetes.io/node/ephemeral_storage/allocatable_bytes",
+	}
+
+	fsNodeUsedBytesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/fs/used_bytes",
+	}
+
+	fsNodeTotalBytesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/fs/total_bytes",
+	}
+
+	fsNodeFreeInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/fs/free_inodes",
+	}
+
+	fsNodeTotalInodesMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/node/fs/total_inodes",
 	}
 
 	networkNodeReceivedBytesMD = &metricMetadata{
@@ -259,6 +295,18 @@ var (
 		MetricKind: google_api5.MetricDescriptor_GAUGE,
 		ValueType:  google_api5.MetricDescriptor_INT64,
 		Name:       "container.googleapis.com/container/disk/bytes_total",
+	}
+
+	legacyDiskInodesFreeMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "container.googleapis.com/container/disk/inodes_free",
+	}
+
+	legacyDiskInodesTotalMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "container.googleapis.com/container/disk/inodes_total",
 	}
 
 	legacyAcceleratorMemoryTotalMD = &metricMetadata{

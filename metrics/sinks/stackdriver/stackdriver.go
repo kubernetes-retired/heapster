@@ -460,6 +460,20 @@ func (sink *StackdriverSink) LegacyTranslateLabeledMetric(timestamp time.Time, l
 			"device_name": metric.Labels[core.LabelResourceID.Key],
 		}
 		return ts
+	case core.MetricFilesystemInodesFree.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+		ts := legacyCreateTimeSeries(resourceLabels, legacyDiskInodesFreeMD, point)
+		ts.Metric.Labels = map[string]string{
+			"device_name": metric.Labels[core.LabelResourceID.Key],
+		}
+		return ts
+	case core.MetricFilesystemInodes.MetricDescriptor.Name:
+		point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+		ts := legacyCreateTimeSeries(resourceLabels, legacyDiskInodesTotalMD, point)
+		ts.Metric.Labels = map[string]string{
+			"device_name": metric.Labels[core.LabelResourceID.Key],
+		}
+		return ts
 	case core.MetricAcceleratorMemoryTotal.MetricDescriptor.Name:
 		point := sink.intPoint(timestamp, timestamp, metric.IntValue)
 		ts := legacyCreateTimeSeries(resourceLabels, legacyAcceleratorMemoryTotalMD, point)
@@ -581,6 +595,52 @@ func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels 
 			ts := createTimeSeries("k8s_pod", podLabels, volumeTotalBytesMD, point)
 			ts.Metric.Labels = map[string]string{
 				core.LabelVolumeName.Key: strings.TrimPrefix(metric.Labels[core.LabelResourceID.Key], "Volume:"),
+			}
+			return ts
+		case core.MetricFilesystemInodesFree.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+			ts := createTimeSeries("k8s_pod", podLabels, volumeFreeInodesMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelVolumeName.Key: strings.TrimPrefix(metric.Labels[core.LabelResourceID.Key], "Volume:"),
+			}
+			return ts
+		case core.MetricFilesystemInodes.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+			ts := createTimeSeries("k8s_pod", podLabels, volumeTotalInodesMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelVolumeName.Key: strings.TrimPrefix(metric.Labels[core.LabelResourceID.Key], "Volume:"),
+			}
+			return ts
+		}
+	case core.MetricSetTypeNode:
+		nodeLabels := sink.getNodeResourceLabels(labels)
+		switch metric.Name {
+		case core.MetricFilesystemInodesFree.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+			ts := createTimeSeries("k8s_node", nodeLabels, fsNodeFreeInodesMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelVolumeName.Key: metric.Labels[core.LabelResourceID.Key],
+			}
+			return ts
+		case core.MetricFilesystemInodes.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+			ts := createTimeSeries("k8s_node", nodeLabels, fsNodeTotalInodesMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelVolumeName.Key: metric.Labels[core.LabelResourceID.Key],
+			}
+			return ts
+		case core.MetricFilesystemUsage.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+			ts := createTimeSeries("k8s_node", nodeLabels, fsNodeUsedBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelVolumeName.Key: metric.Labels[core.LabelResourceID.Key],
+			}
+			return ts
+		case core.MetricFilesystemLimit.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.MetricValue.IntValue)
+			ts := createTimeSeries("k8s_node", nodeLabels, fsNodeTotalBytesMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelVolumeName.Key: metric.Labels[core.LabelResourceID.Key],
 			}
 			return ts
 		}

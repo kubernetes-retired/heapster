@@ -267,6 +267,44 @@ func TestTranslateFilesystemLimit(t *testing.T) {
 	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(30000))
 }
 
+func TestTranslateFilesystemInodesFree(t *testing.T) {
+	metric := core.LabeledMetric{
+		MetricValue: generateIntMetric(20000),
+		Labels: map[string]string{
+			core.LabelResourceID.Key: "resource id",
+		},
+		Name: "filesystem/inodes_free",
+	}
+	timestamp := time.Now()
+	collectionStartTime := timestamp.Add(-time.Second)
+
+	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, collectionStartTime)
+
+	as := assert.New(t)
+	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/inodes_free")
+	as.Equal(len(ts.Points), 1)
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(20000))
+}
+
+func TestTranslateFilesystemInodes(t *testing.T) {
+	metric := core.LabeledMetric{
+		MetricValue: generateIntMetric(30000),
+		Labels: map[string]string{
+			core.LabelResourceID.Key: "resource id",
+		},
+		Name: "filesystem/inodes",
+	}
+	timestamp := time.Now()
+	collectionStartTime := timestamp.Add(-time.Second)
+
+	ts := sink.LegacyTranslateLabeledMetric(timestamp, commonLabels, metric, collectionStartTime)
+
+	as := assert.New(t)
+	as.Equal(ts.Metric.Type, "container.googleapis.com/container/disk/inodes_total")
+	as.Equal(len(ts.Points), 1)
+	as.Equal(ts.Points[0].Value.GetInt64Value(), int64(30000))
+}
+
 func testTranslateAcceleratorMetric(t *testing.T, sourceName string, stackdriverName string) {
 	value := int64(12345678)
 	make := "nvidia"
@@ -350,6 +388,12 @@ func TestTranslateMetricSet(t *testing.T) {
 	nodeNetworkBytesTx := testTranslateMetric(as, generateIntMetric(20), nodeLabels, "network/tx", "kubernetes.io/node/network/sent_bytes_count")
 	nodeDaemonCpuUsage := testTranslateMetric(as, generateIntMetric(21000000000), nodeDaemonLabels, "cpu/usage", "kubernetes.io/node_daemon/cpu/core_usage_time")
 	nodeDaemonMemoryUsage := testTranslateMetric(as, generateIntMetric(22), nodeDaemonLabels, "memory/bytes_used", "kubernetes.io/node_daemon/memory/used_bytes")
+	podVolumeTotalInodes := testTranslateLabeledMetric(as, podLabels, generateLabeledIntMetric(23, map[string]string{}, "filesystem/inodes"), "kubernetes.io/pod/volume/total_inodes")
+	podVolumeFreeInodes := testTranslateLabeledMetric(as, podLabels, generateLabeledIntMetric(24, map[string]string{}, "filesystem/inodes_free"), "kubernetes.io/pod/volume/free_inodes")
+	nodeFsTotalInodes := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(25, map[string]string{}, "filesystem/inodes"), "kubernetes.io/node/fs/total_inodes")
+	nodeFsFreeInodes := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(26, map[string]string{}, "filesystem/inodes_free"), "kubernetes.io/node/fs/free_inodes")
+	nodeFsTotal := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(27, map[string]string{}, "filesystem/limit"), "kubernetes.io/node/fs/total_bytes")
+	nodeFsUsed := testTranslateLabeledMetric(as, nodeLabels, generateLabeledIntMetric(28, map[string]string{}, "filesystem/usage"), "kubernetes.io/node/fs/used_bytes")
 
 	as.Equal(float64(1), containerUptime.GetDoubleValue())
 	as.Equal(float64(2), containerCpuUsage.GetDoubleValue())
@@ -373,6 +417,12 @@ func TestTranslateMetricSet(t *testing.T) {
 	as.Equal(int64(20), nodeNetworkBytesTx.GetInt64Value())
 	as.Equal(float64(21), nodeDaemonCpuUsage.GetDoubleValue())
 	as.Equal(int64(22), nodeDaemonMemoryUsage.GetInt64Value())
+	as.Equal(int64(23), podVolumeTotalInodes.GetInt64Value())
+	as.Equal(int64(24), podVolumeFreeInodes.GetInt64Value())
+	as.Equal(int64(25), nodeFsTotalInodes.GetInt64Value())
+	as.Equal(int64(26), nodeFsFreeInodes.GetInt64Value())
+	as.Equal(int64(27), nodeFsTotal.GetInt64Value())
+	as.Equal(int64(28), nodeFsUsed.GetInt64Value())
 	as.Equal(int64(5), containerEphemeralStorageUsage.GetInt64Value())
 	as.Equal(int64(6), containerEphemeralStorageRequest.GetInt64Value())
 	as.Equal(int64(7), containerEphemeralStorageLimit.GetInt64Value())
