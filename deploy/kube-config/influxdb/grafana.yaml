@@ -48,6 +48,8 @@ spec:
           path: /etc/ssl/certs
       - name: grafana-storage
         emptyDir: {}
+      nodeSelector:
+        beta.kubernetes.io/os: linux
 ---
 apiVersion: v1
 kind: Service
