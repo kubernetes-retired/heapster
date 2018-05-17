@@ -153,7 +153,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	bp := influxdb.BatchPoints{
 		Points:          dataPoints,
 		Database:        sink.c.DbName,
-		RetentionPolicy: "default",
+		RetentionPolicy: sink.c.RetentionPolicyName,
 	}
 
 	start := time.Now()
@@ -212,7 +212,7 @@ func (sink *influxdbSink) createDatabase() error {
 
 func (sink *influxdbSink) createRetentionPolicy() error {
 	q := influxdb.Query{
-		Command: fmt.Sprintf(`CREATE RETENTION POLICY "default" ON %s DURATION 0d REPLICATION 1 DEFAULT`, sink.c.DbName),
+		Command: fmt.Sprintf(`CREATE RETENTION POLICY "%s" ON %s DURATION 0d REPLICATION 1 DEFAULT`, sink.c.RetentionPolicyName, sink.c.DbName),
 	}
 
 	if resp, err := sink.client.Query(q); err != nil {

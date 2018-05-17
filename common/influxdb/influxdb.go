@@ -41,6 +41,7 @@ type InfluxdbConfig struct {
 	WithFields            bool
 	InsecureSsl           bool
 	RetentionPolicy       string
+	RetentionPolicyName   string
 	ClusterName           string
 	DisableCounterMetrics bool
 	Concurrency           int
@@ -83,6 +84,7 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 		WithFields:            false,
 		InsecureSsl:           false,
 		RetentionPolicy:       "0",
+		RetentionPolicyName:   "default",
 		ClusterName:           "default",
 		DisableCounterMetrics: false,
 		Concurrency:           1,
@@ -104,6 +106,9 @@ func BuildConfig(uri *url.URL) (*InfluxdbConfig, error) {
 	}
 	if len(opts["retention"]) >= 1 {
 		config.RetentionPolicy = opts["retention"][0]
+	}
+	if len(opts["rpname"]) >= 1 {
+		config.RetentionPolicyName = opts["rpname"][0]
 	}
 	if len(opts["withfields"]) >= 1 {
 		val, err := strconv.ParseBool(opts["withfields"][0])
