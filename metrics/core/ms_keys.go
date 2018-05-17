@@ -43,6 +43,10 @@ func NodeContainerKey(node, container string) string {
 	return fmt.Sprintf("node:%s/container:%s", node, container)
 }
 
+func PVCKey(namespace, pvcName string) string {
+	return fmt.Sprintf("namespace:%s/pvc:%s", namespace, pvcName)
+}
+
 func ClusterKey() string {
 	return "cluster"
 }

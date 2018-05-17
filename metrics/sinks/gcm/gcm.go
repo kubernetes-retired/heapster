@@ -143,14 +143,14 @@ func (sink *gcmSink) getTimeSeriesForLabeledMetrics(timestamp time.Time, labels 
 	}
 
 	finalLabels := make(map[string]string)
-	supportedLables := core.GcmLabels()
+	supportedLabels := core.GcmLabels()
 	for key, value := range labels {
-		if _, ok := supportedLables[key]; ok {
+		if _, ok := supportedLabels[key]; ok {
 			finalLabels[key] = value
 		}
 	}
 	for key, value := range metric.Labels {
-		if _, ok := supportedLables[key]; ok {
+		if _, ok := supportedLabels[key]; ok {
 			finalLabels[key] = value
 		}
 	}

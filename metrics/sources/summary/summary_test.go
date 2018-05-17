@@ -94,6 +94,8 @@ const (
 	cName41 = "c4" // Terminated, has no CPU / Memory stats
 	cName42 = "c4" // Terminated, has blank CPU / Memory stats
 	cName50 = "c5"
+
+	pvcName0 = "pvc0"
 )
 
 var (
@@ -105,6 +107,12 @@ var (
 	totalInode       = uint64(103620)
 	scrapeTime       = time.Now()
 	startTime        = time.Now().Add(-time.Minute)
+
+	availableFsBytes2 = uint64(1025)
+	usedFsBytes2      = uint64(11270)
+	totalFsBytes2     = uint64(15000)
+	scrapeTime2       = time.Now().Add(30 * time.Second)
+	startTime2        = time.Now().Add(-30 * time.Second)
 )
 
 var nodeInfo = NodeInfo{
@@ -196,12 +204,18 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				Name:      pName3,
 				Namespace: namespace0,
 			},
+			StartTime: metav1.NewTime(startTime2),
 			Containers: []stats.ContainerStats{
 				genTestSummaryContainer(cName30, seedPod3Container0),
 			},
 			VolumeStats: []stats.VolumeStats{{
 				Name: "C",
+				PVCRef: &stats.PVCReference{
+					Name:      pvcName0,
+					Namespace: namespace0,
+				},
 				FsStats: stats.FsStats{
+					Time:           metav1.NewTime(scrapeTime),
 					AvailableBytes: &availableFsBytes,
 					UsedBytes:      &usedFsBytes,
 					CapacityBytes:  &totalFsBytes,
@@ -222,6 +236,23 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 				genTestSummaryContainer(cName40, seedPod4Container0),
 				genTestSummaryTerminatedContainerNoStats(cName41),
 				genTestSummaryTerminatedContainerBlankStats(cName42),
+			},
+			VolumeStats: []stats.VolumeStats{{
+				Name: "D",
+				PVCRef: &stats.PVCReference{
+					Name:      pvcName0,
+					Namespace: namespace0,
+				},
+				FsStats: stats.FsStats{
+					Time:           metav1.NewTime(scrapeTime2),
+					AvailableBytes: &availableFsBytes2,
+					UsedBytes:      &usedFsBytes2,
+					CapacityBytes:  &totalFsBytes2,
+					InodesFree:     &freeInode,
+					InodesUsed:     &usedInode,
+					Inodes:         &totalInode,
+				},
+			},
 			},
 		}, {
 			PodRef: stats.PodReference{
@@ -419,6 +450,30 @@ func TestDecodeSummaryMetrics(t *testing.T) {
 	assert.True(t, mappedVolumeStats["filesystem/limit"] == int64(totalFsBytes))
 
 	delete(metrics, volumeInformationMetricsKey)
+
+	// Verify PVC labeled metrics
+	var pvcMetricsKey = core.PVCKey(namespace0, pvcName0)
+	var mappedPVCStats = map[string]int64{}
+	m := metrics[pvcMetricsKey]
+	for _, labeledMetric := range m.LabeledMetrics {
+		assert.True(t, strings.HasPrefix("PVC:"+pvcName0, labeledMetric.Labels["resource_id"]))
+		mappedPVCStats[labeledMetric.Name] = labeledMetric.IntValue
+	}
+
+	assert.True(t, mappedPVCStats["filesystem/available"] == int64(availableFsBytes2))
+	assert.True(t, mappedPVCStats["filesystem/usage"] == int64(usedFsBytes2))
+	assert.True(t, mappedPVCStats["filesystem/limit"] == int64(totalFsBytes2))
+
+	assert.Equal(t, m.CollectionStartTime, startTime) // earlier start time
+	assert.Equal(t, m.ScrapeTime, scrapeTime2)        // later scrape time
+
+	podRefLabels := []string{
+		pName3 + "|" + pName4,
+		pName4 + "|" + pName3,
+	}
+	assert.True(t, m.Labels["pod_refs"] == podRefLabels[0] || m.Labels["pod_refs"] == podRefLabels[1])
+
+	delete(metrics, pvcMetricsKey)
 
 	for k, v := range metrics {
 		assert.Fail(t, "unexpected metric", "%q: %+v", k, v)
