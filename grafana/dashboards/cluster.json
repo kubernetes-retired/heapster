@@ -1,4 +1,5 @@
 {
+  "dashboard": {
     "id": null,
     "title": "Cluster",
     "originalTitle": "Cluster",
@@ -2459,4 +2460,6 @@
     "schemaVersion": 8,
     "version": 10,
     "links": []
+  },
+  "overwrite": false
 }
