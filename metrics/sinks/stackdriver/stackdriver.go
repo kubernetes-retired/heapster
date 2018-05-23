@@ -358,20 +358,27 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		}
 	}
 
-	if err := gce_util.EnsureOnGCE(); err != nil {
-		return nil, err
-	}
+	var projectId, heapsterZone string
 
-	// Detect project ID
-	projectId, err := gce.ProjectID()
-	if err != nil {
-		return nil, err
-	}
+	if gce.OnGCE() {
+		// Detect project ID
+		projectId, err = gce.ProjectID()
+		if err != nil {
+			return nil, err
+		}
 
-	// Detect zone for old resource model
-	heapsterZone, err := gce.Zone()
-	if err != nil {
-		return nil, err
+		// Detect zone for old resource model
+		heapsterZone, err = gce.Zone()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		projectId, err = gce_util.GetProjectId()
+		if err != nil {
+			return nil, err
+		}
+
+		heapsterZone = opts["zone"][0]
 	}
 
 	clusterLocation := heapsterZone
