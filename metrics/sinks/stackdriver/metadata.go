@@ -81,6 +81,24 @@ var (
 		Name:       "kubernetes.io/container/ephemeral_storage/limit_bytes",
 	}
 
+	acceleratorMemoryTotalMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/container/accelerator/memory_total",
+	}
+
+	acceleratorMemoryUsedMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/container/accelerator/memory_used",
+	}
+
+	acceleratorDutyCycleMD = &metricMetadata{
+		MetricKind: google_api5.MetricDescriptor_GAUGE,
+		ValueType:  google_api5.MetricDescriptor_INT64,
+		Name:       "kubernetes.io/container/accelerator/duty_cycle",
+	}
+
 	acceleratorRequestedMD = &metricMetadata{
 		MetricKind: google_api5.MetricDescriptor_GAUGE,
 		ValueType:  google_api5.MetricDescriptor_INT64,

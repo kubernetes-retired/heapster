@@ -584,6 +584,37 @@ func (sink *StackdriverSink) TranslateLabeledMetric(timestamp time.Time, labels 
 			}
 			return ts
 		}
+	case core.MetricSetTypePodContainer:
+		containerLabels := sink.getContainerResourceLabels(labels)
+		switch metric.Name {
+		case core.MetricAcceleratorMemoryTotal.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+			ts := createTimeSeries("k8s_container", containerLabels, acceleratorMemoryTotalMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelAcceleratorMake.Key:  metric.Labels[core.LabelAcceleratorMake.Key],
+				core.LabelAcceleratorModel.Key: metric.Labels[core.LabelAcceleratorModel.Key],
+				core.LabelAcceleratorID.Key:    metric.Labels[core.LabelAcceleratorID.Key],
+			}
+			return ts
+		case core.MetricAcceleratorMemoryUsed.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+			ts := createTimeSeries("k8s_container", containerLabels, acceleratorMemoryUsedMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelAcceleratorMake.Key:  metric.Labels[core.LabelAcceleratorMake.Key],
+				core.LabelAcceleratorModel.Key: metric.Labels[core.LabelAcceleratorModel.Key],
+				core.LabelAcceleratorID.Key:    metric.Labels[core.LabelAcceleratorID.Key],
+			}
+			return ts
+		case core.MetricAcceleratorDutyCycle.MetricDescriptor.Name:
+			point := sink.intPoint(timestamp, timestamp, metric.IntValue)
+			ts := createTimeSeries("k8s_container", containerLabels, acceleratorDutyCycleMD, point)
+			ts.Metric.Labels = map[string]string{
+				core.LabelAcceleratorMake.Key:  metric.Labels[core.LabelAcceleratorMake.Key],
+				core.LabelAcceleratorModel.Key: metric.Labels[core.LabelAcceleratorModel.Key],
+				core.LabelAcceleratorID.Key:    metric.Labels[core.LabelAcceleratorID.Key],
+			}
+			return ts
+		}
 	}
 	return nil
 }
