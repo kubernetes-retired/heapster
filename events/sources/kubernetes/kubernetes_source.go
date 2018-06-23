@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	// Number of object pointers. Big enough so it won't be hit anytime soon with resonable GetNewEvents frequency.
+	// Number of object pointers. Big enough so it won't be hit anytime soon with reasonable GetNewEvents frequency.
 	LocalEventsBufferSize = 100000
 )
 
