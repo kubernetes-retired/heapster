@@ -91,7 +91,7 @@ The following options are available:
 * `numMetricsPerMsg` - number of metrics to be packed in an UDP message, default is 5
 * `renameLabels`     - renames labels, old and new label separated by ':' and pairs of old and new labels separated by ','
 * `allowedLabels`    - comma-separated labels that are allowed, default is empty ie all labels are allowed
-* `labelStyle`       - convert labels from default snake case to other styles, default is no convertion. Styles supported are `lowerCamelCase` and `upperCamelCase`
+* `labelStyle`       - convert labels from default snake case to other styles, default is no conversion. Styles supported are `lowerCamelCase` and `upperCamelCase`
 
 For example.
 ```
