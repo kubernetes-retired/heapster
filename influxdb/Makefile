@@ -19,10 +19,10 @@
 
 all: build
 
-VERSION?=v1.3.3
+VERSION?=v1.5.2
 PREFIX?=staging-k8s.gcr.io
 ARCH?=amd64
-GOLANG_VERSION=1.8
+GOLANG_VERSION=1.10
 TEMP_DIR:=$(shell mktemp -d)
 
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x

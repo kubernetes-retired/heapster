@@ -19,37 +19,37 @@
 
 all: build
 
-VERSION?=v4.4.3
-DEB_VERSION?=4.4.3
+VERSION?=v5.0.4
+DEB_VERSION?=5.0.4
 
 PREFIX?=staging-k8s.gcr.io
 ARCH?=amd64
 TEMP_DIR:=$(shell mktemp -d)
 LDFLAGS=-w -X main.version=$(VERSION) -X main.commit=unknown-dev -X main.timestamp=0 -extldflags '-static'
-KUBE_CROSS_IMAGE=k8s.gcr.io/kube-cross:v1.8.3-2
+KUBE_CROSS_IMAGE=k8s.gcr.io/kube-cross:v1.9.3-2
 
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
 ML_PLATFORMS=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
 
 # Set default base image dynamically for each arch
 ifeq ($(ARCH),amd64)
-	BASEIMAGE?=busybox
+	BASEIMAGE?=busybox:glibc
 	CC=gcc
 endif
 ifeq ($(ARCH),arm)
-	BASEIMAGE?=armhf/busybox
+	BASEIMAGE?=armhf/busybox:glibc
 	CC=arm-linux-gnueabihf-gcc
 endif
 ifeq ($(ARCH),arm64)
-	BASEIMAGE?=aarch64/busybox
+	BASEIMAGE?=aarch64/busybox:glibc
 	CC=aarch64-linux-gnu-gcc
 endif
 ifeq ($(ARCH),ppc64le)
-	BASEIMAGE?=ppc64le/busybox
+	BASEIMAGE?=ppc64le/busybox:glibc
 	CC=powerpc64le-linux-gnu-gcc
 endif
 ifeq ($(ARCH),s390x)
-	BASEIMAGE?=s390x/busybox
+	BASEIMAGE?=s390x/busybox:glibc
 	CC=s390x-linux-gnu-gcc
 endif
 

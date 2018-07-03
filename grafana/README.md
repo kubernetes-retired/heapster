@@ -1,7 +1,7 @@
 # Grafana Image For Heapster/InfluxDB
 
 ## What's in it:
- - Grafana 4
+ - Grafana 5
  - A Go binary that:
    - creates a datasource for InfluxDB
    - creates a couple of dashboards during startup.

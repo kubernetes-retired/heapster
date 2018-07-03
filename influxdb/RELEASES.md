@@ -1,5 +1,8 @@
 # Release Notes for the Heapster InfluxDB container.
 
+## v1.5.2 (04-18-2018)
+- Updated to version 1.5.2; bumped Go build container to 1.10
+
 ## v1.1.1 (11.1.2016)
 - Updated to version v1.1.1; bumped Godeps and modified some code in heapster to use the latest schema
 

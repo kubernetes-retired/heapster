@@ -1,5 +1,8 @@
 # Release Notes for Grafana container.
 
+## 5.0.4 (18-04-2018)
+- Support Grafana 5.0.4.
+
 ## 4.4.1 (18-07-2017)
 - Image includes grafana.ini configuration file.
 - Support Grafana 4.4.1.
