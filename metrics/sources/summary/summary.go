@@ -409,9 +409,10 @@ func (this *summaryMetricsSource) getSystemContainerName(c *stats.ContainerStats
 
 // TODO: The summaryProvider duplicates a lot of code from kubeletProvider, and should be refactored.
 type summaryProvider struct {
-	nodeLister    v1listers.NodeLister
-	reflector     *cache.Reflector
-	kubeletClient *kubelet.KubeletClient
+	nodeLister       v1listers.NodeLister
+	reflector        *cache.Reflector
+	kubeletClient    *kubelet.KubeletClient
+	hostIDAnnotation string
 }
 
 func (this *summaryProvider) GetMetricsSources() []MetricsSource {
@@ -442,10 +443,14 @@ func (this *summaryProvider) getNodeInfo(node *kube_api.Node) (NodeInfo, error) 
 	if hostname == "" {
 		hostname = node.Name
 	}
+	hostID := node.Spec.ExternalID
+	if hostID == "" && this.hostIDAnnotation != "" {
+		hostID = node.Annotations[this.hostIDAnnotation]
+	}
 	info := NodeInfo{
 		NodeName: node.Name,
 		HostName: hostname,
-		HostID:   node.Spec.ExternalID,
+		HostID:   hostID,
 		Host: kubelet.Host{
 			IP:   ip,
 			Port: this.kubeletClient.GetPort(),
@@ -456,6 +461,12 @@ func (this *summaryProvider) getNodeInfo(node *kube_api.Node) (NodeInfo, error) 
 }
 
 func NewSummaryProvider(uri *url.URL) (MetricsSourceProvider, error) {
+	opts := uri.Query()
+
+	hostIDAnnotation := ""
+	if len(opts["host_id_annotation"]) > 0 {
+		hostIDAnnotation = opts["host_id_annotation"][0]
+	}
 	// create clients
 	kubeConfig, kubeletConfig, err := kubelet.GetKubeConfigs(uri)
 	if err != nil {
@@ -470,8 +481,9 @@ func NewSummaryProvider(uri *url.URL) (MetricsSourceProvider, error) {
 	nodeLister, reflector, _ := util.GetNodeLister(kubeClient)
 
 	return &summaryProvider{
-		nodeLister:    nodeLister,
-		reflector:     reflector,
-		kubeletClient: kubeletClient,
+		nodeLister:       nodeLister,
+		reflector:        reflector,
+		kubeletClient:    kubeletClient,
+		hostIDAnnotation: hostIDAnnotation,
 	}, nil
 }
