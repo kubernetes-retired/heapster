@@ -10,7 +10,7 @@ Heapster exports the following metrics to its backends.
 | cpu/node_reservation | Share of CPU that is reserved on the node allocatable. |
 | cpu/node_utilization | CPU utilization as a share of node allocatable. |
 | cpu/request | CPU request (the guaranteed amount of resources) in millicores. |
-| cpu/usage | Cumulative CPU usage on all cores. |
+| cpu/usage | Cumulative amount of consumed CPU time on all cores in nanoseconds. |
 | cpu/usage_rate | CPU usage on all cores in millicores. |
 | cpu/load | CPU load in milliloads, i.e., runnable threads * 1000 |
 | ephemeral_storage/limit | Local ephemeral storage hard limit in bytes. |
