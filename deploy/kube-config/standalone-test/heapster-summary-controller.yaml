@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: heapster-test
-        image: k8s.gcr.io/heapster-amd64:v1.5.3
+        image: k8s.gcr.io/heapster-amd64:v1.6.0-beta.1
         imagePullPolicy: Always
         command:
         - /heapster
@@ -28,7 +28,7 @@ spec:
           mountPath: /etc/ssl/certs
           readOnly: true
       - name: eventer-test
-        image: k8s.gcr.io/heapster-amd64:v1.5.3
+        image: k8s.gcr.io/heapster-amd64:v1.6.0-beta.1
         imagePullPolicy: Always
         command:
         - /eventer

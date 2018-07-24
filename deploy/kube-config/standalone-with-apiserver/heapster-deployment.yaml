@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: heapster
-        image: k8s.gcr.io/heapster-amd64:v1.5.3
+        image: k8s.gcr.io/heapster-amd64:v1.6.0-beta.1
         command:
         - /heapster
         - --source=kubernetes.summary_api:''
