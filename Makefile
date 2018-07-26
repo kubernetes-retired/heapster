@@ -1,6 +1,6 @@
 all: build
 
-PREFIX?=gcr.io/google_containers
+PREFIX?=staging-k8s.gcr.io
 FLAGS=
 ARCH?=amd64
 ALL_ARCHITECTURES=amd64 arm arm64 ppc64le s390x
@@ -11,7 +11,7 @@ ifndef TEMP_DIR
 TEMP_DIR:=$(shell mktemp -d /tmp/heapster.XXXXXX)
 endif
 
-VERSION?=v1.5.3
+VERSION?=v1.5.4
 GIT_COMMIT:=$(shell git rev-parse --short HEAD)
 
 TESTUSER=
