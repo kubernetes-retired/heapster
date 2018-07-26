@@ -18,7 +18,7 @@ spec:
       serviceAccountName: heapster
       containers:
       - name: heapster-test
-        image: gcr.io/google_containers/heapster-amd64:v1.5.3
+        image: k8s.gcr.io/heapster-amd64:v1.5.4
         imagePullPolicy: Always
         command:
         - /heapster
