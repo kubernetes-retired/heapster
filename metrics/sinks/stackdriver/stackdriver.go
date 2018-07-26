@@ -327,11 +327,23 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 
-	cluster_name := ""
+	clusterName := ""
 	if len(opts["cluster_name"]) >= 1 {
-		cluster_name = opts["cluster_name"][0]
+		clusterName = opts["cluster_name"][0]
 	} else {
 		glog.Warning("Cluster name required but not provided, using empty cluster name.")
+	}
+
+	if clusterName == "" {
+		glog.Info("An empty cluster name has been provided, checking the GCE Metadata Server to try to auto-detect.")
+
+		clusterName_, err := gce.InstanceAttributeValue("cluster-name")
+		if err == nil {
+			glog.Infof("Discovered '%s' as the cluster name from the GCE Metadata Server.", clusterName_)
+			clusterName = clusterName_
+		} else {
+			glog.Warning("Cluster name could not be discovered using the GCE Metadata Server.")
+		}
 	}
 
 	minInterval := time.Nanosecond
@@ -388,6 +400,18 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		glog.Warning("Cluster location required with new resource model but not provided. Falling back to the zone where Heapster runs.")
 	}
 
+	if clusterLocation == "" {
+		glog.Info("An empty cluster location has been provided, checking the GCE Metadata Server to try to auto-detect.")
+
+		clusterLocation_, err := gce.InstanceAttributeValue("cluster-location")
+		if err == nil {
+			glog.Infof("Discovered '%s' as the cluster location from the GCE Metadata Server.", clusterLocation_)
+			clusterLocation = clusterLocation_
+		} else {
+			glog.Warning("Cluster location could not be discovered using the GCE Metadata Server.")
+		}
+	}
+
 	// Create Metric Client
 	stackdriverClient, err := sd_api.NewMetricClient(context.Background())
 	if err != nil {
@@ -396,7 +420,7 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 
 	sink := &StackdriverSink{
 		project:               projectId,
-		clusterName:           cluster_name,
+		clusterName:           clusterName,
 		clusterLocation:       clusterLocation,
 		heapsterZone:          heapsterZone,
 		stackdriverClient:     stackdriverClient,
