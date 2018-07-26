@@ -42,16 +42,18 @@ const (
 )
 
 var (
-	testZone               = flag.String("test_zone", "us-central1-b", "GCE zone where the test will be executed")
-	kubeVersions           = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
-	heapsterControllerFile = flag.String("heapster_controller", "../deploy/kube-config/standalone-test/heapster-controller.yaml", "Path to heapster replication controller file.")
-	heapsterServiceFile    = flag.String("heapster_service", "../deploy/kube-config/standalone-test/heapster-service.yaml", "Path to heapster service file.")
-	heapsterImage          = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
-	avoidBuild             = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
-	namespace              = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
-	maxRetries             = flag.Int("retries", 20, "Number of attempts before failing this test.")
-	runForever             = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
-	testUser               = flag.String("test_user", "", "GCE user when copy file to host")
+	testZone                   = flag.String("test_zone", "us-central1-b", "GCE zone where the test will be executed")
+	kubeVersions               = flag.String("kube_versions", "", "Comma separated list of kube versions to test against. By default will run the test against an existing cluster")
+	heapsterControllerFile     = flag.String("heapster_controller", "../deploy/kube-config/standalone-test/heapster-controller.yaml", "Path to heapster replication controller file.")
+	heapsterServiceFile        = flag.String("heapster_service", "../deploy/kube-config/standalone-test/heapster-service.yaml", "Path to heapster service file.")
+	heapsterRBACFile           = flag.String("heapster_rbac", "../deploy/kube-config/standalone-test/heapster-rbac.yaml", "Path to heapster rbac file.")
+	heapsterServiceAccountFile = flag.String("heapster_service_account", "../deploy/kube-config/standalone-test/heapster-service-account.yaml", "Path to heapster service account file.")
+	heapsterImage              = flag.String("heapster_image", "heapster:e2e_test", "heapster docker image that needs to be tested.")
+	avoidBuild                 = flag.Bool("nobuild", false, "When true, a new heapster docker image will not be created and pushed to test cluster nodes.")
+	namespace                  = flag.String("namespace", "heapster-e2e-tests", "namespace to be used for testing, it will be deleted at the beginning of the test if exists")
+	maxRetries                 = flag.Int("retries", 20, "Number of attempts before failing this test.")
+	runForever                 = flag.Bool("run_forever", false, "If true, the tests are run in a loop forever.")
+	testUser                   = flag.String("test_user", "", "GCE user when copy file to host")
 )
 
 func deleteAll(fm kubeFramework, ns string, service *kube_v1.Service, rc *kube_v1.ReplicationController) error {
@@ -162,6 +164,33 @@ func getHeapsterRcAndSvc(fm kubeFramework) (*kube_v1.Service, *kube_v1.Replicati
 	}
 
 	return svc, rc, nil
+}
+
+func setupHeapsterServiceAccount(fm kubeFramework) error {
+	sa, err := fm.ParseServiceAccount(*heapsterServiceAccountFile)
+	if err != nil {
+		return fmt.Errorf("failed to parse heapster serviceaccount - %v", err)
+	}
+
+	glog.V(2).Infof("Creating serviceaccount %s/%s...", (*sa).Namespace, (*sa).Name)
+	if err := fm.CreateServiceAccount(sa); err != nil {
+		glog.V(2).Infof("Failed to create serviceaccount: %v", err)
+		return err
+	}
+	return nil
+}
+
+func setupHeapsterRBAC(fm kubeFramework) error {
+	rbac, err := fm.ParseRBAC(*heapsterRBACFile)
+	if err != nil {
+		return fmt.Errorf("failed to parse heapster rbac - %v", err)
+	}
+	glog.V(2).Infof("Creating rbac %s...", (*rbac).Name)
+	if err := fm.CreateRBAC(rbac); err != nil {
+		glog.V(2).Infof("Failed to create rbac: %v", err)
+		return err
+	}
+	return nil
 }
 
 func buildAndPushDockerImages(fm kubeFramework, zone string) error {
@@ -1013,6 +1042,8 @@ func apiTest(kubeVersion string, zone string) error {
 	if err := createAll(fm, ns, &svc, &rc); err != nil {
 		return err
 	}
+	setupHeapsterServiceAccount(fm)
+	setupHeapsterRBAC(fm)
 	if err := fm.WaitUntilPodRunning(ns, rc.Spec.Template.Labels, time.Minute); err != nil {
 		return err
 	}

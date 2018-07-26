@@ -15,6 +15,7 @@ spec:
       labels:
         k8s-app: heapster-test
     spec:
+      serviceAccountName: heapster
       containers:
       - name: heapster-test
         image: gcr.io/google_containers/heapster-amd64:v1.5.3
