@@ -32,7 +32,7 @@ This requires the apiserver to be setup completely without auth, which can be do
 Alternatively, you can use a heapster-only serviceaccount like this:
 
 ```shell
-cat <EOF | kubectl create -f -
+cat <<EOF | kubectl create -f -
 apiVersion: v1
 kind: ServiceAccount
 metadata:
