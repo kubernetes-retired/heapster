@@ -402,6 +402,7 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 			}
 		}
 	} else {
+		// Detect project ID from the environment
 		projectId, err = gce_util.GetProjectId()
 		if err != nil {
 			return nil, err
