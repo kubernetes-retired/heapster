@@ -327,25 +327,6 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		return nil, err
 	}
 
-	clusterName := ""
-	if len(opts["cluster_name"]) >= 1 {
-		clusterName = opts["cluster_name"][0]
-	} else {
-		glog.Warning("Cluster name required but not provided, using empty cluster name.")
-	}
-
-	if clusterName == "" {
-		glog.Info("An empty cluster name has been provided, checking the GCE Metadata Server to try to auto-detect.")
-
-		clusterName_, err := gce.InstanceAttributeValue("cluster-name")
-		if err == nil {
-			glog.Infof("Discovered '%s' as the cluster name from the GCE Metadata Server.", clusterName_)
-			clusterName = clusterName_
-		} else {
-			glog.Warning("Cluster name could not be discovered using the GCE Metadata Server.")
-		}
-	}
-
 	minInterval := time.Nanosecond
 	if len(opts["min_interval_sec"]) >= 1 {
 		if interval, err := strconv.Atoi(opts["min_interval_sec"][0]); err != nil {
@@ -371,6 +352,16 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 	}
 
 	var projectId, heapsterZone string
+	// Cluster name and location are required when useNewResourceModel is true.
+	var clusterName, clusterLocation string
+
+	if len(opts["cluster_name"]) >= 1 {
+		clusterName = opts["cluster_name"][0]
+	}
+
+	if len(opts["cluster_location"]) >= 1 {
+		clusterLocation = opts["cluster_location"][0]
+	}
 
 	if gce.OnGCE() {
 		// Detect project ID
@@ -384,6 +375,32 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if useNewResourceModel {
+			if clusterName == "" {
+				glog.Info("An empty cluster name has been provided, checking the GCE Metadata Server to try to auto-detect.")
+
+				clusterName_, err := gce.InstanceAttributeValue("cluster-name")
+				if err == nil {
+					glog.Infof("Discovered '%s' as the cluster name from the GCE Metadata Server.", clusterName_)
+					clusterName = clusterName_
+				} else {
+					glog.Warningf("Cluster name could not be discovered using the GCE Metadata Server: %s", err)
+				}
+			}
+
+			if clusterLocation == "" {
+				glog.Info("An empty cluster location has been provided, checking the GCE Metadata Server to try to auto-detect.")
+
+				clusterLocation_, err := gce.InstanceAttributeValue("cluster-location")
+				if err == nil {
+					glog.Infof("Discovered '%s' as the cluster location from the GCE Metadata Server.", clusterLocation_)
+					clusterLocation = clusterLocation_
+				} else {
+					glog.Warningf("Cluster location could not be discovered using the GCE Metadata Server: %s", err)
+				}
+			}
+		}
 	} else {
 		projectId, err = gce_util.GetProjectId()
 		if err != nil {
@@ -393,22 +410,14 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		heapsterZone = opts["zone"][0]
 	}
 
-	clusterLocation := heapsterZone
-	if len(opts["cluster_location"]) >= 1 {
-		clusterLocation = opts["cluster_location"][0]
-	} else if useNewResourceModel {
-		glog.Warning("Cluster location required with new resource model but not provided. Falling back to the zone where Heapster runs.")
-	}
+	if useNewResourceModel {
+		if clusterName == "" {
+			glog.Warning("Cluster name required but not provided, using empty cluster name.")
+		}
 
-	if clusterLocation == "" {
-		glog.Info("An empty cluster location has been provided, checking the GCE Metadata Server to try to auto-detect.")
-
-		clusterLocation_, err := gce.InstanceAttributeValue("cluster-location")
-		if err == nil {
-			glog.Infof("Discovered '%s' as the cluster location from the GCE Metadata Server.", clusterLocation_)
-			clusterLocation = clusterLocation_
-		} else {
-			glog.Warning("Cluster location could not be discovered using the GCE Metadata Server.")
+		if clusterLocation == "" {
+			glog.Warning("Cluster location required with new resource model but not provided. Falling back to the zone where Heapster runs.")
+			clusterLocation = heapsterZone
 		}
 	}
 
