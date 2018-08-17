@@ -373,17 +373,20 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 		// Detect zone for old resource model
 		heapsterZone, err = gce.Zone()
 		if err != nil {
-			return nil, err
+			glog.Warningf("Zone could not be discovered using the GCE Metadata Server: %s", err)
+
+			if useOldResourceModel {
+				return nil, err
+			}
 		}
 
 		if useNewResourceModel {
 			if clusterName == "" {
 				glog.Info("An empty cluster name has been provided, checking the GCE Metadata Server to try to auto-detect.")
 
-				clusterName_, err := gce.InstanceAttributeValue("cluster-name")
+				clusterName, err = gce.InstanceAttributeValue("cluster-name")
 				if err == nil {
-					glog.Infof("Discovered '%s' as the cluster name from the GCE Metadata Server.", clusterName_)
-					clusterName = clusterName_
+					glog.Infof("Discovered '%s' as the cluster name from the GCE Metadata Server.", clusterName)
 				} else {
 					glog.Warningf("Cluster name could not be discovered using the GCE Metadata Server: %s", err)
 				}
@@ -392,10 +395,9 @@ func CreateStackdriverSink(uri *url.URL) (core.DataSink, error) {
 			if clusterLocation == "" {
 				glog.Info("An empty cluster location has been provided, checking the GCE Metadata Server to try to auto-detect.")
 
-				clusterLocation_, err := gce.InstanceAttributeValue("cluster-location")
+				clusterLocation, err = gce.InstanceAttributeValue("cluster-location")
 				if err == nil {
-					glog.Infof("Discovered '%s' as the cluster location from the GCE Metadata Server.", clusterLocation_)
-					clusterLocation = clusterLocation_
+					glog.Infof("Discovered '%s' as the cluster location from the GCE Metadata Server.", clusterLocation)
 				} else {
 					glog.Warningf("Cluster location could not be discovered using the GCE Metadata Server: %s", err)
 				}
