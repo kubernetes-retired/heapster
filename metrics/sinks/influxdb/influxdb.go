@@ -181,7 +181,7 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 			}
 		}
 	}
-	if len(dataPoints) >= 0 {
+	if len(dataPoints) > 0 {
 		sink.concurrentSendData(dataPoints)
 	}
 
