@@ -18,7 +18,7 @@ support it on their own.
 
 ### Initial Deprecation (Kubernetes 1.11)
 
-Heapster is marked deprecated as of Kubernetes 1.11.  Users are encoraged
+Heapster is marked deprecated as of Kubernetes 1.11.  Users are encouraged
 to use
 [metrics-server](https://github.com/kubernetes-incubator/metrics-server)
 instead, potentially supplemented by a third-party monitoring solution,
