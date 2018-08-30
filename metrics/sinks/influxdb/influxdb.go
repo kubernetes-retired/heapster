@@ -29,7 +29,7 @@ import (
 )
 
 type influxdbSink struct {
-	client influxdb_common.InfluxdbClient
+	client   influxdb_common.InfluxdbClient
 	sync.RWMutex
 	c        influxdb_common.InfluxdbConfig
 	dbExists bool
@@ -205,8 +205,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	}()
 
 	if err := sink.createDatabase(); err != nil {
-		glog.Errorf("Failed to create influxdb: %v", err)
-		return
+		glog.Warningf("Failed to create influxdb: %v", err)
 	}
 	bp := influxdb.BatchPoints{
 		Points:          dataPoints,

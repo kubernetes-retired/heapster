@@ -23,7 +23,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 
-	influxdb "github.com/influxdata/influxdb/client"
 	influx_models "github.com/influxdata/influxdb/models"
 	"github.com/stretchr/testify/assert"
 	util "k8s.io/client-go/util/testing"
@@ -36,21 +35,22 @@ type fakeInfluxDBDataSink struct {
 	fakeDbClient *influxdb_common.FakeInfluxDBClient
 }
 
-func (sink *fakeInfluxDBDataSink) sendData(dataPoints []influxdb.Point) {
-	bp := influxdb.BatchPoints{
-		Points: dataPoints,
-	}
-	if _, err := sink.fakeDbClient.Write(bp); err != nil {
-		return
+func newRawInfluxSink() *fakeInfluxdbSink {
+	return &fakeInfluxdbSink{
+		&influxdbSink{
+			client:  influxdb_common.Client,
+			c:       influxdb_common.Config,
+			conChan: make(chan struct{}, influxdb_common.Config.Concurrency),
+		},
 	}
 }
 
-func newRawInfluxSink() *influxdbSink {
-	return &influxdbSink{
-		client:  influxdb_common.Client,
-		c:       influxdb_common.Config,
-		conChan: make(chan struct{}, influxdb_common.Config.Concurrency),
-	}
+type fakeInfluxdbSink struct {
+	*influxdbSink
+}
+
+func (f *fakeInfluxdbSink) createDatabase() error {
+	return nil
 }
 
 func NewFakeSink() fakeInfluxDBDataSink {
