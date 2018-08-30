@@ -27,12 +27,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	util "k8s.io/client-go/util/testing"
 	influxdb_common "k8s.io/heapster/common/influxdb"
+	influxdb "github.com/influxdata/influxdb/client"
 	"k8s.io/heapster/metrics/core"
 )
 
 type fakeInfluxDBDataSink struct {
 	core.DataSink
 	fakeDbClient *influxdb_common.FakeInfluxDBClient
+}
+
+func (sink *fakeInfluxDBDataSink) sendData(dataPoints []influxdb.Point) {
+	bp := influxdb.BatchPoints{
+		Points:          dataPoints,
+	}
+	if _, err := sink.fakeDbClient.Write(bp); err != nil {
+		return
+	}
 }
 
 func newRawInfluxSink() *influxdbSink {
