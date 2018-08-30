@@ -29,7 +29,7 @@ import (
 )
 
 type influxdbSink struct {
-	client influxdb_common.InfluxdbClient
+	client   influxdb_common.InfluxdbClient
 	sync.RWMutex
 	c        influxdb_common.InfluxdbConfig
 	dbExists bool
@@ -205,8 +205,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	}()
 
 	if err := sink.createDatabase(); err != nil {
-		glog.Errorf("Failed to create influxdb: %v", err)
-		return
+		glog.Warningf("Failed to create influxdb: %v", err)
 	}
 	bp := influxdb.BatchPoints{
 		Points:          dataPoints,
@@ -257,17 +256,48 @@ func (sink *influxdbSink) createDatabase() error {
 	if sink.dbExists {
 		return nil
 	}
+
+	//query databases and check the specific database is exist or not.
 	q := influxdb.Query{
-		Command: fmt.Sprintf(`CREATE DATABASE %s WITH NAME "default"`, sink.c.DbName),
+		Command: "SHOW DATABASES",
 	}
 
-	if resp, err := sink.client.Query(q); err != nil {
-		if !(resp != nil && resp.Err != nil && strings.Contains(resp.Err.Error(), "already exists")) {
-			err := sink.createRetentionPolicy()
-			if err != nil {
-				return err
+	resp, err := sink.client.Query(q)
+
+	if err != nil {
+		return err
+	}
+
+	if len(resp.Results) == 1 && len(resp.Results[0].Series) == 1 {
+		values := resp.Results[0].Series[0].Values
+		for _, name := range values {
+			if sink.c.DbName == name[0].(string) {
+				sink.dbExists = true
+				//If the database is exist,we should exit right now.
+				return nil
 			}
 		}
+
+		q = influxdb.Query{
+			Command: fmt.Sprintf(`CREATE DATABASE %s`, sink.c.DbName),
+		}
+
+		_, err := sink.client.Query(q)
+		if err != nil {
+			return err
+		}
+
+		/**
+		heapster should on create retention policy on the creation of database.
+		although you can change the retention duration in params,
+		but heapster will not alter a existing database's retention policies.
+		*/
+		err = sink.createRetentionPolicy()
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("Failed to query databases from influxdb")
 	}
 
 	sink.dbExists = true
