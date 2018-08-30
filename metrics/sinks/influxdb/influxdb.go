@@ -29,7 +29,7 @@ import (
 )
 
 type influxdbSink struct {
-	client   influxdb_common.InfluxdbClient
+	client influxdb_common.InfluxdbClient
 	sync.RWMutex
 	c        influxdb_common.InfluxdbConfig
 	dbExists bool
@@ -289,10 +289,10 @@ func (sink *influxdbSink) createDatabase() error {
 		}
 
 		/**
-			heapster should on create retention policy on the creation of database.
-			although you can change the retention duration in params,
-			but heapster will not alter a existing database's retention policies.
-		 */
+		heapster should on create retention policy on the creation of database.
+		although you can change the retention duration in params,
+		but heapster will not alter a existing database's retention policies.
+		*/
 		err = sink.createRetentionPolicy()
 		if err != nil {
 			return err
