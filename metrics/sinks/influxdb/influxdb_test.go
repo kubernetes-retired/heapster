@@ -35,22 +35,12 @@ type fakeInfluxDBDataSink struct {
 	fakeDbClient *influxdb_common.FakeInfluxDBClient
 }
 
-func newRawInfluxSink() *fakeInfluxdbSink {
-	return &fakeInfluxdbSink{
-		&influxdbSink{
-			client:  influxdb_common.Client,
-			c:       influxdb_common.Config,
-			conChan: make(chan struct{}, influxdb_common.Config.Concurrency),
-		},
+func newRawInfluxSink() *influxdbSink {
+	return &influxdbSink{
+		client:  influxdb_common.Client,
+		c:       influxdb_common.Config,
+		conChan: make(chan struct{}, influxdb_common.Config.Concurrency),
 	}
-}
-
-type fakeInfluxdbSink struct {
-	*influxdbSink
-}
-
-func (f *fakeInfluxdbSink) createDatabase() error {
-	return nil
 }
 
 func NewFakeSink() fakeInfluxDBDataSink {
