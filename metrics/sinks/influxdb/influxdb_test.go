@@ -37,9 +37,10 @@ type fakeInfluxDBDataSink struct {
 
 func newRawInfluxSink() *influxdbSink {
 	return &influxdbSink{
-		client:  influxdb_common.Client,
-		c:       influxdb_common.Config,
-		conChan: make(chan struct{}, influxdb_common.Config.Concurrency),
+		client:   influxdb_common.Client,
+		c:        influxdb_common.Config,
+		dbExists: true,
+		conChan:  make(chan struct{}, influxdb_common.Config.Concurrency),
 	}
 }
 
