@@ -181,7 +181,7 @@ func (sink *influxdbSink) ExportData(dataBatch *core.DataBatch) {
 			}
 		}
 	}
-	if len(dataPoints) >= 0 {
+	if len(dataPoints) > 0 {
 		sink.concurrentSendData(dataPoints)
 	}
 
@@ -205,7 +205,7 @@ func (sink *influxdbSink) sendData(dataPoints []influxdb.Point) {
 	}()
 
 	if err := sink.createDatabase(); err != nil {
-		glog.Warningf("Failed to create influxdb: %v", err)
+		glog.Errorf("Failed to create influxdb: %v", err)
 		return
 	}
 	bp := influxdb.BatchPoints{
