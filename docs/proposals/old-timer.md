@@ -46,7 +46,7 @@ Oldtimer will present an api somewhat similar to the normal Heapster model.
 The structure of the URLs is designed to mirror those exposed by the model API.
 When used simply to retrieve historical data points, Oldtimer will return the
 same types as the model API.  When the used to retrieve aggregations, Oldtimer
-will return special data types detailed under the "Return Types" section.
+will return special data types detailed under the [Return Types](#return-types) section.
 
 ### Paths
 
@@ -198,7 +198,7 @@ Which would then return:
 ## Sink Support and Functionality
 
 When Oldtimer receives a request, it will compose a query to the sink, send the
-query to the sink, and the transform the results into the appropriate API
+query to the sink, and then transform the results into the appropriate API
 formats.  Note that Oldtimer is designed to retrieve information that was
 originally written by Heapster itself.  Any information read by Oldtimer must
 have been stored according to the Heapster storage schema.
