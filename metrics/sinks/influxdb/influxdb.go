@@ -29,7 +29,7 @@ import (
 )
 
 type influxdbSink struct {
-	client influxdb_common.InfluxdbClient
+	client   influxdb_common.InfluxdbClient
 	sync.RWMutex
 	c        influxdb_common.InfluxdbConfig
 	dbExists bool
@@ -258,7 +258,7 @@ func (sink *influxdbSink) createDatabase() error {
 		return nil
 	}
 
-	//query databases and check the specific database is exist or not.
+	//check the specific database is exist or not/check whether the specific database exist or not
 	q := influxdb.Query{
 		Command: "SHOW DATABASES",
 	}
@@ -269,7 +269,7 @@ func (sink *influxdbSink) createDatabase() error {
 		return err
 	}
 
-	if len(resp.Results) == 1 && len(resp.Results[0].Series) == 1 {
+	if resp != nil && len(resp.Results) == 1 && len(resp.Results[0].Series) == 1 {
 		values := resp.Results[0].Series[0].Values
 		for _, name := range values {
 			if sink.c.DbName == name[0].(string) {
