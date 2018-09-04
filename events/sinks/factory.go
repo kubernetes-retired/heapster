@@ -28,6 +28,7 @@ import (
 	"k8s.io/heapster/events/sinks/riemann"
 
 	"github.com/golang/glog"
+	"k8s.io/heapster/events/sinks/dingding"
 )
 
 type SinkFactory struct {
@@ -49,6 +50,8 @@ func (this *SinkFactory) Build(uri flags.Uri) (core.EventSink, error) {
 		return riemann.CreateRiemannSink(&uri.Val)
 	case "honeycomb":
 		return honeycomb.NewHoneycombSink(&uri.Val)
+	case "dingding":
+		return dingding.NewDingdingSink(&uri.Val)
 	default:
 		return nil, fmt.Errorf("Sink not recognized: %s", uri.Key)
 	}
