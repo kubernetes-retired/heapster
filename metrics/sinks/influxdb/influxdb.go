@@ -258,7 +258,7 @@ func (sink *influxdbSink) createDatabase() error {
 		return nil
 	}
 
-	//check the specific database is exist or not/check whether the specific database exist or not
+	//check whether the specific database exist or not
 	q := influxdb.Query{
 		Command: "SHOW DATABASES",
 	}
