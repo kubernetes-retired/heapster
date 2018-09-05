@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dingding
+package dingtalk
 
 import (
 	"k8s.io/heapster/events/core"
@@ -25,38 +25,51 @@ import (
 	"github.com/golang/glog"
 )
 
-type DingdingMsg struct {
-	MsgType string       `json:"msgtype"`
-	Text    DingdingText `json:"text"`
-}
-
-type DingdingText struct {
-	Content string `json:"content"`
-}
-
-type DingdingSink struct {
-	Endpoint string
-	Token    string
-	Level    int
-}
-
 const (
-	DINGDING_SINK         = "DingdingSink"
+	DINGTALK_SINK         = "DingTalkSink"
 	WARNING           int = 2
 	NORMAL            int = 1
 	DEFAULT_MSG_TYPE      = "text"
 	CONTENT_TYPE_JSON     = "application/json"
+	MSG_TEMPLATE          = "Level:%s \nNamespace:%s \nName:%s \nMessage:%s \nReason:%s \nTimestamp:%s"
+	LABE_TEMPLATE         = "%s\n"
 )
 
-func (d *DingdingSink) Name() string {
-	return DINGDING_SINK
+/**
+	dingtalk msg struct
+ */
+type DingTalkMsg struct {
+	MsgType string       `json:"msgtype"`
+	Text    DingTalkText `json:"text"`
 }
 
-func (d *DingdingSink) Stop() {
+type DingTalkText struct {
+	Content string `json:"content"`
+}
+
+/**
+	dingtalk sink usage
+	--sink:dingtalk:https://oapi.dingtalk.com/robot/send?access_token=[access_token]&level=Warning&label=[label]
+
+	level: Normal or Warning. The event level greater than global level will emit.
+	label: some thing unique when you want to distinguish different k8s clusters.
+ */
+type DingTalkSink struct {
+	Endpoint string
+	Token    string
+	Level    int
+	Labels   [] string
+}
+
+func (d *DingTalkSink) Name() string {
+	return DINGTALK_SINK
+}
+
+func (d *DingTalkSink) Stop() {
 	//do nothing
 }
 
-func (d *DingdingSink) ExportEvents(batch *core.EventBatch) {
+func (d *DingTalkSink) ExportEvents(batch *core.EventBatch) {
 	for _, event := range batch.Events {
 		if d.isEventLevelDangerous(event.Type) {
 			d.Ding(event)
@@ -64,7 +77,7 @@ func (d *DingdingSink) ExportEvents(batch *core.EventBatch) {
 	}
 }
 
-func (d *DingdingSink) isEventLevelDangerous(level string) bool {
+func (d *DingTalkSink) isEventLevelDangerous(level string) bool {
 	score := getLevel(level)
 	if score >= d.Level {
 		return true
@@ -72,9 +85,10 @@ func (d *DingdingSink) isEventLevelDangerous(level string) bool {
 	return false
 }
 
-func (d *DingdingSink) Ding(event *v1.Event) {
-	msg := createMsgFromEvent(event)
+func (d *DingTalkSink) Ding(event *v1.Event) {
+	msg := createMsgFromEvent(d.Labels, event)
 	if msg == nil {
+		glog.Warningf("failed to create msg from event,because of %v", event)
 		return
 	}
 
@@ -88,7 +102,7 @@ func (d *DingdingSink) Ding(event *v1.Event) {
 
 	_, err = http.Post(fmt.Sprintf("https://%s?access_token=%s", d.Endpoint, d.Token), CONTENT_TYPE_JSON, b)
 	if err != nil {
-		glog.Errorf("failed to send msg to dingding,because of %s", err.Error())
+		glog.Errorf("failed to send msg to dingtalk,because of %s", err.Error())
 		return
 	}
 }
@@ -106,18 +120,24 @@ func getLevel(level string) int {
 	return score
 }
 
-func createMsgFromEvent(event *v1.Event) *DingdingMsg {
-	msg := &DingdingMsg{}
+func createMsgFromEvent(labels []string, event *v1.Event) *DingTalkMsg {
+	msg := &DingTalkMsg{}
 	msg.MsgType = DEFAULT_MSG_TYPE
-	msg.Text = DingdingText{
-		Content: fmt.Sprintf("Level:%s \nNamespace:%s \nName:%s \nMessage:%s \nReason:%s \nTimestamp:%s", event.Type, event.Namespace, event.Name, event.Message, event.Reason, event.LastTimestamp.Local()),
+	template := MSG_TEMPLATE
+	if len(labels) > 0 {
+		for _, label := range labels {
+			template = fmt.Sprintf(LABE_TEMPLATE, label) + template
+		}
+	}
+	msg.Text = DingTalkText{
+		Content: fmt.Sprintf(template, event.Type, event.Namespace, event.Name, event.Message, event.Reason, event.LastTimestamp),
 	}
 	return msg
 }
 
-func NewDingdingSink(uri *url.URL) (*DingdingSink, error) {
-	d := &DingdingSink{
-		Level: NORMAL,
+func NewDingTalkSink(uri *url.URL) (*DingTalkSink, error) {
+	d := &DingTalkSink{
+		Level: WARNING,
 	}
 	if len(uri.Host) > 0 {
 		d.Endpoint = uri.Host + uri.Path
@@ -127,11 +147,17 @@ func NewDingdingSink(uri *url.URL) (*DingdingSink, error) {
 	if len(opts["access_token"]) >= 1 {
 		d.Token = opts["access_token"][0]
 	} else {
-		return nil, fmt.Errorf("you must provide dingding bot access_token")
+		return nil, fmt.Errorf("you must provide dingtalk bot access_token")
 	}
 
 	if len(opts["level"]) >= 1 {
 		d.Level = getLevel(opts["level"][0])
 	}
+
+	//add extra labels
+	if len(opts["label"]) >= 1 {
+		d.Labels = opts["label"]
+	}
+
 	return d, nil
 }
