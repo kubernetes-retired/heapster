@@ -15,14 +15,14 @@
 package dingtalk
 
 import (
-	"k8s.io/heapster/events/core"
-	"net/url"
-	"k8s.io/api/core/v1"
-	"fmt"
-	"net/http"
-	"encoding/json"
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"github.com/golang/glog"
+	"k8s.io/api/core/v1"
+	"k8s.io/heapster/events/core"
+	"net/http"
+	"net/url"
 )
 
 const (
@@ -36,8 +36,8 @@ const (
 )
 
 /**
-	dingtalk msg struct
- */
+dingtalk msg struct
+*/
 type DingTalkMsg struct {
 	MsgType string       `json:"msgtype"`
 	Text    DingTalkText `json:"text"`
@@ -48,17 +48,17 @@ type DingTalkText struct {
 }
 
 /**
-	dingtalk sink usage
-	--sink:dingtalk:https://oapi.dingtalk.com/robot/send?access_token=[access_token]&level=Warning&label=[label]
+dingtalk sink usage
+--sink:dingtalk:https://oapi.dingtalk.com/robot/send?access_token=[access_token]&level=Warning&label=[label]
 
-	level: Normal or Warning. The event level greater than global level will emit.
-	label: some thing unique when you want to distinguish different k8s clusters.
- */
+level: Normal or Warning. The event level greater than global level will emit.
+label: some thing unique when you want to distinguish different k8s clusters.
+*/
 type DingTalkSink struct {
 	Endpoint string
 	Token    string
 	Level    int
-	Labels   [] string
+	Labels   []string
 }
 
 func (d *DingTalkSink) Name() string {
@@ -111,9 +111,9 @@ func getLevel(level string) int {
 	score := 0
 	switch level {
 	case v1.EventTypeWarning:
-		score += 2;
+		score += 2
 	case v1.EventTypeNormal:
-		score += 1;
+		score += 1
 	default:
 		//score will remain 0
 	}
