@@ -258,7 +258,7 @@ func (sink *influxdbSink) createDatabase() error {
 		return nil
 	}
 
-	//check whether the specific database exist or not
+	// check whether the specific database exist or not
 	q := influxdb.Query{
 		Command: "SHOW DATABASES",
 	}
@@ -275,6 +275,7 @@ func (sink *influxdbSink) createDatabase() error {
 			if sink.c.DbName == name[0].(string) {
 				sink.dbExists = true
 				//If the database is exist,we should exit right now.
+				glog.Infof("The specific database %s is exist", sink.c.DbName)
 				return nil
 			}
 		}
@@ -285,6 +286,7 @@ func (sink *influxdbSink) createDatabase() error {
 
 		_, err := sink.client.Query(q)
 		if err != nil {
+			glog.Errorf("Failed to create database in influxdb,because of %s", err.Error())
 			return err
 		}
 
@@ -295,6 +297,7 @@ func (sink *influxdbSink) createDatabase() error {
 		*/
 		err = sink.createRetentionPolicy()
 		if err != nil {
+			glog.Errorf("Failed to create retention policy on database,because of %s", err.Error())
 			return err
 		}
 	} else {
