@@ -227,7 +227,7 @@ func (sink *influxdbSink) createRetentionPolicy() error {
 }
 
 // Returns a thread-safe implementation of core.EventSink for InfluxDB.
-func new(c influxdb_common.InfluxdbConfig) core.EventSink {
+func newSink(c influxdb_common.InfluxdbConfig) core.EventSink {
 	client, err := influxdb_common.NewClient(c)
 	if err != nil {
 		glog.Errorf("issues while creating an InfluxDB sink: %v, will retry on use", err)
@@ -243,7 +243,7 @@ func CreateInfluxdbSink(uri *url.URL) (core.EventSink, error) {
 	if err != nil {
 		return nil, err
 	}
-	sink := new(*config)
+	sink := newSink(*config)
 	glog.Infof("created influxdb sink with options: host:%s user:%s db:%s", config.Host, config.User, config.DbName)
 	return sink, nil
 }
