@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	util "k8s.io/client-go/util/testing"
@@ -94,4 +95,60 @@ func TestLibratoClientWriteWithTags(t *testing.T) {
 	expectedBody := `{"tags":{"a":"test"},"measurements":[{"name":"test","value":1.4,"tags":{"test":"tag"}}]}`
 
 	handler.ValidateRequest(t, "/v1/measurements", "POST", &expectedBody)
+}
+
+func Test_RemoveEarlyMeasurements_No_Measurements(t *testing.T) {
+	measurements := make([]Measurement, 0)
+
+	validMeasurements := removeEarlyMeasurements(measurements, time.Now(), 60*time.Second)
+
+	if want, got := 0, len(validMeasurements); want != got {
+		t.Errorf("expected no measurements, but got %d measurements", got)
+	}
+}
+
+func Test_RemoveEarlyMeasurements_No_Valid_Measurements(t *testing.T) {
+	measurements := []Measurement{
+		{
+			Name:  "dummy",
+			Value: float64(1),
+			Time:  time.Now().Unix(),
+		},
+	}
+
+	lastExportTime := time.Now().Add(-30 * time.Second)
+	minExportInterval := 60 * time.Second
+	validMeasurements := removeEarlyMeasurements(measurements, lastExportTime, minExportInterval)
+
+	if want, got := 0, len(validMeasurements); want != got {
+		t.Errorf("expected no measurements, but got %d measurements", got)
+	}
+}
+
+func Test_RemoveEarlyMeasurements_One_Valid_Measurement(t *testing.T) {
+	measurements := []Measurement{
+		{
+			Name:  "dummy1",
+			Value: float64(1),
+			Time:  time.Now().Add(-60 * time.Second).Unix(),
+		},
+		{
+			Name:  "dummy2",
+			Value: float64(2),
+			Time:  time.Now().Add(-30 * time.Second).Unix(),
+		},
+		{
+			Name:  "dummy3",
+			Value: float64(3),
+			Time:  time.Now().Unix(),
+		},
+	}
+
+	lastExportTime := time.Now().Add(-90 * time.Second)
+	minExportInterval := 60 * time.Second
+	validMeasurements := removeEarlyMeasurements(measurements, lastExportTime, minExportInterval)
+
+	if want, got := 1, len(validMeasurements); want != got {
+		t.Errorf("expected 1 measurement, but got %d measurements", got)
+	}
 }

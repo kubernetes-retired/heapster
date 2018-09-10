@@ -338,10 +338,11 @@ Options can be set in query string, like this:
 * `prefix` - Prefix for all measurement names
 * `tags` - By default provided tags (comma separated list)
 * `tag_{name}` - Value for the tag `name`
+* `min_export_interval` - Go time.Duration format of minimum time between measurement exports.
 
 For example,
 
-    --sink=librato:?username=xyz&token=secret&prefix=k8s&tags=cluster&tag_cluster=staging
+    --sink=librato:?username=xyz&token=secret&prefix=k8s&tags=cluster&tag_cluster=staging&min_export_interval=60s
 
 The librato sink currently only works with accounts, which support [tagged metrics](https://www.librato.com/docs/kb/faq/account_questions/tags_or_sources/).
 
