@@ -258,7 +258,7 @@ func (sink *influxdbSink) createDatabase() error {
 		return nil
 	}
 
-	// check whether the specific database exist or not
+	// check whether the specific database exists or not
 	q := influxdb.Query{
 		Command: "SHOW DATABASES",
 	}
@@ -274,7 +274,7 @@ func (sink *influxdbSink) createDatabase() error {
 		for _, name := range values {
 			if sink.c.DbName == name[0].(string) {
 				sink.dbExists = true
-				//If the database is exist,we should exit right now.
+				//If the database exists,we should exit right now.
 				glog.Infof("The specific database %s is exist", sink.c.DbName)
 				return nil
 			}
@@ -286,15 +286,13 @@ func (sink *influxdbSink) createDatabase() error {
 
 		_, err := sink.client.Query(q)
 		if err != nil {
-			glog.Errorf("Failed to create database in influxdb,because of %s", err.Error())
+			glog.Errorf("Failed to create database in influxdb:%s", err.Error())
 			return err
 		}
 
-		/**
-		heapster should on create retention policy on the creation of database.
-		although you can change the retention duration in params,
-		but heapster will not alter a existing database's retention policies.
-		*/
+		// heapster should on create retention policy on the creation of database.
+		// although you can change the retention duration in params,
+		// but heapster will not alter a existing database's retention policies.
 		err = sink.createRetentionPolicy()
 		if err != nil {
 			glog.Errorf("Failed to create retention policy on database,because of %s", err.Error())
