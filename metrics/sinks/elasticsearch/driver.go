@@ -77,7 +77,7 @@ func (sink *elasticSearchSink) ExportData(dataBatch *core.DataBatch) {
 		}
 		err := sink.flushData()
 		if err != nil {
-			glog.Warningf("Failed to flushing data to ElasticSearch sink: %v", err)
+			glog.Warningf("Failed to flush data to ElasticSearch sink: %v", err)
 		}
 	}
 }
