@@ -8,9 +8,9 @@ Depending on the deployment setup, the issue could be either with Heapster, cAdv
 
 #### Common Problems
 
-* Some distros (including Debian) ship with memory accounting disabled by default. To enable memory and swap accounting on the nodes, follow [these instructions](https://docs.docker.com/installation/ubuntulinux/#memory-and-swap-accounting).
+* Some distros (including Debian) ship with memory accounting disabled by default. To enable memory and swap accounting on the nodes, follow [these instructions](https://docs.docker.com/install/linux/linux-postinstall/#allow-access-to-the-remote-api-through-a-firewall).
 
-#### Debuging
+#### Debugging
 
 There are 2 endpoints that can give you an insight into what is going on in Heapster:
 
