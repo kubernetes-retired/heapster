@@ -274,8 +274,8 @@ func (sink *influxdbSink) createDatabase() error {
 		for _, name := range values {
 			if sink.c.DbName == name[0].(string) {
 				sink.dbExists = true
-				//If the database exists,we should exit right now.
-				glog.Infof("The specific database %s is exist", sink.c.DbName)
+				// If the database exists, we should exit right now.
+				glog.Infof("The specific database %s exists", sink.c.DbName)
 				return nil
 			}
 		}
