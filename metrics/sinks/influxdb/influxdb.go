@@ -295,7 +295,7 @@ func (sink *influxdbSink) createDatabase() error {
 		// but heapster will not alter a existing database's retention policies.
 		err = sink.createRetentionPolicy()
 		if err != nil {
-			glog.Errorf("Failed to create retention policy on database,because of %s", err.Error())
+			glog.Errorf("Failed to create retention policy on database:%s", err.Error())
 			return err
 		}
 	} else {
