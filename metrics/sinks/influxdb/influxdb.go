@@ -29,7 +29,7 @@ import (
 )
 
 type influxdbSink struct {
-	client influxdb_common.InfluxdbClient
+	client   influxdb_common.InfluxdbClient
 	sync.RWMutex
 	c        influxdb_common.InfluxdbConfig
 	dbExists bool
@@ -251,6 +251,7 @@ func (sink *influxdbSink) ensureClient() error {
 
 func (sink *influxdbSink) createDatabase() error {
 	if err := sink.ensureClient(); err != nil {
+		glog.Errorf("Failed to create influxdb client:%s", err.Error())
 		return err
 	}
 
@@ -266,6 +267,7 @@ func (sink *influxdbSink) createDatabase() error {
 	resp, err := sink.client.Query(q)
 
 	if err != nil {
+		glog.Errorf("Failed to show databases:%s", err.Error())
 		return err
 	}
 
@@ -326,7 +328,7 @@ func (sink *influxdbSink) createRetentionPolicy() error {
 func newSink(c influxdb_common.InfluxdbConfig) core.DataSink {
 	client, err := influxdb_common.NewClient(c)
 	if err != nil {
-		glog.Errorf("issues while creating an InfluxDB sink: %v, will retry on use", err)
+		glog.Warningf("issues while creating an InfluxDB sink: %v, will retry on use", err)
 	}
 	return &influxdbSink{
 		client:  client, // can be nil
