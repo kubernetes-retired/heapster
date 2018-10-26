@@ -24,10 +24,13 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
 )
+
+const maxBatchSize = 100
 
 type config struct {
 	APIHost  string
@@ -87,11 +90,7 @@ type BatchPoint struct {
 
 type Batch []*BatchPoint
 
-func (c *HoneycombClient) SendBatch(batch Batch) error {
-	if len(batch) == 0 {
-		// Nothing to send
-		return nil
-	}
+func (c *HoneycombClient) sendBatch(batch Batch) error {
 	buf := new(bytes.Buffer)
 	err := json.NewEncoder(buf).Encode(batch)
 	if err != nil {
@@ -101,6 +100,32 @@ func (c *HoneycombClient) SendBatch(batch Batch) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// SendBatch splits the top-level batch into sub-batches if needed.  Otherwise,
+// requests that are too large will be rejected by the Honeycomb API.
+func (c *HoneycombClient) SendBatch(batch Batch) error {
+	if len(batch) == 0 {
+		// Nothing to send
+		return nil
+	}
+
+	errs := []string{}
+	for i := 0; i < len(batch); i += maxBatchSize {
+		offset := i + maxBatchSize
+		if offset > len(batch) {
+			offset = len(batch)
+		}
+		if err := c.sendBatch(batch[i:offset]); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.New(strings.Join(errs, "\n"))
+	}
+
 	return nil
 }
 

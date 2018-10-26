@@ -47,14 +47,24 @@ func TestHoneycombClientWrite(t *testing.T) {
 
 	client, _ := NewClient(stubURL)
 
-	err = client.SendBatch([]*BatchPoint{
-		{
-			Data:      "test",
-			Timestamp: time.Now(),
-		},
-	})
+	testBatchPoint := &BatchPoint{
+		Data:      "test",
+		Timestamp: time.Now(),
+	}
+
+	err = client.SendBatch([]*BatchPoint{testBatchPoint})
 
 	assert.NoError(t, err)
 
-	handler.ValidateRequestCount(t, 1)
+	batch2 := []*BatchPoint{}
+
+	for i := 0; i < maxBatchSize*2; i++ {
+		batch2 = append(batch2, testBatchPoint)
+	}
+
+	err = client.SendBatch(batch2)
+
+	assert.NoError(t, err)
+
+	handler.ValidateRequestCount(t, 3)
 }
