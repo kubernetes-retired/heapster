@@ -103,7 +103,7 @@ nodename=127.0.0.1
 labels=labels:beta.kubernetes.io/arch:amd64,beta.kubernetes.io/os.linux,kubernetes.io/hostname:127.0.0.1
 ```
 This will make bosun confused and panic with something like "panic: opentsdb: bad tag: beta.kubernetes.io/os:linux".
-  * User-provided labels can be stored additionally as separate labels with Heapster `--store-label`. Similarily, using `--ignore-label`, labels can be ommited in concatenated labels.
+  * User-provided labels can be stored additionally as separate labels with Heapster `--store-label`. Similarly, using `--ignore-label`, labels can be omitted in concatenated labels.
 
 ## Aggregates
 
