@@ -100,7 +100,7 @@ func CreateRiemannSink(uri *url.URL) (*RiemannSink, error) {
 
 // Receives a sink, connect the riemann client.
 func GetRiemannClient(config RiemannConfig) (riemanngo.Client, error) {
-	glog.Infof("Connect Riemann client...")
+	glog.Info("Connect Riemann client...")
 	client := riemanngo.NewTcpClient(config.Host)
 	runtime.SetFinalizer(client, func(c riemanngo.Client) { c.Close() })
 	// 5 seconds timeout
@@ -115,7 +115,7 @@ func GetRiemannClient(config RiemannConfig) (riemanngo.Client, error) {
 func SendData(client riemanngo.Client, events []riemanngo.Event) error {
 	// do nothing if we are not connected
 	if client == nil {
-		glog.Warningf("Riemann sink not connected")
+		glog.Warning("Riemann sink not connected")
 		return nil
 	}
 	start := time.Now()

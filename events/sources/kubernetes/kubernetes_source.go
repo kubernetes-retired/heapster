@@ -132,7 +132,7 @@ func (this *KubernetesEventSource) watch() {
 			select {
 			case watchUpdate, ok := <-watchChannel:
 				if !ok {
-					glog.Errorf("Event watch channel closed")
+					glog.Error("Event watch channel closed")
 					break inner_loop
 				}
 
@@ -165,7 +165,7 @@ func (this *KubernetesEventSource) watch() {
 				}
 
 			case <-this.stopChannel:
-				glog.Infof("Event watching stopped")
+				glog.Info("Event watching stopped")
 				return
 			}
 		}

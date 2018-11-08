@@ -52,7 +52,7 @@ const (
 )
 
 func (sink *influxdbSink) resetConnection() {
-	glog.Infof("Influxdb connection reset")
+	glog.Info("Influxdb connection reset")
 	sink.dbExists = false
 	sink.client = nil
 }

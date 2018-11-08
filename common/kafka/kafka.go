@@ -232,13 +232,13 @@ func NewKafkaClient(uri *url.URL, topicType string) (KafkaClient, error) {
 	}
 
 	// set up producer of kafka server.
-	glog.V(3).Infof("attempting to setup kafka sink")
+	glog.V(3).Info("attempting to setup kafka sink")
 	sinkProducer, err := kafka.NewSyncProducer(kafkaBrokers, config)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to setup Producer: - %v", err)
 	}
 
-	glog.V(3).Infof("kafka sink setup successfully")
+	glog.V(3).Info("kafka sink setup successfully")
 	return &kafkaSink{
 		producer:  sinkProducer,
 		dataTopic: topic,

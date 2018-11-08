@@ -34,7 +34,7 @@ const (
 
 func EnsureOnGCE() error {
 	for start := time.Now(); time.Since(start) < waitForGCETimeout; time.Sleep(waitForGCEInterval) {
-		glog.Infof("Waiting for GCE metadata to be available")
+		glog.Info("Waiting for GCE metadata to be available")
 		if metadata.OnGCE() {
 			return nil
 		}

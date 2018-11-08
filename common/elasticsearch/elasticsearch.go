@@ -246,7 +246,7 @@ func CreateElasticSearchService(uri *url.URL) (*ElasticSearchService, error) {
 		return nil, fmt.Errorf("Failed to create ElasticSearch client: %v", err)
 	}
 
-	glog.V(2).Infof("ElasticSearch sink configure successfully")
+	glog.V(2).Info("ElasticSearch sink configure successfully")
 
 	return &esSvc, nil
 }

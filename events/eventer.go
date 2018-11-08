@@ -106,7 +106,7 @@ func main() {
 	}
 
 	manager.Start()
-	glog.Infof("Starting eventer")
+	glog.Info("Starting eventer")
 
 	go startHTTPServer()
 
