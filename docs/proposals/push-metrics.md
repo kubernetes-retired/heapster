@@ -73,7 +73,7 @@ The underlying design can support multiple format "backends".  The initial
 backend, detailed here, will be based on the Prometheus format, and will be
 available at `/api/v1/push/prometheus/`,
 `/api/v1/push/prometheus/metrics/job/{producer_name}`, or
-`/api/v1/push/promethus/metrics/jobs/{producer_name}`.  If either of the latter
+`/api/v1/push/prometheus/metrics/jobs/{producer_name}`.  If either of the latter
 two paths are used, `{producer_name}` should match the name used when
 authenticating with Heapster.
 
