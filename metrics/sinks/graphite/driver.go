@@ -192,7 +192,7 @@ func (s *Sink) ExportData(dataBatch *core.DataBatch) {
 	glog.V(8).Infof("Sending %d events to graphite", len(metrics))
 	if err := s.client.SendMetrics(metrics); err != nil {
 		glog.V(4).Info("Graphite connection error:", err)
-		glog.V(2).Info("There were errors sending events to Graphite, reconecting")
+		glog.V(2).Info("There were errors sending events to Graphite, reconnecting")
 		s.client.Disconnect()
 		s.client.Connect()
 	}
