@@ -22,7 +22,7 @@ import (
 )
 
 type PointSavedToInfluxdb struct {
-	Ponit influxdb.Point
+	Point influxdb.Point
 }
 
 type FakeInfluxDBClient struct {

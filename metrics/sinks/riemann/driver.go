@@ -75,7 +75,7 @@ func appendEvent(events []riemanngo.Event, sink *RiemannSink, host, name string,
 	if len(events) >= sink.config.BatchSize {
 		err := riemannCommon.SendData(sink.client, events)
 		if err != nil {
-			glog.Warningf("Error sending events to Riemann: ", err)
+			glog.Warningf("Error sending events to Riemann: %v", err)
 			// client will reconnect later
 			sink.client = nil
 		}
@@ -129,7 +129,7 @@ func (sink *RiemannSink) ExportData(dataBatch *core.DataBatch) {
 	if len(events) > 0 {
 		err := riemannCommon.SendData(sink.client, events)
 		if err != nil {
-			glog.Warningf("Error sending events to Riemann: ", err)
+			glog.Warningf("Error sending events to Riemann: %v", err)
 			// client will reconnect later
 			sink.client = nil
 		}

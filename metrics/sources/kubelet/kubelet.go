@@ -223,7 +223,7 @@ metricloop:
 			mv.ValueType = ValueFloat
 			mv.FloatValue = newest.FloatValue
 		default:
-			glog.V(4).Infof("Skipping %s: unknown custom metric format", spec.Name, spec.Format)
+			glog.V(4).Infof("Skipping %s: unknown custom metric format: %v", spec.Name, spec.Format)
 			continue metricloop
 		}
 

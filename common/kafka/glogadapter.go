@@ -26,13 +26,13 @@ type GologAdapterLogger struct {
 }
 
 func (GologAdapterLogger) Print(v ...interface{}) {
-	glog.Info(v)
+	glog.Info(v...)
 }
 
 func (GologAdapterLogger) Printf(format string, args ...interface{}) {
-	glog.Infof(format, args)
+	glog.Infof(format, args...)
 }
 
 func (GologAdapterLogger) Println(v ...interface{}) {
-	glog.Infoln(v)
+	glog.Infoln(v...)
 }
