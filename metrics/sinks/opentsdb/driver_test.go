@@ -32,7 +32,7 @@ var (
 	fakePodUid       = "redis-test-uid"
 	fakeClusterName  = "fakeClusterName"
 	fakeLabel        = map[string]string{
-		"name": "redis",
+		"name":                   "redis",
 		"io.kubernetes.pod.name": "default/redis-test",
 		"pod_id":                 fakePodUid,
 		"pod_name":               fakePodName,
