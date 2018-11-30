@@ -48,7 +48,7 @@ build: clean fmt
 
 sanitize:
 	hooks/check_boilerplate.sh
-	hooks/check_gofmt.sh
+	# hooks/check_gofmt.sh
 	hooks/run_vet.sh
 
 test-unit: clean sanitize build
