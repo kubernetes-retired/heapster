@@ -160,7 +160,7 @@ func (this *kubeletMetricsSource) decodeMetrics(c *cadvisor.ContainerInfo) (stri
 			// Parsing name like:
 			// k8s_kube-ui.7f9b83f6_kube-ui-v1-bxj1w_kube-system_9abfb0bd-811f-11e5-b548-42010af00002_e6841e8d
 			pos := strings.Index(c.Name, ".")
-			if pos >= 0 {
+			if pos >= 4 {
 				// remove first 4 chars.
 				cName = c.Name[len("k8s_"):pos]
 			}
